@@ -11,7 +11,10 @@ export default defineConfig(({ mode }) => ({
     strictPort: true,
     hmr: process.env.DISABLE_HMR !== "true",
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [
+    react(),
+    mode === "development" && componentTagger(),
+  ].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
