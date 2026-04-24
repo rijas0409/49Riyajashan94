@@ -1,0 +1,1 @@
+ALTER TABLE public.banners ADD COLUMN cta_alignment text NOT NULL DEFAULT 'left';
