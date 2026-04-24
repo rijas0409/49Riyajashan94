@@ -13,29 +13,33 @@ const Index = () => {
   }, []);
 
   const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: session.user.id });
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: session.user.id });
 
-      switch (roleData) {
-        case "seller":
-          navigate("/seller-dashboard");
-          break;
-        case "admin":
-          navigate("/admin");
-          break;
-        case "delivery_partner":
-          navigate("/delivery");
-          break;
-        case "product_seller":
-          navigate("/products-dashboard");
-          break;
-        case "vet":
-          navigate("/vet-dashboard");
-          break;
-        default:
-          navigate("/buyer-dashboard");
+        switch (roleData) {
+          case "seller":
+            navigate("/seller-dashboard");
+            break;
+          case "admin":
+            navigate("/admin");
+            break;
+          case "delivery_partner":
+            navigate("/delivery");
+            break;
+          case "product_seller":
+            navigate("/products-dashboard");
+            break;
+          case "vet":
+            navigate("/vet-dashboard");
+            break;
+          default:
+            navigate("/buyer-dashboard");
+        }
       }
+    } catch (err) {
+      console.error("Auth check failed:", err);
     }
   };
 

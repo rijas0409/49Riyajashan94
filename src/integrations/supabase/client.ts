@@ -2,14 +2,14 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+const VITE_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
+const VITE_SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
 
-if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-  console.error("Supabase environment variables are missing! Check your Vercel project settings.");
-}
+console.log("Checking Supabase Environment Variables...");
+if (!VITE_SUPABASE_URL) console.warn("VITE_SUPABASE_URL is missing!");
+if (!VITE_SUPABASE_PUBLISHABLE_KEY) console.warn("VITE_SUPABASE_PUBLISHABLE_KEY is missing!");
 
-export const supabase = createClient<Database>(SUPABASE_URL || "https://placeholder.supabase.co", SUPABASE_PUBLISHABLE_KEY || "placeholder", {
+export const supabase = createClient<Database>(VITE_SUPABASE_URL || "https://placeholder.supabase.co", VITE_SUPABASE_PUBLISHABLE_KEY || "placeholder", {
   auth: {
     storage: localStorage,
     persistSession: true,
