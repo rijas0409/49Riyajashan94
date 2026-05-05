@@ -32,7 +32,11 @@ const matchRoute = (currentPath: string, targetRoute: string): boolean => {
 const BannerCard = ({ b, navigate }: { b: DynBanner; navigate: (path: string) => void }) => {
   const handleClick = () => {
     if (!b.link_url) return;
-    b.link_url.startsWith("http") ? window.open(b.link_url, "_blank") : navigate(b.link_url);
+    if (b.link_url.startsWith("http")) {
+      window.open(b.link_url, "_blank");
+    } else {
+      navigate(b.link_url);
+    }
   };
 
   return (
