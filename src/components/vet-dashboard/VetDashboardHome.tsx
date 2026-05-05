@@ -207,7 +207,7 @@ const VetDashboardHome = ({ profile, vetProfile, appointments, earnings, onTabCh
 
       {/* Focus Mode */}
       {nextAppointment && (
-        <div className={`px-5 mb-5 transition-all duration-700 delay-[400ms] ${cardsVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+        <div className={`px-5 mb-5 transition-all duration-700 delay-500 ${cardsVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
           <div className="flex items-center gap-2 mb-3">
             <div className="w-5 h-5 rounded-full border-2 border-purple-500 flex items-center justify-center">
               <div className="w-2 h-2 rounded-full bg-purple-500" />

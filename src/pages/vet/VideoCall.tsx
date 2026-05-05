@@ -23,7 +23,7 @@ const VideoCall = () => {
   };
 
   const handleEndCall = () => {
-    navigate("/vet/prescription");
+    navigate("/vet/digital-prescription");
   };
 
   return (

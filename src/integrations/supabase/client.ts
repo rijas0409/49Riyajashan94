@@ -2,17 +2,33 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const VITE_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
-const VITE_SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+const VITE_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const VITE_SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-console.log("Checking Supabase Environment Variables...");
 if (!VITE_SUPABASE_URL) console.warn("VITE_SUPABASE_URL is missing!");
 if (!VITE_SUPABASE_PUBLISHABLE_KEY) console.warn("VITE_SUPABASE_PUBLISHABLE_KEY is missing!");
 
-export const supabase = createClient<Database>(VITE_SUPABASE_URL || "https://placeholder.supabase.co", VITE_SUPABASE_PUBLISHABLE_KEY || "placeholder", {
-  auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-  }
-});
+let supabaseInstance;
+try {
+  const url = VITE_SUPABASE_URL || "https://placeholder.supabase.co";
+  const key = VITE_SUPABASE_PUBLISHABLE_KEY || "placeholder";
+  
+  supabaseInstance = createClient<Database>(url, key, {
+    auth: {
+      storage: localStorage,
+      persistSession: true,
+      autoRefreshToken: true,
+    }
+  });
+} catch (err) {
+  console.error("Failed to initialize Supabase client:", err);
+  supabaseInstance = { 
+    auth: { 
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }), 
+      getSession: async () => ({ data: { session: null } }),
+      signInWithPassword: async () => ({ data: { session: null }, error: new Error("Supabase not initialized") })
+    } 
+  } as any;
+}
+
+export const supabase = supabaseInstance;
