@@ -1,5 +1,5 @@
 import { useState } from "react";
-import sruvoLogo from "@/assets/sruvo-logo.png";
+import { SRUVO_LOGO_URL } from "@/constants/branding";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -251,7 +251,7 @@ const VetOnboarding = () => {
       <header className="bg-card/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-1">
-            <img src={sruvoLogo} alt="Sruvo" className="w-12 h-12 object-contain" />
+            <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
             <div>
               <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">Sruvo</span>
               <p className="text-xs text-muted-foreground">Vet Doctor Verification</p>

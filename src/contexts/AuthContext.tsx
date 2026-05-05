@@ -15,6 +15,7 @@ interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   refreshProfile: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   refreshProfile: async () => {},
+  signOut: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -40,12 +42,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .maybeSingle();
 
       if (data) {
-        setProfile({
+        const newProfile = {
           name: data.name || metaName || "User",
           email: data.email || userEmail || "",
           photo: data.profile_photo,
           role: data.role,
-        });
+        };
+        setProfile(newProfile);
+        if (data.role) localStorage.setItem("sruvo_user_role", data.role);
       } else {
         setProfile({
           name: metaName || "User",
@@ -136,8 +140,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("sruvo_user_role");
+    setSession(null);
+    setUser(null);
+    setProfile(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ authReady, session, user, profile, refreshProfile }}>
+    <AuthContext.Provider value={{ authReady, session, user, profile, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );

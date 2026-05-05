@@ -1,5 +1,5 @@
 // Sruvo Delivery Dashboard for Delivery Partners
-import sruvoLogo from "@/assets/sruvo-logo.png";
+import { SRUVO_LOGO_URL } from "@/constants/branding";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -206,7 +206,7 @@ const DeliveryDashboard = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
-              <img src={sruvoLogo} alt="Sruvo" className="w-12 h-12 object-contain" />
+              <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
               <div>
                 <h1 className="font-bold text-lg">Sruvo Delivery</h1>
                 <p className="text-xs text-muted-foreground">Partner Dashboard</p>

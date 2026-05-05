@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import sruvoLogo from "@/assets/sruvo-logo.png";
+import { SRUVO_LOGO_URL } from "@/constants/branding";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -91,7 +91,7 @@ const ProfileMenu = () => {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex items-center gap-1">
-            <img src={sruvoLogo} alt="Sruvo" className="w-12 h-12 object-contain" />
+            <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
             <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
               Profile
             </span>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import sruvoLogo from "@/assets/sruvo-logo.png";
+import { SRUVO_LOGO_URL } from "@/constants/branding";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import VetVideoConsultations from "@/components/vet-dashboard/VetVideoConsultati
 import VetSchedule from "@/components/vet-dashboard/VetSchedule";
 import VetEarnings from "@/components/vet-dashboard/VetEarnings";
 import VetProfile from "@/components/vet-dashboard/VetProfile";
+import SplashScreen from "@/components/SplashScreen";
 
 const VetDashboard = () => {
   const navigate = useNavigate();
@@ -165,11 +166,7 @@ const VetDashboard = () => {
     </div>
   );
 
-  if (guardLoading) return (
-    <div className="min-h-screen bg-gradient-soft flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-    </div>
-  );
+  if (guardLoading) return <SplashScreen message="Initializing Vet Panel..." />;
 
   // Show blocking loader only on very first load
   if (isLoading && !vetProfile && appointments.length === 0 && earnings.length === 0 && reviews.length === 0) return (
@@ -240,7 +237,7 @@ const VetDashboard = () => {
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-lg border-b border-border shadow-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-1">
-            <img src={sruvoLogo} alt="Sruvo" className="w-12 h-12 object-contain" />
+            <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
             <div>
               <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">Sruvo</span>
               <p className="text-xs text-muted-foreground">Vet Doctor Panel</p>

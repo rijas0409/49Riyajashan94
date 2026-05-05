@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import sruvoLogo from "@/assets/sruvo-logo.png";
+import { SRUVO_LOGO_URL } from "@/constants/branding";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,7 +58,7 @@ const VetPendingApproval = () => {
       <header className="bg-card/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-1">
-            <img src={sruvoLogo} alt="Sruvo" className="w-12 h-12 object-contain" />
+            <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
             <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">Sruvo</span>
           </div>
           <Button variant="ghost" size="icon" onClick={handleLogout}><LogOut className="w-5 h-5" /></Button>

@@ -1,47 +1,64 @@
 import { useEffect } from "react";
-import sruvoLogo from "@/assets/sruvo-logo.png";
+import { SRUVO_LOGO_URL } from "@/constants/branding";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Heart, Sparkles, ShieldCheck, Truck } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { user, profile, authReady } = useAuth();
 
   useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: session.user.id });
-
-        switch (roleData) {
-          case "seller":
-            navigate("/seller-dashboard");
-            break;
-          case "admin":
-            navigate("/admin");
-            break;
-          case "delivery_partner":
-            navigate("/delivery");
-            break;
-          case "product_seller":
-            navigate("/products-dashboard");
-            break;
-          case "vet":
-            navigate("/vet-dashboard");
-            break;
-          default:
-            navigate("/buyer-dashboard");
+    // Check for cached role to redirect instantly if already authenticated
+    const cachedRole = localStorage.getItem("sruvo_user_role");
+    
+    if (authReady) {
+      if (user && profile) {
+        const role = profile.role;
+        if (role) {
+          localStorage.setItem("sruvo_user_role", role);
+          navigateDashboard(role);
+        } else {
+          // If profile fetch returned no role, fallback to buyer
+          navigateDashboard("buyer");
         }
       }
-    } catch (err) {
-      console.error("Auth check failed:", err);
+    } else if (cachedRole) {
+      // Perceived speed: redirect based on cache even before auth is fully ready
+      // only if we have a session in local storage (basic check)
+      const hasSession = localStorage.getItem("supabase.auth.token"); // simplified check
+      if (hasSession) {
+        navigateDashboard(cachedRole);
+      }
+    }
+  }, [authReady, user, profile, navigate]);
+
+  const navigateDashboard = (role: string) => {
+    switch (role) {
+      case "seller":
+        navigate("/seller-dashboard", { replace: true });
+        break;
+      case "admin":
+        navigate("/admin", { replace: true });
+        break;
+      case "delivery_partner":
+        navigate("/delivery", { replace: true });
+        break;
+      case "product_seller":
+        navigate("/products-dashboard", { replace: true });
+        break;
+      case "vet":
+        navigate("/vet-dashboard", { replace: true });
+        break;
+      default:
+        navigate("/buyer-dashboard", { replace: true });
     }
   };
+
+  if (!authReady) {
+    return null; // Let the index.html loading screen handle it
+  }
 
   return (
     <div className="min-h-screen bg-gradient-soft">
@@ -49,7 +66,7 @@ const Index = () => {
       <section className="relative overflow-hidden">
         <div className="container mx-auto px-4 py-20 md:py-32">
           <div className="text-center space-y-8 animate-fade-in">
-            <img src={sruvoLogo} alt="Sruvo" className="w-28 h-28 object-contain mb-6 mx-auto animate-bounce-subtle" />
+            <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-28 h-28 object-contain mb-6 mx-auto animate-bounce-subtle" referrerPolicy="no-referrer" />
             
             <h1 className="text-5xl md:text-7xl font-bold leading-tight">
               Find Your Perfect
@@ -90,7 +107,7 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Why Choose <span className="text-primary">PetLink</span>?
+              Why Choose <span className="text-primary">Sruvo</span>?
             </h2>
             <p className="text-muted-foreground text-lg">
               Premium features designed for your pet journey
@@ -139,7 +156,7 @@ const Index = () => {
               Ready to Find Your Perfect Pet?
             </h2>
             <p className="text-lg mb-8 opacity-90">
-              Join thousands of happy pet owners and sellers on PetLink
+              Join thousands of happy pet owners and sellers on Sruvo
             </p>
             <Button
               size="lg"
@@ -155,7 +172,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="py-8 border-t border-border">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>&copy; 2025 PetLink. All rights reserved.</p>
+          <p>&copy; 2025 Sruvo. All rights reserved.</p>
         </div>
       </footer>
     </div>

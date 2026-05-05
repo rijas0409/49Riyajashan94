@@ -42,10 +42,7 @@ console.log("Supabase URL present:", !!import.meta.env.VITE_SUPABASE_URL);
     // Clear boot status if it exists
     const bootStatus = document.getElementById("boot-status");
     if (bootStatus) {
-      // Hide boot status after 1 second to ensure app has a chance to render
-      setTimeout(() => {
-        bootStatus.style.display = "none";
-      }, 1000);
+      bootStatus.style.display = "none";
     }
 
     const root = createRoot(rootElement);

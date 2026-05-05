@@ -7,8 +7,21 @@
   </head>
   <body>
     <div id="root">
-      <div id="boot-status" style="padding: 20px; font-family: sans-serif;">
-        Loading Sruvo Application...
+      <div id="boot-status" style="position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #ffffff; color: #1e293b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <div class="logo-pulse" style="width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; margin-bottom: 24px;">
+          <img src="/sruvo-logo.png" alt="Sruvo" style="width: 100%; height: 100%; object-contain: contain;" />
+        </div>
+        <div style="font-size: 18px; font-weight: 600; letter-spacing: -0.01em; color: #151B32;">Sruvo</div>
+        <div style="margin-top: 12px; display: flex; gap: 4px;">
+          <div class="dot" style="width: 6px; height: 6px; border-radius: 50%; background: #e2e8f0; animation: bounce 1s infinite 0s;"></div>
+          <div class="dot" style="width: 6px; height: 6px; border-radius: 50%; background: #e2e8f0; animation: bounce 1s infinite 0.2s;"></div>
+          <div class="dot" style="width: 6px; height: 6px; border-radius: 50%; background: #e2e8f0; animation: bounce 1s infinite 0.4s;"></div>
+        </div>
+        <style>
+          @keyframes glow { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.9; } }
+          @keyframes bounce { 0%, 100% { transform: translateY(0); background: #f1f5f9; } 50% { transform: translateY(-4px); background: #B784E6; } }
+          .logo-pulse { animation: glow 2s ease-in-out infinite; }
+        </style>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>

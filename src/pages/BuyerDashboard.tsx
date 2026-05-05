@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import sruvoLogo from "@/assets/sruvo-logo.png";
+import { SRUVO_LOGO_URL } from "@/constants/branding";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +13,7 @@ import { useCart } from "@/contexts/CartContext";
 import { InlineBanners } from "@/components/DynamicBannerRenderer";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
+import SplashScreen from "@/components/SplashScreen";
 
 // ─── Banner Carousel ───
 const FALLBACK_BANNERS = [
@@ -194,7 +195,7 @@ const CATEGORIES = [
 // ─── Main Component ───
 const BuyerDashboard = () => {
   const navigate = useNavigate();
-  const { authReady, session } = useAuth();
+  const { authReady, session, profile } = useAuth();
   const { city: selectedCity } = useLocation();
   const [pets, setPets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,24 +211,17 @@ const BuyerDashboard = () => {
       return;
     }
 
-    let cancelled = false;
-
-    const init = async () => {
-      const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: session.user.id });
-      if (cancelled) return;
-
-      if (roleData === "seller") { navigate("/seller-dashboard"); return; }
-      if (roleData === "admin") { navigate("/admin"); return; }
-      if (roleData === "delivery_partner") { navigate("/delivery"); return; }
-      if (roleData === "product_seller") { navigate("/products-dashboard"); return; }
-      if (roleData === "vet") { navigate("/vet-dashboard"); return; }
-
+    if (profile) {
+      const role = profile.role;
+      if (role === "seller") { navigate("/seller-dashboard"); return; }
+      if (role === "admin") { navigate("/admin"); return; }
+      if (role === "delivery_partner") { navigate("/delivery"); return; }
+      if (role === "product_seller") { navigate("/products-dashboard"); return; }
+      if (role === "vet") { navigate("/vet-dashboard"); return; }
+      
       fetchPets();
-    };
-
-    init();
-    return () => { cancelled = true; };
-  }, [authReady, session, navigate]);
+    }
+  }, [authReady, session, profile, navigate]);
 
   const fetchPets = async () => {
     try {
@@ -317,16 +311,9 @@ const BuyerDashboard = () => {
     return m > 0 ? `${y}y ${m}m` : `${y} years`;
   };
 
-  // Show splash while auth is loading
-  if (!authReady) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <img src={sruvoLogo} alt="Sruvo" className="w-16 h-16 animate-pulse" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
+  // Show splash while auth is loading - using consistent SplashScreen
+  if (!authReady || !profile) {
+    return <SplashScreen message="Initializing Buyer Dashboard..." />;
   }
 
   return (
@@ -335,7 +322,7 @@ const BuyerDashboard = () => {
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-lg border-b border-border shadow-sm">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-1">
-            <img src={sruvoLogo} alt="Sruvo" className="w-12 h-12 object-contain" />
+            <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
             <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">Sruvo</span>
           </div>
           <div className="flex items-center gap-2">

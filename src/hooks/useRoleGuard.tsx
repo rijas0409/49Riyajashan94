@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 type AllowedRole = "buyer" | "seller" | "admin" | "delivery_partner" | "product_seller" | "vet";
 
@@ -13,125 +14,73 @@ interface RoleGuardResult {
 
 export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string): RoleGuardResult => {
   const navigate = useNavigate();
+  const { user: authUser, profile: authProfile, authReady } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-
-  // IMPORTANT: callers often pass array literals like ["product_seller"].
-  // Using the array directly in the dependency list causes the effect to re-run on every render
-  // (new array identity) -> repeated redirects/loading loops.
-  const rolesKey = (allowedRoles || []).slice().sort().join("|");
+  const initialized = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
+    if (!authReady) return;
 
-    const safeNavigate = (to: string) => {
-      // Avoid repeated navigation to the same path which can look like "refresh loops"
-      if (window.location.pathname === to) return;
-      navigate(to, { replace: true });
-    };
+    if (!authUser) {
+      setIsLoading(false);
+      navigate(redirectPath || "/auth", { replace: true });
+      return;
+    }
 
     const checkAccess = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (!session) {
-          if (!cancelled) {
-            setIsLoading(false);
-            safeNavigate(redirectPath || "/auth");
-          }
+        // Use profile from AuthContext if it already has the role we need
+        if (authProfile && authProfile.role && allowedRoles.includes(authProfile.role as AllowedRole)) {
+          setUser(authUser);
+          setProfile(authProfile);
+          setIsLoading(false);
           return;
         }
 
-        const meta = session.user.user_metadata as any;
-        const metaRole = meta?.role as AllowedRole | undefined;
-        const expectedRole = metaRole || allowedRoles?.[0];
-        const userName = meta?.name || meta?.full_name || "User";
-
-        // Self-heal: ensure user_roles + profiles rows exist (even if metadata role is missing)
-        if (expectedRole) {
-          const initRes = await supabase.rpc("ensure_user_initialized" as any, {
-            _role: expectedRole,
-            _name: userName,
-            _email: session.user.email || "",
-          });
-          if (initRes.error) throw new Error(initRes.error.message);
-        }
-
-        // Get role (retry once after init)
-        let roleData: AllowedRole | null = null;
-        const roleRpc1 = await supabase.rpc("get_user_role", { _user_id: session.user.id });
-        roleData = (roleRpc1.data as any) ?? null;
-
-        if (!roleData && expectedRole) {
-          await supabase.rpc("ensure_user_initialized" as any, {
-            _role: expectedRole,
-            _name: userName,
-            _email: session.user.email || "",
-          });
-
-          const roleRpc2 = await supabase.rpc("get_user_role", { _user_id: session.user.id });
-          roleData = (roleRpc2.data as any) ?? null;
-        }
-
-        if (!roleData) {
-          // Last-resort direct read
-          const roleRes = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", session.user.id)
-            .maybeSingle();
-          roleData = (roleRes.data as any)?.role ?? null;
-        }
-
-        if (cancelled) return;
-
+        // If AuthContext profile doesn't have it yet or it's different, do the deep check
+        const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: authUser.id });
+        
         if (!roleData || !allowedRoles.includes(roleData as AllowedRole)) {
-          switch (roleData) {
-            case "buyer": safeNavigate("/buyer-dashboard"); break;
-            case "seller": safeNavigate("/seller-dashboard"); break;
-            case "admin": safeNavigate("/admin"); break;
-            case "delivery_partner": safeNavigate("/delivery"); break;
-            case "product_seller": safeNavigate("/products-dashboard"); break;
-            case "vet": safeNavigate("/vet-dashboard"); break;
-            default: safeNavigate(redirectPath || "/auth");
+          // Redirect to appropriate dashboard based on actual role
+          const role = roleData as AllowedRole;
+          switch (role) {
+            case "buyer": navigate("/buyer-dashboard", { replace: true }); break;
+            case "seller": navigate("/seller-dashboard", { replace: true }); break;
+            case "admin": navigate("/admin", { replace: true }); break;
+            case "delivery_partner": navigate("/delivery", { replace: true }); break;
+            case "product_seller": navigate("/products-dashboard", { replace: true }); break;
+            case "vet": navigate("/vet-dashboard", { replace: true }); break;
+            default: navigate(redirectPath || "/auth", { replace: true });
           }
           setIsLoading(false);
           return;
         }
 
-        // Fetch profile
-        const { data: profileData, error: profileError } = await supabase
+        // Fetch full profile if needed
+        const { data: profileData } = await supabase
           .from("profiles")
           .select("*")
-          .eq("id", session.user.id)
+          .eq("id", authUser.id)
           .maybeSingle();
 
-        if (profileError) throw new Error(profileError.message);
-        if (cancelled) return;
-
-        setUser(session.user);
-        setProfile(profileData || {
-          id: session.user.id,
-          name: userName,
-          email: session.user.email,
-          role: roleData,
-          is_onboarding_complete: false,
-          is_admin_approved: false,
-        });
+        setUser(authUser);
+        setProfile(profileData || { ...authProfile, role: roleData });
+        setIsLoading(false);
       } catch (err: any) {
         console.error("useRoleGuard error:", err);
-        if (!cancelled) setError(err?.message || "Authentication check failed");
-      } finally {
-        if (!cancelled) setIsLoading(false);
+        setError(err?.message || "Authentication check failed");
+        setIsLoading(false);
       }
     };
 
-    checkAccess();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate, redirectPath, rolesKey]);
+    if (!initialized.current) {
+      checkAccess();
+      initialized.current = true;
+    }
+  }, [authReady, authUser, authProfile, allowedRoles, navigate, redirectPath]);
 
   return { isLoading, user, profile, error };
 };

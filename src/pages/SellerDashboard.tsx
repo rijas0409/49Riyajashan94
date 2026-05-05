@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import sruvoLogo from "@/assets/sruvo-logo.png";
+import { SRUVO_LOGO_URL } from "@/constants/branding";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,13 +11,13 @@ import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 import HeaderProfileDropdown from "@/components/HeaderProfileDropdown";
 import PromotionModal from "@/components/PromotionModal";
+import SplashScreen from "@/components/SplashScreen";
 
 type Pet = Database["public"]["Tables"]["pets"]["Row"];
 
 const SellerDashboard = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const { user: authUser, profile: authProfile, authReady } = useAuth();
   const [pets, setPets] = useState<Pet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
@@ -29,64 +29,39 @@ const SellerDashboard = () => {
   });
 
   useEffect(() => {
-    checkUser();
-  }, []);
+    if (!authReady) return;
 
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    if (!authUser) {
       navigate("/auth");
       return;
     }
 
-    // Check role from authoritative user_roles table
-    const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: session.user.id });
+    if (authProfile) {
+      const role = authProfile.role;
+      if (role === "buyer") { navigate("/buyer-dashboard"); return; }
+      if (role === "admin") { navigate("/admin"); return; }
+      if (role === "delivery_partner") { navigate("/delivery"); return; }
+      if (role === "product_seller") { navigate("/products-dashboard"); return; }
+      if (role === "vet") { navigate("/vet-dashboard"); return; }
+      
+      if (role !== "seller") {
+        navigate("/auth");
+        return;
+      }
 
-    if (roleData === "buyer") {
-      navigate("/buyer-dashboard");
-      return;
-    }
-    if (roleData === "admin") {
-      navigate("/admin");
-      return;
-    }
-    if (roleData === "delivery_partner") {
-      navigate("/delivery");
-      return;
-    }
-    if (roleData === "product_seller") {
-      navigate("/products-dashboard");
-      return;
-    }
-    if (roleData === "vet") {
-      navigate("/vet-dashboard");
-      return;
-    }
-    if (roleData !== "seller") {
-      navigate("/auth");
-      return;
-    }
+      if (!authProfile.is_onboarding_complete) {
+        navigate("/seller-onboarding");
+        return;
+      }
 
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", session.user.id)
-      .single();
+      if (!authProfile.is_admin_approved) {
+        navigate("/seller-pending-approval");
+        return;
+      }
 
-    if (!profileData?.is_onboarding_complete) {
-      navigate("/seller-onboarding");
-      return;
+      fetchData(authUser.id);
     }
-
-    if (!profileData?.is_admin_approved) {
-      navigate("/seller-pending-approval");
-      return;
-    }
-
-    setUser(session.user);
-    setProfile(profileData);
-    fetchData(session.user.id);
-  };
+  }, [authReady, authUser, authProfile, navigate]);
 
   const fetchData = async (userId: string) => {
     setIsLoading(true);
@@ -167,6 +142,10 @@ const SellerDashboard = () => {
     }).format(price);
   };
 
+  if (!authReady || !authProfile) {
+    return <SplashScreen message="Initializing Partner Panel..." />;
+  }
+
   const promotionPets = pets.map(p => ({
     id: p.id,
     name: p.name,
@@ -180,7 +159,7 @@ const SellerDashboard = () => {
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-lg border-b border-border shadow-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-1">
-            <img src={sruvoLogo} alt="Sruvo" className="w-12 h-12 object-contain" />
+            <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
             <div>
               <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
                 Sruvo
