@@ -37,9 +37,17 @@ const Index = () => {
     
     if (authReady) {
       if (user && profile) {
-        if (profile.role === 'vet' && profile.vetStatus !== 'approved' && profile.email !== 'gucci@123.com') {
-          navigate("/vet-pending-approval", { replace: true });
-          return;
+        if (profile.role === 'vet') {
+          // If profile status is undefined, it means fetchProfile hasn't finished yet.
+          // In that case, we should wait instead of redirecting immediately.
+          if (profile.vetStatus === undefined) {
+            return;
+          }
+
+          if (profile.vetStatus !== 'approved' && profile.email !== 'gucci@123.com') {
+            navigate("/vet-pending-approval", { replace: true });
+            return;
+          }
         }
 
         const role = profile.role;
