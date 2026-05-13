@@ -32,21 +32,13 @@ const AuthVet = () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
 
-        // Ensure role/profile rows exist for this flow
-        await supabase.rpc("ensure_user_initialized" as any, {
-          _role: "vet",
-          _name: (session.user.user_metadata as any)?.name || "User",
-          _email: session.user.email || "",
-        });
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role, is_onboarding_complete, is_admin_approved")
+          .eq("id", session.user.id)
+          .maybeSingle();
 
-        const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: session.user.id });
-        if (roleData === "vet") {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("is_onboarding_complete, is_admin_approved")
-            .eq("id", session.user.id)
-            .maybeSingle();
-
+        if (profile?.role === "vet") {
           if (!profile?.is_onboarding_complete) {
             navigate("/vet-onboarding");
           } else if (!profile?.is_admin_approved) {
@@ -83,23 +75,17 @@ const AuthVet = () => {
         });
         if (error) throw error;
 
-        await supabase.rpc("ensure_user_initialized" as any, {
-          _role: "vet",
-          _name: formData.name || (data.user.user_metadata as any)?.name || "User",
-          _email: data.user.email || "",
-        });
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role, is_onboarding_complete, is_admin_approved")
+          .eq("id", data.user.id)
+          .maybeSingle();
 
-        const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: data.user.id });
-        if (roleData !== "vet") {
+        if (profile?.role !== "vet") {
           await supabase.auth.signOut();
           toast.error("This is not a veterinary doctor account. Please use the correct login page.");
           return;
         }
-
-        const { data: profile } = await supabase.from("profiles")
-          .select("is_onboarding_complete, is_admin_approved")
-          .eq("id", data.user.id)
-          .maybeSingle();
 
         toast.success("Welcome back, Doctor!");
         if (!profile?.is_onboarding_complete) navigate("/vet-onboarding");

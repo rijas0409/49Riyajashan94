@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -22,27 +23,27 @@ import AdminBuyers from "@/components/admin/AdminBuyers";
 import AdminNotifications from "@/components/admin/AdminNotifications";
 
 export interface AdminData {
-  pendingSellers: any[];
-  pendingPets: any[];
-  reVerificationPets: any[];
-  allPets: any[];
-  pendingProducts: any[];
-  pendingVets: any[];
-  requests: any[];
-  partners: any[];
-  allUsers: any[];
-  allVets: any[];
-  allProducts: any[];
-  allOrders: any[];
-  sellerEarnings: any[];
-  vetEarnings: any[];
+  pendingSellers: Record<string, any>[];
+  pendingPets: Record<string, any>[];
+  reVerificationPets: Record<string, any>[];
+  allPets: Record<string, any>[];
+  pendingProducts: Record<string, any>[];
+  pendingVets: Record<string, any>[];
+  requests: Record<string, any>[];
+  partners: Record<string, any>[];
+  allUsers: Record<string, any>[];
+  allVets: Record<string, any>[];
+  allProducts: Record<string, any>[];
+  allOrders: Record<string, any>[];
+  sellerEarnings: Record<string, any>[];
+  vetEarnings: Record<string, any>[];
 }
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("overview");
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
@@ -90,14 +91,14 @@ const AdminDashboard = () => {
       supabase.from("seller_earnings").select("*").order("created_at", { ascending: false }),
       supabase.from("vet_earnings").select("*").order("created_at", { ascending: false }),
     ]);
-    const pendingVetsData = (allVetsRes.data || []).filter((v: any) => v.verification_status === "pending" && v.profile?.is_onboarding_complete).sort((a: any, b: any) => {
+    const pendingVetsData = (allVetsRes.data || []).filter((v) => v.verification_status === "pending" && v.profile?.is_onboarding_complete).sort((a, b) => {
       const aPriority = a.profile?.priority_fee_paid ? 1 : 0;
       const bPriority = b.profile?.priority_fee_paid ? 1 : 0;
       return bPriority - aPriority;
     });
     const pendingPets = petsRes.data || [];
-    const newListings = pendingPets.filter((pet: any) => !pet.updated_at || pet.created_at === pet.updated_at);
-    const reVerifications = pendingPets.filter((pet: any) => pet.updated_at && pet.created_at !== pet.updated_at);
+    const newListings = pendingPets.filter((pet) => !pet.updated_at || pet.created_at === pet.updated_at);
+    const reVerifications = pendingPets.filter((pet) => pet.updated_at && pet.created_at !== pet.updated_at);
     setData({
       requests: requestsRes.data || [], partners: partnersRes.data || [],
       pendingSellers: sellersRes.data || [], pendingPets: newListings,

@@ -44,10 +44,42 @@ const InstantAssessment = () => {
   const [medications, setMedications] = useState("");
 
   // Step 4 state
-  const [photoUploaded, setPhotoUploaded] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type === "image/jpeg" || file.type === "image/png") {
+        setPhotoFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPhotoPreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
+
+  const isStepValid = () => {
+    switch (step) {
+      case 1:
+        return selectedPet && petName.trim() && (years || months);
+      case 2:
+        return selectedSymptoms.length > 0 || otherSymptom.trim() !== "";
+      case 3:
+        return vaccinated !== "";
+      case 4:
+        return true; // Photo is optional based on original code, but user can upload
+      case 5:
+        return true;
+      default:
+        return false;
+    }
+  };
 
   const goNext = () => {
-    if (step >= 5 || animating) return;
+    if (!isStepValid() || step >= 5 || animating) return;
     setDirection("forward");
     setAnimating(true);
     setTimeout(() => {
@@ -125,17 +157,18 @@ const InstantAssessment = () => {
             additionalDetails={additionalDetails} setAdditionalDetails={setAdditionalDetails}
             duration={duration} setDuration={setDuration}
             urgency={urgency} setUrgency={setUrgency}
+            handleFileUpload={handleFileUpload} photoPreview={photoPreview}
           />}
           {step === 3 && <Step3
             vaccinated={vaccinated} setVaccinated={setVaccinated}
             existingConditions={existingConditions} setExistingConditions={setExistingConditions}
             medications={medications} setMedications={setMedications}
           />}
-          {step === 4 && <Step4 photoUploaded={photoUploaded} setPhotoUploaded={setPhotoUploaded} />}
+          {step === 4 && <Step4 photoPreview={photoPreview} handleFileUpload={handleFileUpload} />}
           {step === 5 && <Step5
             selectedPet={selectedPet} petName={petName} years={years} months={months}
             selectedSymptoms={selectedSymptoms} duration={duration} urgency={urgency}
-            additionalDetails={additionalDetails}
+            additionalDetails={additionalDetails} photoPreview={photoPreview}
           />}
         </div>
       </div>
@@ -162,10 +195,12 @@ const InstantAssessment = () => {
                 additionalDetails, 
                 vaccinated, 
                 existingConditions, 
-                medications 
+                medications,
+                photoPreview 
               } 
             }) : goNext}
-            className="flex-1 py-4 rounded-2xl font-bold text-white text-base flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-shadow"
+            disabled={!isStepValid()}
+            className={`flex-1 py-4 rounded-2xl font-bold text-white text-base flex items-center justify-center gap-2 shadow-lg transition-all ${!isStepValid() ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:shadow-xl active:scale-95'}`}
             style={{ background: 'linear-gradient(90deg, #FF4D6D, #8B5CF6)' }}
           >
             {ctaLabels[step - 1]}
@@ -227,7 +262,13 @@ function Step1({ selectedPet, setSelectedPet, petName, setPetName, years, setYea
 }
 
 /* ── Step 2: Symptoms Analysis ── */
-function Step2({ selectedSymptoms, toggleSymptom, otherSymptom, setOtherSymptom, additionalDetails, setAdditionalDetails, duration, setDuration, urgency, setUrgency }: any) {
+function Step2({ selectedSymptoms, toggleSymptom, otherSymptom, setOtherSymptom, additionalDetails, setAdditionalDetails, duration, setDuration, urgency, setUrgency, handleFileUpload, photoPreview }: any) {
+  const fileInputRef = (input: any) => {
+    if (input) {
+      // We can trigger click via label or button
+    }
+  };
+
   return (
     <div className="space-y-6 pt-4">
       <section>
@@ -320,12 +361,14 @@ function Step2({ selectedSymptoms, toggleSymptom, otherSymptom, setOtherSymptom,
           <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
             <span className="text-purple-500 text-lg">✦</span>
           </div>
-          <div>
+          <div className="flex-1">
             <p className="font-bold text-foreground text-sm">AI Assistant Tip</p>
             <p className="text-xs text-muted-foreground mt-1">Adding a photo of the affected area helps me provide a more accurate initial assessment.</p>
-            <button className="flex items-center gap-1 mt-2 text-xs font-bold" style={{ color: '#FF4D6D' }}>
-              <Camera className="w-3.5 h-3.5" /> Upload Photo
-            </button>
+            <label className="flex items-center gap-1 mt-2 text-xs font-bold cursor-pointer" style={{ color: '#FF4D6D' }}>
+              <Camera className="w-3.5 h-3.5" /> 
+              {photoPreview ? "Photo Added ✓" : "Upload Photo"}
+              <input type="file" accept="image/jpeg,image/png" className="hidden" onChange={handleFileUpload} />
+            </label>
           </div>
         </div>
       </section>
@@ -387,7 +430,7 @@ function Step3({ vaccinated, setVaccinated, existingConditions, setExistingCondi
 }
 
 /* ── Step 4: Photo Upload ── */
-function Step4({ photoUploaded, setPhotoUploaded }: any) {
+function Step4({ photoPreview, handleFileUpload }: any) {
   return (
     <div className="space-y-6 pt-4">
       <section>
@@ -396,16 +439,20 @@ function Step4({ photoUploaded, setPhotoUploaded }: any) {
           Upload Photos (Optional)
         </h3>
         <p className="text-sm text-muted-foreground mb-4">Photos help our AI provide a more accurate assessment.</p>
-        <button
-          onClick={() => setPhotoUploaded(!photoUploaded)}
-          className="w-full border-2 border-dashed border-border rounded-2xl py-12 flex flex-col items-center gap-3 hover:border-pink-300 transition-colors"
-        >
-          <div className="w-14 h-14 rounded-full bg-pink-50 flex items-center justify-center">
-            <Camera className="w-7 h-7 text-pink-500" />
-          </div>
-          <p className="text-sm font-semibold text-foreground">{photoUploaded ? "Photo Added ✓" : "Tap to upload photo"}</p>
+        <label className="w-full border-2 border-dashed border-border rounded-2xl py-8 flex flex-col items-center gap-3 hover:border-pink-300 transition-colors cursor-pointer bg-muted/5">
+          {photoPreview ? (
+            <div className="relative w-32 h-32 rounded-xl overflow-hidden border-2 border-pink-200">
+               <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <div className="w-14 h-14 rounded-full bg-pink-50 flex items-center justify-center">
+              <Camera className="w-7 h-7 text-pink-500" />
+            </div>
+          )}
+          <p className="text-sm font-semibold text-foreground">{photoPreview ? "Change Photo ✓" : "Tap to upload photo"}</p>
           <p className="text-xs text-muted-foreground">JPG, PNG up to 10MB</p>
-        </button>
+          <input type="file" accept="image/jpeg,image/png" className="hidden" onChange={handleFileUpload} />
+        </label>
       </section>
 
       <section className="bg-purple-50 rounded-2xl p-4">
@@ -421,9 +468,9 @@ function Step4({ photoUploaded, setPhotoUploaded }: any) {
 }
 
 /* ── Step 5: Review ── */
-function Step5({ selectedPet, petName, years, months, selectedSymptoms, duration, urgency, additionalDetails }: any) {
+function Step5({ selectedPet, petName, years, months, selectedSymptoms, duration, urgency, additionalDetails, photoPreview }: any) {
   return (
-    <div className="space-y-4 pt-4">
+    <div className="space-y-4 pt-4 pb-20">
       <h3 className="text-lg font-bold text-foreground flex items-center gap-2 mb-2">
         <span className="w-1 h-5 rounded-full" style={{ background: '#8B5CF6' }} />
         Review Your Assessment
@@ -437,6 +484,14 @@ function Step5({ selectedPet, petName, years, months, selectedSymptoms, duration
         <Row label="Duration" value={duration} />
         <Row label="Urgency" value={urgency.charAt(0).toUpperCase() + urgency.slice(1)} />
         {additionalDetails && <Row label="Details" value={additionalDetails} />}
+        {photoPreview && (
+          <div className="flex justify-between items-center py-1">
+            <span className="text-xs text-muted-foreground font-medium">Attached Photo</span>
+            <div className="w-12 h-12 rounded-lg overflow-hidden border border-border">
+              <img src={photoPreview} alt="Attached" className="w-full h-full object-cover" />
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-green-50 rounded-2xl p-4 flex gap-3 items-start">

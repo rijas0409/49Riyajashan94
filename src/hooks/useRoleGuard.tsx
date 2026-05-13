@@ -47,7 +47,7 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string)
           // Redirect to appropriate dashboard based on actual role
           const role = roleData as AllowedRole;
           switch (role) {
-            case "buyer": navigate("/buyer-dashboard", { replace: true }); break;
+            case "buyer": navigate("/buyer/home", { replace: true }); break;
             case "seller": navigate("/seller-dashboard", { replace: true }); break;
             case "admin": navigate("/admin", { replace: true }); break;
             case "delivery_partner": navigate("/delivery", { replace: true }); break;

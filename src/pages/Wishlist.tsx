@@ -159,7 +159,7 @@ const Wishlist = () => {
               <Button
                 variant="outline"
                 className="mt-4"
-                onClick={() => navigate("/buyer-dashboard")}
+                onClick={() => navigate("/buyer/home")}
               >
                 Browse Pets
               </Button>
@@ -202,7 +202,7 @@ const Wishlist = () => {
             <Button
               variant="outline"
               className="mt-4"
-              onClick={() => navigate("/shop")}
+              onClick={() => navigate("/buyer/shop")}
             >
               Browse Shop
             </Button>

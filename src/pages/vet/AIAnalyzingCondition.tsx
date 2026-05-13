@@ -98,6 +98,7 @@ const AIAnalyzingCondition = () => {
         }, 8000);
       } catch (err) {
         console.error('Error fetching vet:', err);
+        toast.error("Failed to connect with analytical server. Retrying...");
         setTimeout(() => {
           navigate("/vet/booking-details", { state: assessmentData });
         }, 8000);

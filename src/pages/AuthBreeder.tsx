@@ -123,22 +123,6 @@ const AuthBreeder = () => {
         if (error) throw error;
 
         if (data.user) {
-          // Create seller profile
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .insert({
-              id: data.user.id,
-              name: formData.name,
-              email: formData.email,
-              role: "seller",
-              is_onboarding_complete: false,
-              is_admin_approved: false
-            });
-
-          if (profileError && !profileError.message.includes("duplicate")) {
-            throw profileError;
-          }
-
           toast.success("Account created! Please complete your seller profile.");
           navigate("/seller-onboarding");
         }

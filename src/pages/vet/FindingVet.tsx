@@ -62,6 +62,7 @@ const FindingVet = () => {
         }, Math.random() * 3000 + 5000);
       } catch (err) {
         console.error('Error finding vet:', err);
+        toast.error("Network issue search for vet. Please check your internet connection.");
         setTimeout(() => {
           navigate("/vet/connection-ready", { state: stateData });
         }, 6000);

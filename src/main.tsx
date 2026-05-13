@@ -22,6 +22,20 @@
   };
 
   window.onunhandledrejection = (event) => {
+    // Suppress noise from Lovable/Vite dev server internal rejections
+    if (event.reason?.message?.includes("supabase") || event.reason?.message?.includes("fetch")) {
+      console.warn("Supabase Fetch Error caught globally. The database might be unreachable or tables might not exist yet.");
+      event.preventDefault();
+      
+      const root = document.getElementById("root");
+      if (root && !document.getElementById("connection-warning")) {
+        const warning = document.createElement("div");
+        warning.id = "connection-warning";
+        warning.style.cssText = "position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #fee2e2; border: 1px solid #ef4444; padding: 12px 24px; border-radius: 99px; z-index: 10000; font-size: 14px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); display: flex; align-items: center; gap: 8px;";
+        warning.innerHTML = `<span>⚠️</span> <span style="font-weight: 600; color: #991b1b;">Connection Error:</span> <span style="color: #7f1d1d;">Could not reach the database. Please check your Supabase project status.</span> <button onclick="this.parentElement.remove()" style="margin-left: 10px; border: none; background: none; cursor: pointer; color: #991b1b; font-weight: bold;">✕</button>`;
+        root.appendChild(warning);
+      }
+    }
     console.error("Unhandled Promise Rejection:", event.reason);
   };
 })();

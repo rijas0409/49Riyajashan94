@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LocationProvider } from "./contexts/LocationContext";
 import { CartProvider } from "./contexts/CartContext";
@@ -64,6 +64,7 @@ import BookingDetails from "./pages/vet/BookingDetails";
 import ConnectionReady from "./pages/vet/ConnectionReady";
 import ConsultationPlan from "./pages/vet/ConsultationPlan";
 import ConsultationSummary from "./pages/vet/ConsultationSummary";
+import ConsultationConfirmation from "./pages/vet/ConsultationConfirmation";
 import DigitalPrescription from "./pages/vet/DigitalPrescription";
 import FindingVet from "./pages/vet/FindingVet";
 import InstantAnalyzing from "./pages/vet/InstantAnalyzing";
@@ -73,6 +74,9 @@ import PaymentFailed from "./pages/vet/PaymentFailed";
 import PaymentSummary from "./pages/vet/PaymentSummary";
 import PreparingPrescription from "./pages/vet/PreparingPrescription";
 import VetDoctorProfile from "./pages/vet/VetDoctorProfile";
+import VetsNearYou from "./pages/vet/VetsNearYou";
+import ClinicsNearby from "./pages/vet/ClinicsNearby";
+import AllSpecializedVets from "./pages/vet/AllSpecializedVets";
 import VideoCall from "./pages/vet/VideoCall";
 
 const queryClient = new QueryClient();
@@ -100,49 +104,63 @@ const App = () => (
                 <Route path="/auth-products" element={<AuthProducts />} />
                 <Route path="/auth-vet" element={<AuthVet />} />
                 <Route path="/bookings" element={<Bookings />} />
-                <Route path="/brand/:id" element={<BrandProfile />} />
-                <Route path="/buyer-dashboard" element={<BuyerDashboard />} />
+                <Route path="/brand/:brandName" element={<Navigate to="/buyer/shop/brand/:brandName" replace />} />
+                <Route path="/buyer/shop/brand/:brandName" element={<BrandProfile />} />
+                <Route path="/buyer-dashboard" element={<Navigate to="/buyer/home" replace />} />
+                <Route path="/buyer/home" element={<BuyerDashboard />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/chats" element={<Chats />} />
                 <Route path="/delivery" element={<DeliveryDashboard />} />
                 <Route path="/edit-pet/:id" element={<EditPet />} />
                 <Route path="/notifications" element={<Notifications />} />
-                <Route path="/pet/:id" element={<PetDetails />} />
+                <Route path="/pet/:id" element={<Navigate to="/buyer/home/pet/:id" replace />} />
+                <Route path="/pet-profile/:id" element={<Navigate to="/buyer/home/pet/:id" replace />} />
+                <Route path="/buyer/home/pet/:id" element={<PetDetails />} />
                 <Route path="/privacy" element={<PrivacySecurity />} />
                 <Route path="/product-orders" element={<ProductOrders />} />
-                <Route path="/product/:id" element={<ProductProfile />} />
+                <Route path="/product/:id" element={<Navigate to="/buyer/shop/product/:id" replace />} />
+                <Route path="/buyer/shop/product/:id" element={<ProductProfile />} />
                 <Route path="/products-dashboard" element={<ProductsDashboard />} />
                 <Route path="/products-onboarding" element={<ProductsOnboarding />} />
-                <Route path="/products-pending" element={<ProductsPendingApproval />} />
+                <Route path="/products-pending-approval" element={<ProductsPendingApproval />} />
                 <Route path="/profile" element={<ProfileMenu />} />
+                <Route path="/profile-menu" element={<ProfileMenu />} />
                 <Route path="/profile-settings" element={<ProfileSettings />} />
                 <Route path="/seller-dashboard" element={<SellerDashboard />} />
                 <Route path="/seller-onboarding" element={<SellerOnboarding />} />
-                <Route path="/seller-pending" element={<SellerPendingApproval />} />
-                <Route path="/seller-profile/:id" element={<SellerProfile />} />
-                <Route path="/shop" element={<Shop />} />
+                <Route path="/seller-pending-approval" element={<SellerPendingApproval />} />
+                <Route path="/seller/:id" element={<Navigate to="/buyer/home/breeder/:id" replace />} />
+                <Route path="/buyer/home/breeder/:id" element={<SellerProfile />} />
+                <Route path="/shop" element={<Navigate to="/buyer/shop" replace />} />
+                <Route path="/buyer/shop" element={<Shop />} />
+                <Route path="/buyer/shop/:petShopType" element={<Shop />} />
+                <Route path="/buyer/shop/:petShopType/catalog" element={<Shop />} />
                 <Route path="/vet" element={<Vet />} />
                 <Route path="/vet-dashboard" element={<VetDashboard />} />
                 <Route path="/vet-onboarding" element={<VetOnboarding />} />
-                <Route path="/vet-pending" element={<VetPendingApproval />} />
+                <Route path="/vet-pending-approval" element={<VetPendingApproval />} />
                 <Route path="/wallet" element={<WalletPage />} />
                 <Route path="/wishlist" element={<Wishlist />} />
 
                 {/* Care Plan Routes */}
                 <Route path="/care-plan/form" element={<CarePlanForm />} />
+                <Route path="/care-plan/form-step2" element={<Navigate to="/care-plan/step-2" replace />} />
                 <Route path="/care-plan/step-2" element={<CarePlanFormStep2 />} />
                 <Route path="/care-plan/intro" element={<CarePlanIntro />} />
                 <Route path="/care-plan/report" element={<CarePlanReport />} />
 
                 {/* Vet Assistant Routes */}
                 <Route path="/vet/analyzing" element={<AIAnalyzingCondition />} />
+                <Route path="/vet/ai-analyzing" element={<AIAnalyzingCondition />} />
                 <Route path="/vet/assessment" element={<AIVetAssessment />} />
-                <Route path="/vet/assistant" element={<AIVetAssistant />} />
+                <Route path="/vet/ai-assistant" element={<AIVetAssistant />} />
                 <Route path="/vet/booking-details" element={<BookingDetails />} />
                 <Route path="/vet/connection-ready" element={<ConnectionReady />} />
                 <Route path="/vet/consultation-plan" element={<ConsultationPlan />} />
                 <Route path="/vet/consultation-summary" element={<ConsultationSummary />} />
+                <Route path="/vet/consultation-confirmation" element={<ConsultationConfirmation />} />
                 <Route path="/vet/digital-prescription" element={<DigitalPrescription />} />
+                <Route path="/vet/prescription" element={<DigitalPrescription />} />
                 <Route path="/vet/finding-vet" element={<FindingVet />} />
                 <Route path="/vet/instant-analyzing" element={<InstantAnalyzing />} />
                 <Route path="/vet/instant-assessment" element={<InstantAssessment />} />
@@ -151,6 +169,9 @@ const App = () => (
                 <Route path="/vet/payment-summary" element={<PaymentSummary />} />
                 <Route path="/vet/preparing-prescription" element={<PreparingPrescription />} />
                 <Route path="/vet/doctor/:id" element={<VetDoctorProfile />} />
+                <Route path="/vet/near-you" element={<VetsNearYou />} />
+                <Route path="/vet/clinics-nearby" element={<ClinicsNearby />} />
+                <Route path="/vet/all-specialists" element={<AllSpecializedVets />} />
                 <Route path="/vet/video-call" element={<VideoCall />} />
 
                 <Route path="*" element={<NotFound />} />

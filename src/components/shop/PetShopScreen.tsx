@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useCart } from "@/contexts/CartContext";
 import { supabase } from "@/integrations/supabase/client";
-import { PET_NAMES } from "@/lib/shopData";
+import { PET_NAMES, generateProducts, PET_CATEGORIES } from "@/lib/shopData";
 
 import shopDogsImg from "@/assets/shop-dogs.png";
 import shopCatsImg from "@/assets/shop-cats.png";
@@ -18,9 +18,27 @@ import shopGuineapigsImg from "@/assets/shop-guineapigs.png";
 import shopTurtleImg from "@/assets/shop-turtle.png";
 
 const SHOP_IMAGES: Record<string, string> = {
-  dog: shopDogsImg, cat: shopCatsImg, birds: shopBirdsImg, fish: shopFishImg,
-  rabbit: shopRabbitsImg, "white-mouse": shopMouseImg, hamster: shopHamstersImg,
-  "guinea-pig": shopGuineapigsImg, turtle: shopTurtleImg,
+  dog: "/Dogs.png", 
+  cat: "/Cats.png", 
+  birds: "/Birds.png", 
+  fish: "/Fish.png",
+  rabbit: "/Rabbits.png", 
+  "white-mouse": "/Mouse.png", 
+  hamster: "/Hamsters.png",
+  "guinea-pig": "/Guineapigs.png", 
+  turtle: "/Turtle.png",
+};
+
+const PET_GRADIENTS: Record<string, string> = {
+  dog: 'linear-gradient(180deg, #FFF5F7 0%, #FDF2F5 100%)', // Soft warm cream/pink
+  cat: 'linear-gradient(180deg, #F0F7FF 0%, #E6F0FF 100%)', // Soft cool lavender/blue
+  birds: 'linear-gradient(180deg, #FFFBEB 0%, #FEF3C7 100%)', // Soft cream/yellow
+  fish: 'linear-gradient(180deg, #F0FDFA 0%, #CCFBF1 100%)', // Soft mint
+  rabbit: 'linear-gradient(180deg, #FAF5FF 0%, #F3E8FF 100%)', // Soft lavender
+  hamster: 'linear-gradient(180deg, #FFF7ED 0%, #FFEDD5 100%)', // Soft orange/cream
+  "white-mouse": 'linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%)', // Soft slate/clean
+  "guinea-pig": 'linear-gradient(180deg, #FDF2F8 0%, #FCE7F3 100%)', // Soft pink
+  turtle: 'linear-gradient(180deg, #F0FDF4 0%, #DCFCE7 100%)', // Soft green
 };
 
 const DOG_BREED_NAMES = ["Golden Retriever", "Labrador Retriever", "German Shepherd", "Beagle", "Pug", "Shih Tzu", "Rottweiler", "Cocker Spaniel"];
@@ -89,16 +107,59 @@ const PetShopScreen = ({ petType, onBack, onViewAllProducts, onViewAllProductsWi
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from("shop_products")
-        .select("id, name, price, original_price, discount, images")
-        .eq("is_active", true)
-        .eq("verification_status", "verified")
-        .eq("pet_type", petType)
-        .order("total_sold", { ascending: false })
-        .limit(4);
-      setFeaturedProducts(data || []);
-      setLoading(false);
+      try {
+        const { data } = await supabase
+          .from("shop_products")
+          .select("id, name, price, original_price, discount, images")
+          .eq("is_active", true)
+          .eq("verification_status", "verified")
+          .eq("pet_type", petType)
+          .order("total_sold", { ascending: false })
+          .limit(4);
+        
+        const dummyProduct: ShopProduct = {
+          id: "dummy-pet-product",
+          name: "Sruvo Premium Mix Pet Food - Dummy",
+          price: 999,
+          original_price: 1500,
+          discount: 33,
+          images: ["https://images.unsplash.com/photo-1591550737017-6300b4643dcd?w=800"]
+        };
+        
+        let fetchedProducts = data || [];
+        if (petType === "dog") {
+          fetchedProducts = [dummyProduct, ...fetchedProducts].slice(0, 4);
+        }
+        
+        if (fetchedProducts.length === 0) {
+          const category = PET_CATEGORIES[petType]?.[0]?.id || "food";
+          const demo = generateProducts(petType, category).slice(0, 4);
+          fetchedProducts = demo.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            original_price: p.originalPrice,
+            discount: p.discount,
+            images: [p.image]
+          }));
+        }
+        
+        setFeaturedProducts(fetchedProducts);
+      } catch (error) {
+        console.error("Error fetching featured products:", error);
+        const category = PET_CATEGORIES[petType]?.[0]?.id || "food";
+        const demo = generateProducts(petType, category).slice(0, 4);
+        setFeaturedProducts(demo.map(p => ({
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          original_price: p.originalPrice,
+          discount: p.discount,
+          images: [p.image]
+        })));
+      } finally {
+        setLoading(false);
+      }
     };
     fetchProducts();
   }, [petType]);
@@ -173,31 +234,43 @@ const PetShopScreen = ({ petType, onBack, onViewAllProducts, onViewAllProductsWi
       </div>
 
       {/* Image with overlay */}
-      <div className="px-4 pb-4">
-        <div className="relative rounded-2xl overflow-hidden bg-muted min-h-[360px]">
-          {!isHeroLoaded && <div className="absolute inset-0 animate-pulse bg-muted" aria-hidden />}
+      <div className="px-4 pb-6">
+        <div className="relative rounded-[32px] overflow-hidden min-h-[360px] shadow-xl border-4 border-white" style={{ background: PET_GRADIENTS[petType] || 'linear-gradient(180deg, #FCFCFD 0%, #F7F7FA 100%)' }}>
+          {!isHeroLoaded && <div className="absolute inset-0 animate-pulse bg-muted/20" aria-hidden />}
           <img
             src={shopImage}
             alt={`Shop for ${petName}s`}
             loading="eager"
-            fetchPriority="high"
+            fetchpriority="high"
             decoding="sync"
-            className={`w-full rounded-2xl block transition-opacity duration-150 ${isHeroLoaded ? "opacity-100" : "opacity-0"}`}
+            className={`w-full h-full object-cover block transition-all duration-300 ${isHeroLoaded ? "opacity-100 scale-100" : "opacity-0 scale-105"}`}
           />
           {isHeroLoaded && isBreedPet && (
-            <div className="absolute bottom-0 left-0 right-0" style={{ height: "60%" }}>
-              <div className="grid grid-cols-4 grid-rows-2 w-full h-full">
+            <div className="absolute bottom-0 left-0 right-0 h-[62%]">
+              <div className="grid grid-cols-4 grid-rows-2 w-full h-full p-1 gap-1">
                 {getBreedNames().map((breed, i) => (
-                  <button key={i} className="w-full h-full hover:bg-black/5 active:bg-black/10 transition-all" onClick={() => onViewAllProducts(breed)} aria-label={breed} />
+                  <button 
+                    key={i} 
+                    className="w-full h-full cursor-pointer rounded-2xl transition-colors focus:outline-none" 
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                    onClick={() => onViewAllProducts(breed)} 
+                    aria-label={breed} 
+                  />
                 ))}
               </div>
             </div>
           )}
           {isHeroLoaded && isCategoryPet && (
-            <div className="absolute bottom-0 left-0 right-0" style={{ height: "55%" }}>
-              <div className="grid grid-cols-3 grid-rows-2 w-full h-full">
+            <div className="absolute bottom-0 left-0 right-0 h-[58%]">
+              <div className="grid grid-cols-3 grid-rows-2 w-full h-full p-1 gap-1">
                 {getCategoryNames().map((cat, i) => (
-                  <button key={i} className="w-full h-full hover:bg-black/5 active:bg-black/10 transition-all" onClick={() => onViewAllProductsWithCategory?.(cat.categoryId)} aria-label={cat.name} />
+                  <button 
+                    key={i} 
+                    className="w-full h-full cursor-pointer rounded-2xl transition-colors focus:outline-none" 
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                    onClick={() => onViewAllProductsWithCategory?.(cat.categoryId)} 
+                    aria-label={cat.name} 
+                  />
                 ))}
               </div>
             </div>
@@ -230,7 +303,9 @@ const PetShopScreen = ({ petType, onBack, onViewAllProducts, onViewAllProductsWi
               {featuredProducts.map((product) => {
                 const imgUrl = product.images?.[0] || "";
                 return (
-                  <div key={product.id} className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border cursor-pointer" onClick={() => navigate(`/product/${product.id}`)}>
+                  <div key={product.id} className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border cursor-pointer" 
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                    onClick={() => navigate(`/product/${product.id}`)}>
                     <div className="relative aspect-square bg-muted" style={{ backgroundColor: '#fce7f3' }}>
                       {imgUrl ? <img src={imgUrl} alt={product.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">🛒</div>}
                       {product.discount && product.discount > 0 && (

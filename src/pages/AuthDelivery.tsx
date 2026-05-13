@@ -63,14 +63,13 @@ const AuthDelivery = () => {
         if (error) throw error;
 
         // Check if user is a delivery partner
-        const { data: roleData } = await supabase
-          .from("user_roles")
+        const { data: profile } = await supabase
+          .from("profiles")
           .select("role")
-          .eq("user_id", data.user.id)
-          .eq("role", "delivery_partner")
+          .eq("id", data.user.id)
           .single();
 
-        if (!roleData) {
+        if (profile?.role !== "delivery_partner") {
           await supabase.auth.signOut();
           toast.error("This account is not registered as a delivery partner");
           setIsLoading(false);

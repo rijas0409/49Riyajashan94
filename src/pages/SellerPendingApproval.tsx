@@ -46,7 +46,7 @@ const SellerPendingApproval = () => {
 
     // If buyer, redirect to buyer dashboard
     if (profileData.role === "buyer") {
-      navigate("/buyer-dashboard");
+      navigate("/buyer/home");
       return;
     }
 

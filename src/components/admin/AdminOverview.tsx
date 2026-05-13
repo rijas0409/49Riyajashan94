@@ -5,11 +5,11 @@ import { useState, useMemo } from "react";
 
 interface Props {
   data: AdminData;
-  actions: any;
+  actions: Record<string, any>;
   setActiveSection: (s: string) => void;
 }
 
-function groupByDate(items: any[], dateField: string, days: number) {
+function groupByDate(items: Record<string, any>[], dateField: string, days: number) {
   const now = new Date();
   const cutoff = new Date(now.getTime() - days * 86400000);
   const map: Record<string, number> = {};
@@ -32,7 +32,7 @@ function groupByDate(items: any[], dateField: string, days: number) {
   return Object.entries(map).map(([name, count]) => ({ name, count }));
 }
 
-function calcTrend(items: any[], dateField: string, days: number): { percent: string; up: boolean } {
+function calcTrend(items: Record<string, any>[], dateField: string, days: number): { percent: string; up: boolean } {
   const now = Date.now();
   const currentStart = now - days * 86400000;
   const prevStart = currentStart - days * 86400000;
@@ -56,12 +56,12 @@ function calcTrend(items: any[], dateField: string, days: number): { percent: st
   };
 }
 
-function calcRevenueTrend(sellerEarnings: any[], vetEarnings: any[], days: number) {
+function calcRevenueTrend(sellerEarnings: Record<string, any>[], vetEarnings: Record<string, any>[], days: number) {
   const now = Date.now();
   const currentStart = now - days * 86400000;
   const prevStart = currentStart - days * 86400000;
 
-  const sumInRange = (items: any[], start: number, end: number) =>
+  const sumInRange = (items: Record<string, any>[], start: number, end: number) =>
     items.filter((i) => {
       const t = new Date(i.created_at).getTime();
       return t >= start && t <= end;
@@ -84,12 +84,12 @@ const AdminOverview = ({ data, actions, setActiveSection }: Props) => {
   const days = parseInt(chartRange);
 
   const totalUsers = data.allUsers.length;
-  const verifiedVets = data.allVets.filter((v: any) => v.verification_status === "verified").length;
-  const totalRevenue = data.sellerEarnings.reduce((s: number, e: any) => s + (e.amount || 0), 0) + data.vetEarnings.reduce((s: number, e: any) => s + (e.amount || 0), 0);
+  const verifiedVets = data.allVets.filter((v) => v.verification_status === "verified").length;
+  const totalRevenue = data.sellerEarnings.reduce((s: number, e) => s + (e.amount || 0), 0) + data.vetEarnings.reduce((s: number, e) => s + (e.amount || 0), 0);
 
   // Real trends
   const userTrend = useMemo(() => calcTrend(data.allUsers, "created_at", days), [data.allUsers, days]);
-  const vetTrend = useMemo(() => calcTrend(data.allVets.filter((v: any) => v.verification_status === "verified"), "created_at", days), [data.allVets, days]);
+  const vetTrend = useMemo(() => calcTrend(data.allVets.filter((v) => v.verification_status === "verified"), "created_at", days), [data.allVets, days]);
   const revenueTrend = useMemo(() => calcRevenueTrend(data.sellerEarnings, data.vetEarnings, days), [data.sellerEarnings, data.vetEarnings, days]);
 
   // Real chart data - combine user signups, orders, and appointments per day
@@ -107,7 +107,7 @@ const AdminOverview = ({ data, actions, setActiveSection }: Props) => {
 
 
   const pendingTasks = [
-    ...data.pendingVets.map((v: any) => ({
+    ...data.pendingVets.map((v) => ({
       type: "vet" as const,
       title: "New Vet Verification",
       desc: `${v.profile?.name || "Doctor"} submitted credentials.`,
@@ -115,7 +115,7 @@ const AdminOverview = ({ data, actions, setActiveSection }: Props) => {
       color: "hsl(220,80%,50%)",
       id: v.user_id,
     })),
-    ...data.pendingSellers.map((s: any) => ({
+    ...data.pendingSellers.map((s) => ({
       type: "seller" as const,
       title: "Seller Verification",
       desc: `${s.full_name || s.name} awaiting approval.`,
@@ -123,7 +123,7 @@ const AdminOverview = ({ data, actions, setActiveSection }: Props) => {
       color: "hsl(35,90%,55%)",
       id: s.id,
     })),
-    ...data.pendingPets.slice(0, 3).map((p: any) => ({
+    ...data.pendingPets.slice(0, 3).map((p) => ({
       type: "pet" as const,
       title: "Pet Listing Verification",
       desc: `${p.name} (${p.breed}) needs review.`,
@@ -131,7 +131,7 @@ const AdminOverview = ({ data, actions, setActiveSection }: Props) => {
       color: "hsl(145,60%,45%)",
       id: p.id,
     })),
-    ...data.pendingProducts.slice(0, 3).map((p: any) => ({
+    ...data.pendingProducts.slice(0, 3).map((p) => ({
       type: "product" as const,
       title: "Product Verification",
       desc: `${p.name} by ${p.seller?.name || "Unknown"}.`,
@@ -145,7 +145,7 @@ const AdminOverview = ({ data, actions, setActiveSection }: Props) => {
 
   // Quick stats from real data
   const totalOrders = data.allOrders.length;
-  const totalProducts = data.allProducts.filter((p: any) => p.verification_status === "verified").length;
+  const totalProducts = data.allProducts.filter((p) => p.verification_status === "verified").length;
 
   return (
     <div>
@@ -306,7 +306,7 @@ const AdminOverview = ({ data, actions, setActiveSection }: Props) => {
               {data.allOrders.length === 0 ? (
                 <tr><td colSpan={6} className="py-8 text-center text-[hsl(220,15%,60%)]">No transactions yet</td></tr>
               ) : (
-                data.allOrders.slice(0, 8).map((order: any) => (
+                data.allOrders.slice(0, 8).map((order) => (
                   <tr key={order.id} className="border-b border-[hsl(220,20%,95%)] hover:bg-[hsl(220,20%,98%)]">
                     <td className="py-3 font-medium text-[hsl(220,20%,20%)] pl-4 md:pl-0">#{order.id.slice(0, 8)}</td>
                     <td className="py-3 text-[hsl(220,15%,45%)]">{order.buyer?.name || "—"}</td>

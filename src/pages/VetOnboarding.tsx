@@ -34,6 +34,8 @@ const VetOnboarding = () => {
   const [formData, setFormData] = useState({
     // Step 1 – Personal
     fullName: "", email: "", phone: "", city: "", state: "", preferredLanguage: "English",
+    dob: "", gender: "",
+    isIndependentPractice: false,
     // Step 2 – Identity
     govtIdFile: null as File | null, panCardFile: null as File | null, passportPhotoFile: null as File | null,
     // Step 3 – Professional
@@ -46,12 +48,12 @@ const VetOnboarding = () => {
     bankAccountName: "", bankName: "", bankAccountNumber: "", bankIfsc: "",
     cancelledChequeFile: null as File | null,
     // Step 6 – Availability
-    specializations: [] as string[], consultationType: "both",
-    availableDays: [] as string[], morningSlots: true, eveningSlots: true,
-    onlineFee: "500", offlineFee: "800", yearsOfExperience: "",
+    specializations: [] as string[], consultationTypes: [] as string[],
+    availableDays: [] as string[], morningSlots: false, eveningSlots: false,
+    onlineFee: "", offlineFee: "", yearsOfExperience: "",
     // Step 7 – Compliance
     vendorAgreement: false, termsAccepted: false, telemedicineConsent: false,
-    // Optional
+    // Mandatory Profile Photo
     profilePhoto: null as File | null, clinicPhotos: [] as File[],
   });
 
@@ -61,6 +63,8 @@ const VetOnboarding = () => {
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const qualifications = ["BVSc", "MVSc", "PhD", "Other"];
   const languages = ["English", "Hindi", "Tamil", "Telugu", "Kannada", "Malayalam", "Bengali", "Marathi", "Gujarati"];
+
+  const consultationOptions = ["Video consultation", "Home visits", "Clinic visit"];
 
   /* ─── helpers ─── */
   const handleFileChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,6 +107,9 @@ const VetOnboarding = () => {
 
   const toggleSpec = (s: string) => setFormData(prev => ({
     ...prev, specializations: prev.specializations.includes(s) ? prev.specializations.filter(x => x !== s) : [...prev.specializations, s],
+  }));
+  const toggleConsultation = (t: string) => setFormData(prev => ({
+    ...prev, consultationTypes: prev.consultationTypes.includes(t) ? prev.consultationTypes.filter(x => x !== t) : [...prev.consultationTypes, t],
   }));
   const toggleDay = (d: string) => setFormData(prev => ({
     ...prev, availableDays: prev.availableDays.includes(d) ? prev.availableDays.filter(x => x !== d) : [...prev.availableDays, d],
@@ -156,7 +163,7 @@ const VetOnboarding = () => {
         qualification: formData.qualification,
         years_of_experience: parseInt(formData.yearsOfExperience) || 0,
         specializations: formData.specializations,
-        consultation_type: formData.consultationType,
+        consultation_type: formData.consultationTypes.join(", "),
         vet_degree_file: vetDegreeUrl,
         registration_number: formData.registrationNumber,
         govt_id_file: govtIdUrl,
@@ -187,10 +194,15 @@ const VetOnboarding = () => {
       if (vetError) throw vetError;
 
       const { error: profileError } = await supabase.from("profiles").update({
-        full_name: formData.fullName, phone: formData.phone,
+        full_name: formData.fullName,
+        phone: formData.phone,
+        email: formData.email,
+        gender: formData.gender,
+        birth_date: formData.dob || null,
         address: `${formData.city}, ${formData.state}`,
-        is_onboarding_complete: true, is_admin_approved: false,
-      }).eq("id", uid);
+        is_onboarding_complete: true,
+        is_admin_approved: false,
+      } as any).eq("id", uid);
       if (profileError) throw profileError;
 
       toast.success("Profile submitted! Verification pending.");
@@ -205,20 +217,32 @@ const VetOnboarding = () => {
     { n: 1, title: "Personal Info", icon: User },
     { n: 2, title: "Identity", icon: Shield },
     { n: 3, title: "Professional", icon: GraduationCap },
-    { n: 4, title: "Clinic", icon: Building2 },
+    { n: 4, title: "Clinic", icon: Building2, hidden: !formData.isIndependentPractice },
     { n: 5, title: "Bank", icon: Banknote },
     { n: 6, title: "Availability", icon: Calendar },
     { n: 7, title: "Compliance", icon: ScrollText },
   ];
 
+  const visibleSteps = steps.filter(s => !s.hidden);
+  const currentVisibleStepIndex = visibleSteps.findIndex(s => s.n === currentStep);
+
   const canProceed = (step: number) => {
     switch (step) {
-      case 1: return formData.fullName && formData.phone && formData.city && formData.state;
+      case 1: return formData.fullName && formData.email && formData.phone && formData.preferredLanguage && formData.dob && formData.gender && formData.city && formData.state;
       case 2: return formData.govtIdFile && formData.panCardFile && formData.passportPhotoFile;
       case 3: return formData.vetDegreeFile && formData.registrationNumber;
       case 4: return true;
       case 5: return true;
-      case 6: return formData.availableDays.length > 0 && formData.specializations.length > 0;
+      case 6: return (
+        formData.availableDays.length > 0 && 
+        formData.specializations.length > 0 && 
+        formData.consultationTypes.length > 0 && 
+        formData.yearsOfExperience !== "" && 
+        (formData.morningSlots || formData.eveningSlots) && 
+        formData.onlineFee !== "" && 
+        formData.offlineFee !== "" && 
+        formData.profilePhoto !== null
+      );
       default: return true;
     }
   };
@@ -231,7 +255,7 @@ const VetOnboarding = () => {
         <input type="file" accept={accept} onChange={handleFileChange(field)} className="hidden" id={`file-${field}`} />
         <label htmlFor={`file-${field}`} className="cursor-pointer">
           {filePreviews[field] ? (
-            <div className="flex items-center justify-center gap-2 text-teal-600">
+            <div className="flex items-center justify-center gap-2 text-primary">
               <CheckCircle className="w-5 h-5" />
               <span className="text-sm font-medium">Uploaded ✓</span>
             </div>
@@ -263,7 +287,7 @@ const VetOnboarding = () => {
       <main className="container mx-auto px-4 py-6 max-w-2xl">
         {/* Progress bar */}
         <div className="flex items-center justify-center mb-6 overflow-x-auto pb-2">
-          {steps.map((step, i) => (
+          {visibleSteps.map((step, i) => (
             <div key={step.n} className="flex items-center">
               <div className={`flex flex-col items-center ${currentStep >= step.n ? "text-primary" : "text-muted-foreground"}`}>
                 <div className={`w-9 h-9 rounded-full flex items-center justify-center mb-1 transition-all ${
@@ -273,8 +297,8 @@ const VetOnboarding = () => {
                 </div>
                 <span className="text-[9px] font-medium whitespace-nowrap">{step.title}</span>
               </div>
-              {i < steps.length - 1 && (
-                <div className={`w-5 h-0.5 mx-0.5 mb-4 rounded-full transition-all ${currentStep > step.n ? "bg-primary" : "bg-muted"}`} />
+              {i < visibleSteps.length - 1 && (
+                <div className={`w-5 h-0.5 mx-0.5 mb-4 rounded-full transition-all ${currentStep > visibleSteps[i].n ? "bg-primary" : "bg-muted"}`} />
               )}
             </div>
           ))}
@@ -282,8 +306,8 @@ const VetOnboarding = () => {
 
         <Card className="border-0 shadow-card animate-fade-in">
           <CardHeader className="text-center pb-4">
-            <CardTitle className="text-xl">{steps[currentStep - 1].title}</CardTitle>
-            <CardDescription>Step {currentStep} of {steps.length}</CardDescription>
+            <CardTitle className="text-xl">{steps.find(s => s.n === currentStep)?.title}</CardTitle>
+            <CardDescription>Step {currentVisibleStepIndex + 1} of {visibleSteps.length}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -296,8 +320,25 @@ const VetOnboarding = () => {
                     <Input value={formData.fullName} onChange={e => setFormData({ ...formData, fullName: e.target.value })} placeholder="Dr. Ananya Iyer" className="rounded-2xl" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Email</Label>
+                    <Label>Email *</Label>
                     <Input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="doctor@example.com" className="rounded-2xl" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>Date of Birth *</Label>
+                      <Input type="date" value={formData.dob} onChange={e => setFormData({ ...formData, dob: e.target.value })} className="rounded-2xl" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Gender *</Label>
+                      <Select value={formData.gender} onValueChange={v => setFormData({ ...formData, gender: v })}>
+                        <SelectTrigger className="rounded-2xl"><SelectValue placeholder="Select Gender" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
@@ -305,7 +346,7 @@ const VetOnboarding = () => {
                       <Input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} placeholder="+91 98765 43210" className="rounded-2xl" />
                     </div>
                     <div className="space-y-2">
-                      <Label>Language</Label>
+                      <Label>Language *</Label>
                       <Select value={formData.preferredLanguage} onValueChange={v => setFormData({ ...formData, preferredLanguage: v })}>
                         <SelectTrigger className="rounded-2xl"><SelectValue /></SelectTrigger>
                         <SelectContent>{languages.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
@@ -322,6 +363,25 @@ const VetOnboarding = () => {
                       <Input value={formData.state} onChange={e => setFormData({ ...formData, state: e.target.value })} placeholder="Maharashtra" className="rounded-2xl" />
                     </div>
                   </div>
+
+                  <div className="p-4 bg-muted/30 rounded-2xl border border-border/50 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <Checkbox 
+                        id="independent-practice" 
+                        checked={formData.isIndependentPractice} 
+                        onCheckedChange={c => setFormData({ ...formData, isIndependentPractice: c as boolean })} 
+                      />
+                      <div className="space-y-1">
+                        <Label htmlFor="independent-practice" className="text-sm font-medium leading-none cursor-pointer">
+                          I run an independent veterinary practice
+                        </Label>
+                        <p className="text-xs text-muted-foreground leading-tight">
+                          Enable this if you personally operate a clinic or offer independent veterinary consultations.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   <Button type="button" className="w-full rounded-2xl bg-gradient-primary" onClick={() => setCurrentStep(2)} disabled={!canProceed(1)}>Continue</Button>
                 </div>
               )}
@@ -329,8 +389,8 @@ const VetOnboarding = () => {
               {/* ══════ STEP 2 – Identity Verification ══════ */}
               {currentStep === 2 && (
                 <div className="space-y-4 animate-fade-in">
-                  <div className="bg-teal-50 rounded-2xl p-3 mb-2">
-                    <p className="text-xs text-teal-700 font-medium">🪪 Upload clear scans/photos of your identity documents</p>
+                  <div className="bg-accent/50 rounded-2xl p-3 mb-2">
+                    <p className="text-xs text-accent-foreground font-medium">🪪 Upload clear scans/photos of your identity documents</p>
                   </div>
                   <FileUploadBox field="govtIdFile" label="Government ID (Aadhaar / Passport) *" icon={Shield} />
                   <FileUploadBox field="panCardFile" label="PAN Card *" icon={CreditCard} />
@@ -342,7 +402,7 @@ const VetOnboarding = () => {
                         {filePreviews.passportPhotoFile ? (
                           <div className="space-y-2">
                             <img src={filePreviews.passportPhotoFile} alt="Photo" className="w-24 h-24 object-cover mx-auto rounded-xl" />
-                            <div className="flex items-center justify-center gap-2 text-teal-600">
+                            <div className="flex items-center justify-center gap-2 text-primary">
                               <CheckCircle className="w-4 h-4" /><span className="text-xs">Uploaded ✓</span>
                             </div>
                           </div>
@@ -365,8 +425,8 @@ const VetOnboarding = () => {
               {/* ══════ STEP 3 – Professional Qualification ══════ */}
               {currentStep === 3 && (
                 <div className="space-y-4 animate-fade-in">
-                  <div className="bg-teal-50 rounded-2xl p-3 mb-2">
-                    <p className="text-xs text-teal-700 font-medium">🎓 Professional credentials & educational background</p>
+                  <div className="bg-accent/50 rounded-2xl p-3 mb-2">
+                    <p className="text-xs text-accent-foreground font-medium">🎓 Professional credentials & educational background</p>
                   </div>
 
                   <FileUploadBox field="vetDegreeFile" label="Veterinary Degree Certificate (BVSc/MVSc) *" icon={GraduationCap} />
@@ -411,7 +471,7 @@ const VetOnboarding = () => {
                           <Input value={row.year} onChange={e => updateEduRow(idx, 'year', e.target.value)} placeholder="2020" className="h-8 rounded-xl text-xs" />
                           <div>
                             <input type="file" accept="image/*,.pdf" onChange={handleEduFileChange(idx)} className="hidden" id={`edu-file-${idx}`} />
-                            <label htmlFor={`edu-file-${idx}`} className={`cursor-pointer flex items-center justify-center w-full h-8 rounded-xl border text-[10px] ${filePreviews[`edu_${idx}`] ? 'border-teal-400 text-teal-600 bg-teal-50' : 'border-dashed border-border text-muted-foreground hover:border-primary/50'}`}>
+                            <label htmlFor={`edu-file-${idx}`} className={`cursor-pointer flex items-center justify-center w-full h-8 rounded-xl border text-[10px] ${filePreviews[`edu_${idx}`] ? 'border-primary text-primary bg-accent/30' : 'border-dashed border-border text-muted-foreground hover:border-primary/50'}`}>
                               {filePreviews[`edu_${idx}`] ? '✓' : <Upload className="w-3 h-3" />}
                             </label>
                           </div>
@@ -425,7 +485,7 @@ const VetOnboarding = () => {
 
                   <div className="flex gap-3">
                     <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(2)}>Back</Button>
-                    <Button type="button" className="flex-1 rounded-2xl bg-gradient-primary" onClick={() => setCurrentStep(4)} disabled={!canProceed(3)}>Continue</Button>
+                    <Button type="button" className="flex-1 rounded-2xl bg-gradient-primary" onClick={() => setCurrentStep(formData.isIndependentPractice ? 4 : 5)} disabled={!canProceed(3)}>Continue</Button>
                   </div>
                 </div>
               )}
@@ -433,8 +493,8 @@ const VetOnboarding = () => {
               {/* ══════ STEP 4 – Clinic / Business Verification ══════ */}
               {currentStep === 4 && (
                 <div className="space-y-4 animate-fade-in">
-                  <div className="bg-teal-50 rounded-2xl p-3 mb-2">
-                    <p className="text-xs text-teal-700 font-medium">🏥 Clinic & business verification documents</p>
+                  <div className="bg-accent/50 rounded-2xl p-3 mb-2">
+                    <p className="text-xs text-accent-foreground font-medium">🏥 Clinic & business verification documents</p>
                   </div>
                   <FileUploadBox field="clinicRegistrationFile" label="Clinic Registration Certificate" icon={Building2} />
                   <FileUploadBox field="clinicShopLicenseFile" label="Shop & Establishment License" icon={FileText} />
@@ -455,7 +515,7 @@ const VetOnboarding = () => {
                       }} className="hidden" id="clinic-photos" />
                       <label htmlFor="clinic-photos" className="cursor-pointer">
                         {formData.clinicPhotos.length > 0 ? (
-                          <div className="flex items-center justify-center gap-2 text-teal-600">
+                          <div className="flex items-center justify-center gap-2 text-primary">
                             <CheckCircle className="w-5 h-5" />
                             <span className="text-sm">{formData.clinicPhotos.length} photo(s) selected</span>
                           </div>
@@ -479,8 +539,8 @@ const VetOnboarding = () => {
               {/* ══════ STEP 5 – Bank & Payment ══════ */}
               {currentStep === 5 && (
                 <div className="space-y-4 animate-fade-in">
-                  <div className="bg-teal-50 rounded-2xl p-3 mb-2">
-                    <p className="text-xs text-teal-700 font-medium">🏦 Bank details for payouts</p>
+                  <div className="bg-accent/50 rounded-2xl p-3 mb-2">
+                    <p className="text-xs text-accent-foreground font-medium">🏦 Bank details for payouts</p>
                   </div>
                   <FileUploadBox field="cancelledChequeFile" label="Cancelled Cheque / Bank Passbook" icon={Banknote} />
                   <div className="space-y-2">
@@ -502,7 +562,7 @@ const VetOnboarding = () => {
                     </div>
                   </div>
                   <div className="flex gap-3">
-                    <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(4)}>Back</Button>
+                    <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(formData.isIndependentPractice ? 4 : 3)}>Back</Button>
                     <Button type="button" className="flex-1 rounded-2xl bg-gradient-primary" onClick={() => setCurrentStep(6)}>Continue</Button>
                   </div>
                 </div>
@@ -516,60 +576,56 @@ const VetOnboarding = () => {
                     <div className="flex flex-wrap gap-2">
                       {specializations.map(s => (
                         <button key={s} type="button" onClick={() => toggleSpec(s)}
-                          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${formData.specializations.includes(s) ? "bg-teal-500 text-white shadow-md" : "bg-muted text-muted-foreground"}`}>{s}</button>
+                          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${formData.specializations.includes(s) ? "bg-gradient-primary text-white shadow-md" : "bg-muted text-muted-foreground"}`}>{s}</button>
                       ))}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label>Consultation Type</Label>
-                      <Select value={formData.consultationType} onValueChange={v => setFormData({ ...formData, consultationType: v })}>
-                        <SelectTrigger className="rounded-2xl"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="online">Online Only</SelectItem>
-                          <SelectItem value="offline">Offline Only</SelectItem>
-                          <SelectItem value="both">Both</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  <div className="space-y-2">
+                    <Label>Consultation Type *</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {consultationOptions.map(t => (
+                        <button key={t} type="button" onClick={() => toggleConsultation(t)}
+                          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${formData.consultationTypes.includes(t) ? "bg-gradient-primary text-white shadow-md" : "bg-muted text-muted-foreground"}`}>{t}</button>
+                      ))}
                     </div>
-                    <div className="space-y-2">
-                      <Label>Experience (yrs)</Label>
-                      <Input type="number" value={formData.yearsOfExperience} onChange={e => setFormData({ ...formData, yearsOfExperience: e.target.value })} placeholder="5" className="rounded-2xl" />
-                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">Select one or more types of consultations you provide</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Experience (years) *</Label>
+                    <Input type="number" value={formData.yearsOfExperience} onChange={e => setFormData({ ...formData, yearsOfExperience: e.target.value })} placeholder="e.g. 5" className="rounded-2xl" />
                   </div>
                   <div className="space-y-2">
                     <Label>Available Days *</Label>
                     <div className="flex flex-wrap gap-2">
                       {days.map(d => (
                         <button key={d} type="button" onClick={() => toggleDay(d)}
-                          className={`w-12 h-12 rounded-xl text-sm font-medium transition-all ${formData.availableDays.includes(d) ? "bg-teal-500 text-white shadow-md" : "bg-muted text-muted-foreground"}`}>{d}</button>
+                          className={`w-12 h-12 rounded-xl text-sm font-medium transition-all ${formData.availableDays.includes(d) ? "bg-gradient-primary text-white shadow-md" : "bg-muted text-muted-foreground"}`}>{d}</button>
                       ))}
                     </div>
                   </div>
                   <div className="space-y-3">
-                    <Label>Time Slots</Label>
+                    <Label>Time Slots *</Label>
                     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-2xl">
-                      <Checkbox checked={formData.morningSlots} onCheckedChange={c => setFormData({ ...formData, morningSlots: c as boolean })} />
-                      <span className="text-sm">Morning (9 AM - 1 PM)</span>
+                      <Checkbox id="slot-morning" checked={formData.morningSlots} onCheckedChange={c => setFormData({ ...formData, morningSlots: c as boolean })} />
+                      <Label htmlFor="slot-morning" className="text-sm cursor-pointer">Morning (9 AM - 1 PM)</Label>
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-2xl">
-                      <Checkbox checked={formData.eveningSlots} onCheckedChange={c => setFormData({ ...formData, eveningSlots: c as boolean })} />
-                      <span className="text-sm">Evening (4 PM - 8 PM)</span>
+                      <Checkbox id="slot-evening" checked={formData.eveningSlots} onCheckedChange={c => setFormData({ ...formData, eveningSlots: c as boolean })} />
+                      <Label htmlFor="slot-evening" className="text-sm cursor-pointer">Evening (4 PM - 8 PM)</Label>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label>Online Fee (₹)</Label>
-                      <Input type="number" value={formData.onlineFee} onChange={e => setFormData({ ...formData, onlineFee: e.target.value })} className="rounded-2xl" />
+                      <Label>Clinic visit fee (₹) *</Label>
+                      <Input type="number" value={formData.onlineFee} onChange={e => setFormData({ ...formData, onlineFee: e.target.value })} placeholder="500" className="rounded-2xl" />
                     </div>
                     <div className="space-y-2">
-                      <Label>Offline Fee (₹)</Label>
-                      <Input type="number" value={formData.offlineFee} onChange={e => setFormData({ ...formData, offlineFee: e.target.value })} className="rounded-2xl" />
+                      <Label>Home visit fee (₹) *</Label>
+                      <Input type="number" value={formData.offlineFee} onChange={e => setFormData({ ...formData, offlineFee: e.target.value })} placeholder="800" className="rounded-2xl" />
                     </div>
                   </div>
 
-                  {/* Profile Photo (Optional) */}
-                  <FileUploadBox field="profilePhoto" label="Vet Profile Photo (Optional)" accept="image/*" icon={Camera} />
+                  <FileUploadBox field="profilePhoto" label="Vet Profile Photo *" accept="image/*" icon={Camera} />
 
                   <div className="flex gap-3">
                     <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(5)}>Back</Button>
@@ -581,8 +637,8 @@ const VetOnboarding = () => {
               {/* ══════ STEP 7 – Platform Compliance & Submit ══════ */}
               {currentStep === 7 && (
                 <div className="space-y-4 animate-fade-in">
-                  <div className="bg-teal-50 rounded-2xl p-3 mb-2">
-                    <p className="text-xs text-teal-700 font-medium">📋 Review agreements and submit</p>
+                  <div className="bg-accent/50 rounded-2xl p-3 mb-2">
+                    <p className="text-xs text-accent-foreground font-medium">📋 Review agreements and submit</p>
                   </div>
 
                   {/* Summary */}
@@ -590,14 +646,18 @@ const VetOnboarding = () => {
                     <h4 className="font-semibold text-sm">Profile Summary</h4>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <span className="text-muted-foreground">Name:</span><span className="font-medium">{formData.fullName}</span>
+                      <span className="text-muted-foreground">Practice:</span><span className="font-medium">{formData.isIndependentPractice ? "Independent Clinic" : "Regular Practice"}</span>
+                      <span className="text-muted-foreground">Gender:</span><span className="font-medium capitalize">{formData.gender}</span>
+                      <span className="text-muted-foreground">DOB:</span><span className="font-medium">{formData.dob}</span>
                       <span className="text-muted-foreground">Phone:</span><span className="font-medium">{formData.phone}</span>
                       <span className="text-muted-foreground">City:</span><span className="font-medium">{formData.city}, {formData.state}</span>
                       <span className="text-muted-foreground">Qualification:</span><span className="font-medium">{formData.qualification}</span>
                       <span className="text-muted-foreground">Experience:</span><span className="font-medium">{formData.yearsOfExperience} yrs</span>
                       <span className="text-muted-foreground">Specializations:</span><span className="font-medium">{formData.specializations.join(", ")}</span>
+                      <span className="text-muted-foreground">Consultation:</span><span className="font-medium">{formData.consultationTypes.join(", ")}</span>
                       <span className="text-muted-foreground">Available:</span><span className="font-medium">{formData.availableDays.join(", ")}</span>
-                      <span className="text-muted-foreground">Online Fee:</span><span className="font-medium">₹{formData.onlineFee}</span>
-                      <span className="text-muted-foreground">Offline Fee:</span><span className="font-medium">₹{formData.offlineFee}</span>
+                      <span className="text-muted-foreground">Clinic Fee:</span><span className="font-medium">₹{formData.onlineFee}</span>
+                      <span className="text-muted-foreground">Home Fee:</span><span className="font-medium">₹{formData.offlineFee}</span>
                     </div>
                   </div>
 

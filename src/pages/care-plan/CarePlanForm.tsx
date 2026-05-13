@@ -55,7 +55,7 @@ const CarePlanForm = () => {
     if (!workSchedule) { toast.error("Please select your Work Schedule"); return; }
     if (!travelFrequency) { toast.error("Please select your Travel Frequency"); return; }
 
-    navigate("/care-plan/form-step2", {
+    navigate("/care-plan/step-2", {
       state: {
         petData,
         flowType: "deep",

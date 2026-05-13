@@ -15,24 +15,121 @@ const BrandProfile = () => {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All Products");
 
-  const decodedBrand = decodeURIComponent(brandName || "");
+  const decodedBrand = decodeURIComponent(brandName || "").trim();
 
   useEffect(() => {
     fetchBrandProducts();
   }, [brandName]);
 
   const fetchBrandProducts = async () => {
-    if (!decodedBrand) return;
+    if (!decodedBrand) {
+      setLoading(false);
+      return;
+    }
+    
     try {
-      const { data, error } = await supabase
+      // 1. Try fetching from Supabase - search in both brand field and name field for better results
+      const { data: brandData, error: brandError } = await supabase
         .from("shop_products")
         .select("id, name, brand, price, original_price, discount, images, pet_type, category, weight, unit, handling_time, total_sold, stock")
-        .ilike("brand", decodedBrand)
+        .ilike("brand", `%${decodedBrand}%`)
         .eq("is_active", true)
-        .eq("verification_status", "verified")
         .order("total_sold", { ascending: false });
-      if (error) throw error;
-      setProducts(data || []);
+
+      const { data: nameData, error: nameError } = await supabase
+        .from("shop_products")
+        .select("id, name, brand, price, original_price, discount, images, pet_type, category, weight, unit, handling_time, total_sold, stock")
+        .ilike("name", `%${decodedBrand}%`)
+        .eq("is_active", true)
+        .order("total_sold", { ascending: false });
+      
+      if (brandError) throw brandError;
+      if (nameError) throw nameError;
+      
+      // Combine and remove duplicates
+      const map = new Map();
+      (brandData || []).forEach(p => map.set(p.id, p));
+      (nameData || []).forEach(p => map.set(p.id, p));
+      let allProducts = Array.from(map.values());
+
+      // 2. Add requested dummy products for specific brands
+      if (decodedBrand.toLowerCase().includes("pedigree")) {
+        const pedigreeDummy = {
+          id: "pedigree-puppy-dummy",
+          name: "Pedigree Puppy Dry Dog Food, Chicken & Milk, 3 kg",
+          brand: "Pedigree",
+          price: 749,
+          original_price: 850,
+          discount: 12,
+          images: ["https://p0.pikist.com/static/81/812/dog-food-pedigree-pet-food-pet-puppy-food-pedigree-puppy-chicken-and-milk-thumbnail.jpg"],
+          pet_type: "dog",
+          category: "food",
+          weight: "3 kg",
+          unit: "kg",
+          handling_time: "Same day",
+          total_sold: 1200,
+          stock: 100
+        };
+        
+        if (!allProducts.find(p => p.id === pedigreeDummy.id)) {
+          allProducts = [pedigreeDummy, ...allProducts];
+        }
+      }
+
+      if (allProducts.length > 0) {
+        setProducts(allProducts);
+      } else {
+        // 3. Fallback to dummy data generator if still empty
+        try {
+          const { generateProducts } = await import("@/lib/shopData");
+          const dummyDog = generateProducts("dog", "food");
+          const dummyCat = generateProducts("cat", "food");
+          const allDummies = [...dummyDog, ...dummyCat];
+          
+          const matchedDummies = allDummies.filter(p => 
+            p.brand?.toLowerCase() === decodedBrand.toLowerCase()
+          ).map(p => ({
+            id: p.id,
+            name: p.name,
+            brand: p.brand,
+            price: p.price,
+            original_price: p.originalPrice,
+            discount: p.discount,
+            images: [p.image],
+            pet_type: p.petType,
+            category: p.category,
+            weight: "3 kg",
+            unit: "kg",
+            handling_time: "1 day",
+            total_sold: 150,
+            stock: 100
+          }));
+          
+          if (matchedDummies.length > 0) {
+            setProducts(matchedDummies);
+          } else if (decodedBrand.toLowerCase() === "pedigree") {
+            // Special hardcoded Pedigree fallback
+            setProducts([{
+              id: "pedigree-puppy-dummy",
+              name: "Pedigree Puppy Dry Dog Food, Chicken & Milk, 3 kg",
+              brand: "Pedigree",
+              price: 749,
+              original_price: 850,
+              discount: 12,
+              images: ["https://p0.pikist.com/static/81/812/dog-food-pedigree-pet-food-pet-puppy-food-pedigree-puppy-chicken-and-milk-thumbnail.jpg"],
+              pet_type: "dog",
+              category: "food",
+              weight: "3 kg",
+              unit: "kg",
+              handling_time: "Same day",
+              total_sold: 1200,
+              stock: 100
+            }]);
+          }
+        } catch (e) {
+          console.error("Dummy data loading failed", e);
+        }
+      }
     } catch {
       toast.error("Failed to load brand products");
     } finally {
@@ -41,7 +138,7 @@ const BrandProfile = () => {
   };
 
   const categories = useMemo(() => {
-    const cats = new Set(products.map(p => p.category));
+    const cats = new Set(products.map(p => p.category).filter(Boolean));
     return ["All Products", ...Array.from(cats)];
   }, [products]);
 
@@ -51,10 +148,19 @@ const BrandProfile = () => {
   }, [products, selectedCategory]);
 
   const totalProducts = products.length;
-  const petTypes = useMemo(() => [...new Set(products.map(p => p.pet_type))], [products]);
+  const petTypes = useMemo(() => [...new Set(products.map(p => p.pet_type).filter(Boolean))], [products]);
   const primaryPetType = petTypes[0] || "dog";
 
   const brandInitial = decodedBrand.charAt(0).toUpperCase();
+
+  const brandTheme = useMemo(() => {
+    const brand = decodedBrand.toLowerCase();
+    if (brand.includes("pedigree")) return { gradient: "linear-gradient(135deg, #FFD60A 0%, #FFB703 100%)", text: "#111827", badge: "#FFB703" };
+    if (brand.includes("royal canin")) return { gradient: "linear-gradient(135deg, #FF4D6D 0%, #C9184A 100%)", text: "white", badge: "#FF4D6D" };
+    if (brand.includes("drools")) return { gradient: "linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)", text: "white", badge: "#3B82F6" };
+    if (brand.includes("whiskas")) return { gradient: "linear-gradient(135deg, #A855F7 0%, #7C3AED 100%)", text: "white", badge: "#A855F7" };
+    return { gradient: "linear-gradient(135deg, #1a1145 0%, #2d1b69 40%, #4c1d95 70%, #7c3aed 100%)", text: "white", badge: "#7C3AED" };
+  }, [decodedBrand]);
 
   const handleShare = async () => {
     try {
@@ -99,16 +205,16 @@ const BrandProfile = () => {
 
       {/* Brand Banner */}
       <div className="mx-4 mt-3 rounded-2xl overflow-hidden" style={{
-        background: "linear-gradient(135deg, #1a1145 0%, #2d1b69 40%, #4c1d95 70%, #7c3aed 100%)",
+        background: brandTheme.gradient,
         height: 140,
       }}>
         <div className="h-full flex items-center px-5">
           <div className="flex-1">
-            <h1 className="text-white text-[28px] font-extrabold leading-tight">{decodedBrand}</h1>
-            <p className="text-white/70 text-[13px] mt-1">Premium Pet Nutrition</p>
+            <h1 className="text-[28px] font-extrabold leading-tight" style={{ color: brandTheme.text }}>{decodedBrand}</h1>
+            <p className="text-[13px] mt-1 opacity-70" style={{ color: brandTheme.text }}>Premium Pet Nutrition</p>
           </div>
           <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-            <span className="text-white text-[32px] font-black">{brandInitial}</span>
+            <span className="text-[32px] font-black" style={{ color: brandTheme.text }}>{brandInitial}</span>
           </div>
         </div>
       </div>
@@ -117,19 +223,19 @@ const BrandProfile = () => {
       <div className="mx-4 -mt-3 relative z-10 bg-white rounded-2xl shadow-sm border border-[#F0EFF5] p-4">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{
-            background: "linear-gradient(135deg, #4c1d95, #7c3aed)",
+            background: brandTheme.gradient,
           }}>
-            <span className="text-white text-[20px] font-black">{brandInitial}</span>
+            <span className="text-[20px] font-black" style={{ color: brandTheme.text }}>{brandInitial}</span>
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-1.5">
               <h2 className="text-[18px] font-bold text-[#111827]">{decodedBrand}</h2>
-              <div className="w-5 h-5 rounded-full bg-[#3B82F6] flex items-center justify-center">
+              <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: brandTheme.badge === "#FFB703" ? "#10B981" : brandTheme.badge }}>
                 <span className="text-white text-[10px]">✓</span>
               </div>
             </div>
             <p className="text-[12px] text-[#9CA3AF]">
-              <span className="text-[#9333EA] font-medium">Premium</span> {primaryPetType.charAt(0).toUpperCase() + primaryPetType.slice(1)} Nutrition • Vet Recommended
+              <span className="font-medium" style={{ color: brandTheme.badge }}>Premium</span> {primaryPetType.charAt(0).toUpperCase() + primaryPetType.slice(1)} Nutrition • Vet Recommended
             </p>
           </div>
           <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E5E7EB]">
@@ -175,7 +281,7 @@ const BrandProfile = () => {
                   : "bg-white text-[#6B7280] border border-[#E5E7EB]"
               }`}
             >
-              {cat}
+              {cat === "All Products" ? cat : cat.charAt(0).toUpperCase() + cat.slice(1)}
             </button>
           ))}
         </div>

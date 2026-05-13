@@ -24,10 +24,10 @@ const AdminBuyers = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedBuyer, setSelectedBuyer] = useState<BuyerProfile | null>(null);
-  const [buyerActivity, setBuyerActivity] = useState<any[]>([]);
-  const [buyerOrders, setBuyerOrders] = useState<any[]>([]);
-  const [buyerWallet, setBuyerWallet] = useState<{ balance: number; transactions: any[] } | null>(null);
-  const [buyerVetBookings, setBuyerVetBookings] = useState<any[]>([]);
+  const [buyerActivity, setBuyerActivity] = useState<Record<string, any>[]>([]);
+  const [buyerOrders, setBuyerOrders] = useState<Record<string, any>[]>([]);
+  const [buyerWallet, setBuyerWallet] = useState<{ balance: number; transactions: Record<string, any>[] } | null>(null);
+  const [buyerVetBookings, setBuyerVetBookings] = useState<Record<string, any>[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => { fetchBuyers(); }, []);
@@ -322,7 +322,7 @@ const AdminBuyers = () => {
                   <div className="space-y-2 max-h-[250px] overflow-y-auto">
                     {(!buyerWallet || buyerWallet.transactions.length === 0) ? (
                       <p className="text-center text-sm text-[hsl(220,15%,55%)] py-6">No wallet transactions</p>
-                    ) : buyerWallet.transactions.map((tx: any) => (
+                    ) : buyerWallet.transactions.map((tx) => (
                       <div key={tx.id} className="flex items-center gap-3 p-3 rounded-xl bg-[hsl(220,20%,97%)]">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${tx.type === "credit" ? "bg-emerald-100" : "bg-red-100"}`}>
                           {tx.type === "credit" ? <ArrowDownLeft className="w-4 h-4 text-emerald-600" /> : <ArrowUpRight className="w-4 h-4 text-red-500" />}

@@ -10,24 +10,71 @@ if (!VITE_SUPABASE_PUBLISHABLE_KEY) console.warn("VITE_SUPABASE_PUBLISHABLE_KEY 
 
 let supabaseInstance;
 try {
-  const url = VITE_SUPABASE_URL || "https://placeholder.supabase.co";
-  const key = VITE_SUPABASE_PUBLISHABLE_KEY || "placeholder";
+  const rawUrl = VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co";
+  const rawKey = VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2eW5zbHhvdGdscmFjZmdhY2duIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1NDMwNjUsImV4cCI6MjA4MDExOTA2NX0.i9-bXgL2891ji3AK-mS4wLp6HDl4DIStrcJeONNEKP0";
   
+  // Robust URL Cleaning: 
+  // 1. Trim whitespace
+  // 2. Parse as URL to extract just the origin if it's a full URL with paths
+  let url = rawUrl.trim();
+  try {
+    const urlObj = new URL(url);
+    url = urlObj.origin;
+  } catch (e) {
+    // If it's not a valid URL start, just try basic cleaning
+    url = url.replace(/\/$/, "");
+  }
+  
+  const key = rawKey.trim();
+  
+  if (!VITE_SUPABASE_URL || !VITE_SUPABASE_PUBLISHABLE_KEY) {
+    console.warn("Supabase credentials missing from environment. Using fallback project.");
+  }
+
   supabaseInstance = createClient<Database>(url, key, {
     auth: {
       storage: localStorage,
       persistSession: true,
       autoRefreshToken: true,
+    },
+    global: {
+      headers: { 'x-application-name': 'sruvo-web' },
     }
   });
-} catch (err) {
-  console.error("Failed to initialize Supabase client:", err);
+} catch (err: unknown) {
+  const error = err instanceof Error ? err : new Error(String(err));
+  console.error("Critical: Failed to initialize Supabase client:", error);
+  
+  const fallbackError = new Error(`Supabase initialization failed: ${error.message}`);
+  
   supabaseInstance = { 
     auth: { 
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }), 
-      getSession: async () => ({ data: { session: null } }),
-      signInWithPassword: async () => ({ data: { session: null }, error: new Error("Supabase not initialized") })
-    } 
+      getSession: async () => ({ data: { session: null }, error: null }),
+      getUser: async () => ({ data: { user: null }, error: null }),
+      signInWithPassword: async () => ({ data: { session: null, user: null }, error: fallbackError }),
+      signUp: async () => ({ data: { session: null, user: null }, error: fallbackError }),
+      signOut: async () => ({ error: null })
+    },
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          single: async () => ({ data: null, error: fallbackError }),
+          maybeSingle: async () => ({ data: null, error: fallbackError }),
+          order: () => ({
+            limit: async () => ({ data: [], error: fallbackError })
+          })
+        }),
+        order: () => ({
+          limit: async () => ({ data: [], error: fallbackError })
+        }),
+        limit: async () => ({ data: [], error: fallbackError })
+      }),
+      insert: async () => ({ data: null, error: fallbackError }),
+      update: async () => ({ data: null, error: fallbackError }),
+      delete: async () => ({ data: null, error: fallbackError }),
+      upsert: async () => ({ data: null, error: fallbackError })
+    })
   } as any;
 }
 

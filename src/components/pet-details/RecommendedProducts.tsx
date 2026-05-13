@@ -1,7 +1,8 @@
 import { Sparkles, Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
+import { generateProducts } from "@/lib/shopData";
 
 interface RecommendedProductsProps {
   category: string;
@@ -25,6 +26,11 @@ interface ShopProduct {
 }
 
 const mapCategoryToPetType = (category: string): string[] => {
+  const c = category.toLowerCase().trim();
+  if (c.includes("dog")) return ["dog"];
+  if (c.includes("cat")) return ["cat"];
+  if (c.includes("bird")) return ["birds", "bird"];
+  if (c.includes("rabbit")) return ["rabbit"];
   const map: Record<string, string[]> = {
     dog: ["dog"],
     cat: ["cat"],
@@ -32,7 +38,7 @@ const mapCategoryToPetType = (category: string): string[] => {
     rabbit: ["rabbit"],
     other: ["guinea-pig", "turtle", "hamster", "white-mouse", "other"],
   };
-  return map[category] || [category];
+  return map[c] || [c];
 };
 
 const CATEGORY_DIVERSITY_ORDER = ["food", "toys", "pharmacy", "grooming", "treats", "bedding", "walking", "clothing", "accessories"];
@@ -41,16 +47,12 @@ const RecommendedProducts = ({ category, breed, ageMonths, size }: RecommendedPr
   const [products, setProducts] = useState<ShopProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchRecommendations();
-  }, [category, breed, ageMonths]);
-
-  const fetchRecommendations = async () => {
+  const fetchRecommendations = useCallback(async () => {
     try {
       const petTypes = mapCategoryToPetType(category);
 
       // Fetch all verified active products for this pet type
-      let query = supabase
+      const query = supabase
         .from("shop_products")
         .select("id, name, price, original_price, discount, brand, category, pet_type, images, total_sold, views")
         .eq("is_active", true)
@@ -61,22 +63,29 @@ const RecommendedProducts = ({ category, breed, ageMonths, size }: RecommendedPr
       const { data, error } = await query;
       if (error) throw error;
 
-      if (!data || data.length === 0) {
-        // Fallback: get any popular products
-        const { data: fallback } = await supabase
-          .from("shop_products")
-          .select("id, name, price, original_price, discount, brand, category, pet_type, images, total_sold, views")
-          .eq("is_active", true)
-          .eq("verification_status", "verified")
-          .order("total_sold", { ascending: false })
-          .limit(5);
-        setProducts(fallback || []);
-        setLoading(false);
-        return;
+      let fetchedProducts = data || [];
+
+      if (fetchedProducts.length === 0) {
+        // Fallback: use demo products
+        const petType = petTypes[0] || "dog";
+        const demo = generateProducts(petType, "food").slice(0, 5);
+        fetchedProducts = demo.map(p => ({
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          original_price: p.originalPrice,
+          discount: p.discount,
+          brand: p.brand,
+          category: p.category,
+          pet_type: p.petType,
+          images: [p.image],
+          total_sold: 0,
+          views: 0
+        }));
       }
 
       // Score and rank products
-      const scored = data.map((product) => {
+      const scored = fetchedProducts.map((product) => {
         let score = 0;
 
         // Popularity boost
@@ -150,7 +159,11 @@ const RecommendedProducts = ({ category, breed, ageMonths, size }: RecommendedPr
     } finally {
       setLoading(false);
     }
-  };
+  }, [category, ageMonths, size]);
+
+  useEffect(() => {
+    fetchRecommendations();
+  }, [category, breed, ageMonths, fetchRecommendations]);
 
   const formatPrice = (p: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(p);

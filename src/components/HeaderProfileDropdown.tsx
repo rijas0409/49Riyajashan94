@@ -84,21 +84,21 @@ const HeaderProfileDropdown = ({ trigger }: HeaderProfileDropdownProps) => {
         {/* Menu Items */}
         <div className="p-2">
           <button
-            onClick={() => { setOpen(false); navigate("/profile-menu"); }}
+            onClick={() => { setOpen(false); navigate("/profile"); }}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors text-left"
           >
             <Settings className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm font-medium">Profile Settings</span>
           </button>
           <button
-            onClick={() => { setOpen(false); navigate("/profile/bookings"); }}
+            onClick={() => { setOpen(false); navigate("/bookings"); }}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors text-left"
           >
             <Calendar className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm font-medium">My Bookings</span>
           </button>
           <button
-            onClick={() => { setOpen(false); navigate("/profile/wallet"); }}
+            onClick={() => { setOpen(false); navigate("/wallet"); }}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors text-left"
           >
             <Wallet className="w-4 h-4 text-muted-foreground" />

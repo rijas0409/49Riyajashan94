@@ -104,7 +104,7 @@ const Cart = () => {
             </div>
             <h2 className="text-lg font-semibold mb-2">Your cart is empty</h2>
             <p className="text-muted-foreground mb-6">Browse our shop and add items to your cart</p>
-            <Button onClick={() => navigate("/shop")} className="rounded-2xl">
+            <Button onClick={() => navigate("/buyer/shop")} className="rounded-2xl">
               Browse Shop
             </Button>
           </div>

@@ -8,6 +8,7 @@ import { useWishlist } from "@/hooks/useWishlist";
 import { useCart } from "@/contexts/CartContext";
 import { useLocation } from "@/contexts/LocationContext";
 import { supabase } from "@/integrations/supabase/client";
+import { generateProducts, PET_CATEGORIES } from "@/lib/shopData";
 import HeaderProfileDropdown from "@/components/HeaderProfileDropdown";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
@@ -47,21 +48,30 @@ const FALLBACK_SLIDES = [
 ];
 
 const PET_OPTIONS = [
-  { id: "dog", name: "Dogs", image: "https://images.unsplash.com/photo-1552053831-71594a27632d?w=200" },
-  { id: "cat", name: "Cats", image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=200" },
-  { id: "birds", name: "Birds", image: "https://images.unsplash.com/photo-1452570053594-1b985d6ea890?w=200" },
-  { id: "fish", name: "Fish", image: "https://images.unsplash.com/photo-1524704654690-b56c05c78a00?w=200" },
-  { id: "rabbit", name: "Rabbits", image: "https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?w=200" },
-  { id: "hamster", name: "Hamsters", image: "https://images.unsplash.com/photo-1425082661705-1834bfd09dca?w=200" },
-  { id: "guinea-pig", name: "Guinea Pig", image: "https://images.unsplash.com/photo-1548767797-d8c844163c4c?w=200" },
-  { id: "turtle", name: "Turtle", image: "https://images.unsplash.com/photo-1437622368342-7a3d73a34c8f?w=200" },
-  { id: "white-mouse", name: "Mouse", image: "https://images.unsplash.com/photo-1548802673-380ab8ebc7b7?w=200" },
+  { id: "dog", name: "Dogs", image: "https://images.unsplash.com/photo-1552053831-71594a27632d?w=200", color: "#FEE2E2" },
+  { id: "cat", name: "Cats", image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=200", color: "#E0F2FE" },
+  { id: "birds", name: "Birds", image: "https://images.unsplash.com/photo-1452570053594-1b985d6ea890?w=200", color: "#FEF3C7" },
+  { id: "fish", name: "Fish", image: "https://images.unsplash.com/photo-1524704654690-b56c05c78a00?w=200", color: "#DCFCE7" },
+  { id: "rabbit", name: "Rabbits", image: "https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?w=200", color: "#F3E8FF" },
+  { id: "hamster", name: "Hamsters", image: "https://images.unsplash.com/photo-1425082661705-1834bfd09dca?w=200", color: "#FFEDD5" },
+  { id: "guinea-pig", name: "Guinea Pig", image: "https://images.unsplash.com/photo-1548767797-d8c844163c4c?w=200", color: "#F1F5F9" },
+  { id: "turtle", name: "Turtle", image: "https://images.unsplash.com/photo-1437622368342-7a3d73a34c8f?w=200", color: "#ECFDF5" },
+  { id: "white-mouse", name: "Mouse", image: "https://images.unsplash.com/photo-1548802673-380ab8ebc7b7?w=200", color: "#F8FAFC" },
 ];
 
+interface BannerSlide {
+  gradient: string;
+  title: string;
+  subtitle: string;
+  cta: string;
+  image: string;
+}
+
 // Promo Carousel Component
-const PromoCarousel = () => {
+const PromoCarousel = ({ onLoaded }: { onLoaded?: () => void }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [slides, setSlides] = useState<any[]>([]);
+  const [slides, setSlides] = useState<BannerSlide[]>([]);
+  const [loading, setLoading] = useState(true);
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { loop: true },
     [Autoplay({ delay: 4000, stopOnInteraction: false })]
@@ -69,23 +79,32 @@ const PromoCarousel = () => {
 
   useEffect(() => {
     const fetchBanners = async () => {
-      const { data } = await supabase
-        .from("banners")
-        .select("*")
-        .eq("location", "shop_home")
-        .eq("is_active", true)
-        .order("position");
-      if (data && data.length > 0) {
-        setSlides(data.map((b: any) => ({
-          gradient: b.gradient, title: b.title, subtitle: b.subtitle,
-          cta: b.cta_text, image: b.image_url,
-        })));
-      } else {
-        setSlides(FALLBACK_SLIDES);
+      setLoading(true);
+      try {
+        const { data } = await supabase
+          .from("banners")
+          .select("*")
+          .eq("location", "shop_home")
+          .eq("is_active", true)
+          .order("position");
+        if (data && data.length > 0) {
+          setSlides(data.map((b) => ({
+            gradient: b.gradient || FALLBACK_SLIDES[0].gradient, 
+            title: b.title, 
+            subtitle: b.subtitle,
+            cta: b.cta_text || "Shop Now", 
+            image: b.image_url,
+          })));
+        } else {
+          setSlides(FALLBACK_SLIDES);
+        }
+      } finally {
+        setLoading(false);
+        if (onLoaded) onLoaded();
       }
     };
     fetchBanners();
-  }, []);
+  }, [onLoaded]);
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
@@ -97,6 +116,12 @@ const PromoCarousel = () => {
     emblaApi.on("select", onSelect);
     onSelect();
   }, [emblaApi, onSelect]);
+
+  if (loading) {
+    return (
+      <div className="w-full h-32 rounded-2xl bg-muted animate-pulse" />
+    );
+  }
 
   if (slides.length === 0) return null;
 
@@ -163,6 +188,17 @@ const ShopHomeScreen = ({ onSelectPet, onAddToCart, onSearch }: ShopHomeScreenPr
   const [searchQuery, setSearchQuery] = useState("");
   const [bestSellers, setBestSellers] = useState<ShopProduct[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [bannersLoaded, setBannersLoaded] = useState(false);
+  const [showContent, setShowContent] = useState(false);
+
+  // Unified loading check
+  useEffect(() => {
+    if (!loadingProducts && bannersLoaded) {
+      // Small delay for smooth reveal
+      const timer = setTimeout(() => setShowContent(true), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [loadingProducts, bannersLoaded]);
 
   const [sortOption, setSortOption] = useState("popularity");
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -181,15 +217,58 @@ const ShopHomeScreen = ({ onSelectPet, onAddToCart, onSearch }: ShopHomeScreenPr
     if (!authReady) return;
     const fetchProducts = async () => {
       setLoadingProducts(true);
-      const { data } = await supabase
-        .from("shop_products")
-        .select("id, name, price, original_price, discount, images, pet_type, category")
-        .eq("is_active", true)
-        .eq("verification_status", "verified")
-        .order("total_sold", { ascending: false })
-        .limit(8);
-      setBestSellers(data || []);
-      setLoadingProducts(false);
+      try {
+        const { data } = await supabase
+          .from("shop_products")
+          .select("id, name, price, original_price, discount, images, pet_type, category")
+          .eq("is_active", true)
+          .eq("verification_status", "verified")
+          .order("total_sold", { ascending: false })
+          .limit(8);
+          
+        let fetchedProducts = data || [];
+        
+        if (fetchedProducts.length === 0) {
+          // Generate 8 best sellers across various pet types
+          const petTypes = ["dog", "cat", "birds", "fish"];
+          const demo: ShopProduct[] = [];
+          petTypes.forEach(pt => {
+            const products = generateProducts(pt, "food").slice(0, 2);
+            products.forEach(p => demo.push({
+              id: p.id,
+              name: p.name,
+              price: p.price,
+              original_price: p.originalPrice,
+              discount: p.discount,
+              images: [p.image],
+              pet_type: p.petType,
+              category: p.category
+            }));
+          });
+          fetchedProducts = demo;
+        }
+        setBestSellers(fetchedProducts);
+      } catch (error) {
+        console.error("Error fetching shop home products:", error);
+        // Fallback demo
+        const demo: ShopProduct[] = [];
+        ["dog", "cat"].forEach(pt => {
+          const products = generateProducts(pt, "food").slice(0, 4);
+          products.forEach(p => demo.push({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            original_price: p.originalPrice,
+            discount: p.discount,
+            images: [p.image],
+            pet_type: p.petType,
+            category: p.category
+          }));
+        });
+        setBestSellers(demo);
+      } finally {
+        setLoadingProducts(false);
+      }
     };
     fetchProducts();
   }, [authReady]);
@@ -267,24 +346,41 @@ const ShopHomeScreen = ({ onSelectPet, onAddToCart, onSearch }: ShopHomeScreenPr
       </div>
 
       {/* Promo Carousel */}
-      <div className="px-4 pb-4"><PromoCarousel /></div>
-
-      {/* Who are you shopping for? */}
       <div className="px-4 pb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold text-foreground">Who are you shopping for?</h2>
-          <span className="text-sm font-medium" style={{ color: '#7c3aed' }}>View All</span>
+        <PromoCarousel onLoaded={() => setBannersLoaded(true)} />
+      </div>
+
+      <div className={`transition-all duration-500 ${showContent ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+        {/* Who are you shopping for? */}
+        <div className="px-4 pb-4 mt-2">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-[19px] font-extrabold text-[#151B32] tracking-tight">Who are you shopping for?</h2>
+          <button className="text-xs font-bold text-primary flex items-center gap-1 bg-primary/10 px-3 py-1.5 rounded-full uppercase tracking-wider">
+            View All
+          </button>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
           {PET_OPTIONS.map((pet) => (
-            <button key={pet.id} onClick={() => onSelectPet(pet.id)} className="flex flex-col items-center gap-1.5 flex-shrink-0">
-              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-border bg-muted">
-                <img src={pet.image} alt={pet.name} className="w-full h-full object-cover" />
+            <button key={pet.id} 
+              onClick={() => onSelectPet(pet.id)} 
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+              className="flex flex-col items-center gap-2.5 flex-shrink-0 group">
+              <div 
+                className="w-[72px] h-[72px] rounded-full overflow-hidden p-0.5 border-2 border-transparent group-hover:border-primary/30 transition-all shadow-sm"
+                style={{ backgroundColor: pet.color }}
+              >
+                <div className="w-full h-full rounded-full overflow-hidden border-2 border-white bg-white/20">
+                  <img src={pet.image} alt={pet.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                </div>
               </div>
-              <span className="text-xs text-foreground font-medium">{pet.name}</span>
+              <span className="text-[13px] text-[#151B32] font-semibold tracking-tight">{pet.name}</span>
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="px-4 mb-4">
+        <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent opacity-50" />
       </div>
 
       {/* Best Sellers - Real products only */}
@@ -329,7 +425,7 @@ const ShopHomeScreen = ({ onSelectPet, onAddToCart, onSearch }: ShopHomeScreenPr
             {sortedBestSellers.map((product) => {
               const imgUrl = product.images?.[0] || "";
               return (
-                <div key={product.id} className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border cursor-pointer" onClick={() => navigate(`/product/${product.id}`)}>
+                <div key={product.id} className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border cursor-pointer" onClick={() => navigate(`/buyer/shop/product/${product.id}`)}>
                   <div className="relative aspect-square bg-muted" style={{ backgroundColor: '#fce7f3' }}>
                     {imgUrl ? (
                       <img src={imgUrl} alt={product.name} className="w-full h-full object-cover" />
@@ -366,6 +462,8 @@ const ShopHomeScreen = ({ onSelectPet, onAddToCart, onSearch }: ShopHomeScreenPr
           </div>
         )}
       </div>
+
+      </div> {/* Close showContent transition div */}
 
       {/* Location Selector Modal */}
       <Dialog open={locationModalOpen} onOpenChange={setLocationModalOpen}>

@@ -1,12 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, HelpCircle, Check, Video, FileText, MessageSquare, Shield, ArrowRight, X } from "lucide-react";
-import vetConsultationDoctor from "@/assets/vet-consultation-doctor.png";
+import vetConsultationDoctor from "@/assets/vet-consultation-doctor-BVkapvT0.png";
 
 const ConsultationPlan = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className="h-screen bg-background flex flex-col overflow-hidden max-w-2xl mx-auto border-x border-border/5">
       {/* Header - Fixed */}
       <header className="flex-shrink-0 flex items-center justify-between px-4 pt-6 pb-2">
         <button 
@@ -35,7 +35,8 @@ const ConsultationPlan = () => {
             <img 
               src={vetConsultationDoctor}
               alt="Vet with pet"
-              className="w-full h-72 object-cover object-top"
+              className="w-full h-[400px] object-cover transition-all duration-300"
+              style={{ objectPosition: 'center -49px' }}
             />
             {/* Overlay Badge */}
             <div className="absolute bottom-6 left-6 right-6">
@@ -56,9 +57,9 @@ const ConsultationPlan = () => {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-foreground">Quick Connect</h2>
           <div className="flex items-center justify-center gap-3 mt-2">
-            <span className="text-3xl font-bold text-pink-600">₹499</span>
-            <span className="text-lg text-muted-foreground line-through">₹799</span>
-            <span className="bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full">SAVINGS 35%</span>
+            <span className="text-3xl font-bold text-pink-600">₹249</span>
+            <span className="text-lg text-muted-foreground line-through">₹499</span>
+            <span className="bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full">SAVINGS 50%</span>
           </div>
         </div>
 

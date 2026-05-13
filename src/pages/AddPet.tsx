@@ -112,7 +112,7 @@ const AddPet = () => {
       .select("role, is_onboarding_complete")
       .eq("id", session.user.id)
       .single();
-    if (profile?.role !== "seller") { navigate("/buyer-dashboard"); return; }
+    if (profile?.role !== "seller") { navigate("/buyer/home"); return; }
     if (!profile?.is_onboarding_complete) { navigate("/seller-onboarding"); return; }
   };
 

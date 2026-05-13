@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshProfile = async () => {
     if (!user) return;
-    const meta = user.user_metadata as any;
+    const meta = user.user_metadata as Record<string, any>;
     await fetchProfile(user.id, user.email || "", meta?.name || meta?.full_name || "");
   };
 
@@ -79,14 +79,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Listen for auth state changes - this is the PRIMARY mechanism
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
+      async (_event, currentSession) => {
         if (!mounted) return;
 
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
         if (currentSession?.user) {
-          const meta = currentSession.user.user_metadata as any;
+          const meta = currentSession.user.user_metadata as Record<string, any>;
           const metaName = meta?.name || meta?.full_name || "";
 
           // Set immediate profile from metadata to avoid "U" flash
@@ -120,7 +120,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
         if (initialSession?.user) {
-          const meta = initialSession.user.user_metadata as any;
+          const meta = initialSession.user.user_metadata as Record<string, any>;
           const metaName = meta?.name || meta?.full_name || "";
           setProfile({
             name: metaName || "User",

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import BottomNavigation from "@/components/BottomNavigation";
 import ShopHomeScreen from "@/components/shop/ShopHomeScreen";
 import PetShopScreen from "@/components/shop/PetShopScreen";
@@ -15,28 +15,36 @@ import shopHamstersImg from "@/assets/shop-hamsters.png";
 import shopGuineapigsImg from "@/assets/shop-guineapigs.png";
 import shopTurtleImg from "@/assets/shop-turtle.png";
 
-type ShopScreen = "home" | "pet-shop" | "product-listing";
-
 const PET_SHOP_BANNERS: Record<string, string> = {
-  dog: shopDogsImg,
-  cat: shopCatsImg,
-  birds: shopBirdsImg,
-  fish: shopFishImg,
-  rabbit: shopRabbitsImg,
-  "white-mouse": shopMouseImg,
-  hamster: shopHamstersImg,
-  "guinea-pig": shopGuineapigsImg,
-  turtle: shopTurtleImg,
+  dog: "/Dogs.png",
+  cat: "/Cats.png",
+  birds: "/Birds.png",
+  fish: "/Fish.png",
+  rabbit: "/Rabbits.png",
+  "white-mouse": "/Mouse.png",
+  hamster: "/Hamsters.png",
+  "guinea-pig": "/Guineapigs.png",
+  turtle: "/Turtle.png",
 };
 
 const Shop = () => {
   const navigate = useNavigate();
-  const [currentScreen, setCurrentScreen] = useState<ShopScreen>("home");
-  const [selectedPet, setSelectedPet] = useState<string>("");
+  const { petShopType } = useParams();
+  const location = useLocation();
   const [selectedBreed, setSelectedBreed] = useState<string>("");
   const [initialSearchQuery, setInitialSearchQuery] = useState<string>("");
   const [initialCategory, setInitialCategory] = useState<string>("");
   const { addToCart: handleAddToCart } = useCart();
+
+  // Determine current screen based on URL
+  const isCatalog = location.pathname.endsWith("/catalog");
+  const urlPetType = petShopType ? petShopType.replace("shop", "") : "";
+  const petType = urlPetType === "mouse" ? "white-mouse" : urlPetType;
+  
+  let currentScreen: "home" | "pet-shop" | "product-listing" = "home";
+  if (petShopType) {
+    currentScreen = isCatalog ? "product-listing" : "pet-shop";
+  }
 
   useEffect(() => {
     Object.values(PET_SHOP_BANNERS).forEach((src) => {
@@ -54,41 +62,43 @@ const Shop = () => {
       image.decoding = "sync";
     }
 
-    setSelectedPet(petId);
-    setCurrentScreen("pet-shop");
+    const urlPetId = petId === "white-mouse" ? "mouse" : petId;
+    navigate(`/buyer/shop/${urlPetId}shop`);
   };
 
   const handleBackFromPetShop = () => {
-    setCurrentScreen("home");
-    setSelectedPet("");
+    navigate("/buyer/shop");
   };
 
   const handleViewAllProducts = (breed?: string) => {
     setSelectedBreed(breed || "");
     setInitialSearchQuery("");
     setInitialCategory("");
-    setCurrentScreen("product-listing");
+    navigate(`/buyer/shop/${petShopType}/catalog`);
   };
 
   const handleViewAllProductsWithCategory = (category: string) => {
     setSelectedBreed("");
     setInitialSearchQuery("");
     setInitialCategory(category);
-    setCurrentScreen("product-listing");
+    navigate(`/buyer/shop/${petShopType}/catalog`);
   };
 
-  const handleSearchFromShop = (query: string, petType?: string) => {
-    if (petType) setSelectedPet(petType);
-    setSelectedBreed("");
+  const handleSearchFromShop = (query: string, petTypeParam?: string) => {
+    // If we're on home, we might need to navigate to a specific pet's catalog
+    const targetPetType = petTypeParam || petType || "dog";
+    const urlPetId = targetPetType === "white-mouse" ? "mouse" : targetPetType;
     setInitialSearchQuery(query);
-    setCurrentScreen("product-listing");
+    setSelectedBreed("");
+    setInitialCategory("");
+    navigate(`/buyer/shop/${urlPetId}shop/catalog`);
   };
 
   const handleBackFromProducts = () => {
     setSelectedBreed("");
     setInitialSearchQuery("");
     setInitialCategory("");
-    setCurrentScreen("pet-shop");
+    navigate(`/buyer/shop/${petShopType}`);
   };
 
   return (
@@ -103,18 +113,18 @@ const Shop = () => {
 
       {currentScreen === "pet-shop" && (
         <PetShopScreen
-          petType={selectedPet}
+          petType={petType}
           onBack={handleBackFromPetShop}
           onViewAllProducts={handleViewAllProducts}
           onViewAllProductsWithCategory={handleViewAllProductsWithCategory}
           onAddToCart={handleAddToCart}
-          onSearch={(query) => handleSearchFromShop(query, selectedPet)}
+          onSearch={(query) => handleSearchFromShop(query, petType)}
         />
       )}
 
       {currentScreen === "product-listing" && (
         <ProductListingScreen
-          petType={selectedPet}
+          petType={petType}
           initialBreed={selectedBreed}
           initialSearch={initialSearchQuery}
           initialCategory={initialCategory}

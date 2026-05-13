@@ -12,7 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { toast } from "sonner";
 import { useWishlist } from "@/hooks/useWishlist";
 import { supabase } from "@/integrations/supabase/client";
-import { PET_CATEGORIES, PET_NAMES, SORT_OPTIONS, QUICK_FILTERS } from "@/lib/shopData";
+import { PET_CATEGORIES, PET_NAMES, SORT_OPTIONS, QUICK_FILTERS, generateProducts } from "@/lib/shopData";
 
 interface ProductListingScreenProps {
   petType: string;
@@ -56,20 +56,69 @@ const ProductListingScreen = ({ petType, initialBreed, initialSearch, initialCat
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
-      let query = supabase
-        .from("shop_products")
-        .select("id, name, price, original_price, discount, brand, category, pet_type, images")
-        .eq("is_active", true)
-        .eq("verification_status", "verified")
-        .eq("pet_type", petType);
+      try {
+        let query = supabase
+          .from("shop_products")
+          .select("id, name, price, original_price, discount, brand, category, pet_type, images")
+          .eq("is_active", true)
+          .eq("verification_status", "verified")
+          .eq("pet_type", petType);
 
-      if (selectedCategory) {
-        query = query.eq("category", selectedCategory);
+        if (selectedCategory) {
+          query = query.eq("category", selectedCategory);
+        }
+
+        const { data } = await query.order("created_at", { ascending: false }).limit(50);
+        
+        let fetchedProducts = data || [];
+        
+        // Add demo products if fewer than 6 products are found
+        if (fetchedProducts.length < 6 && selectedCategory) {
+          const demoProducts = generateProducts(petType, selectedCategory);
+          // Convert demo product format to database format if needed
+          const formattedDemo = demoProducts.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            original_price: p.originalPrice,
+            discount: p.discount,
+            brand: p.brand,
+            category: p.category,
+            pet_type: p.petType,
+            images: [p.image]
+          }));
+          
+          // Merge avoiding duplicates by id
+          const existingIds = new Set(fetchedProducts.map(p => p.id));
+          const combined = [...fetchedProducts];
+          for (const dp of formattedDemo) {
+            if (!existingIds.has(dp.id)) {
+              combined.push(dp);
+            }
+          }
+          fetchedProducts = combined;
+        }
+        
+        setProducts(fetchedProducts);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        if (selectedCategory) {
+          const demoProducts = generateProducts(petType, selectedCategory);
+          setProducts(demoProducts.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            original_price: p.originalPrice,
+            discount: p.discount,
+            brand: p.brand,
+            category: p.category,
+            pet_type: p.petType,
+            images: [p.image]
+          })));
+        }
+      } finally {
+        setLoading(false);
       }
-
-      const { data } = await query.order("created_at", { ascending: false }).limit(50);
-      setProducts(data || []);
-      setLoading(false);
     };
     fetchProducts();
   }, [petType, selectedCategory]);
@@ -195,12 +244,15 @@ const ProductListingScreen = ({ petType, initialBreed, initialSearch, initialCat
       </header>
 
       <div className="flex">
-        <aside className="w-20 min-h-screen bg-card border-r border-border py-2 flex-shrink-0 overflow-y-auto">
+        <aside className="w-[88px] min-h-screen bg-[#FDF7F9] border-r border-pink-100/50 py-3 flex-shrink-0 overflow-y-auto">
           {categories.map(cat => (
             <button key={cat.id} onClick={() => setSelectedCategory(cat.id)}
-              className={`w-full flex flex-col items-center py-3 px-1 transition-colors ${selectedCategory === cat.id ? "bg-primary/10 border-l-2 border-primary" : "hover:bg-muted"}`}>
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${selectedCategory === cat.id ? "bg-primary/20" : "bg-muted"}`}>{cat.icon}</div>
-              <span className="text-[10px] text-center mt-1 text-muted-foreground line-clamp-2 px-1">{cat.name}</span>
+              className={`w-full flex flex-col items-center py-4 px-1 transition-all relative ${selectedCategory === cat.id ? "" : "hover:bg-white/50"}`}>
+              {selectedCategory === cat.id && (
+                <div className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-primary rounded-r-full" />
+              )}
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm transition-all ${selectedCategory === cat.id ? "bg-primary text-white scale-105" : "bg-white text-muted-foreground"}`}>{cat.icon}</div>
+              <span className={`text-[11px] text-center mt-2 font-bold leading-tight px-1 ${selectedCategory === cat.id ? "text-primary" : "text-muted-foreground/80"}`}>{cat.name}</span>
             </button>
           ))}
         </aside>
@@ -227,7 +279,8 @@ const ProductListingScreen = ({ petType, initialBreed, initialSearch, initialCat
                 return (
                   <div key={product.id}
                     className="bg-card rounded-xl overflow-hidden shadow-sm border border-border cursor-pointer flex flex-col"
-                    onClick={() => navigate(`/product/${product.id}`)}>
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                    onClick={() => navigate(`/buyer/shop/product/${product.id}`)}>
                     {/* Fixed aspect ratio image container */}
                     <div className="relative aspect-square bg-muted flex-shrink-0">
                       {imgUrl ? <img src={imgUrl} alt={product.name} className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center text-3xl">🛒</div>}

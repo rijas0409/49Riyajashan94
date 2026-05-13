@@ -1,5 +1,6 @@
 import { LayoutDashboard, Users, Stethoscope, Package, DollarSign, Settings, Radio, PawPrint, Truck, Image, Megaphone, Wallet, ShoppingBag, Bell } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { SRUVO_LOGO_URL } from "@/constants/branding";
 
 interface AdminSidebarProps {
   activeSection: string;
@@ -65,12 +66,8 @@ const AdminSidebar = ({ activeSection, setActiveSection, isMobile, collapsed }: 
       <aside className={`${isMobile ? "relative w-full h-full" : "fixed left-0 top-0 bottom-0"} bg-white border-r border-[hsl(220,20%,92%)] flex flex-col z-50 transition-all duration-300 ease-in-out ${isCollapsed ? "w-[72px]" : "w-[260px]"}`}>
         {/* Logo */}
         <div className={`${isCollapsed ? "px-3" : "px-6"} py-6 flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
-          <div className={`${isCollapsed ? "w-10 h-10" : "w-10 h-10"} bg-[hsl(220,80%,50%)] rounded-xl flex items-center justify-center shrink-0`}>
-            {isCollapsed ? (
-              <span className="text-white font-bold text-[15px]">S</span>
-            ) : (
-              <PawPrint className="w-5 h-5 text-white" />
-            )}
+          <div className={`${isCollapsed ? "w-10 h-10" : "w-10 h-10"} flex items-center justify-center shrink-0`}>
+            <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-full h-full object-contain" />
           </div>
           {!isCollapsed && (
             <div>

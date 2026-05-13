@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Package, ShoppingBag, MessageCircle, Truck, DollarSign, Heart, Eye, Edit, Trash2, Megaphone, Clock, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Database } from "@/integrations/supabase/types";
 import HeaderProfileDropdown from "@/components/HeaderProfileDropdown";
 import PromotionModal from "@/components/PromotionModal";
@@ -38,7 +39,7 @@ const SellerDashboard = () => {
 
     if (authProfile) {
       const role = authProfile.role;
-      if (role === "buyer") { navigate("/buyer-dashboard"); return; }
+      if (role === "buyer") { navigate("/buyer/home"); return; }
       if (role === "admin") { navigate("/admin"); return; }
       if (role === "delivery_partner") { navigate("/delivery"); return; }
       if (role === "product_seller") { navigate("/products-dashboard"); return; }

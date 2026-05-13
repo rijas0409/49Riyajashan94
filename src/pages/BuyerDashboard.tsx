@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { MOCK_PETS, MOCK_BREEDERS } from "@/constants/mockData";
 import { SRUVO_LOGO_URL } from "@/constants/branding";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +9,7 @@ import { Heart, Search, ShoppingCart, MapPin, ShieldCheck, SlidersHorizontal, Pl
 import { toast } from "sonner";
 import BottomNavigation from "@/components/BottomNavigation";
 import HeaderProfileDropdown from "@/components/HeaderProfileDropdown";
+import PetCard from "@/components/PetCard";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useCart } from "@/contexts/CartContext";
 import { InlineBanners } from "@/components/DynamicBannerRenderer";
@@ -252,13 +254,18 @@ const BuyerDashboard = () => {
     }
   };
 
-  const filteredPets = useMemo(() =>
-    selectedCategory ? pets.filter((p) => p.category === selectedCategory) : pets
-  , [pets, selectedCategory]);
+  const filteredPets = useMemo(() => {
+    const base = selectedCategory ? pets.filter((p) => p.category === selectedCategory) : pets;
+    if (base.length === 0 && !loading) {
+      return selectedCategory ? MOCK_PETS.filter(p => p.category === selectedCategory) : MOCK_PETS;
+    }
+    return base;
+  }, [pets, selectedCategory, loading]);
 
   const trendingPets = useMemo(() => {
-    const source = pets.filter((pet) => matchesSelectedCity(pet, selectedCity));
-    const sorted = [...(source.length > 0 ? source : pets)].sort((a, b) => (b.views || 0) - (a.views || 0));
+    const localPets = pets.filter((pet) => matchesSelectedCity(pet, selectedCity));
+    const pool = localPets.length > 0 ? localPets : (pets.length > 0 ? pets : MOCK_PETS);
+    const sorted = [...pool].sort((a, b) => (b.views || 0) - (a.views || 0));
     return sorted.slice(0, 8);
   }, [pets, selectedCity]);
 
@@ -300,8 +307,15 @@ const BuyerDashboard = () => {
 
     const preferred = Array.from(locationMatches.values());
     const fallback = Array.from(allListedBreeders.values());
+    
+    let result = preferred.length > 0 ? preferred : (fallback.length > 0 ? fallback : MOCK_BREEDERS);
+    
+    // Ensure we have enough breeders for a good UI
+    if (result.length < 3 && fallback.length === 0) {
+      result = [...result, ...MOCK_BREEDERS.filter(mb => !result.find(r => r.id === mb.id))];
+    }
 
-    return (preferred.length > 0 ? preferred : fallback).slice(0, 10);
+    return result.slice(0, 10);
   }, [pets, selectedCity]);
 
   const formatAge = (months: number) => {
@@ -317,7 +331,7 @@ const BuyerDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 overflow-x-hidden">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-lg border-b border-border shadow-sm">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -391,177 +405,133 @@ const BuyerDashboard = () => {
         </div>
       </div>
 
-      {/* Trending Near You */}
-      {trendingPets.length > 0 && (
-        <section className="pb-6">
-          <div className="px-4 flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-foreground">Trending Near You</h2>
-            <span className="text-sm font-medium text-primary">View All</span>
-          </div>
-          <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide">
-            {trendingPets.map((pet, idx) => (
-              <div
-                key={pet.id}
-                className="flex-shrink-0 w-44 rounded-2xl overflow-hidden bg-card border border-border shadow-sm cursor-pointer active:scale-[0.97] transition-transform"
-                onClick={() => navigate(`/pet/${pet.id}`)}
-              >
-                <div className="relative aspect-[4/3] bg-muted">
-                  <img src={pet.images?.[0] || "/placeholder.svg"} alt={pet.breed} className="w-full h-full object-cover" />
-                  <span className={`absolute top-2 left-2 text-[10px] font-bold text-white px-2 py-0.5 rounded-full ${
-                    idx % 3 === 0 ? "bg-destructive" : idx % 3 === 1 ? "bg-primary" : "bg-accent text-accent-foreground"
-                  }`}>
-                    {idx % 3 === 0 ? "HOT DEAL" : idx % 3 === 1 ? "TRENDING" : "NEW"}
-                  </span>
-                </div>
-                <div className="p-2.5">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-foreground line-clamp-1">{pet.breed}</h3>
-                    <span className="text-sm font-bold text-primary">₹{(pet.price / 1000).toFixed(0)}k</span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {pet.city} • {formatAge(pet.age_months)}
-                  </p>
-                </div>
+      {/* Featured Pets - Trending Near You */}
+      <section className="px-5 mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-[20px] font-extrabold text-[#151B32] tracking-tight">Trending Near You</h2>
+          <button 
+            onClick={() => navigate("/trending")}
+            className="text-[12px] font-bold text-primary flex items-center gap-1 bg-primary/10 px-3 py-1.5 rounded-full"
+          >
+            SEE ALL <span className="text-[10px] opacity-70">({trendingPets.length})</span>
+          </button>
+        </div>
+        <div className="overflow-x-auto scrollbar-hide pb-6 pt-2 snap-x snap-mandatory">
+          <div className="flex gap-4 px-5">
+            {trendingPets.length > 0 ? trendingPets.map((pet) => (
+              <div key={pet.id} className="min-w-[175px] max-w-[175px] snap-start">
+                <PetCard pet={pet as any} />
               </div>
-            ))}
+            )) : (
+              [1, 2, 3].map(i => (
+                <div key={i} className="min-w-[175px] h-[220px] bg-muted animate-pulse rounded-2xl" />
+              ))
+            )}
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
-      {/* Verified Breeders Nearby - Premium Cards */}
-      {nearbyBreeders.length > 0 && (
-        <section className="pb-6">
-          <div className="px-4 flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-[20px] font-semibold text-foreground" style={{ fontFamily: 'Inter, SF Pro Display, sans-serif' }}>Verified Breeders Nearby</h2>
-              <p className="text-[13px] text-muted-foreground mt-0.5">Connect with {nearbyBreeders.length} top-rated experts in your area</p>
-            </div>
-            <button className="text-[12px] font-medium px-3 py-1.5 rounded-full flex items-center gap-0.5 bg-accent text-primary">
-              SEE MAP <ChevronRight className="w-3 h-3" />
-            </button>
+      {/* Verified Breeders Section - Premium Cards */}
+      <section className="pb-8">
+        <div className="px-5 flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-[20px] font-extrabold text-[#151B32] tracking-tight">Verified Breeder Nearby</h2>
+            <p className="text-[13px] text-muted-foreground mt-0.5">Expert breeders in your location</p>
           </div>
-          <div className="flex gap-4 overflow-x-auto px-4 pt-1 pb-3 scrollbar-hide">
-            {nearbyBreeders.map((breeder) => {
+          <button 
+            onClick={() => navigate("/sellers")}
+            className="text-[12px] font-bold text-primary flex items-center gap-1 bg-primary/10 px-3 py-1.5 rounded-full"
+          >
+            VIEW ALL <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        <div className="overflow-x-auto scrollbar-hide pb-10 pt-2 snap-x snap-mandatory min-h-[250px]">
+          <div className="flex gap-5 px-5">
+            {nearbyBreeders.length > 0 ? nearbyBreeders.map((breeder) => {
               const displayImage = breeder.coverImage || breeder.profile_photo;
               return (
                 <div
                   key={breeder.id}
-                  className="flex-shrink-0 bg-card overflow-hidden active:scale-[0.97] transition-transform"
+                  className="flex-shrink-0 bg-card overflow-hidden active:scale-[0.98] transition-all duration-300 snap-start shadow-sm"
                   style={{
                     width: '260px',
-                    borderRadius: '24px',
-                    boxShadow: '0px 10px 30px rgba(0,0,0,0.08)',
+                    borderRadius: '28px',
+                    border: '1px solid rgba(0,0,0,0.05)'
                   }}
+                  onClick={() => navigate(`/buyer/home/breeder/${breeder.id}`)}
                 >
-                  {/* Top Image */}
-                  <div className="relative" style={{ height: '160px' }}>
+                  {/* Top Banner Image */}
+                  <div className="relative h-40 bg-muted">
                     {displayImage ? (
-                      <img src={displayImage} alt={breeder.name} className="w-full h-full object-cover" style={{ borderRadius: '24px 24px 0 0' }} />
+                      <img src={displayImage} alt={breeder.name} className="w-full h-full object-cover" loading="lazy" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-secondary" style={{ borderRadius: '24px 24px 0 0' }}>
-                        <span className="text-5xl font-bold text-primary/40">{breeder.name?.[0]?.toUpperCase()}</span>
+                      <div className="w-full h-full bg-secondary/50 flex items-center justify-center text-primary/30 text-4xl font-bold">
+                        {breeder.name?.[0]}
                       </div>
                     )}
-                    <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 50%)', borderRadius: '24px 24px 0 0' }} />
-                    <span className="absolute top-3 right-3 flex items-center gap-1 text-white text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: '#166534' }}>
+                    <div className="absolute top-3 right-3 bg-[#10b981] text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
                       <ShieldCheck className="w-3 h-3" /> VERIFIED
-                    </span>
+                    </div>
                   </div>
 
-                  {/* Floating Info Panel */}
-                  <div className="relative -mt-5 mx-3 mb-3 p-4 bg-muted/50" style={{ borderRadius: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
-                    <h3 className="text-[16px] font-semibold text-foreground line-clamp-1">{breeder.name}</h3>
-                    <div className="flex items-center gap-1.5 mt-1.5">
-                      <Star className="w-3.5 h-3.5 fill-[#FBBF24] text-[#FBBF24]" />
-                      <span className="text-[12px] font-semibold text-foreground">{breeder.rating?.toFixed(1) || "4.8"}</span>
-                      <span className="text-[12px] text-muted-foreground">•</span>
-                      <span className="text-[12px] text-muted-foreground">{breeder.petCount}+ Pets Listed</span>
+                  {/* Floating Profile Info */}
+                  <div className="relative -mt-10 mx-3 mb-3 bg-background rounded-[20px] p-4 shadow-xl border border-border/40 hover:shadow-2xl transition-shadow duration-300">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0 pr-2">
+                        <h3 className="text-[15px] font-bold text-[#151B32] truncate">{breeder.name}</h3>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <Star className="w-3.5 h-3.5 fill-[#FBBF24] text-[#FBBF24]" />
+                          <span className="text-[12px] font-bold text-foreground">{breeder.rating?.toFixed(1) || "4.8"}</span>
+                          <span className="text-[12px] text-muted-foreground">•</span>
+                          <span className="text-[12px] text-muted-foreground">{breeder.petCount}+ Pets</span>
+                        </div>
+                      </div>
+                      <div className="w-10 h-10 rounded-full border-2 border-white shadow-sm overflow-hidden bg-muted shrink-0">
+                        <img src={breeder.profile_photo || ""} alt={breeder.name} className="w-full h-full object-cover" loading="lazy" />
+                      </div>
                     </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigate(`/seller/${breeder.id}`); }}
-                      className="mt-3 w-full py-2.5 text-[14px] font-medium text-primary-foreground rounded-xl active:scale-[0.97] transition-all bg-gradient-primary shadow-soft"
-                    >
+                    <button className="mt-3 w-full py-2 bg-primary text-white text-[13px] font-bold rounded-xl shadow-soft hover:opacity-90 transition-opacity">
                       View Profile
                     </button>
                   </div>
                 </div>
               );
-            })}
+            }) : (
+              [1, 2].map(i => (
+                <div key={i} className="flex-shrink-0 w-[260px] h-[300px] bg-muted animate-pulse rounded-[28px]" />
+              ))
+            )}
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       {/* All Pets Grid */}
-      <section className="px-4 pb-8">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold text-foreground">All Pets</h2>
-          <button className="flex items-center gap-1 text-sm text-muted-foreground border border-border rounded-lg px-3 py-1.5">
-            <SlidersHorizontal className="w-3.5 h-3.5" /> Filter
+      <section className="px-5 mb-10">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-[20px] font-extrabold text-[#151B32] tracking-tight">All Pets</h2>
+          <button 
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E5E7EB] text-[12px] font-bold text-[#4B5563] hover:bg-gray-50 transition-colors"
+            onClick={() => toast.info("Filter functionality coming soon!")}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
+            FILTER
           </button>
         </div>
-
         {loading ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="rounded-2xl overflow-hidden bg-card border border-border animate-pulse">
-                <div className="aspect-square bg-muted" />
-                <div className="p-3 space-y-2">
-                  <div className="h-4 bg-muted rounded w-3/4" />
-                  <div className="h-3 bg-muted rounded w-1/2" />
-                </div>
-              </div>
+              <div key={i} className="h-48 rounded-2xl bg-muted animate-pulse" />
             ))}
           </div>
         ) : filteredPets.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">No verified pets found in this category</p>
+            <p className="text-muted-foreground">No pets found</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {filteredPets.map((pet) => {
-              const isFav = isPetInWishlist(pet.id);
-              return (
-                <div
-                  key={pet.id}
-                  className="rounded-2xl overflow-hidden bg-card border border-border shadow-sm cursor-pointer active:scale-[0.97] transition-transform"
-                  onClick={() => navigate(`/pet/${pet.id}`)}
-                >
-                  <div className="relative aspect-square bg-muted">
-                    <img src={pet.images?.[0] || "/placeholder.svg"} alt={pet.breed} className="w-full h-full object-cover" />
-                    {pet.verification_status === "verified" && (
-                      <span className="absolute top-2 left-2 bg-success text-white text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                        <ShieldCheck className="w-2.5 h-2.5" /> VERIFIED
-                      </span>
-                    )}
-                    <button
-                      className={`absolute top-2 right-2 w-7 h-7 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center ${isFav ? "text-destructive" : "text-muted-foreground"}`}
-                      onClick={(e) => { e.stopPropagation(); togglePetWishlist(pet.id); }}
-                    >
-                      <Heart className="w-4 h-4" fill={isFav ? "currentColor" : "none"} />
-                    </button>
-                    <span className="absolute bottom-2 left-2 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded-full backdrop-blur-sm">
-                      {formatAge(pet.age_months)}
-                    </span>
-                  </div>
-                  <div className="p-2.5">
-                    <h3 className="text-sm font-semibold text-foreground line-clamp-1">{pet.breed}</h3>
-                    <div className="flex items-center gap-1 mt-0.5 text-[11px] text-muted-foreground">
-                      <MapPin className="w-3 h-3" />
-                      <span className="line-clamp-1">{pet.city}, {pet.state}</span>
-                    </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-base font-bold text-foreground">₹{pet.price.toLocaleString()}</span>
-                      <button
-                        className="w-7 h-7 rounded-full bg-primary flex items-center justify-center"
-                        onClick={(e) => { e.stopPropagation(); navigate(`/pet/${pet.id}`); }}
-                      >
-                        <Plus className="w-4 h-4 text-primary-foreground" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-2 gap-4">
+            {filteredPets.map((pet) => (
+              <PetCard key={pet.id} pet={pet as any} />
+            ))}
           </div>
         )}
       </section>

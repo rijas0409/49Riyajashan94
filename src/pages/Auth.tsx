@@ -76,7 +76,7 @@ const Auth = () => {
         if (profile?.role === "seller") {
           navigate("/seller-dashboard");
         } else {
-          navigate("/buyer-dashboard");
+          navigate("/buyer/home");
         }
       } else {
         const { data, error } = await supabase.auth.signUp({
@@ -98,7 +98,7 @@ const Auth = () => {
         if (formData.role === "seller") {
           navigate("/seller-onboarding");
         } else {
-          navigate("/buyer-dashboard");
+          navigate("/buyer/home");
         }
       }
     } catch (error: any) {

@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Utensils, Activity, Heart, HeartPulse, Brain, Sparkles, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import rjStar from "@/assets/rj-star.png";
+import { GoogleGenAI, Type } from "@google/genai";
+import rj from "@/assets/rj.png";
 
 interface AIInsightsCardProps {
   breed: string;
@@ -39,10 +40,67 @@ const AIInsightsCard = ({ breed, category, ageMonths, gender = "unknown", petId,
         const { data, error } = await supabase.functions.invoke("pet-ai-insights", {
           body: { breed, category, ageMonths, gender },
         });
+        
         if (error) throw error;
         setInsights(data);
       } catch (e) {
-        console.error("Failed to fetch AI insights:", e);
+        console.warn("Failed to fetch AI insights from Edge Function, trying fallback:", e);
+        
+        try {
+          // Fallback to direct Gemini API call
+          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+          const prompt = `Generate pet care insights for a ${ageMonths} month old ${gender} ${breed} (${category}). 
+          Provide data for two categories: Quick Facts and Deep Dive.
+          Quick Facts should cover nutrition, activity, and lifespan.
+          Deep Dive should cover health, training, and grooming.
+          Keep descriptions concise (max 2 sentences).`;
+
+          const response = await ai.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  quick: {
+                    type: Type.OBJECT,
+                    properties: {
+                      nutrition: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
+                      activity: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
+                      lifespan: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
+                    },
+                    required: ["nutrition", "activity", "lifespan"]
+                  },
+                  deep: {
+                    type: Type.OBJECT,
+                    properties: {
+                      health: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
+                      training: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
+                      grooming: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
+                    },
+                    required: ["health", "training", "grooming"]
+                  }
+                },
+                required: ["quick", "deep"]
+              }
+            }
+          });
+
+          if (response.text) {
+            let jsonString = response.text.trim();
+            // Handle cases where Gemini might wrap JSON in backticks despite responseMimeType
+            if (jsonString.startsWith("```json")) {
+              jsonString = jsonString.replace(/^```json/, "").replace(/```$/, "").trim();
+            } else if (jsonString.startsWith("```")) {
+              jsonString = jsonString.replace(/^```/, "").replace(/```$/, "").trim();
+            }
+            const parsedData = JSON.parse(jsonString);
+            setInsights(parsedData);
+          }
+        } catch (fallbackError) {
+          console.error("Gemini fallback also failed:", fallbackError);
+        }
       } finally {
         setLoading(false);
       }
@@ -121,7 +179,7 @@ const AIInsightsCard = ({ breed, category, ageMonths, gender = "unknown", petId,
         <div className="flex items-center gap-1.5">
           <div className="relative flex-shrink-0 flex items-start">
             <img
-              src={rjStar}
+              src={rj}
               alt=""
               className="w-[49px] h-[49px] object-contain drop-shadow-[0_0_8px_rgba(139,92,246,0.35)]"
               style={{

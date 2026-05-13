@@ -1,8 +1,9 @@
 import { Search, Bell, LayoutGrid, LogOut, Menu, Settings } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { User } from "@supabase/supabase-js";
 
 interface AdminTopBarProps {
-  user: any;
+  user: User | null;
   profilePhoto: string | null;
   onLogout: () => void;
   onMenuToggle?: () => void;

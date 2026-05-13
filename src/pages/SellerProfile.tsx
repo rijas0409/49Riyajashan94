@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { MOCK_PETS, MOCK_BREEDERS } from "@/constants/mockData";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Star, Shield, MapPin, Clock, Share2, MessageCircle, CheckCircle2, ShieldCheck } from "lucide-react";
@@ -51,6 +52,25 @@ const SellerProfile = () => {
   }, [id]);
 
   const fetchSellerData = async () => {
+    // Check for mock breeder
+    const mockBreeder = MOCK_BREEDERS.find(b => b.id === id);
+    if (mockBreeder) {
+      setSeller({
+        id: mockBreeder.id,
+        name: mockBreeder.name,
+        business_name: null,
+        profile_photo: mockBreeder.profile_photo,
+        rating: mockBreeder.rating,
+        is_breeder_verified: mockBreeder.is_breeder_verified,
+        is_admin_approved: true,
+        created_at: new Date().toISOString(),
+        address: null,
+      });
+      setPets(MOCK_PETS.filter(p => p.owner_id === id) as any);
+      setLoading(false);
+      return;
+    }
+
     try {
       // Fetch seller info via RPC (bypasses RLS)
       const { data: sellerData } = await supabase.rpc("get_public_seller_info", { _seller_id: id! });

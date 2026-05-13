@@ -20,7 +20,7 @@ const SellerInfoCard = ({ seller }: SellerInfoCardProps) => {
   return (
     <div className="px-5 py-4">
       <h3 className="font-bold text-[17px] text-[#151B32] mb-3">Breeder Information</h3>
-      <div className="flex items-center justify-between cursor-pointer active:bg-[#F9FAFB] rounded-xl -mx-2 px-2 py-1 transition-colors" onClick={() => navigate(`/seller/${seller.id}`)}>
+      <div className="flex items-center justify-between cursor-pointer active:bg-[#F9FAFB] rounded-xl -mx-2 px-2 py-1 transition-colors" onClick={() => navigate(`/buyer/home/breeder/${seller.id}`)}>
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-full bg-[#C4B5FD] flex items-center justify-center overflow-hidden">
             {seller.profile_photo ? (

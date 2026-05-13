@@ -13,21 +13,26 @@ const PetCard = ({ pet }: PetCardProps) => {
   const navigate = useNavigate();
   const { togglePetWishlist, isPetInWishlist } = useWishlist();
 
-  const isFavorite = isPetInWishlist(pet.id);
+  const isFavorite = pet?.id ? isPetInWishlist(pet.id) : false;
 
   const handleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!pet?.id) return;
     await togglePetWishlist(pet.id);
   };
 
   const handleView = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/pet/${pet.id}`);
+    if (!pet?.id) return;
+    navigate(`/buyer/home/pet/${pet.id}`);
   };
 
   const handleCardClick = () => {
-    navigate(`/pet/${pet.id}`);
+    if (!pet?.id) return;
+    navigate(`/buyer/home/pet/${pet.id}`);
   };
+
+  if (!pet) return null;
 
   return (
     <Card 
@@ -71,11 +76,11 @@ const PetCard = ({ pet }: PetCardProps) => {
       <CardContent className="p-4 space-y-3">
         <div className="space-y-1">
           <div className="flex items-start justify-between">
-            <h3 className="font-semibold text-lg line-clamp-1">{pet.breed}</h3>
-            <span className="text-lg font-bold text-primary">₹{pet.price.toLocaleString()}</span>
+            <h3 className="font-semibold text-lg line-clamp-1">{pet.breed || pet.name || "Pet"}</h3>
+            <span className="text-lg font-bold text-primary">₹{(Number(pet.price) || 0).toLocaleString()}</span>
           </div>
           <p className="text-sm text-muted-foreground capitalize">
-            {pet.gender} • {Math.floor(pet.age_months / 12)}y {pet.age_months % 12}m
+            {pet.gender || "Unknown"} • {Math.floor((pet.age_months || 0) / 12)}y {(pet.age_months || 0) % 12}m
           </p>
         </div>
 

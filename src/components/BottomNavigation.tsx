@@ -3,10 +3,10 @@ import { Home, ShoppingBag, Stethoscope, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { id: "home", icon: Home, label: "Home", path: "/buyer-dashboard" },
-  { id: "shop", icon: ShoppingBag, label: "Shop", path: "/shop" },
+  { id: "home", icon: Home, label: "Home", path: "/buyer/home" },
+  { id: "shop", icon: ShoppingBag, label: "Shop", path: "/buyer/shop" },
   { id: "vet", icon: Stethoscope, label: "Vet", path: "/vet" },
-  { id: "profile", icon: User, label: "Profile", path: "/profile-menu" },
+  { id: "profile", icon: User, label: "Profile", path: "/profile" },
 ];
 
 interface BottomNavigationProps {
@@ -31,7 +31,7 @@ const BottomNavigation = ({ variant = "buyer" }: BottomNavigationProps) => {
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path || 
-            (item.id === "home" && (location.pathname === "/buyer-dashboard" || location.pathname === "/seller-dashboard"));
+            (item.id === "home" && (location.pathname === "/buyer/home" || location.pathname === "/seller-dashboard"));
           
           return (
             <button

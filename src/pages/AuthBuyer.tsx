@@ -41,7 +41,7 @@ const AuthBuyer = () => {
           .single();
 
         if (profile?.role === "buyer") {
-          navigate("/buyer-dashboard");
+          navigate("/buyer/home");
         }
       }
     };
@@ -91,7 +91,7 @@ const AuthBuyer = () => {
         }
 
         toast.success("Welcome back!");
-        navigate("/buyer-dashboard");
+        navigate("/buyer/home");
       } else {
         const redirectUrl = `${window.location.origin}/`;
         
@@ -110,22 +110,11 @@ const AuthBuyer = () => {
         if (error) throw error;
 
         if (data.user) {
-          // Create buyer profile
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .insert({
-              id: data.user.id,
-              name: formData.name,
-              email: formData.email,
-              role: "buyer"
-            });
-
-          if (profileError && !profileError.message.includes("duplicate")) {
-            throw profileError;
-          }
-
           toast.success("Account created successfully!");
-          navigate("/buyer-dashboard");
+          // Small delay to let trigger finish
+          setTimeout(() => {
+            navigate("/buyer/home");
+          }, 1000);
         }
       }
     } catch (error: any) {

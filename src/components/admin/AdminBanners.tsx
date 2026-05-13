@@ -45,12 +45,12 @@ const PLACEMENTS = [
 ];
 
 const ROUTE_SUGGESTIONS = [
-  { route: "/buyer-dashboard", label: "Buyer Home" },
-  { route: "/shop", label: "Shop Page" },
+  { route: "/buyer/home", label: "Buyer Home" },
+  { route: "/buyer/shop", label: "Shop Page" },
   { route: "/cart", label: "Cart Page" },
   { route: "/vet", label: "Vet Page" },
-  { route: "/pet/*", label: "All Pet Details" },
-  { route: "/product/*", label: "All Product Pages" },
+  { route: "/buyer/home/pet/*", label: "All Pet Details" },
+  { route: "/buyer/shop/product/*", label: "All Product Pages" },
   { route: "/profile-menu", label: "Profile Menu" },
   { route: "/wishlist", label: "Wishlist" },
   { route: "/chats", label: "Chats" },
@@ -84,7 +84,7 @@ const CTA_ALIGNMENTS = [
 const emptyBanner = {
   title: "", subtitle: "", image_url: "", gradient: GRADIENT_PRESETS[0],
   cta_text: "Shop Now", cta_link: "", link_url: "", location: "custom",
-  target_route: "/buyer-dashboard", banner_style: "full_width",
+  target_route: "/buyer/home", banner_style: "full_width",
   custom_width: "100%", custom_height: "160px", placement: "top",
   border_radius: "16px", position: 0, is_active: true, cta_alignment: "left",
 };
@@ -369,7 +369,7 @@ const AdminBanners = () => {
                 <div>
                   <label className="text-xs font-medium text-[hsl(220,20%,25%)] mb-1 block">Click Link</label>
                   <input value={form.link_url} onChange={e => setForm(f => ({ ...f, link_url: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-[hsl(220,20%,88%)] text-sm focus:outline-none" placeholder="/shop or URL" />
+                    className="w-full px-3 py-2.5 rounded-xl border border-[hsl(220,20%,88%)] text-sm focus:outline-none" placeholder="/buyer/shop or URL" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-[hsl(220,20%,25%)] mb-1 block">Position</label>

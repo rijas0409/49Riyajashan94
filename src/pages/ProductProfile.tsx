@@ -10,8 +10,9 @@ import {
   Shield, Truck, Loader2, ChevronRight, Plus, Minus, ShoppingCart,
   Play, Pause, Volume2, VolumeX, Maximize
 } from "lucide-react";
-import rjStar from "@/assets/rj-star.png";
-import miniCartImage from "@/assets/mini-cart.png";
+import { GoogleGenAI, Type } from "@google/genai";
+import rj from "@/assets/rj.png";
+import miniCartImage from "@/assets/mini1.png";
 import useBuyerActivityTracker from "@/hooks/useBuyerActivityTracker";
 
 interface Product {
@@ -47,7 +48,12 @@ const ProductProfile = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<"quick" | "deep">("quick");
   const [selectedVariant, setSelectedVariant] = useState(0);
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ highlights: true, description: true });
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ 
+    highlights: true, 
+    description: true,
+    ingredients: true,
+    feeding: true
+  });
   const [similarProducts, setSimilarProducts] = useState<any[]>([]);
   const [aiInsights, setAiInsights] = useState<any>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -85,6 +91,64 @@ const ProductProfile = () => {
   const swiping = useRef(false);
 
   const isWishlisted = isProductInWishlist(id || "");
+
+  // Start of derived product variables (moved up to avoid ReferenceErrors)
+  const images = product ? (product.images || []).filter((url): url is string => typeof url === "string" && url.trim().length > 0) : [];
+  const videos = product ? (product.videos || []).filter((url): url is string => typeof url === "string" && url.trim().length > 0) : [];
+
+  // Ordered media: first image, first video, remaining videos, remaining images.
+  const allMedia: { type: "image" | "video"; url: string }[] = [];
+
+  if (product) {
+    if (images.length === 0) {
+      videos.forEach((videoUrl) => allMedia.push({ type: "video", url: videoUrl }));
+    } else {
+      allMedia.push({ type: "image", url: images[0] });
+
+      if (videos.length > 0) {
+        allMedia.push({ type: "video", url: videos[0] });
+        videos.slice(1).forEach((videoUrl) => allMedia.push({ type: "video", url: videoUrl }));
+      }
+
+      images.slice(1).forEach((imageUrl) => allMedia.push({ type: "image", url: imageUrl }));
+    }
+  }
+
+  const productUnit = product?.unit || "";
+  const rawVariants: any[] = product && Array.isArray(product.variants) ? product.variants.filter((v: any) => v && (v.label || v.packSize)) : [];
+  const hasInventoryVariants = rawVariants.length > 0;
+  const baseLabel = product ? (product.weight ? `${product.weight}${productUnit ? ` ${productUnit}` : ""}` : product.name) : "";
+  const baseVariant = product && hasInventoryVariants ? {
+    label: baseLabel,
+    packSize: "",
+    price: product.price,
+    originalPrice: product.original_price,
+    discount: product.discount && product.discount > 0 ? `${product.discount}% OFF` : null,
+    stock: product.stock,
+  } : null;
+  const variantList: any[] = baseVariant ? [baseVariant, ...rawVariants] : [];
+  const ingredientsList = product?.ingredients || [];
+  const feedingGuide: any[] = product && Array.isArray(product.feeding_guide) ? product.feeding_guide : [];
+
+  const highlightPairs: { label: string; value: string }[] = [];
+  if (product) {
+    (product.highlights || []).forEach(h => {
+      const sep = h.indexOf(":");
+      if (sep > 0) {
+        highlightPairs.push({ label: h.slice(0, sep).trim(), value: h.slice(sep + 1).trim() });
+      } else {
+        highlightPairs.push({ label: "Feature", value: h });
+      }
+    });
+  }
+
+  const cartTotal = cartItems.reduce((s, i) => s + i.price * i.quantity, 0);
+  const deliveryProgress = Math.min(100, (cartTotal / FREE_DELIVERY_THRESHOLD) * 100);
+  const deliveryUnlocked = cartTotal >= FREE_DELIVERY_THRESHOLD;
+
+  const currentMedia = allMedia[currentImageIndex];
+  const isCurrentVideo = currentMedia?.type === 'video';
+  // End of derived product variables
 
   useBuyerActivityTracker({
     entityType: "product",
@@ -169,6 +233,197 @@ const ProductProfile = () => {
 
   const fetchProduct = async () => {
     if (!id) return;
+    
+    // Check for dummy products
+    if (id.includes("-") || id === "pedigree-puppy-dummy" || id === "dummy-pet-product") {
+      if (id === "dummy-pet-product") {
+        setProduct({
+          id: "dummy-pet-product",
+          name: "Sruvo Premium Mix Pet Food - Dummy Product for Testing",
+          brand: "Sruvo",
+          price: 999,
+          original_price: 1500,
+          discount: 33,
+          images: [
+            "https://images.unsplash.com/photo-1591550737017-6300b4643dcd?w=800",
+            "https://images.unsplash.com/photo-1581888227599-779811939961?w=800"
+          ],
+          pet_type: "dog",
+          category: "food",
+          description: "This is a dummy product created for layout evaluation. It features premium ingredients and a scientifically balanced formula for optimal pet health.",
+          highlights: ["100% Dummy Data", "Interactive Layout", "Multi-variant Support"],
+          stock: 99,
+          videos: null,
+          weight: "5 kg",
+          unit: "kg",
+          ingredients: ["Mock Protein", "Sample Vitamins", "Test Minerals"],
+          feeding_guide: [
+            { weight: "5kg", serving: "100g" },
+            { weight: "10kg", serving: "200g" }
+          ],
+          variants: [
+            { label: "1 kg", packSize: "1 kg", price: 299, originalPrice: 400 },
+            { label: "5 kg", packSize: "5 kg", price: 999, originalPrice: 1500 },
+            { label: "10 kg", packSize: "10 kg", price: 1799, originalPrice: 2800 }
+          ],
+          country_of_origin: "India",
+          shipping_free: true,
+          seller_id: "sruvo-official",
+        } as any);
+        setCurrentImageIndex(0);
+        setSelectedVariant(1);
+        setLoading(false);
+        return;
+      }
+      if (id === "pedigree-puppy-dummy") {
+        setProduct({
+          id: "pedigree-puppy-dummy",
+          name: "Pedigree Puppy Dry Dog Food, Chicken & Milk, 3 kg, Contains 37 Essential Nutrients, 100% Complete & Balanced Food for Puppies",
+          brand: "Pedigree",
+          price: 749,
+          original_price: 850,
+          discount: 12,
+          images: ["https://p0.pikist.com/static/81/812/dog-food-pedigree-pet-food-pet-puppy-food-pedigree-puppy-chicken-and-milk-thumbnail.jpg"],
+          pet_type: "dog",
+          category: "food",
+          description: "Pedigree Puppy Dry Dog Food with Chicken and Milk is a complete and balanced food for puppies. It contains 37 essential nutrients to support your puppy's healthy growth and development. The kibbles are small and easy to chew, perfect for small puppy mouths.\n\nKey Benefits:\n• Strong Muscles: With high-quality protein\n• Digestive Health: Balanced fiber for healthy digestion\n• Strong Immune System: With Vitamin E and antioxidants\n• Healthy Skin & Coat: With Omega 6 and Zinc",
+          highlights: ["Flavour: Chicken & Milk", "Pack Size: 3 kg", "Lifestage: Puppy (1-18 months)", "Nutrients: 37 Essential Nutrients"],
+          stock: 100,
+          videos: null,
+          weight: "3 kg",
+          unit: "kg",
+          ingredients: ["Cereal & Cereal By-products", "Chicken & Chicken By-products", "Meat & Meat By-products", "Soybean Meal", "Soya Oil", "Di-calcium Phosphate", "Iodised Salt", "Vitamins & Minerals", "Milk Powder", "Preservatives", "Flavours"],
+          feeding_guide: [
+            { weight: "1-5 kg", serving: "50-140g" },
+            { weight: "5-10 kg", serving: "140-230g" },
+            { weight: "10-25 kg", serving: "230-450g" }
+          ],
+          variants: [
+            { label: "1.2 kg", packSize: "1.2 kg", price: 340, originalPrice: 380, discount: "10% OFF" },
+            { label: "10 kg", packSize: "10 kg", price: 2150, originalPrice: 2450, discount: "12% OFF" },
+            { label: "20 kg", packSize: "20 kg", price: 4100, originalPrice: 4700, discount: "13% OFF" }
+          ],
+          country_of_origin: "India",
+          breed_applicable: ["All Breeds"],
+          shipping_free: true,
+          delivery_scope: "National",
+          dispatch_city: "Delhi",
+          handling_time: "1 day",
+          return_policy: "7 days returnable",
+          warranty: null,
+          storage_instructions: "Store in a cool, dry place",
+          expiry_date: null,
+          seller_id: "pedigree-official",
+          views: 4500,
+          total_sold: 1200,
+        } as any);
+        setCurrentImageIndex(0);
+      setSelectedVariant(0);
+        setLoading(false);
+        
+        // Enhance Pedigree dummy data
+        setProduct({
+          id: "pedigree-puppy-dummy",
+          name: "Pedigree Puppy Dry Dog Food, Chicken & Milk, 3 kg, Contains 37 Essential Nutrients, 100% Complete & Balanced Food for Puppies",
+          brand: "Pedigree",
+          price: 749,
+          original_price: 850,
+          discount: 12,
+          images: [
+            "https://p0.pikist.com/static/81/812/dog-food-pedigree-pet-food-pet-puppy-food-pedigree-puppy-chicken-and-milk-thumbnail.jpg",
+            "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=800",
+            "https://images.unsplash.com/photo-1589924691995-400dc9cec109?w=800"
+          ],
+          pet_type: "dog",
+          category: "food",
+          description: "Pedigree Puppy Dry Dog Food with Chicken and Milk is a complete and balanced food for puppies. It contains 37 essential nutrients to support your puppy's healthy growth and development.\n\nKey Benefits:\n• Strong Muscles: With high-quality protein\n• Digestive Health: Balanced fiber for healthy digestion\n• Strong Immune System: With Vitamin E and antioxidants\n• Healthy Skin & Coat: With Omega 6 and Zinc",
+          highlights: ["Flavour: Chicken & Milk", "Lifestage: Puppy", "Nutrients: 37 Essential"],
+          stock: 100,
+          videos: null,
+          weight: "3 kg",
+          unit: "kg",
+          ingredients: ["Cereal & Cereal By-products", "Chicken & Chicken By-products", "Soybean Meal", "Soya Oil", "Milk Powder", "Vitamins & Minerals"],
+          feeding_guide: [
+            { weight: "1-5 kg", serving: "50-140g" },
+            { weight: "5-10 kg", serving: "140-230g" },
+            { weight: "10-25 kg", serving: "230-450g" }
+          ],
+          variants: [
+            { label: "1.2 kg", packSize: "1.2 kg", price: 340, originalPrice: 380 },
+            { label: "3 kg", packSize: "3 kg", price: 749, originalPrice: 850 },
+            { label: "10 kg", packSize: "10 kg", price: 2150, originalPrice: 2450 },
+            { label: "20 kg", packSize: "20 kg", price: 4100, originalPrice: 4700 }
+          ],
+          country_of_origin: "India",
+          breed_applicable: ["All Breeds"],
+          shipping_free: true,
+          seller_id: "pedigree-official",
+        } as any);
+        
+        setSimilarProducts([
+          { id: "dog-food-1", name: "Royal Canin Puppy Food", price: 850, original_price: 950, discount: 10, images: ["https://images.unsplash.com/photo-1589924691995-400dc9cec109?w=400"], brand: "Royal Canin" },
+          { id: "dog-food-2", name: "Drools Puppy Food", price: 450, original_price: 550, discount: 18, images: ["https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=400"], brand: "Drools" },
+          { id: "dog-food-3", name: "Himalaya Puppy Food", price: 620, original_price: 700, discount: 11, images: ["https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400"], brand: "Himalaya" },
+        ]);
+        return;
+      }
+      const [petType, category] = id.split("-");
+      const { generateProducts } = await import("@/lib/shopData");
+      const dummyProducts = generateProducts(petType, category);
+      const dummy = dummyProducts.find(p => p.id === id);
+      
+      if (dummy) {
+        setProduct({
+          id: dummy.id,
+          name: dummy.name,
+          brand: dummy.brand,
+          price: dummy.price,
+          original_price: dummy.originalPrice,
+          discount: dummy.discount,
+          images: [dummy.image],
+          pet_type: dummy.petType,
+          category: dummy.category,
+          description: "Premium quality product for your pet's needs. Formula balanced for optimal health and vitality.",
+          highlights: ["Veterinary Grade", "Natural Ingredients", "Advanced Formula"],
+          stock: 50,
+          videos: null,
+          weight: null,
+          unit: null,
+          ingredients: ["Natural Extracts", "Vitamins", "Minerals", "Proteins"],
+          feeding_guide: [
+            { weight: "1-10kg", serving: "50-100g" },
+            { weight: "10-20kg", serving: "100-250g" }
+          ],
+          variants: [
+            { label: "Small Pack", packSize: "500g", price: dummy.price, originalPrice: dummy.originalPrice },
+            { label: "Large Pack", packSize: "2kg", price: dummy.price * 3, originalPrice: dummy.originalPrice * 3 }
+          ],
+          country_of_origin: "India",
+          breed_applicable: null,
+          shipping_free: true,
+          delivery_scope: "National",
+          dispatch_city: "Mumbai",
+          handling_time: "2 days",
+          return_policy: "7 days returnable",
+          warranty: null,
+          storage_instructions: "Store in a cool, dry place",
+          expiry_date: null,
+          seller_id: "dummy-seller",
+          views: 124,
+          total_sold: 50,
+        } as any);
+        setCurrentImageIndex(0);
+        setSelectedVariant(0);
+        setLoading(false);
+        setSimilarProducts([
+          { id: "similar-1", name: "Nutra-Pet Food", price: 899, original_price: 1200, discount: 25, images: ["https://images.unsplash.com/photo-1568640347023-a616a30bc3bd?w=400"], brand: "Nutra-Pet", pet_type: dummy.petType },
+          { id: "similar-2", name: "Vita-Bites Treats", price: 299, original_price: 400, discount: 25, images: ["https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=400"], brand: "Vita-Bites", pet_type: dummy.petType },
+          { id: "similar-3", name: "Pro-Health Mix", price: 1499, original_price: 1800, discount: 16, images: ["https://images.unsplash.com/photo-1585559700398-1385b3a8aeb6?w=400"], brand: "Pro-Health", pet_type: dummy.petType },
+        ]);
+        return;
+      }
+    }
+
     try {
       const { data, error } = await supabase.from("shop_products").select("*").eq("id", id).single();
       if (error) throw error;
@@ -227,8 +482,71 @@ const ProductProfile = () => {
           productHighlights: prod.highlights,
         },
       });
-      if (!error) setAiInsights(data);
-    } catch { /* silent */ } finally { setAiLoading(false); }
+      if (!error) {
+        setAiInsights(data);
+      } else {
+        throw error;
+      }
+    } catch (e) { 
+      console.warn("Product insights Edge Function failed, using Gemini fallback", e);
+      try {
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const prompt = `Provide nutrition and wellness insights for a pet product:
+        Name: ${prod.name}
+        Brand: ${prod.brand}
+        Type: ${prod.pet_type}
+        Category: ${prod.category}
+        Ingredients: ${prod.ingredients?.join(", ") || "N/A"}
+        Highlights: ${prod.highlights?.join(", ") || "N/A"}
+        
+        Keep descriptions concise (max 2 sentences).`;
+
+        const response = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                quick: {
+                  type: Type.OBJECT,
+                  properties: {
+                    nutrition: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
+                    activity: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
+                    lifespan: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
+                  },
+                  required: ["nutrition", "activity", "lifespan"]
+                },
+                deep: {
+                  type: Type.OBJECT,
+                  properties: {
+                    health: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
+                    training: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
+                    grooming: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
+                  },
+                  required: ["health", "training", "grooming"]
+                }
+              },
+              required: ["quick", "deep"]
+            }
+          }
+        });
+
+        if (response.text) {
+          let jsonString = response.text.trim();
+          // Handle cases where Gemini might wrap JSON in backticks despite responseMimeType
+          if (jsonString.startsWith("```json")) {
+            jsonString = jsonString.replace(/^```json/, "").replace(/```$/, "").trim();
+          } else if (jsonString.startsWith("```")) {
+            jsonString = jsonString.replace(/^```/, "").replace(/```$/, "").trim();
+          }
+          setAiInsights(JSON.parse(jsonString));
+        }
+      } catch (err) {
+        console.error("Gemini fallback failed for product insights", err);
+      }
+    } finally { setAiLoading(false); }
   };
 
   const toggleSection = (key: string) => setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
@@ -310,34 +628,55 @@ const ProductProfile = () => {
 
   const handleAddToCart = () => {
     if (!product) return;
+    
+    // Get selected variant info
+    const sv = variantList.length > 0 ? variantList[selectedVariant] : null;
+    const price = sv?.price ? Number(sv.price) : product.price;
+    const label = sv?.label || sv?.packSize || "";
+    const name = label ? `${product.name} (${label})` : product.name;
+
+    // Use a unique ID for variants if they exist, otherwise use base product id
+    const itemId = sv?.id || product.id;
+
     // If cart is empty (mini cart not yet visible), wait for mini cart to pop first
     const isFirstAdd = cartCount === 0;
     const flyDelay = isFirstAdd ? MINI_APPEAR_DELAY_MS + MINI_POP_MS + 50 : 0;
-    addToCart({ id: product.id, name: product.name, price: product.price, image: product.images?.[0] || "" });
+    addToCart({ id: itemId, name, price, image: product.images?.[0] || "" });
     triggerFlyToCart(flyDelay);
   };
 
   const handleRemoveFromCart = () => {
     if (!product) return;
-    updateQuantity(product.id, -1);
+    const sv = variantList.length > 0 ? variantList[selectedVariant] : null;
+    const itemId = sv?.id || product.id;
+    updateQuantity(itemId, -1);
   };
 
-  const productInCart = product ? cartItems.find(item => item.id === product.id) : null;
+  const productInCart = product ? cartItems.find(item => {
+    const sv = variantList.length > 0 ? variantList[selectedVariant] : null;
+    const itemId = sv?.id || product.id;
+    return item.id === itemId;
+  }) : null;
   const productQty = productInCart?.quantity || 0;
 
   const handleBuyNow = async () => {
     if (!product) return;
+    const sv = variantList.length > 0 ? variantList[selectedVariant] : null;
+    const price = sv?.price ? Number(sv.price) : product.price;
+    const label = sv?.label || sv?.packSize || "";
+    const name = label ? `${product.name} (${label})` : product.name;
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) { toast.info("Please login to purchase"); navigate("/auth"); return; }
     try {
       const { error } = await supabase.from("product_orders").insert({
         buyer_id: session.user.id,
         product_id: product.id,
-        product_name: product.name,
+        product_name: name,
         product_image: product.images?.[0] || null,
-        product_price: product.price,
+        product_price: price,
         quantity: Math.max(productQty, 1),
-        total_amount: product.price * Math.max(productQty, 1),
+        total_amount: price * Math.max(productQty, 1),
         status: "pending",
       });
       if (error) throw error;
@@ -444,58 +783,6 @@ const ProductProfile = () => {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   if (!product) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Product not found</div>;
-
-  const images = (product.images || []).filter((url): url is string => typeof url === "string" && url.trim().length > 0);
-  const videos = (product.videos || []).filter((url): url is string => typeof url === "string" && url.trim().length > 0);
-
-  // Ordered media: first image, first video, remaining videos, remaining images.
-  const allMedia: { type: "image" | "video"; url: string }[] = [];
-
-  if (images.length === 0) {
-    videos.forEach((videoUrl) => allMedia.push({ type: "video", url: videoUrl }));
-  } else {
-    allMedia.push({ type: "image", url: images[0] });
-
-    if (videos.length > 0) {
-      allMedia.push({ type: "video", url: videos[0] });
-      videos.slice(1).forEach((videoUrl) => allMedia.push({ type: "video", url: videoUrl }));
-    }
-
-    images.slice(1).forEach((imageUrl) => allMedia.push({ type: "image", url: imageUrl }));
-  }
-
-  const productUnit = product.unit || "";
-  const rawVariants: any[] = Array.isArray(product.variants) ? product.variants.filter((v: any) => v && (v.label || v.packSize)) : [];
-  const hasInventoryVariants = rawVariants.length > 0;
-  const baseLabel = product.weight ? `${product.weight}${productUnit ? ` ${productUnit}` : ""}` : product.name;
-  const baseVariant = hasInventoryVariants ? {
-    label: baseLabel,
-    packSize: "",
-    price: product.price,
-    originalPrice: product.original_price,
-    discount: product.discount && product.discount > 0 ? `${product.discount}% OFF` : null,
-    stock: product.stock,
-  } : null;
-  const variantList: any[] = baseVariant ? [baseVariant, ...rawVariants] : [];
-  const ingredientsList = product.ingredients || [];
-  const feedingGuide: any[] = Array.isArray(product.feeding_guide) ? product.feeding_guide : [];
-
-  const highlightPairs: { label: string; value: string }[] = [];
-  (product.highlights || []).forEach(h => {
-    const sep = h.indexOf(":");
-    if (sep > 0) {
-      highlightPairs.push({ label: h.slice(0, sep).trim(), value: h.slice(sep + 1).trim() });
-    } else {
-      highlightPairs.push({ label: "Feature", value: h });
-    }
-  });
-
-  const cartTotal = cartItems.reduce((s, i) => s + i.price * i.quantity, 0);
-  const deliveryProgress = Math.min(100, (cartTotal / FREE_DELIVERY_THRESHOLD) * 100);
-  const deliveryUnlocked = cartTotal >= FREE_DELIVERY_THRESHOLD;
-
-  const currentMedia = allMedia[currentImageIndex];
-  const isCurrentVideo = currentMedia?.type === 'video';
 
   return (
     <div className="min-h-screen bg-white pb-36">
@@ -645,58 +932,54 @@ const ProductProfile = () => {
             </div>
           );
         })()}
-        {product.weight && <p className="text-[14px] text-[#6B7280] mt-1">Quantity: {product.weight}</p>}
+        {(() => {
+          const sv = variantList.length > 0 ? variantList[selectedVariant] : null;
+          const displayWeight = sv?.packSize || sv?.label || product.weight;
+          return <p className="text-[18px] text-[#64748B] font-medium mb-4">Quantity: {displayWeight}</p>;
+        })()}
 
-        {/* ── A) Pack/Variant Cards ── */}
+        {/* ── A) Pack/Variant Selection ── */}
         {variantList.length > 0 && (
-          <div className="flex gap-3 mt-4 overflow-x-auto scrollbar-hide pb-1">
-            {variantList.map((v: any, i: number) => {
-              const isSelected = i === selectedVariant;
-              const rawLabel = v.label || v.value || v.type || "";
-              const packSize = v.packSize || "";
-              const appendUnit = (lbl: string) => {
-                if (!productUnit || lbl.toLowerCase().includes(productUnit.toLowerCase())) return lbl;
-                return `${lbl} ${productUnit}`;
-              };
-              const displayLabel = appendUnit(packSize || rawLabel);
-              const vPrice = v.price ? Number(v.price) : null;
-              const vOriginal = v.originalPrice ? Number(v.originalPrice) : null;
-              const discountPct = (vOriginal && vPrice && vOriginal > vPrice)
-                ? Math.round(((vOriginal - vPrice) / vOriginal) * 100)
-                : 0;
-              const discountText = discountPct > 0 ? `${discountPct}% OFF` : "";
-              const vStock = v.stock ? Number(v.stock) : null;
-              const showLowStock = vStock !== null && vStock > 0 && vStock < 10;
+          <div className="mt-2 mb-8">
+            <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-6 -mx-5 px-5">
+              {variantList.map((v: any, i: number) => {
+                const isSelected = i === selectedVariant;
+                const rawLabel = v.label || v.value || v.type || "";
+                const packSize = v.packSize || "";
+                const displayLabel = packSize || rawLabel;
+                const vPrice = v.price ? Number(v.price) : product.price;
+                const vOriginal = v.originalPrice ? Number(v.originalPrice) : product.original_price;
+                const discountPct = (vOriginal && vPrice && vOriginal > vPrice)
+                  ? Math.round(((vOriginal - vPrice) / vOriginal) * 100)
+                  : 0;
+                const discountText = discountPct > 0 ? `${discountPct}% OFF` : "";
 
-              return (
-                <button key={i} onClick={() => setSelectedVariant(i)}
-                  className="flex-shrink-0 text-left transition-all"
-                  style={{
-                    minWidth: 145,
-                    borderRadius: 12,
-                    border: isSelected ? "2.5px solid #1A6DFF" : "1.5px dashed #C4C4C4",
-                    background: "#FFFFFF",
-                    padding: "14px 16px 12px",
-                    boxShadow: isSelected ? "0 2px 10px rgba(26,109,255,0.10)" : "none",
-                  }}>
-                  <p style={{ fontSize: 15, fontWeight: 700, color: "#374151", marginBottom: 4 }}>{displayLabel}</p>
-                  {discountText && (
-                    <p style={{ fontSize: 13, fontWeight: 700, color: "#16A34A", marginBottom: 6 }}>{discountText}</p>
-                  )}
-                  {vPrice !== null && (
-                    <p style={{ fontSize: 17, fontWeight: 800, color: "#111827", lineHeight: "1.2" }}>
-                      ₹{vPrice}{" "}
-                      {vOriginal && vOriginal > vPrice && (
-                        <span style={{ fontSize: 13, fontWeight: 400, color: "#9CA3AF", textDecoration: "line-through" }}>₹{vOriginal}</span>
+                return (
+                  <button key={i} onClick={() => setSelectedVariant(i)}
+                    className={`flex-shrink-0 min-w-[150px] min-h-[90px] rounded-[16px] p-4 transition-all duration-300 text-left bg-white ${
+                      isSelected 
+                        ? "border-[2.5px] border-solid border-[#2563EB]" 
+                        : "border-[1.5px] border-dashed border-[#CBD5E1]"
+                    }`}
+                  >
+                    <div className="flex flex-col h-full">
+                      <span className="text-[18px] font-bold text-[#334155] mb-0.5">{displayLabel}</span>
+                      {discountText && (
+                        <span className="text-[14px] font-bold text-[#22C55E] mb-2">
+                          {discountText}
+                        </span>
                       )}
-                    </p>
-                  )}
-                  {showLowStock && (
-                    <p style={{ fontSize: 12, fontWeight: 600, color: "#1A6DFF", marginTop: 4 }}>{vStock} left</p>
-                  )}
-                </button>
-              );
-            })}
+                      <div className="mt-auto flex items-baseline gap-1.5">
+                        <span className="text-[20px] font-bold text-[#0F172A]">₹{vPrice}</span>
+                        {vOriginal && vOriginal > vPrice && (
+                          <span className="text-[14px] text-[#94A3B8] line-through font-medium">₹{vOriginal}</span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -712,7 +995,7 @@ const ProductProfile = () => {
         }}>
           <div className="flex items-center justify-between px-5 pt-5 pb-3">
             <div className="flex items-center gap-2">
-              <img src={rjStar} alt="" className="w-[49px] h-[49px] object-contain" style={{ filter: "drop-shadow(0 0 6px rgba(139,92,246,0.3))" }} />
+              <img src={rj} alt="" className="w-[49px] h-[49px] object-contain" style={{ filter: "drop-shadow(0 0 6px rgba(139,92,246,0.3))" }} />
               <div className="flex flex-col leading-snug">
                 <span className="font-semibold text-[18px] text-[#151B32] tracking-tight">Sruvo AI</span>
                 <span className="font-extrabold text-[20px] text-[#151B32] tracking-tight -mt-0.5">Insights</span>
@@ -789,15 +1072,15 @@ const ProductProfile = () => {
       {highlightPairs.length > 0 && (
         <div className="px-5 py-4 border-t border-[#F3F4F6]">
           <button onClick={() => toggleSection("highlights")} className="flex items-center justify-between w-full">
-            <h3 className="text-[16px] font-bold text-[#111827]">Highlights</h3>
+            <h3 className="text-[16px] font-bold text-[#111827]">Product Highlights</h3>
             {expandedSections.highlights ? <ChevronUp className="w-5 h-5 text-[#9CA3AF]" /> : <ChevronDown className="w-5 h-5 text-[#9CA3AF]" />}
           </button>
           {expandedSections.highlights && (
-            <div className="mt-3 space-y-3">
+            <div className="mt-4 space-y-4 bg-[#F9FAFB] p-4 rounded-2xl">
               {highlightPairs.map((pair, i) => (
                 <div key={i} className="flex">
-                  <span className="text-[13px] text-[#9CA3AF] w-28 flex-shrink-0">{pair.label}</span>
-                  <span className="text-[13px] text-[#374151] font-medium">{pair.value}</span>
+                  <span className="text-[13px] text-[#6B7280] w-32 flex-shrink-0 font-medium">{pair.label}</span>
+                  <span className="text-[13px] text-[#111827] font-semibold">{pair.value}</span>
                 </div>
               ))}
             </div>
@@ -805,94 +1088,82 @@ const ProductProfile = () => {
         </div>
       )}
 
-      {/* ── 5) Description ── */}
-      {product.description && (
-        <div className="px-5 py-4 border-t border-[#F3F4F6]">
-          <button onClick={() => toggleSection("description")} className="flex items-center justify-between w-full">
-            <h3 className="text-[16px] font-bold text-[#111827]">Description</h3>
-            {expandedSections.description ? <ChevronUp className="w-5 h-5 text-[#9CA3AF]" /> : <ChevronDown className="w-5 h-5 text-[#9CA3AF]" />}
-          </button>
-          {expandedSections.description && (
-          <div className="mt-3" style={{
-            padding: 16,
-            background: "#FFFFFF",
-            borderRadius: 14,
-            boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-          }}>
-            {product.description.split(/\n/).map((line, li) => {
-              const trimmed = line.trim();
-              if (!trimmed) return <div key={li} style={{ height: 14 }} />;
-              const isHeading = /^[A-Z\s\d&/,.-]{4,}$/.test(trimmed) || /:\s*$/.test(trimmed);
-              const bulletMatch = trimmed.match(/^([•\-\*])\s*(.*)/);
-              if (bulletMatch) {
-                return (
-                  <div key={li} style={{ display: "flex", gap: 8, marginBottom: 6 }}>
-                    <span style={{ color: "#6B7280", fontSize: 14, lineHeight: 1.6 }}>•</span>
-                    <span style={{ fontSize: 14, lineHeight: 1.6, color: "#2C2C2C" }}>{bulletMatch[2]}</span>
-                  </div>
-                );
-              }
-              return (
-                <p key={li} style={{
-                  fontSize: 14,
-                  lineHeight: 1.6,
-                  color: "#2C2C2C",
-                  fontWeight: isHeading ? 600 : 400,
-                  marginBottom: 12,
-                  textAlign: "left",
-                }}>{trimmed}</p>
-              );
-            })}
-          </div>
-          )}
-        </div>
-      )}
-
-      {/* ── 6) Ingredients ── */}
-      {ingredientsList.length > 0 && (
-        <div className="px-5 py-4 border-t border-[#F3F4F6]">
-          <button onClick={() => toggleSection("ingredients")} className="flex items-center justify-between w-full">
-            <h3 className="text-[16px] font-bold text-[#111827]">Ingredients</h3>
-            {expandedSections.ingredients ? <ChevronUp className="w-5 h-5 text-[#9CA3AF]" /> : <ChevronDown className="w-5 h-5 text-[#9CA3AF]" />}
-          </button>
-          {expandedSections.ingredients && (
-            <div className="mt-3 space-y-2.5">
-              {ingredientsList.map((ing, i) => {
-                const icons = ["🍗", "🌾", "🐟", "🥚", "🥕", "🫘"];
-                return (
-                  <div key={i} className="flex items-center gap-2.5">
-                    <span className="text-[14px]">{icons[i % icons.length]}</span>
-                    <span className="text-[13px] text-[#374151]">{ing}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── 7) Feeding Guide ── */}
-      {feedingGuide.length > 0 && (
-        <div className="px-5 py-4 border-t border-[#F3F4F6]">
-          <button onClick={() => toggleSection("feeding")} className="flex items-center justify-between w-full">
-            <h3 className="text-[16px] font-bold text-[#111827]">How to Make (Feeding Guide)</h3>
-            {expandedSections.feeding ? <ChevronUp className="w-5 h-5 text-[#9CA3AF]" /> : <ChevronDown className="w-5 h-5 text-[#9CA3AF]" />}
-          </button>
-          {expandedSections.feeding && (
-            <div className="mt-3">
-              <div className="flex justify-between text-[12px] font-semibold text-[#9CA3AF] mb-2">
-                <span>Puppy Weight</span><span>Daily Serving</span>
+      {/* ── Information Sections (Accordions) ── */}
+      <div className="mt-2 divide-y divide-[#F1F5F9] border-b border-[#F1F5F9]">
+        {/* Description Section */}
+        {product.description && (
+          <div className="px-5 py-4 bg-white">
+            <button onClick={() => toggleSection("description")} className="flex items-center justify-between w-full">
+              <h3 className="text-[17px] font-bold text-[#111827]">Description</h3>
+              <div className={`transition-transform duration-300 ${expandedSections.description ? 'rotate-180' : ''}`}>
+                <ChevronDown className="w-5 h-5 text-[#9CA3AF]" />
               </div>
-              {feedingGuide.map((row: any, i: number) => (
-                <div key={i} className="flex justify-between text-[13px] text-[#374151] py-2.5 border-t border-[#F3F4F6]">
-                  <span>{row.weight}</span><span>{row.serving}</span>
+            </button>
+            {expandedSections.description && (
+              <div className="mt-4 text-[14px] text-[#4B5563] leading-relaxed animate-fade-in">
+                {product.description.split('\n').map((para, i) => (
+                  <p key={i} className="mb-2">{para}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Ingredients Section */}
+        {(ingredientsList.length > 0 || id === "pedigree-puppy-dummy") && (
+          <div className="px-5 py-4 bg-white">
+            <button onClick={() => toggleSection("ingredients")} className="flex items-center justify-between w-full">
+              <h3 className="text-[17px] font-bold text-[#111827]">Ingredients</h3>
+              <div className={`transition-transform duration-300 ${expandedSections.ingredients ? 'rotate-180' : ''}`}>
+                <ChevronDown className="w-5 h-5 text-[#9CA3AF]" />
+              </div>
+            </button>
+            {expandedSections.ingredients && (
+              <div className="mt-4 flex flex-wrap gap-2 animate-fade-in">
+                {(ingredientsList.length > 0 ? ingredientsList : ["Natural Extracts", "Vitamins", "Minerals"]).map((ing, i) => (
+                  <span key={i} className="px-3 py-1.5 bg-[#F5F3FF] rounded-xl text-[12px] font-bold text-[#7C3AED] border border-[#DDD6FE] shadow-sm">
+                    {ing}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Feeding Guide Section */}
+        {(feedingGuide.length > 0 || id === "pedigree-puppy-dummy") && (
+          <div className="px-5 py-4 bg-white">
+            <button onClick={() => toggleSection("feeding")} className="flex items-center justify-between w-full">
+              <h3 className="text-[17px] font-bold text-[#111827]">How to Make (Feeding Guide)</h3>
+              <div className={`transition-transform duration-300 ${expandedSections.feeding ? 'rotate-180' : ''}`}>
+                <ChevronDown className="w-5 h-5 text-[#9CA3AF]" />
+              </div>
+            </button>
+            {expandedSections.feeding && (
+              <div className="mt-5 animate-fade-in">
+                <div className="overflow-hidden border border-[#A855F7]/20 rounded-2xl shadow-sm">
+                  <div className="grid grid-cols-2 bg-[#F5F3FF]">
+                    <div className="p-3 text-[11px] font-bold text-[#7C3AED] uppercase tracking-[0.1em]">Pet Weight</div>
+                    <div className="p-3 text-[11px] font-bold text-[#7C3AED] uppercase tracking-[0.1em] border-l border-[#A855F7]/10">Serving Size</div>
+                  </div>
+                  <div className="divide-y divide-[#F1F5F9]">
+                    {(feedingGuide.length > 0 ? feedingGuide : [{weight: "1-5kg", serving: "50-100g"}]).map((row: any, index: number) => (
+                      <div key={index} className="grid grid-cols-2 bg-white">
+                        <div className="p-4 text-[14px] text-[#4B5563] font-medium">{row.weight}</div>
+                        <div className="p-4 text-[14px] text-[#111827] font-extrabold border-l border-[#F1F5F9]">{row.serving}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="bg-[#FAF5FF] p-3.5 text-[11px] text-[#9333EA] font-semibold italic border-t border-[#A855F7]/10 flex items-center gap-2">
+                    <Shield className="w-3.5 h-3.5" />
+                    <span>Adjust portions based on pet's activity level.</span>
+                  </div>
                 </div>
-              ))}
-              <p className="text-[11px] text-[#9CA3AF] mt-2 italic">*Adjust servings based on activity level and age</p>
-            </div>
-          )}
-        </div>
-      )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* ── 8) Trust Badges ── */}
       <div className="px-5 py-4 border-t border-[#F3F4F6] space-y-4">
@@ -918,47 +1189,56 @@ const ProductProfile = () => {
 
       {/* ── 9) Pet Compatibility ── */}
       <div className="px-5 py-4 border-t border-[#F3F4F6]">
-        <div className="rounded-2xl border border-[#E5E7EB] p-4 flex items-center gap-3">
-          <div className="w-11 h-11 rounded-full bg-[#F5F3FF] flex items-center justify-center text-xl">
-            {product.pet_type === "dog" ? "🐕" : product.pet_type === "cat" ? "🐱" : product.pet_type === "bird" ? "🐦" : product.pet_type === "fish" ? "🐠" : "🐾"}
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center justify-between">
-              <p className="text-[14px] font-bold text-[#111827]">Pet Compatibility</p>
-              <span className="text-[12px] font-bold text-[#9333EA] bg-[#F5F3FF] px-2.5 py-1 rounded-full">99% Match</span>
+        <div className="relative rounded-3xl overflow-hidden p-[1.5px]" style={{ background: "linear-gradient(135deg, #A855F7, #EC4899, #A855F7)" }}>
+          <div className="bg-white rounded-[22px] p-5 flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-[#F5F3FF] flex items-center justify-center text-3xl shadow-inner">
+              {product.pet_type === "dog" ? "🐕" : product.pet_type === "cat" ? "🐱" : product.pet_type === "bird" ? "🐦" : product.pet_type === "fish" ? "🐠" : "🐾"}
             </div>
-            <p className="text-[12px] text-[#9CA3AF] mt-0.5">Perfect for your pet's current growth stage and energy level.</p>
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[16px] font-bold text-[#111827]">Pet Compatibility</p>
+                <div className="bg-[#F5F3FF] px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-[#A855F7]/10">
+                  <span className="w-1.5 h-1.5 bg-[#A855F7] rounded-full animate-pulse" />
+                  <span className="text-[11px] font-bold text-[#9333EA]">99% Match</span>
+                </div>
+              </div>
+              <p className="text-[13px] text-[#6B7280] leading-snug">Optimized for small-medium breeds in their developmental stage.</p>
+            </div>
           </div>
         </div>
       </div>
 
       {/* ── 10) Similar Products ── */}
       {similarProducts.length > 0 && (
-        <div className="px-5 py-4 border-t border-[#F3F4F6]">
-          <h3 className="text-[16px] font-bold text-[#111827] mb-3">Similar Products</h3>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="px-5 py-8 border-t border-[#F3F4F6] bg-[#F8F7FC]">
+          <div className="flex items-center justify-between mb-6 px-1">
+            <h3 className="text-[18px] font-extrabold text-[#111827]">Similar Products</h3>
+            <button className="text-[12px] font-extrabold text-[#A855F7] bg-white px-4 py-1.5 rounded-full border border-[#EDE9FE] shadow-sm">View All</button>
+          </div>
+          <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide -mx-5 px-5">
             {similarProducts.map((sp) => (
-              <div key={sp.id} onClick={() => { navigate(`/product/${sp.id}`); window.scrollTo(0, 0); }}
-                className="flex-shrink-0 w-[160px] rounded-2xl border border-[#E5E7EB] overflow-hidden bg-white cursor-pointer">
-                <div className="relative bg-[#F9FAFB] aspect-square flex items-center justify-center p-3">
+              <div key={sp.id} onClick={() => { navigate(`/buyer/shop/product/${sp.id}`); window.scrollTo(0, 0); }}
+                className="flex-shrink-0 w-[170px] bg-white rounded-3xl overflow-hidden shadow-sm border border-[#F1F5F9] active:scale-95 transition-transform">
+                <div className="relative aspect-square p-5 bg-[#FAF9FF] flex items-center justify-center">
                   {sp.images?.[0] ? <img src={sp.images[0]} className="max-w-full max-h-full object-contain" loading="lazy" /> : <div className="text-3xl">📦</div>}
-                  <button className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/80 flex items-center justify-center shadow-sm"
-                    onClick={(e) => { e.stopPropagation(); addToCart({ id: sp.id, name: sp.name, price: sp.price, image: sp.images?.[0] || "" }); toast.success("Added!"); }}>
-                    <Plus className="w-3.5 h-3.5 text-[#6B7280]" />
+                  <button className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center border border-purple-50 transition-colors hover:bg-purple-50"
+                    onClick={(e) => { e.stopPropagation(); addToCart({ id: sp.id, name: sp.name, price: sp.price, image: sp.images?.[0] || "" }); toast.success("Added to cart!"); }}>
+                    <Plus className="w-5 h-5 text-[#A855F7]" />
                   </button>
+                  {sp.discount > 0 && (
+                    <div className="absolute top-2 left-2 bg-[#EC4899] text-white text-[9px] font-black px-1.5 py-0.5 rounded-lg shadow-sm">
+                      {sp.discount}% OFF
+                    </div>
+                  )}
                 </div>
-                <div className="p-2.5">
-                  {sp.handling_time && <p className="text-[10px] text-[#9CA3AF] mb-0.5">{sp.handling_time}</p>}
-                  <p className="text-[12px] font-medium text-[#111827] line-clamp-2 leading-tight">{sp.name}</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                    <span className="text-[11px] font-semibold text-[#111827]">4.7</span>
-                    <span className="text-[10px] text-[#9CA3AF]">(1.7k)</span>
-                  </div>
-                  {sp.discount > 0 && <p className="text-[10px] font-semibold text-[#9333EA] mt-0.5">{sp.discount}% OFF</p>}
-                  <div className="flex items-baseline gap-1.5 mt-0.5">
-                    <span className="text-[14px] font-bold text-[#111827]">₹{sp.price}</span>
-                    {sp.original_price && sp.original_price > sp.price && <span className="text-[11px] text-[#9CA3AF] line-through">₹{sp.original_price}</span>}
+                <div className="p-3.5 space-y-1">
+                  <p className="text-[10px] font-extrabold text-[#A855F7] uppercase tracking-wide">{sp.brand || "Premium"}</p>
+                  <p className="text-[14px] font-bold text-[#111827] line-clamp-1">{sp.name}</p>
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-50 mt-1">
+                    <span className="text-[15px] font-black text-[#111827]">₹{sp.price}</span>
+                    {sp.original_price && sp.original_price > sp.price && (
+                      <span className="text-[11px] text-[#9CA3AF] line-through">₹{sp.original_price}</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -969,7 +1249,7 @@ const ProductProfile = () => {
 
       {/* ── 11) Brand Strip ── */}
       <div className="px-5 py-4 border-t border-[#F3F4F6] cursor-pointer active:bg-[#F9FAFB] transition-colors"
-        onClick={() => navigate(`/brand/${encodeURIComponent(product.brand)}`)}>
+        onClick={() => navigate(`/buyer/shop/brand/${encodeURIComponent(product.brand)}`)}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-[#F5F3FF] flex items-center justify-center">
             <span className="text-[#9333EA] font-bold text-[14px]">{product.brand?.charAt(0)}</span>
@@ -1008,7 +1288,7 @@ const ProductProfile = () => {
                 alt="Mini cart"
                 className="w-full h-full object-contain select-none pointer-events-none"
                 loading="eager"
-                fetchPriority="high"
+                fetchpriority="high"
                 draggable={false}
               />
             </div>
@@ -1075,12 +1355,12 @@ const ProductProfile = () => {
                   <span className="text-white text-[13px] font-extrabold leading-tight">CART</span>
                   <span className="text-white/90 text-[10px] font-semibold leading-tight">{cartCount} {cartCount === 1 ? "ITEM" : "ITEMS"}</span>
                 </div>
-                {/* Stacked vertical rectangle cards — right to left stack, max 3 */}
-                <div className="relative" ref={cartTargetRef} style={{ width: 50, height: 44 }}>
+                {/* Stacked vertical rectangle cards — right to left stack, max 4 */}
+                <div className="relative" ref={cartTargetRef} style={{ width: 60, height: 44 }}>
                   {(() => {
                     const stackedItems = cartItems
                       .flatMap((item) => Array.from({ length: item.quantity }, () => item))
-                      .slice(-3);
+                      .slice(-4);
                     const total = stackedItems.length;
                     return stackedItems.map((item, idx) => (
                       <div
@@ -1090,17 +1370,18 @@ const ProductProfile = () => {
                           width: 28,
                           height: 38,
                           borderRadius: 6,
-                          right: idx * 7,
+                          right: idx * 6,
                           zIndex: idx + 1,
-                          border: "1.5px solid rgba(255,255,255,0.5)",
-                          boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+                          border: "1.5px solid rgba(255,255,255,0.6)",
+                          boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
                           animation: idx === total - 1 && thumbnailPop ? "thumbnailPop 500ms ease-out" : "none",
+                          background: "white",
                         }}
                       >
                         {item.image ? (
-                          <img src={item.image} alt="" className="w-full h-full object-cover" style={{ borderRadius: 5 }} />
+                          <img src={item.image} alt="" className="w-full h-full object-cover" style={{ borderRadius: 4 }} />
                         ) : (
-                          <ShoppingCart className="w-4 h-4 text-white" />
+                          <ShoppingCart className="w-4 h-4 text-[#A855F7]" />
                         )}
                       </div>
                     ));
@@ -1122,7 +1403,7 @@ const ProductProfile = () => {
                 alt="Mini cart"
                 className="w-full h-full object-contain select-none pointer-events-none"
                 loading="eager"
-                fetchPriority="high"
+                fetchpriority="high"
                 draggable={false}
               />
             </div>

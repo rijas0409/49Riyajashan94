@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { MOCK_PETS } from "@/constants/mockData";
 import { useCart } from "@/contexts/CartContext";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -87,6 +88,15 @@ const PetDetails = () => {
 
   const fetchPet = async () => {
     if (!id) return;
+    
+    // Check for mock data first
+    const mockPet = MOCK_PETS.find(p => p.id === id);
+    if (mockPet) {
+      setPet(mockPet as any);
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from("pets")
@@ -107,7 +117,7 @@ const PetDetails = () => {
       await supabase.from("pets").update({ views: (data.views || 0) + 1 }).eq("id", id);
     } catch {
       toast.error("Failed to load pet details");
-      navigate("/buyer-dashboard");
+      navigate("/buyer/home");
     } finally {
       setLoading(false);
     }
@@ -158,7 +168,7 @@ const PetDetails = () => {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center">
         <p className="text-muted-foreground mb-4">Pet not found</p>
-        <Button onClick={() => navigate("/buyer-dashboard")}>Go Back</Button>
+        <Button onClick={() => navigate("/buyer/home")}>Go Back</Button>
       </div>
     );
   }

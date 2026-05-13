@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Stethoscope, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const vetAvatars = [
   { id: "1", image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop" },
@@ -18,28 +19,58 @@ const steps = [
 const InstantAnalyzing = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const assessmentData = location.state || {};
   const [activeStep, setActiveStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [vetFound, setVetFound] = useState(false);
   const [matchedVet, setMatchedVet] = useState<any>(null);
+  const [isFailed, setIsFailed] = useState(false);
 
   useEffect(() => {
-    // Progress bar animation
+    // Progress bar animation - 94 seconds total (940ms per percent)
     const progressInterval = setInterval(() => {
       setProgress(prev => {
-        if (prev >= 100) return 100;
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          if (!vetFound) setIsFailed(true);
+          return 100;
+        }
+        // Slow down even more near the end if not found
+        if (prev > 80 && !vetFound) return prev + 0.5;
         return prev + 1;
       });
-    }, 80);
+    }, 940);
 
-    // Step progression
+    // Step progression - spread across 94 seconds
+    const stepIntervals = [2000, 15000, 45000, 75000];
     const timers = steps.map((_, i) =>
-      setTimeout(() => setActiveStep(i), i * 2000)
+      setTimeout(() => setActiveStep(i), stepIntervals[i])
     );
 
     // Fetch active vets based on diagnosis data
     const fetchVet = async () => {
+      // Special demo case for jas@sruvo.com
+      if (user?.email === 'jas@sruvo.com') {
+        setTimeout(() => {
+          setVetFound(true);
+          setMatchedVet({
+            id: "demo-vet-jas",
+            userId: "demo-user-id",
+            name: "Dr. Jashan Pabla",
+            specialization: "Senior Veterinary Surgeon",
+            image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
+            rating: 5.0,
+            experience: 12,
+            fee: 499,
+            qualification: "MVSc, Ph.D.",
+            onlineFee: 499,
+            offlineFee: 999,
+          });
+        }, 8000); // Find him in 8 seconds
+        return;
+      }
+
       try {
         const petType = assessmentData.selectedPet || "";
         const symptoms = assessmentData.selectedSymptoms || [];
@@ -56,6 +87,7 @@ const InstantAnalyzing = () => {
 
         if (error) {
           console.error('Error fetching vets:', error);
+          toast.error("Connection failed! Please check your network and try again.");
           return;
         }
 
@@ -112,11 +144,16 @@ const InstantAnalyzing = () => {
                 onlineFee: bestVet.online_fee || 500,
                 offlineFee: bestVet.offline_fee || 800,
               });
-            }, 7000);
+            }, 12000); // Increased find time to be more realistic in the 94s window
+          } else {
+            // No vet found logic is handled by progress reaching 100
           }
+        } else {
+          // No vets in DB at all
         }
       } catch (err) {
         console.error('Error:', err);
+        toast.error("Consultation analysis interrupted by network error.");
       }
     };
 
@@ -141,6 +178,10 @@ const InstantAnalyzing = () => {
       }, 1000);
     }
   }, [vetFound, matchedVet, navigate, assessmentData]);
+
+  if (isFailed) {
+    return <NoVetFoundScreen onBack={() => navigate("/vet")} />;
+  }
 
   return (
     <div className="h-screen bg-background flex flex-col items-center justify-between px-4 py-8">
@@ -265,5 +306,47 @@ const InstantAnalyzing = () => {
     </div>
   );
 };
+
+/* ── Failure Screen ── */
+function NoVetFoundScreen({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="h-screen bg-white flex flex-col items-center justify-center px-8 text-center animate-in fade-in duration-700">
+      <div className="relative mb-8">
+        <div className="absolute inset-0 bg-pink-100 rounded-full blur-[60px] opacity-60 animate-pulse" />
+        <div className="relative w-32 h-32 bg-gradient-to-br from-pink-50 to-white rounded-full flex items-center justify-center border border-pink-100 shadow-inner">
+           <div className="text-5xl animate-bounce">😔</div>
+        </div>
+      </div>
+
+      <h2 className="text-2xl font-black text-[#151B32] mb-3 leading-tight">
+        All vets are currently busy or offline right now.
+      </h2>
+      
+      <p className="text-muted-foreground text-[15px] leading-relaxed mb-10 max-w-[280px] mx-auto">
+        You can still request a consultation and we’ll notify you as soon as a vet becomes available.
+      </p>
+
+      <div className="w-full space-y-3">
+        <button 
+          onClick={onBack}
+          className="w-full py-4 bg-gradient-to-r from-[#FF4D6D] to-[#8B5CF6] text-white rounded-2xl font-bold shadow-lg active:scale-95 transition-all"
+        >
+          Request Notification
+        </button>
+        <button 
+          onClick={onBack}
+          className="w-full py-4 bg-muted/30 text-foreground rounded-2xl font-bold active:scale-95 transition-all"
+        >
+          Back to Home
+        </button>
+      </div>
+
+      {/* Decorative dots */}
+      <div className="absolute top-20 left-10 w-2 h-2 rounded-full bg-pink-200" />
+      <div className="absolute bottom-40 right-12 w-3 h-3 rounded-full bg-purple-200" />
+      <div className="absolute top-1/2 right-4 w-1.5 h-1.5 rounded-full bg-pink-100" />
+    </div>
+  );
+}
 
 export default InstantAnalyzing;

@@ -8,7 +8,7 @@ import {
   MessageCircle, Stethoscope, Syringe, Sparkles, Heart, ShoppingCart,
   ChevronRight, Play, BadgeCheck, X, Check, Video
 } from "lucide-react";
-import vetDoctorBanner from "@/assets/vet-doctor-banner.png";
+import vetDoctorBanner from "@/assets/vet-doctor-banner-BZtq7iJf.png";
 import { cn } from "@/lib/utils";
 import BottomNavigation from "@/components/BottomNavigation";
 import HeaderProfileDropdown from "@/components/HeaderProfileDropdown";
@@ -64,6 +64,18 @@ interface RealVet {
   image: string;
   verified: boolean;
   isActive: boolean;
+  distance?: number;
+  availability?: string;
+}
+
+interface Clinic {
+  id: string;
+  name: string;
+  location: string;
+  doctorsCount: number;
+  distance: number;
+  verified: boolean;
+  doctorImages?: string[];
 }
 
 const Vet = () => {
@@ -75,6 +87,102 @@ const Vet = () => {
   const [searchCity, setSearchCity] = useState("");
   const { totalWishlistCount } = useWishlist();
   const [realVets, setRealVets] = useState<RealVet[]>([]);
+  const [displayVets, setDisplayVets] = useState<RealVet[]>([]);
+
+  const DEMO_CLINICS: Clinic[] = [
+    {
+      id: "clinic-1",
+      name: "Pawprints Clinic",
+      location: "Bandra West, Mumbai",
+      doctorsCount: 3,
+      distance: 3.5,
+      verified: true,
+      doctorImages: [
+        "https://images.unsplash.com/photo-1559839734-2b71f1536783?w=100&h=100&fit=crop",
+        "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop",
+        "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=100&h=100&fit=crop"
+      ]
+    },
+    {
+      id: "clinic-2",
+      name: "Happy Paws Clinic",
+      location: "Juhu, Mumbai",
+      doctorsCount: 1,
+      distance: 6.2,
+      verified: true,
+      doctorImages: [
+        "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=100&h=100&fit=crop"
+      ]
+    },
+    {
+      id: "clinic-3",
+      name: "Pet Health Centre",
+      location: "Andheri East, Mumbai",
+      doctorsCount: 4,
+      distance: 12.0,
+      verified: true,
+      doctorImages: [
+        "https://images.unsplash.com/photo-1550831107-1553da8c8464?w=100&h=100&fit=crop",
+        "https://images.unsplash.com/photo-1527613426441-4da17471b66d?w=100&h=100&fit=crop",
+        "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=100&h=100&fit=crop"
+      ]
+    }
+  ];
+
+  const DEMO_VETS: RealVet[] = [
+    {
+      id: "demo-1",
+      name: "Dr. Ananya Iyer",
+      specialty: "Senior Surgeon",
+      experience: "8 yrs exp.",
+      rating: 4.9,
+      price: 500,
+      image: "https://images.unsplash.com/photo-1559839734-2b71f1536783?q=80&w=400&h=400&auto=format&fit=crop",
+      verified: true,
+      isActive: true,
+      distance: 3.2,
+      availability: "AVAILABLE NOW"
+    },
+    {
+      id: "demo-2",
+      name: "Dr. Rohan Sharma",
+      specialty: "Paws & Claws",
+      experience: "5 yrs exp.",
+      rating: 4.8,
+      price: 450,
+      image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400&h=400&auto=format&fit=crop",
+      verified: true,
+      isActive: true,
+      distance: 5.8,
+      availability: "NEXT: 2 PM"
+    },
+    {
+      id: "demo-3",
+      name: "Dr. SarahMitchell",
+      specialty: "Pet Groomer",
+      experience: "10 yrs exp.",
+      rating: 4.7,
+      price: 800,
+      image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?q=80&w=400&h=400&auto=format&fit=crop",
+      verified: true,
+      isActive: true,
+      distance: 12.5,
+      availability: "AVAILABLE NOW"
+    },
+    {
+      id: "demo-4",
+      name: "Dr. Anil Deshmukh",
+      specialty: "Dermatologist",
+      experience: "15 yrs exp.",
+      rating: 4.9,
+      price: 1200,
+      image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400&h=400&auto=format&fit=crop",
+      verified: true,
+      isActive: true,
+      distance: 15.0,
+      availability: "NEXT: 4 PM"
+    }
+  ];
 
   useEffect(() => {
     if (!authReady) return;
@@ -85,40 +193,55 @@ const Vet = () => {
         .eq("verification_status", "verified")
         .eq("is_active", true);
 
-      if (!vetProfiles || vetProfiles.length === 0) {
-        setRealVets([]);
-        return;
+      let vets: RealVet[] = [];
+
+      if (vetProfiles && vetProfiles.length > 0) {
+        const userIds = vetProfiles.map((v) => v.user_id);
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, name, full_name, profile_photo")
+          .in("id", userIds);
+
+        const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
+
+            vets = vetProfiles.map((vp) => {
+          const profile = profileMap.get(vp.user_id);
+          const name = profile?.full_name || profile?.name || "Doctor";
+          const specs = vp.specializations || [];
+          return {
+            id: vp.id,
+            name: `Dr. ${name}`,
+            specialty: specs[0] || "General Veterinarian",
+            experience: `${vp.years_of_experience || 0} yrs exp.`,
+            rating: vp.average_rating || 0,
+            price: vp.online_fee || 500,
+            image: vp.profile_photo || profile?.profile_photo || "",
+            verified: vp.verification_status === "verified",
+            isActive: vp.is_active ?? true,
+            distance: Math.floor(Math.random() * 20) + 1, // Random distance for real vets
+            availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`
+          };
+        });
       }
 
-      const userIds = vetProfiles.map((v) => v.user_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, name, full_name, profile_photo")
-        .in("id", userIds);
-
-      const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
-
-      const vets: RealVet[] = vetProfiles.map((vp) => {
-        const profile = profileMap.get(vp.user_id);
-        const name = profile?.full_name || profile?.name || "Doctor";
-        const specs = vp.specializations || [];
-        return {
-          id: vp.id,
-          name: `Dr. ${name}`,
-          specialty: specs[0] || "General Veterinarian",
-          experience: `${vp.years_of_experience || 0} yrs exp.`,
-          rating: vp.average_rating || 0,
-          price: vp.online_fee || 500,
-          image: vp.profile_photo || profile?.profile_photo || "",
-          verified: vp.verification_status === "verified",
-          isActive: vp.is_active ?? true,
-        };
-      });
-
       setRealVets(vets);
+      // Combine with demo vets for a full experience
+      setDisplayVets([...vets, ...DEMO_VETS]);
     };
 
     fetchVets();
+
+    // Real-time listener for vet profiles
+    const channel = supabase
+      .channel('vet_profiles_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vet_profiles' }, () => {
+        fetchVets();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [authReady]);
 
   const filteredCities = locationCities.filter(city =>
@@ -323,6 +446,7 @@ const Vet = () => {
               src={vetDoctorBanner}
               alt="Doctor"
               className="w-full h-full object-cover object-top"
+              loading="eager"
             />
           </div>
         </div>
@@ -349,33 +473,41 @@ const Vet = () => {
 
         {/* Expert Specialties */}
         <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-foreground">Expert Specialties</h2>
-            <button className="text-sm font-medium text-pink-500">See All</button>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-[19px] font-extrabold text-[#151B32] tracking-tight">Expert Specialties</h2>
+            <button className="text-[16px] font-medium text-[#D674A3] hover:opacity-80 transition-opacity">
+              See All
+            </button>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            {specialties.slice(0, 3).map((specialty) => (
+          <div className="flex gap-3 overflow-x-auto pb-4 pt-1 -mx-4 px-4 scrollbar-hide snap-x">
+            {specialties.map((specialty) => (
               <button
                 key={specialty.id}
                 className={cn(
-                  "flex flex-col items-center gap-2 p-4 rounded-2xl transition-all",
+                  "flex flex-col items-center justify-center gap-1.5 py-2.5 px-8 min-w-[150px] rounded-[28px] shadow-sm border border-transparent hover:border-black/5 transition-all group snap-center",
                   specialty.bgColor
                 )}
               >
-                <span className="text-2xl">{specialty.icon}</span>
-                <span className="text-xs font-medium text-foreground">{specialty.name}</span>
+                <div className="w-12 h-12 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                  {specialty.icon}
+                </div>
+                <span className="text-[13px] font-bold text-[#151B32]">{specialty.name}</span>
               </button>
             ))}
           </div>
         </section>
 
-        {/* Vets Near You */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-foreground">Vets Near You</h2>
-            {realVets.length > 0 && <button className="text-sm font-medium text-pink-500">See All</button>}
+            <h2 className="text-[19px] font-extrabold text-[#151B32] tracking-tight">Vets Near You</h2>
+            <button 
+              onClick={() => navigate("/vet/near-you")}
+              className="text-[16px] font-medium text-[#D674A3] hover:opacity-80 transition-opacity"
+            >
+              See All
+            </button>
           </div>
-          {realVets.length === 0 ? (
+          {displayVets.length === 0 ? (
             <div className="bg-card rounded-2xl p-6 border border-border text-center">
               <Stethoscope className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">No verified vets available yet</p>
@@ -383,29 +515,43 @@ const Vet = () => {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">
-              {realVets.slice(0, 4).map((vet) => (
-                <div key={vet.id} onClick={() => navigate(`/vet/doctor/${vet.id}`)} className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border cursor-pointer">
-                  <div className="relative h-32 bg-muted">
+              {displayVets
+                .filter(v => (v.distance || 0) <= 10)
+                .slice(0, 2)
+                .map((vet) => (
+                <div 
+                  key={vet.id} 
+                  onClick={() => navigate(`/vet/doctor/${vet.id}`)} 
+                  className="bg-white rounded-[28px] overflow-hidden shadow-sm border border-[#F1F1F1] cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col"
+                >
+                  <div className="relative h-40 bg-muted">
                     {vet.image ? (
-                      <img src={vet.image} alt={vet.name} className="w-full h-full object-cover" />
+                      <img src={vet.image} alt={vet.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <Stethoscope className="w-10 h-10 text-muted-foreground" />
                       </div>
                     )}
                     {vet.rating > 0 && (
-                      <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1">
-                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                        <span className="text-xs font-semibold">{vet.rating}</span>
+                      <div className="absolute top-2.5 left-2.5 bg-white px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                        <Star className="w-2.5 h-2.5 fill-yellow-400 text-yellow-400" />
+                        <span className="text-[11px] font-bold text-[#151B32]">{vet.rating}</span>
                       </div>
                     )}
                   </div>
-                  <div className="p-3">
-                    <h3 className="font-semibold text-sm text-foreground">{vet.name}</h3>
-                    <p className="text-xs text-muted-foreground">{vet.specialty} • {vet.experience}</p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs font-semibold text-green-500">AVAILABLE</span>
-                      <span className="text-sm font-bold text-pink-500">₹{vet.price}</span>
+                  <div className="p-3.5 flex flex-col flex-1">
+                    <h3 className="font-bold text-[15px] text-[#151B32] line-clamp-1">{vet.name}</h3>
+                    <p className="text-[13px] text-muted-foreground mt-0.5 line-clamp-1">
+                      {vet.specialty} • {vet.experience}
+                    </p>
+                    <div className="flex items-center justify-between mt-auto pt-3">
+                      <span className={cn(
+                        "text-[10px] font-black uppercase tracking-wider",
+                        vet.availability?.includes("AVAILABLE") ? "text-[#34D399]" : "text-muted-foreground"
+                      )}>
+                        {vet.availability}
+                      </span>
+                      <span className="text-[16px] font-black text-[#D674A3]">₹{vet.price}</span>
                     </div>
                   </div>
                 </div>
@@ -414,58 +560,136 @@ const Vet = () => {
           )}
         </section>
 
-        {/* All Specialized Doctors */}
-        {realVets.length > 0 && (
-          <section>
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-lg font-bold text-foreground">All Specialized Doctors</h2>
-              <span className="bg-gradient-to-r from-pink-500 to-purple-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">ELITE</span>
+        {/* Verified Clinic Nearby */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-[19px] font-extrabold text-[#151B32] tracking-tight whitespace-nowrap">Verified Clinics Nearby</h2>
+              <span className="bg-[#EEF2FF] text-[#4F46E5] text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">18 found</span>
             </div>
-            {realVets.filter(v => v.rating >= 4).map((doctor) => (
-              <div key={doctor.id} onClick={() => navigate(`/vet/doctor/${doctor.id}`)} className="bg-gradient-to-br from-white to-pink-50 rounded-3xl p-5 shadow-lg border border-pink-100 cursor-pointer mb-4">
+            <button 
+              onClick={() => navigate("/vet/clinics-nearby")}
+              className="text-[16px] font-medium text-[#D674A3] hover:opacity-80 transition-opacity"
+            >
+              See All
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            {DEMO_CLINICS.filter(c => c.distance <= 10).slice(0, 2).map((clinic) => (
+              <div 
+                key={clinic.id} 
+                onClick={() => navigate(`/vet/clinic/${clinic.id}`)}
+                className="bg-white rounded-[28px] p-4 flex items-center gap-4 shadow-sm border border-[#F1F1F1] active:scale-[0.98] transition-all cursor-pointer group"
+              >
+                {/* Clinic Icon Box */}
+                <div className="w-[60px] h-[60px] rounded-[18px] bg-[#FFF0F5] flex items-center justify-center shrink-0">
+                  <Stethoscope className="w-7 h-7 text-[#D674A3]" />
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-bold text-[17px] text-[#151B32] truncate">{clinic.name}</h3>
+                    {clinic.verified && (
+                      <div className="flex items-center gap-1 bg-[#ECFDF5] px-2 py-0.5 rounded-full border border-[#D1FAE5]">
+                        <BadgeCheck className="w-3 h-3 text-[#10B981]" />
+                        <span className="text-[9px] font-black text-[#10B981] uppercase tracking-wider">VERIFIED</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
+                    <MapPin className="w-3 h-3" />
+                    <span className="text-[13px] font-medium truncate">{clinic.location}</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="flex -space-x-2">
+                      {(clinic.doctorImages || []).slice(0, 3).map((img, i) => (
+                        <div key={i} className="w-6 h-6 rounded-full border-2 border-white overflow-hidden bg-muted">
+                          <img src={img} alt="Doctor" className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                      {clinic.doctorsCount > 3 && (
+                        <div className="w-6 h-6 rounded-full bg-[#FFE4E9] border-2 border-white flex items-center justify-center text-[8px] font-bold text-[#D674A3]">
+                          +{clinic.doctorsCount - 3}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[12px] font-bold text-[#A1A1A1]">+{clinic.doctorsCount} Doctors</span>
+                  </div>
+                </div>
+                
+                <ChevronRight className="w-5 h-5 text-[#A1A1A1] group-hover:translate-x-1 transition-transform" />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* All Specialized Vets */}
+        {displayVets.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[19px] font-extrabold text-[#151B32] tracking-tight">All Specialized Vets</h2>
+              <button 
+                onClick={() => navigate("/vet/all-specialists")}
+                className="text-[16px] font-medium text-[#D674A3] hover:opacity-80 transition-opacity"
+              >
+                See All
+              </button>
+            </div>
+            {displayVets.filter(v => v.rating >= 4.5).slice(0, 4).map((doctor) => (
+              <div 
+                key={doctor.id} 
+                onClick={() => navigate(`/vet/doctor/${doctor.id}`)} 
+                className="bg-white rounded-[32px] p-5 shadow-sm border border-[#F1F1F1] cursor-pointer mb-5 hover:shadow-md transition-all active:scale-[0.99] group"
+              >
                 <div className="flex items-start gap-4">
                   <div className="relative">
-                    <div className="w-20 h-20 rounded-2xl overflow-hidden bg-muted">
+                    <div className="w-[100px] h-[100px] rounded-[24px] overflow-hidden bg-muted shadow-inner group-hover:scale-105 transition-transform">
                       {doctor.image ? (
                         <img src={doctor.image} alt={doctor.name} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Stethoscope className="w-8 h-8 text-muted-foreground" />
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                          <Stethoscope className="w-10 h-10" />
                         </div>
                       )}
                     </div>
                     {doctor.verified && (
-                      <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white">
+                      <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#4F86FF] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
                         <BadgeCheck className="w-4 h-4 text-white" />
                       </div>
                     )}
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-foreground">{doctor.name}</h3>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-extrabold text-[#151B32] text-[17px] truncate">{doctor.name}</h3>
                       {doctor.rating > 0 && (
-                        <div className="flex items-center gap-1 bg-green-100 px-2 py-0.5 rounded-full">
-                          <Star className="w-3 h-3 fill-green-500 text-green-500" />
-                          <span className="text-xs font-semibold text-green-600">{doctor.rating}</span>
+                        <div className="flex items-center gap-1 bg-[#ECFDF5] px-2 py-0.5 rounded-full border border-[#D1FAE5]">
+                          <Star className="w-3 h-3 fill-[#10B981] text-[#10B981]" />
+                          <span className="text-[12px] font-bold text-[#10B981]">{doctor.rating}</span>
                         </div>
                       )}
                     </div>
-                    <p className="text-sm text-pink-500 font-medium mt-0.5">{doctor.specialty}</p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs text-muted-foreground">{doctor.experience}</span>
-                      <span className="text-lg font-bold text-pink-500">₹{doctor.price}<span className="text-xs font-normal">/session</span></span>
+                    <p className="text-[14px] text-[#D674A3] font-bold mt-0.5 leading-tight">{doctor.specialty}</p>
+                    <div className="flex items-center justify-between mt-3">
+                       <span className="text-[13px] font-medium text-muted-foreground">{doctor.experience}</span>
+                       <div className="flex items-baseline gap-0.5">
+                          <span className="text-[16px] font-black text-[#D674A3]">₹{doctor.price}</span>
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase">/session</span>
+                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 mt-4">
-                  <button className="flex-1 bg-gradient-to-r from-pink-500 to-pink-400 text-white py-3 rounded-xl font-semibold text-sm shadow-lg hover:shadow-xl transition-shadow">
+                <div className="flex items-center gap-3 mt-5">
+                  <button className="flex-1 bg-gradient-to-r from-[#D674A3] to-[#FF4D6D] text-white py-4 rounded-2xl font-bold text-[14px] shadow-sm hover:opacity-90 transition-all">
                     Book Now
                   </button>
                   <button 
-                    onClick={(e) => { e.stopPropagation(); toast.info("Chat with doctor coming soon"); }}
-                    className="w-12 h-12 bg-white rounded-xl shadow-md flex items-center justify-center border border-pink-100 hover:bg-pink-50 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); toast.info("Chat coming soon"); }}
+                    className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center border border-[#F1F1F1] hover:bg-muted/30 transition-colors"
                   >
-                    <MessageCircle className="w-5 h-5 text-pink-500" />
+                    <MessageCircle className="w-6 h-6 text-[#D674A3]" />
                   </button>
                 </div>
               </div>

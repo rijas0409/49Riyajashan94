@@ -97,7 +97,7 @@ const ProductOrders = () => {
             </div>
             <h2 className="text-lg font-semibold mb-2 text-foreground">No orders yet</h2>
             <p className="text-muted-foreground text-sm mb-6">Your product orders will appear here</p>
-            <Button onClick={() => navigate("/shop")} className="rounded-2xl">
+            <Button onClick={() => navigate("/buyer/shop")} className="rounded-2xl">
               Browse Shop
             </Button>
           </div>
@@ -114,7 +114,7 @@ const ProductOrders = () => {
               <Card
                 key={order.id}
                 className="rounded-2xl border-0 shadow-sm overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
-                onClick={() => navigate(`/product/${order.product_id}`)}
+                onClick={() => navigate(`/buyer/shop/product/${order.product_id}`)}
               >
                 <div className="p-4 flex gap-3">
                   <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-muted">

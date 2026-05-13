@@ -124,6 +124,23 @@ export const generateProducts = (petType: string, category: string) => {
   const brands = ["PetLife", "Royal Canin", "Pedigree", "Whiskas", "Drools", "Farmina", "Orijen", "Acana", "Hills", "Purina"];
   const products = [];
   
+  // Special case: include the user's requested Pedigree product
+  if (category === "food" && (petType === "dog" || petType === "all")) {
+    products.push({
+      id: "pedigree-puppy-dummy",
+      name: "Pedigree Puppy Dry Dog Food, Chicken & Milk, 3 kg, Contains 37 Essential Nutrients, 100% Complete & Balanced Food for Puppies",
+      brand: "Pedigree",
+      price: 749,
+      originalPrice: 850,
+      discount: 12,
+      image: "https://p0.pikist.com/static/81/812/dog-food-pedigree-pet-food-pet-puppy-food-pedigree-puppy-chicken-and-milk-thumbnail.jpg",
+      isSponsored: true,
+      deliveryTime: 24,
+      petType: "dog",
+      category: "food",
+    });
+  }
+
   const categoryNames: Record<string, string[]> = {
     food: ["Premium Food", "Natural Diet", "Organic Mix", "Daily Nutrition", "Complete Meal", "Health Plus"],
     treats: ["Yummy Treats", "Training Bites", "Crunchy Snacks", "Soft Chews", "Reward Sticks"],

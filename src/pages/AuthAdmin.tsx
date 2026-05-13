@@ -109,8 +109,9 @@ const AuthAdmin = () => {
         toast.success("Admin account created! You can now sign in.");
         setIsLogin(true);
       }
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred");
+    } catch (error: unknown) {
+      const err = error as Error;
+      toast.error(err.message || "An error occurred");
     } finally {
       setIsLoading(false);
     }

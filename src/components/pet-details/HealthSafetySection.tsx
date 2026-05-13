@@ -27,6 +27,34 @@ const HealthSafetySection = ({ petId, vaccinated }: HealthSafetySectionProps) =>
   useEffect(() => {
     const fetchVaccinations = async () => {
       setLoading(true);
+      
+      // Handle mock data
+      if (petId.startsWith("mock-")) {
+        const mockVaccinations: VaccinationRecord[] = [
+          {
+            id: "m-v-1",
+            vaccine_type: "Rabies Vaccine",
+            dose_number: "Dose 1",
+            date_administered: format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"), // 30 days ago
+            next_due_date: format(new Date(Date.now() + 335 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"), // approx 1 year from dose
+            certificate_url: "https://example.com/cert.pdf",
+            certificate_name: "Rabies_Cert.pdf"
+          },
+          {
+            id: "m-v-2",
+            vaccine_type: "DHPP Vaccine",
+            dose_number: "Booster",
+            date_administered: format(new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"), // 15 days ago
+            next_due_date: format(new Date(Date.now() + 350 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
+            certificate_url: null,
+            certificate_name: null
+          }
+        ];
+        setVaccinations(mockVaccinations);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await (supabase as any)
         .from("pet_vaccinations")
         .select("*")
