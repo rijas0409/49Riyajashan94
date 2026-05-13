@@ -161,6 +161,7 @@ const VetOnboarding = () => {
       const { error: vetError } = await supabase.from("vet_profiles").insert({
         user_id: uid,
         qualification: formData.qualification,
+        self_practice: formData.isIndependentPractice,
         years_of_experience: parseInt(formData.yearsOfExperience) || 0,
         specializations: formData.specializations,
         consultation_type: formData.consultationTypes.join(", "),
