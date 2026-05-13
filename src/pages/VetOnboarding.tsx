@@ -195,7 +195,6 @@ const VetOnboarding = () => {
         education_details: eduDetails,
         verification_status: "pending",
         is_active: true,
-        updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' } as any);
       if (vetError) throw vetError;
 
