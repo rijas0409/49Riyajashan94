@@ -14,6 +14,7 @@ import {
   Calendar, Banknote, User, Building2, ScrollText, Camera,
   CreditCard, GraduationCap, Plus, Trash2
 } from "lucide-react";
+import { AccountReviewScreen } from "@/components/AccountReviewScreen";
 
 /* ─── types ─── */
 interface EducationRow {
@@ -29,6 +30,7 @@ const VetOnboarding = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   /* ─── form state ─── */
   const [formData, setFormData] = useState({
@@ -214,10 +216,7 @@ const VetOnboarding = () => {
 
       // 4. Success feedback and routing
       toast.success("Professional profile submitted successfully!");
-      // Adding a small delay to ensure DB consistency before redirect
-      setTimeout(() => {
-        navigate("/vet-pending-approval");
-      }, 500);
+      setIsSubmitted(true);
     } catch (error: any) {
       console.error("Submission error:", error);
       toast.error(error.message || "Failed to submit application. Please try again.");
@@ -239,6 +238,10 @@ const VetOnboarding = () => {
 
   const visibleSteps = steps.filter(s => !s.hidden);
   const currentVisibleStepIndex = visibleSteps.findIndex(s => s.n === currentStep);
+
+  if (isSubmitted) {
+    return <AccountReviewScreen onLogout={async () => { await supabase.auth.signOut(); navigate("/auth-vet"); }} />;
+  }
 
   const canProceed = (step: number) => {
     switch (step) {
