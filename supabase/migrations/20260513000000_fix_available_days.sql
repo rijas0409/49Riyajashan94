@@ -17,6 +17,12 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vet_profiles' AND column_name = 'registration_number') THEN
         ALTER TABLE public.vet_profiles ADD COLUMN registration_number TEXT;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vet_profiles' AND column_name = 'qualification') THEN
+        ALTER TABLE public.vet_profiles ADD COLUMN qualification TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vet_profiles' AND column_name = 'self_practice') THEN
+        ALTER TABLE public.vet_profiles ADD COLUMN self_practice BOOLEAN DEFAULT false;
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vet_profiles' AND column_name = 'consultation_type') THEN
         ALTER TABLE public.vet_profiles ADD COLUMN consultation_type TEXT;
     END IF;
