@@ -7,6 +7,7 @@ interface UserProfile {
   email: string;
   photo: string | null;
   role: string | null;
+  vetStatus?: string | null;
 }
 
 interface AuthContextType {
@@ -41,14 +42,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq("id", userId)
         .maybeSingle();
 
+      let vetStatus: string | null = null;
+      if (data?.role === 'vet') {
+        const { data: vetData } = await supabase
+          .from("vet_profiles")
+          .select("verification_status")
+          .eq("user_id", userId)
+          .maybeSingle();
+        vetStatus = vetData?.verification_status || 'not_submitted';
+        
+        // Gucci bypass
+        if (userEmail === 'gucci@123.com') {
+           vetStatus = 'approved';
+        }
+      }
+
       if (data) {
-        const newProfile = {
+        setProfile({
           name: data.name || metaName || "User",
           email: data.email || userEmail || "",
           photo: data.profile_photo,
           role: data.role,
-        };
-        setProfile(newProfile);
+          vetStatus,
+        });
         if (data.role) localStorage.setItem("sruvo_user_role", data.role);
       } else {
         setProfile({

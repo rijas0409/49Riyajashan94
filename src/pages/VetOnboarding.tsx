@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { SRUVO_LOGO_URL } from "@/constants/branding";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,9 +29,16 @@ const EMPTY_EDU: EducationRow = { qualification: "", institution: "", year: "", 
 
 const VetOnboarding = () => {
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (profile?.role === 'vet' && profile?.vetStatus === 'pending' && profile.email !== 'gucci@123.com') {
+      setIsSubmitted(true);
+    }
+  }, [profile]);
 
   /* ─── form state ─── */
   const [formData, setFormData] = useState({

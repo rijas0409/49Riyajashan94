@@ -37,6 +37,11 @@ const Index = () => {
     
     if (authReady) {
       if (user && profile) {
+        if (profile.role === 'vet' && profile.vetStatus !== 'approved' && profile.email !== 'gucci@123.com') {
+          navigate("/vet-pending-approval", { replace: true });
+          return;
+        }
+
         const role = profile.role;
         if (role) {
           localStorage.setItem("sruvo_user_role", role);
@@ -51,7 +56,7 @@ const Index = () => {
         navigateDashboard(cachedRole);
       }
     }
-  }, [authReady, user, profile, navigateDashboard]);
+  }, [authReady, user, profile, navigateDashboard, navigate]);
 
   if (!authReady) {
     return (
