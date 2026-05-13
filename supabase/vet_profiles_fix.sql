@@ -1,5 +1,7 @@
 
--- Fix for missing or incorrect columns in vet_profiles to support complete onboarding
+-- Comprehensive Fix for vet_profiles table
+-- Run this in Supabase SQL Editor to resolve all "column not found" issues
+
 DO $$ 
 BEGIN
     -- 1. Availability Columns
@@ -27,7 +29,7 @@ BEGIN
         ALTER TABLE public.vet_profiles ADD COLUMN specializations TEXT[] DEFAULT '{}';
     END IF;
 
-    -- 3. Fees
+    -- 3. Fees (Decimal for accuracy)
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vet_profiles' AND column_name = 'online_fee') THEN
         ALTER TABLE public.vet_profiles ADD COLUMN online_fee NUMERIC DEFAULT 500;
     END IF;
@@ -54,7 +56,7 @@ BEGIN
         ALTER TABLE public.vet_profiles ADD COLUMN clinic_address TEXT;
     END IF;
 
-    -- 6. Files & Documents
+    -- 6. Files & Documents (URLs)
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vet_profiles' AND column_name = 'vet_degree_file') THEN
         ALTER TABLE public.vet_profiles ADD COLUMN vet_degree_file TEXT;
     END IF;
@@ -89,7 +91,7 @@ BEGIN
         ALTER TABLE public.vet_profiles ADD COLUMN clinic_photos TEXT[] DEFAULT '{}';
     END IF;
 
-    -- 7. Agreements
+    -- 7. Compliance
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vet_profiles' AND column_name = 'vendor_agreement_accepted') THEN
         ALTER TABLE public.vet_profiles ADD COLUMN vendor_agreement_accepted BOOLEAN DEFAULT false;
     END IF;
@@ -101,4 +103,5 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vet_profiles' AND column_name = 'education_details') THEN
         ALTER TABLE public.vet_profiles ADD COLUMN education_details JSONB DEFAULT '[]';
     END IF;
+
 END $$;
