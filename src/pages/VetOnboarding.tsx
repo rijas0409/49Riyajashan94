@@ -160,7 +160,14 @@ const VetOnboarding = () => {
         clinicPhotoUrls.push(await uploadFile(photo, uid, 'clinic_photo'));
       }
 
-      const { error: vetError } = await supabase.from("vet_profiles").upsert({
+      // 2. Insert or Update Profile
+      const { data: existingVet } = await supabase
+        .from("vet_profiles")
+        .select("id, verification_status")
+        .eq("user_id", uid)
+        .maybeSingle();
+
+      const upsertData = {
         user_id: uid,
         qualification: formData.qualification,
         self_practice: formData.isIndependentPractice,
@@ -193,10 +200,17 @@ const VetOnboarding = () => {
         telemedicine_consent_accepted: formData.telemedicineConsent,
         clinic_photos: clinicPhotoUrls,
         education_details: eduDetails,
-        verification_status: "pending",
+        verification_status: existingVet?.verification_status || "pending",
         is_active: true,
-      }, { onConflict: 'user_id' } as any);
-      if (vetError) throw vetError;
+      };
+
+      if (existingVet) {
+        const { error: vetError } = await supabase.from("vet_profiles").update(upsertData).eq("id", existingVet.id);
+        if (vetError) throw vetError;
+      } else {
+        const { error: vetError } = await supabase.from("vet_profiles").insert(upsertData);
+        if (vetError) throw vetError;
+      }
 
       // 3. Update Profile
       const { error: profileError } = await supabase.from("profiles").update({
