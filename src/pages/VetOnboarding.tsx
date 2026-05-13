@@ -158,7 +158,7 @@ const VetOnboarding = () => {
         clinicPhotoUrls.push(await uploadFile(photo, uid, 'clinic_photo'));
       }
 
-      const { error: vetError } = await supabase.from("vet_profiles").insert({
+      const { error: vetError } = await supabase.from("vet_profiles").upsert({
         user_id: uid,
         qualification: formData.qualification,
         self_practice: formData.isIndependentPractice,
@@ -191,9 +191,13 @@ const VetOnboarding = () => {
         telemedicine_consent_accepted: formData.telemedicineConsent,
         clinic_photos: clinicPhotoUrls,
         education_details: eduDetails,
-      } as any);
+        verification_status: "pending",
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' } as any);
       if (vetError) throw vetError;
 
+      // 3. Update Profile
       const { error: profileError } = await supabase.from("profiles").update({
         full_name: formData.fullName,
         phone: formData.phone,
@@ -203,14 +207,23 @@ const VetOnboarding = () => {
         address: `${formData.city}, ${formData.state}`,
         is_onboarding_complete: true,
         is_admin_approved: false,
+        role: 'vet',
       } as any).eq("id", uid);
+
       if (profileError) throw profileError;
 
-      toast.success("Profile submitted! Verification pending.");
-      navigate("/vet-pending-approval");
+      // 4. Success feedback and routing
+      toast.success("Professional profile submitted successfully!");
+      // Adding a small delay to ensure DB consistency before redirect
+      setTimeout(() => {
+        navigate("/vet-pending-approval");
+      }, 500);
     } catch (error: any) {
-      toast.error(error.message || "Failed to submit");
-    } finally { setIsLoading(false); }
+      console.error("Submission error:", error);
+      toast.error(error.message || "Failed to submit application. Please try again.");
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   /* ─── steps config ─── */

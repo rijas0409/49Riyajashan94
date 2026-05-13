@@ -1,8 +1,11 @@
 
 -- Comprehensive Fix for profiles and vet_profiles tables
+-- Run this in Supabase SQL Editor to resolve all schema and policy issues
+
 -- 1. Profiles Table Updates
-DO $$ 
+DO $FIX$ 
 BEGIN
+    -- Ensure profiles table has required columns
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'address') THEN
         ALTER TABLE public.profiles ADD COLUMN address TEXT;
     END IF;
@@ -22,10 +25,10 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'is_admin_approved') THEN
         ALTER TABLE public.profiles ADD COLUMN is_admin_approved BOOLEAN DEFAULT false;
     END IF;
-END $$;
+END $FIX$;
 
 -- 2. Vet Profiles Table Updates
-DO $$ 
+DO $FIX$ 
 BEGIN
     -- Ensure table exists
     IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vet_profiles') THEN
@@ -156,7 +159,7 @@ BEGIN
         ALTER TABLE public.vet_profiles ADD COLUMN is_active BOOLEAN DEFAULT true;
     END IF;
 
-END $$;
+END $FIX$;
 
 -- 3. RLS Fix for vet_profiles
 ALTER TABLE public.vet_profiles ENABLE ROW LEVEL SECURITY;
@@ -177,3 +180,23 @@ CREATE POLICY "Vets can insert own profile" ON public.vet_profiles
 
 CREATE POLICY "Anyone can view verified active vets" ON public.vet_profiles 
     FOR SELECT USING (verification_status = 'verified' AND is_active = true);
+
+-- 4. RLS Fix for profiles (ensure address, gender, birth_date are readable/writable)
+-- Usually users have a profile update policy already.
+
+-- 5. Storage Bucket and Policies
+DO $FIX$
+BEGIN
+    INSERT INTO storage.buckets (id, name, public) 
+    VALUES ('vet-documents', 'vet-documents', false)
+    ON CONFLICT (id) DO NOTHING;
+END $FIX$;
+
+DROP POLICY IF EXISTS "Vets can upload own documents" ON storage.objects;
+DROP POLICY IF EXISTS "Vets can view own documents" ON storage.objects;
+
+CREATE POLICY "Vets can upload own documents" ON storage.objects 
+    FOR INSERT WITH CHECK (bucket_id = 'vet-documents' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "Vets can view own documents" ON storage.objects 
+    FOR SELECT USING (bucket_id = 'vet-documents' AND (storage.foldername(name))[1] = auth.uid()::text);
