@@ -8,6 +8,8 @@ interface UserProfile {
   photo: string | null;
   role: string | null;
   vetStatus?: string | null;
+  is_onboarding_complete?: boolean;
+  is_admin_approved?: boolean;
 }
 
 interface AuthContextType {
@@ -38,7 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { data } = await supabase
         .from("profiles")
-        .select("name, email, profile_photo, role")
+        .select("name, email, profile_photo, role, is_onboarding_complete, is_admin_approved")
         .eq("id", userId)
         .maybeSingle();
 
@@ -52,7 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         vetStatus = vetData?.verification_status || 'not_submitted';
         
         // Gucci bypass
-        if (userEmail === 'gucci@123.com') {
+        if (userEmail === 'gucci@123.com' || userEmail === 'rijas@lv.com') {
            vetStatus = 'approved';
         }
       }
@@ -64,6 +66,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           photo: data.profile_photo,
           role: data.role,
           vetStatus,
+          is_onboarding_complete: data.is_onboarding_complete,
+          is_admin_approved: data.is_admin_approved,
         });
         if (data.role) localStorage.setItem("sruvo_user_role", data.role);
       } else {
@@ -111,6 +115,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             email: prev?.email || currentSession.user.email || "",
             photo: prev?.photo || null,
             role: prev?.role || null,
+            vetStatus: prev?.vetStatus || null,
+            is_onboarding_complete: prev?.is_onboarding_complete,
+            is_admin_approved: prev?.is_admin_approved,
           }));
 
           // Then fetch full profile from DB (deferred to avoid deadlock with Supabase auth)

@@ -44,7 +44,7 @@ import SellerPendingApproval from "./pages/SellerPendingApproval";
 import SellerProfile from "./pages/SellerProfile";
 import Shop from "./pages/Shop";
 import Vet from "./pages/Vet";
-import VetDashboard from "./pages/VetDashboard";
+import VetHome from "./pages/VetHome";
 import VetOnboarding from "./pages/VetOnboarding";
 import VetPendingApproval from "./pages/VetPendingApproval";
 import WalletPage from "./pages/WalletPage";
@@ -136,7 +136,7 @@ const App = () => (
                 <Route path="/buyer/shop/:petShopType" element={<Shop />} />
                 <Route path="/buyer/shop/:petShopType/catalog" element={<Shop />} />
                 <Route path="/vet" element={<Vet />} />
-                <Route path="/vet-dashboard" element={<VetDashboard />} />
+                <Route path="/vet/home" element={<VetHome />} />
                 <Route path="/vet-onboarding" element={<VetOnboarding />} />
                 <Route path="/vet-pending-approval" element={<VetPendingApproval />} />
                 <Route path="/wallet" element={<WalletPage />} />

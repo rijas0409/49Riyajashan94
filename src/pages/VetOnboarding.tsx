@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SRUVO_LOGO_URL } from "@/constants/branding";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,10 +35,22 @@ const VetOnboarding = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   useEffect(() => {
-    if (profile?.role === 'vet' && profile?.vetStatus === 'pending' && profile.email !== 'gucci@123.com') {
-      setIsSubmitted(true);
+    // Check if the user already has completed DB onboarding but was redirected here
+    const checkStatus = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: p } = await supabase.from('profiles').select('is_onboarding_complete').eq('id', session.user.id).single();
+        if (p && p.is_onboarding_complete) {
+          navigate("/vet-pending-approval", { replace: true });
+        }
+      }
+    };
+    checkStatus();
+
+    if (profile?.role === 'vet' && profile?.vetStatus === 'pending' && profile.email !== 'gucci@123.com' && profile.email !== 'rijas@lv.com') {
+      navigate("/vet-pending-approval", { replace: true });
     }
-  }, [profile]);
+  }, [profile, navigate]);
 
   /* ─── form state ─── */
   const [formData, setFormData] = useState({
@@ -237,7 +249,7 @@ const VetOnboarding = () => {
 
       // 4. Success feedback and routing
       toast.success("Professional profile submitted successfully!");
-      setIsSubmitted(true);
+      navigate("/vet-pending-approval", { replace: true });
     } catch (error: any) {
       console.error("Submission error:", error);
       toast.error(error.message || "Failed to submit application. Please try again.");
@@ -259,10 +271,6 @@ const VetOnboarding = () => {
 
   const visibleSteps = steps.filter(s => !s.hidden);
   const currentVisibleStepIndex = visibleSteps.findIndex(s => s.n === currentStep);
-
-  if (isSubmitted) {
-    return <AccountReviewScreen onLogout={async () => { await supabase.auth.signOut(); navigate("/auth-vet"); }} />;
-  }
 
   const canProceed = (step: number) => {
     switch (step) {

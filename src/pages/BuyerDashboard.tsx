@@ -219,7 +219,7 @@ const BuyerDashboard = () => {
       if (role === "admin") { navigate("/admin"); return; }
       if (role === "delivery_partner") { navigate("/delivery"); return; }
       if (role === "product_seller") { navigate("/products-dashboard"); return; }
-      if (role === "vet") { navigate("/vet-dashboard"); return; }
+      if (role === "vet") { navigate("/vet/home"); return; }
       
       fetchPets();
     }

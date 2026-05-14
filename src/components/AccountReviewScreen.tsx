@@ -31,7 +31,7 @@ export const AccountReviewScreen = ({ onLogout }: AccountReviewScreenProps) => {
             Account Under Review
           </CardTitle>
           <CardDescription className="text-base text-muted-foreground max-w-sm mx-auto">
-            Welcome to the PetLink veterinary network! Our specialists are currently verifying your professional credentials.
+            Welcome to the Sruvo veterinary network! Our specialists are currently verifying your professional credentials.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

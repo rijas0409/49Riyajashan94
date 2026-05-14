@@ -21,6 +21,8 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string)
   const [error, setError] = useState<string | null>(null);
   const initialized = useRef(false);
 
+  const allowedRolesString = allowedRoles.join(",");
+
   useEffect(() => {
     if (!authReady) return;
 
@@ -40,7 +42,7 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string)
           return;
         }
 
-        // If AuthContext profile doesn't have it yet or it's different, do the deep check
+        // If AuthContext profile doesn't have it yet, do the deep check
         const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: authUser.id });
         
         if (!roleData || !allowedRoles.includes(roleData as AllowedRole)) {
@@ -52,7 +54,7 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string)
             case "admin": navigate("/admin", { replace: true }); break;
             case "delivery_partner": navigate("/delivery", { replace: true }); break;
             case "product_seller": navigate("/products-dashboard", { replace: true }); break;
-            case "vet": navigate("/vet-dashboard", { replace: true }); break;
+            case "vet": navigate("/vet/home", { replace: true }); break;
             default: navigate(redirectPath || "/auth", { replace: true });
           }
           setIsLoading(false);
@@ -76,11 +78,8 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string)
       }
     };
 
-    if (!initialized.current) {
-      checkAccess();
-      initialized.current = true;
-    }
-  }, [authReady, authUser, authProfile, allowedRoles, navigate, redirectPath]);
+    checkAccess();
+  }, [authReady, authUser, authProfile, allowedRolesString, navigate, redirectPath]);
 
   return { isLoading, user, profile, error };
 };

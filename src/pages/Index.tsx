@@ -26,7 +26,7 @@ const Index = () => {
       case "admin": navigate("/admin", { replace: true }); break;
       case "delivery_partner": navigate("/delivery", { replace: true }); break;
       case "product_seller": navigate("/products-dashboard", { replace: true }); break;
-      case "vet": navigate("/vet-dashboard", { replace: true }); break;
+      case "vet": navigate("/vet/home", { replace: true }); break;
       case "buyer": navigate("/buyer/home", { replace: true }); break;
       default: navigate("/buyer/home", { replace: true });
     }
@@ -44,7 +44,7 @@ const Index = () => {
             return;
           }
 
-          if (profile.vetStatus !== 'approved' && profile.email !== 'gucci@123.com') {
+          if (profile.vetStatus !== 'approved' && profile.email !== 'gucci@123.com' && profile.email !== 'rijas@lv.com') {
             navigate("/vet-pending-approval", { replace: true });
             return;
           }

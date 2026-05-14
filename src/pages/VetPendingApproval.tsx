@@ -31,8 +31,8 @@ const VetPendingApproval = () => {
           .eq("id", session.user.id)
           .maybeSingle();
 
-        if (!profile?.is_onboarding_complete) { navigate("/vet-onboarding"); return; }
-        if (profile?.is_admin_approved) { navigate("/vet-dashboard"); return; }
+        if (profile?.is_onboarding_complete === false) { navigate("/vet-onboarding"); return; }
+        if (profile?.is_admin_approved === true) { navigate("/vet/home"); return; }
 
         setIsChecking(false);
       } catch {

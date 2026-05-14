@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Heart, Loader2, Stethoscope, Shield, Award } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { z } from "zod";
 
 const loginSchema = z.object({
@@ -25,34 +26,29 @@ const AuthVet = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "", name: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { authReady, user, profile } = useAuth();
 
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role, is_onboarding_complete, is_admin_approved")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
-        if (profile?.role === "vet") {
-          if (!profile?.is_onboarding_complete) {
-            navigate("/vet-onboarding");
-          } else if (!profile?.is_admin_approved) {
-            navigate("/vet-pending-approval");
-          } else {
-            navigate("/vet-dashboard");
-          }
-        }
-      } catch {
-        // Ignore auto-redirect errors on load
+    if (authReady && user && profile?.role === "vet") {
+      if (!profile.is_onboarding_complete) {
+        navigate("/vet-onboarding");
+      } else if (!profile.is_admin_approved) {
+        navigate("/vet-pending-approval");
+      } else {
+        navigate("/vet/home");
       }
-    };
-    checkSession();
-  }, [navigate]);
+    }
+  }, [authReady, user, profile, navigate]);
+
+  if (!authReady) {
+    return <div className="min-h-screen bg-gradient-soft flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-teal-600" /></div>;
+  }
+
+  // If already logged in, but just waiting to be redirected
+  if (user && profile?.role === "vet") {
+    return <div className="min-h-screen bg-gradient-soft flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-teal-600" /></div>;
+  }
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,22 +71,26 @@ const AuthVet = () => {
         });
         if (error) throw error;
 
-        const { data: profile } = await supabase
+        const { data: userProfile } = await supabase
           .from("profiles")
           .select("role, is_onboarding_complete, is_admin_approved")
           .eq("id", data.user.id)
           .maybeSingle();
 
-        if (profile?.role !== "vet") {
+        if (userProfile?.role !== "vet") {
           await supabase.auth.signOut();
           toast.error("This is not a veterinary doctor account. Please use the correct login page.");
           return;
         }
 
         toast.success("Welcome back, Doctor!");
-        if (!profile?.is_onboarding_complete) navigate("/vet-onboarding");
-        else if (!profile?.is_admin_approved) navigate("/vet-pending-approval");
-        else navigate("/vet-dashboard");
+        if (!userProfile.is_onboarding_complete) {
+          navigate("/vet-onboarding");
+        } else if (!userProfile.is_admin_approved) {
+          navigate("/vet-pending-approval");
+        } else {
+          navigate("/vet/home");
+        }
       } else {
         const { data, error } = await supabase.auth.signUp({
           email: formData.email, password: formData.password,
@@ -101,11 +101,12 @@ const AuthVet = () => {
         });
         if (error) throw error;
         if (data.user) {
-          toast.success("Account created! Please complete your professional profile.");
+          toast.success("Account created! Welcome, Doctor!");
           navigate("/vet-onboarding");
         }
       }
-    } catch (error: any) {
+    } catch (err) {
+      const error = err as Error;
       if (error.message.includes("User already registered")) toast.error("This email is already registered. Please login instead.");
       else if (error.message.includes("Invalid login credentials")) toast.error("Invalid email or password");
       else toast.error(error.message || "Authentication failed");
