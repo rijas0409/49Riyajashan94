@@ -139,7 +139,7 @@ const InstantAssessment = () => {
           photoPreview,
           matchedVet: {
             id: "demo-vet-rijas",
-            userId: "demo-user-id",
+            userId: "00000000-0000-0000-0000-000000000000",
             name: "Dr. Vikram Malhotra",
             specialization: "General Veterinarian",
             image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",

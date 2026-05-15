@@ -70,18 +70,21 @@ const ConsultationSummary = () => {
         return;
       }
 
-      const isBypassUser = user.email === 'jas@sruvo.com' || user.email === 'rijas@123.com';
+      const isBypassUser = user.email === 'jas@sruvo.com' || user.email === 'rijas@123.com' || user.email === 'gucci@123.com';
 
       if (isBypassUser) {
         toast.success("Special Access: Bypassing Payment & Confirmation");
         
         // Create the appointment record directly and navigate to video call
         try {
+          // Use user.id as fallback for vet_id if it's a mock UUID to satisfy foreign key constraints
+          const finalVetId = (!vet.userId || vet.userId === "00000000-0000-0000-0000-000000000000") ? user.id : vet.userId;
+
           const { data: appointment, error } = await supabase
             .from('vet_appointments')
             .insert({
               user_id: user.id,
-              vet_id: vet.userId || user.id, // Fallback to current user if system vet not found for bypass
+              vet_id: finalVetId,
               pet_name: petName || 'Pet',
               pet_type: selectedPet || 'Dog',
               appointment_date: new Date().toISOString().split('T')[0],
@@ -123,12 +126,15 @@ const ConsultationSummary = () => {
         const paymentId = "pay_fake_" + Date.now();
         
         try {
+          // Use user.id as fallback for vet_id if it's a mock UUID to satisfy foreign key constraints
+          const finalVetId = (!vet.userId || vet.userId === "00000000-0000-0000-0000-000000000000") ? user.id : vet.userId;
+
           // Create the appointment record
           const { data: appointment, error } = await supabase
             .from('vet_appointments')
             .insert({
               user_id: user.id,
-              vet_id: vet.userId || '00000000-0000-0000-0000-000000000000', // Use a dummy UUID if no vet id
+              vet_id: finalVetId,
               pet_name: petName || 'Pet',
               pet_type: selectedPet || 'Dog',
               appointment_date: new Date().toISOString().split('T')[0],
