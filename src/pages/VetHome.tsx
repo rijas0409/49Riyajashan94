@@ -15,17 +15,33 @@ const VetDashboard = () => {
   const navigate = useNavigate();
   const { isLoading: guardLoading, user, profile, error: guardError } = useRoleGuard(["vet"], "/auth-vet");
   const [isLoading, setIsLoading] = useState(true);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const fetchPendingCount = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { count, error } = await supabase
+        .from('vet_appointments')
+        .select('*', { count: 'exact', head: true })
+        .eq('vet_id', user.id)
+        .eq('status', 'pending');
+      
+      if (!error) setPendingCount(count || 0);
+    } catch (err) {
+      console.error("Error fetching pending count:", err);
+    }
+  }, [user]);
 
   const fetchData = useCallback(async () => {
     try {
-      // Basic fetch to ensure data integrity
       await supabase.from("vet_profiles").select("*").eq("user_id", user?.id).maybeSingle();
+      await fetchPendingCount();
       setIsLoading(false);
     } catch (err) {
       console.error("Error fetching vet data:", err);
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, fetchPendingCount]);
 
   useEffect(() => {
     if (user && profile) {
@@ -35,9 +51,29 @@ const VetDashboard = () => {
         navigate("/vet-pending-approval");
       } else {
         fetchData();
+
+        const channel = supabase
+          .channel('vet_pending_count')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'vet_appointments',
+              filter: `vet_id=eq.${user.id}`
+            },
+            () => {
+              fetchPendingCount();
+            }
+          )
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(channel);
+        };
       }
     }
-  }, [user, profile, navigate, fetchData]);
+  }, [user, profile, navigate, fetchData, fetchPendingCount]);
 
   if (guardError) return <div className="min-h-screen flex items-center justify-center p-4 bg-[#f9f9fb]">{guardError}</div>;
 
@@ -90,7 +126,7 @@ const VetDashboard = () => {
             <section className="bg-gradient-to-br from-[#d340ff] to-[#8728ff] rounded-[34px] px-6 py-7 lg:py-10 text-white shadow-[0_16px_32px_rgba(164,40,255,0.25)] relative transition-all hover:scale-[1.01]">
               <div className="max-w-lg">
                 <h2 className="text-[22px] lg:text-[28px] font-extrabold leading-[1.25] mb-3 tracking-[-0.3px]">Ready for your next<br className="sm:hidden" /> consultation?</h2>
-                <p className="text-[13px] lg:text-sm font-medium opacity-95 mb-[22px] leading-[1.4]">You have 4 pending consultation<br className="sm:hidden" /> requests.</p>
+                <p className="text-[13px] lg:text-sm font-medium opacity-95 mb-[22px] leading-[1.4]">You have {pendingCount} pending consultation<br className="sm:hidden" /> requests.</p>
                 <div className="flex items-center gap-2.5">
                   <button 
                     onClick={() => navigate("/vet/video-consultation")}

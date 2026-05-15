@@ -75,8 +75,14 @@ const ConsultationSummary = () => {
       if (isBypassUser) {
         toast.success("Special Access: Bypassing Payment & Confirmation");
         
-        // Create the appointment record directly and navigate to video call
+        // Create the appointment record directly
         try {
+          // Use user.id as fallback for vet_id if it's a mock UUID to satisfy foreign key constraints
+          const symptomsStr = selectedSymptoms?.join(", ") || "various symptoms";
+          const petStr = selectedPet || "pet";
+          const urgencyStr = urgency || "normal";
+          const aiSummary = `The patient (${petName || 'Pet'}), a ${petStr}, is presenting with ${symptomsStr}. The owner reports ${urgencyStr} urgency. Initial AI assessment suggests focusing on ${selectedSymptoms?.[0] || 'general condition'} and checking for related secondary symptoms.`;
+
           // Use user.id as fallback for vet_id if it's a mock UUID to satisfy foreign key constraints
           const finalVetId = (!vet.userId || vet.userId === "00000000-0000-0000-0000-000000000000") ? user.id : vet.userId;
 
@@ -90,8 +96,11 @@ const ConsultationSummary = () => {
               appointment_date: new Date().toISOString().split('T')[0],
               appointment_time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
               amount: 0,
-              status: 'confirmed', // Set to confirmed to bypass waiting
-              appointment_type: 'instant'
+              status: 'pending', // Set to pending to show the summary screen first
+              appointment_type: 'instant',
+              symptoms_data: location.state || {},
+              selected_duration: selectedDuration,
+              ai_summary: aiSummary
             })
             .select()
             .single();
@@ -103,13 +112,13 @@ const ConsultationSummary = () => {
             return;
           }
 
-          // Navigate directly to video call for this specific user
-          navigate("/vet/instant-video-call", { 
+          // Navigate to analysis summary screen
+          navigate("/vet/analysis-summary", { 
             state: { 
               ...location.state, 
               vet, 
-              paymentId: "bypass_" + Date.now(),
-              appointmentId: appointment?.id 
+              appointmentId: appointment?.id,
+              assessmentData: { ...location.state, selectedDuration }
             } 
           });
           return;
@@ -126,6 +135,11 @@ const ConsultationSummary = () => {
         const paymentId = "pay_fake_" + Date.now();
         
         try {
+          const symptomsStr = selectedSymptoms?.join(", ") || "various symptoms";
+          const petStr = selectedPet || "pet";
+          const urgencyStr = urgency || "normal";
+          const aiSummary = `The patient (${petName || 'Pet'}), a ${petStr}, is presenting with ${symptomsStr}. The owner reports ${urgencyStr} urgency. Initial AI assessment suggests focusing on ${selectedSymptoms?.[0] || 'general condition'} and checking for related secondary symptoms.`;
+
           // Use user.id as fallback for vet_id if it's a mock UUID to satisfy foreign key constraints
           const finalVetId = (!vet.userId || vet.userId === "00000000-0000-0000-0000-000000000000") ? user.id : vet.userId;
 
@@ -141,7 +155,10 @@ const ConsultationSummary = () => {
               appointment_time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
               amount: totalPayable,
               status: 'pending',
-              appointment_type: 'instant'
+              appointment_type: 'instant',
+              symptoms_data: location.state || {},
+              selected_duration: selectedDuration,
+              ai_summary: aiSummary
             })
             .select()
             .single();
@@ -154,12 +171,13 @@ const ConsultationSummary = () => {
           }
 
           toast.success("Payment Received Successfully!");
-          navigate("/vet/consultation-confirmation", { 
+          navigate("/vet/analysis-summary", { 
             state: { 
               ...location.state, 
               vet, 
               paymentId,
-              appointmentId: appointment?.id 
+              appointmentId: appointment?.id,
+              assessmentData: { ...location.state, selectedDuration }
             } 
           });
         } catch (innerErr) {

@@ -78,6 +78,7 @@ import VetsNearYou from "./pages/vet/VetsNearYou";
 import ClinicsNearby from "./pages/vet/ClinicsNearby";
 import AllSpecializedVets from "./pages/vet/AllSpecializedVets";
 import ConsultationDetail from "./pages/vet/ConsultationDetail";
+import ConsultationAnalysisSummary from "./pages/vet/ConsultationAnalysisSummary";
 import HomeVisitDetails from "./pages/vet/HomeVisitDetails";
 import ClinicVisitDetails from "./pages/vet/ClinicVisitDetails";
 import VideoCall from "./pages/vet/VideoCall";
@@ -178,6 +179,7 @@ const App = () => (
                 <Route path="/vet/consultation-plan" element={<ConsultationPlan />} />
                 <Route path="/vet/consultation-summary" element={<ConsultationSummary />} />
                 <Route path="/vet/consultation-confirmation" element={<ConsultationConfirmation />} />
+                <Route path="/vet/analysis-summary" element={<ConsultationAnalysisSummary />} />
                 <Route path="/vet/digital-prescription" element={<DigitalPrescription />} />
                 <Route path="/vet/prescription" element={<DigitalPrescription />} />
                 <Route path="/vet/finding-vet" element={<FindingVet />} />
