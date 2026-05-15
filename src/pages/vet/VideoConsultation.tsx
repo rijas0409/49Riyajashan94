@@ -24,7 +24,7 @@ const VideoConsultation = () => {
     { label: "Done", value: consultations.filter(c => c.status === 'completed').length.toString().padStart(2, '0') },
   ];
 
-  const fetchConsultations = async () => {
+  const fetchConsultations = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
@@ -43,7 +43,23 @@ const VideoConsultation = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  const backgroundFetch = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('vet_appointments')
+        .select('*')
+        .eq('vet_id', user.id)
+        .eq('appointment_type', 'instant')
+        .order('created_at', { ascending: false });
+
+      if (!error) setConsultations(data || []);
+    } catch (err) {
+      console.error("Background fetch error:", err);
+    }
+  }, [user]);
 
   useEffect(() => {
     fetchConsultations();
@@ -59,7 +75,8 @@ const VideoConsultation = () => {
           filter: `vet_id=eq.${user?.id}`
         },
         () => {
-          fetchConsultations();
+          // Silent background update
+          backgroundFetch();
         }
       )
       .subscribe();
@@ -67,7 +84,7 @@ const VideoConsultation = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, fetchConsultations]);
+  }, [user?.id, fetchConsultations, backgroundFetch]);
 
   const handleAccept = async (id: string, consultation: any) => {
     try {
@@ -174,12 +191,7 @@ const VideoConsultation = () => {
 
       {/* Consultations List */}
       <main className="px-5 space-y-5 pb-10">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <div className="w-10 h-10 border-4 border-[#9d34da] border-t-transparent rounded-full animate-spin" />
-            <p className="text-[#7e8299] font-medium">Loading consultations...</p>
-          </div>
-        ) : filteredConsultations.length === 0 ? (
+        {filteredConsultations.length === 0 ? (
           <div className="bg-white rounded-[32px] p-10 shadow-[0_10px_30px_rgba(0,0,0,0.04)] flex flex-col items-center justify-center text-center border border-gray-100">
             <div className="w-20 h-20 bg-purple-50 rounded-full flex items-center justify-center mb-6">
               <VideoCamera size={40} className="text-[#9d34da] opacity-40" />

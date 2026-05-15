@@ -83,7 +83,6 @@ import HomeVisitDetails from "./pages/vet/HomeVisitDetails";
 import ClinicVisitDetails from "./pages/vet/ClinicVisitDetails";
 import VideoCall from "./pages/vet/VideoCall";
 
-import { AdminUserApprover } from "./components/AdminUserApprover";
 import VetSchedule from "./pages/vet/VetSchedule";
 import VetEarnings from "./pages/vet/VetEarnings";
 import VetProfile from "./pages/vet/VetProfile";
@@ -97,7 +96,6 @@ const App = () => (
       <AuthProvider>
         <LocationProvider>
           <CartProvider>
-            <AdminUserApprover />
             <Toaster />
             <Sonner />
             <BrowserRouter>

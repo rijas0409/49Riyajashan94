@@ -13,50 +13,7 @@ const ConsultationAnalysisSummary = () => {
   const [isSearchingNewVet, setIsSearchingNewVet] = useState(false);
   const [currentVet, setCurrentVet] = useState(vet);
 
-  useEffect(() => {
-    if (!appointmentId) {
-      navigate("/vet/instant-assessment");
-      return;
-    }
-
-    // Subscribe to appointment changes
-    const channel = supabase
-      .channel(`appointment_${appointmentId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "vet_appointments",
-          filter: `id=eq.${appointmentId}`,
-        },
-        async (payload) => {
-          const newStatus = payload.new.status;
-          setStatus(newStatus);
-
-          if (newStatus === "confirmed" || newStatus === "accepted") {
-            toast.success("Vet accepted your request! Transitioning to call...");
-            setTimeout(() => {
-              navigate("/vet/video-call", { 
-                state: { 
-                  appointmentId, 
-                  vet: currentVet 
-                } 
-              });
-            }, 1500);
-          } else if (newStatus === "rejected") {
-            handleRejection();
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [appointmentId, navigate, currentVet, handleRejection]);
-
-  const handleRejection = async () => {
+  const handleRejection = useCallback(async () => {
     setIsSearchingNewVet(true);
     toast.error("The vet is unavailable. Finding you another specialist...");
 
@@ -113,7 +70,50 @@ const ConsultationAnalysisSummary = () => {
       console.error("Reassignment error:", err);
       setIsSearchingNewVet(false);
     }
-  };
+  }, [appointmentId, currentVet?.userId]);
+
+  useEffect(() => {
+    if (!appointmentId) {
+      navigate("/vet/instant-assessment");
+      return;
+    }
+
+    // Subscribe to appointment changes
+    const channel = supabase
+      .channel(`appointment_${appointmentId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "vet_appointments",
+          filter: `id=eq.${appointmentId}`,
+        },
+        async (payload) => {
+          const newStatus = payload.new.status;
+          setStatus(newStatus);
+
+          if (newStatus === "confirmed" || newStatus === "accepted") {
+            toast.success("Vet accepted your request! Transitioning to call...");
+            setTimeout(() => {
+              navigate("/vet/video-call", { 
+                state: { 
+                  appointmentId, 
+                  vet: currentVet 
+                } 
+              });
+            }, 1500);
+          } else if (newStatus === "rejected") {
+            handleRejection();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [appointmentId, navigate, currentVet, handleRejection]);
 
   return (
     <div className="min-h-screen bg-[#FDF8FA] pb-10">

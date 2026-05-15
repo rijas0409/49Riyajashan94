@@ -129,69 +129,19 @@ const Vet = () => {
     }
   ];
 
-  const DEMO_VETS: RealVet[] = [
-    {
-      id: "demo-1",
-      name: "Dr. Ananya Iyer",
-      specialty: "Senior Surgeon",
-      experience: "8 yrs exp.",
-      rating: 4.9,
-      price: 500,
-      image: "https://images.unsplash.com/photo-1559839734-2b71f1536783?q=80&w=400&h=400&auto=format&fit=crop",
-      verified: true,
-      isActive: true,
-      distance: 3.2,
-      availability: "AVAILABLE NOW"
-    },
-    {
-      id: "demo-2",
-      name: "Dr. Rohan Sharma",
-      specialty: "Paws & Claws",
-      experience: "5 yrs exp.",
-      rating: 4.8,
-      price: 450,
-      image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400&h=400&auto=format&fit=crop",
-      verified: true,
-      isActive: true,
-      distance: 5.8,
-      availability: "NEXT: 2 PM"
-    },
-    {
-      id: "demo-3",
-      name: "Dr. SarahMitchell",
-      specialty: "Pet Groomer",
-      experience: "10 yrs exp.",
-      rating: 4.7,
-      price: 800,
-      image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?q=80&w=400&h=400&auto=format&fit=crop",
-      verified: true,
-      isActive: true,
-      distance: 12.5,
-      availability: "AVAILABLE NOW"
-    },
-    {
-      id: "demo-4",
-      name: "Dr. Anil Deshmukh",
-      specialty: "Dermatologist",
-      experience: "15 yrs exp.",
-      rating: 4.9,
-      price: 1200,
-      image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400&h=400&auto=format&fit=crop",
-      verified: true,
-      isActive: true,
-      distance: 15.0,
-      availability: "NEXT: 4 PM"
-    }
-  ];
-
   useEffect(() => {
     if (!authReady) return;
     const fetchVets = async () => {
-      const { data: vetProfiles } = await supabase
+      const { data: vetProfiles, error: vetError } = await supabase
         .from("vet_profiles")
         .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo")
         .eq("verification_status", "verified")
         .eq("is_active", true);
+
+      if (vetError) {
+        console.error("Error fetching vets:", vetError);
+        return;
+      }
 
       let vets: RealVet[] = [];
 
@@ -204,7 +154,7 @@ const Vet = () => {
 
         const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
-            vets = vetProfiles.map((vp) => {
+        vets = vetProfiles.map((vp) => {
           const profile = profileMap.get(vp.user_id);
           const name = profile?.full_name || profile?.name || "Doctor";
           const specs = vp.specializations || [];
@@ -218,15 +168,14 @@ const Vet = () => {
             image: vp.profile_photo || profile?.profile_photo || "",
             verified: vp.verification_status === "verified",
             isActive: vp.is_active ?? true,
-            distance: Math.floor(Math.random() * 20) + 1, // Random distance for real vets
+            distance: Math.floor(Math.random() * 20) + 1,
             availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`
           };
         });
       }
 
       setRealVets(vets);
-      // Combine with demo vets for a full experience
-      setDisplayVets([...vets, ...DEMO_VETS]);
+      setDisplayVets(vets);
     };
 
     fetchVets();

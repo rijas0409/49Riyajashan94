@@ -29,87 +29,7 @@ const VetsNearYou = () => {
   const [allVets, setAllVets] = useState<RealVet[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const DEMO_VETS: RealVet[] = [
-    {
-      id: "demo-1",
-      name: "Dr. Ananya Iyer",
-      specialty: "Senior Surgeon",
-      experience: "8 yrs exp.",
-      rating: 4.9,
-      price: 500,
-      image: "https://images.unsplash.com/photo-1559839734-2b71f1536783?q=80&w=400&h=400&auto=format&fit=crop",
-      verified: true,
-      isActive: true,
-      distance: 3.2,
-      availability: "AVAILABLE NOW"
-    },
-    {
-      id: "demo-2",
-      name: "Dr. Rohan Sharma",
-      specialty: "Paws & Claws",
-      experience: "5 yrs exp.",
-      rating: 4.8,
-      price: 450,
-      image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400&h=400&auto=format&fit=crop",
-      verified: true,
-      isActive: true,
-      distance: 5.8,
-      availability: "NEXT: 2 PM"
-    },
-    {
-      id: "demo-3",
-      name: "Dr. Sarah Mitchell",
-      specialty: "Pet Groomer",
-      experience: "10 yrs exp.",
-      rating: 4.7,
-      price: 800,
-      image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?q=80&w=400&h=400&auto=format&fit=crop",
-      verified: true,
-      isActive: true,
-      distance: 12.5,
-      availability: "AVAILABLE NOW"
-    },
-    {
-      id: "demo-4",
-      name: "Dr. Anil Deshmukh",
-      specialty: "Dermatologist",
-      experience: "15 yrs exp.",
-      rating: 4.9,
-      price: 1200,
-      image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400&h=400&auto=format&fit=crop",
-      verified: true,
-      isActive: true,
-      distance: 15.0,
-      availability: "NEXT: 4 PM"
-    },
-    {
-      id: "demo-5",
-      name: "Dr. Kavita Rao",
-      specialty: "Feline Specialist",
-      experience: "7 yrs exp.",
-      rating: 4.6,
-      price: 550,
-      image: "https://images.unsplash.com/photo-1550831107-1553da8c8464?q=80&w=400&h=400&auto=format&fit=crop",
-      verified: true,
-      isActive: true,
-      distance: 8.5,
-      availability: "AVAILABLE NOW"
-    },
-    {
-      id: "demo-6",
-      name: "Dr. Megha Singh",
-      specialty: "Dentistry",
-      experience: "9 yrs exp.",
-      rating: 4.8,
-      price: 700,
-      image: "https://images.unsplash.com/photo-1527613426441-4da17471b66d?q=80&w=400&h=400&auto=format&fit=crop",
-      verified: true,
-      isActive: true,
-      distance: 18.2,
-      availability: "NEXT: 11 AM"
-    }
-  ];
-
+  // No Demo Vets anymore
   useEffect(() => {
     if (!authReady) return;
 
@@ -151,7 +71,7 @@ const VetsNearYou = () => {
         });
       }
 
-      setAllVets([...vets, ...DEMO_VETS].sort((a, b) => (a.distance || 0) - (b.distance || 0)));
+      setAllVets(vets.sort((a, b) => (a.distance || 0) - (b.distance || 0)));
     };
 
     fetchVets();

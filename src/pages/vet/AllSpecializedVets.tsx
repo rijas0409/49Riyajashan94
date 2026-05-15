@@ -30,35 +30,6 @@ const AllSpecializedVets = () => {
   const [allVets, setAllVets] = useState<RealVet[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const DEMO_VETS: RealVet[] = [
-    {
-      id: "demo-all-1",
-      name: "Dr. Amara S.",
-      specialty: "Senior Orthopedic Specialist",
-      experience: "12+ Years Exp.",
-      rating: 4.9,
-      price: 800,
-      image: "https://images.unsplash.com/photo-1559839734-2b71f1536783?q=80&w=400&h=400&auto=format&fit=crop",
-      verified: true,
-      isActive: true,
-      distance: 3.2,
-      availability: "AVAILABLE NOW"
-    },
-    {
-      id: "demo-all-2",
-      name: "Dr. Rajesh Khanna",
-      specialty: "Canine Specialist",
-      experience: "8 yrs exp.",
-      rating: 4.7,
-      price: 600,
-      image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400&h=400&auto=format&fit=crop",
-      verified: true,
-      isActive: true,
-      distance: 5.8,
-      availability: "NEXT: 2 PM"
-    }
-  ];
-
   useEffect(() => {
     if (!authReady) return;
 
@@ -100,7 +71,7 @@ const AllSpecializedVets = () => {
         });
       }
 
-      setAllVets([...vets, ...DEMO_VETS]);
+      setAllVets(vets);
     };
 
     fetchVets();
