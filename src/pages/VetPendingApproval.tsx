@@ -36,6 +36,14 @@ const VetPendingApproval = () => {
           .eq("id", session.user.id)
           .maybeSingle();
 
+        const { data: vetProfile } = await supabase
+          .from("vet_profiles")
+          .select("verification_status, rejection_reason")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+
+        setRejectionReason(vetProfile?.verification_status === "rejected" ? (vetProfile.rejection_reason || "Reason not provided") : null);
+
         if (profile?.is_onboarding_complete === false) { navigate("/vet-onboarding"); return; }
         if (profile?.is_admin_approved === true) { 
           await refreshProfile();
@@ -44,7 +52,8 @@ const VetPendingApproval = () => {
         }
 
         setIsChecking(false);
-      } catch {
+      } catch (err) {
+        console.error("Check error:", err);
         // Keep user on this screen; stop infinite spinner
         setIsChecking(false);
       }
@@ -53,6 +62,8 @@ const VetPendingApproval = () => {
     const interval = setInterval(check, 30000);
     return () => clearInterval(interval);
   }, [navigate, refreshProfile]);
+
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
 
   const handleLogout = async () => { await supabase.auth.signOut(); navigate("/auth-vet"); };
 
@@ -64,7 +75,7 @@ const VetPendingApproval = () => {
 
   return (
     <div className="min-h-screen bg-gradient-soft flex flex-col">
-      <header className="bg-card/80 backdrop-blur-lg border-b border-border">
+      <header className="bg-card/80 backdrop-blur-lg border-b border-border text-foreground">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-1">
             <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
@@ -76,7 +87,11 @@ const VetPendingApproval = () => {
           <Button variant="ghost" size="icon" onClick={handleLogout}><LogOut className="w-5 h-5" /></Button>
         </div>
       </header>
-      <AccountReviewScreen onLogout={handleLogout} />
+      <AccountReviewScreen 
+        onLogout={handleLogout} 
+        rejectionReason={rejectionReason}
+        onEditProfile={() => navigate("/vet-onboarding")}
+      />
     </div>
   );
 };

@@ -62,8 +62,11 @@ const AdminDashboard = () => {
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { navigate("/auth-admin"); return; }
+    
     const { data: userRole } = await supabase.rpc('get_user_role', { _user_id: session.user.id });
-    if (userRole !== 'admin') {
+    const metaRole = session.user.user_metadata?.role;
+
+    if (userRole !== 'admin' && metaRole !== 'admin') {
       toast({ title: "Access Denied", description: "Admin access required.", variant: "destructive" });
       navigate("/"); return;
     }

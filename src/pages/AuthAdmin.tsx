@@ -41,7 +41,8 @@ const AuthAdmin = () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       const { data: userRole } = await supabase.rpc('get_user_role', { _user_id: session.user.id });
-      if (userRole === 'admin') {
+      const metaRole = session.user.user_metadata?.role;
+      if (userRole === 'admin' || metaRole === 'admin') {
         navigate("/admin");
       }
     }
@@ -78,8 +79,9 @@ const AuthAdmin = () => {
 
         // Verify user is admin
         const { data: userRole } = await supabase.rpc('get_user_role', { _user_id: data.user.id });
+        const metaRole = data.user.user_metadata?.role;
 
-        if (userRole !== 'admin') {
+        if (userRole !== 'admin' && metaRole !== 'admin') {
           await supabase.auth.signOut();
           throw new Error("Access denied. Admin privileges required.");
         }
@@ -105,6 +107,12 @@ const AuthAdmin = () => {
         });
 
         if (error) throw error;
+
+        if (data.session) {
+          toast.success("Welcome, Admin!");
+          navigate("/admin");
+          return;
+        }
 
         toast.success("Admin account created! You can now sign in.");
         setIsLogin(true);

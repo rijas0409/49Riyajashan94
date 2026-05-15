@@ -1,6 +1,6 @@
 import { AdminData } from "@/pages/AdminDashboard";
 import { useState } from "react";
-import { Search, CheckCircle2, XCircle, Users, Shield, ShoppingBag, Truck as TruckIcon, Stethoscope, Eye, X, FileText, Camera, MapPin, Phone, Mail, Building, Trash2, AlertTriangle } from "lucide-react";
+import { Search, CheckCircle2, XCircle, Users, Shield, ShoppingBag, Truck as TruckIcon, Stethoscope, Eye, X, FileText, Camera, MapPin, Phone, Mail, Building, Trash2, AlertTriangle, GraduationCap, Clock, Banknote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,14 +18,19 @@ const roleLabels: Record<string, { label: string; color: string; icon: any }> = 
   admin: { label: "Admin", color: "hsl(0,70%,50%)", icon: Shield },
 };
 
-const DocViewer = ({ label, url }: { label: string; url: string | null }) => {
+const DocViewer = ({ label, url, bucket = "vet-documents" }: { label: string; url: string | null; bucket?: string }) => {
   if (!url) return (
     <div className="flex items-center gap-2 p-3 bg-[hsl(0,50%,97%)] rounded-xl border border-[hsl(0,40%,90%)]">
       <FileText className="w-4 h-4 text-[hsl(0,50%,60%)]" />
       <span className="text-sm text-[hsl(0,50%,50%)]">{label}: Not uploaded</span>
     </div>
   );
-  const isImage = url.match(/\.(jpg|jpeg|png|gif|webp)(\?|$)/i);
+
+  // If it's a full URL, use it. Otherwise assume it's a path in the bucket.
+  const fullUrl = url.startsWith("http") ? url : supabase.storage.from(bucket).getPublicUrl(url).data.publicUrl;
+  
+  const isImage = fullUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i);
+
   return (
     <div className="rounded-xl border border-[hsl(220,20%,90%)] overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 bg-[hsl(220,20%,97%)]">
@@ -33,13 +38,16 @@ const DocViewer = ({ label, url }: { label: string; url: string | null }) => {
           <FileText className="w-4 h-4 text-[hsl(220,80%,50%)]" />
           <span className="text-sm font-medium text-[hsl(220,20%,25%)]">{label}</span>
         </div>
-        <a href={url} target="_blank" rel="noopener noreferrer" className="text-[11px] font-medium text-[hsl(220,80%,50%)] hover:underline">Open Full</a>
+        <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] font-medium text-[hsl(220,80%,50%)] hover:underline" referrerPolicy="no-referrer">Open Full</a>
       </div>
       {isImage ? (
-        <img src={url} alt={label} className="w-full max-h-[200px] object-contain bg-[hsl(220,20%,98%)]" />
+        <img src={fullUrl} alt={label} className="w-full max-h-[240px] object-contain bg-white" referrerPolicy="no-referrer" />
       ) : (
-        <div className="p-4 bg-[hsl(220,20%,98%)] text-center">
-          <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-[hsl(220,80%,50%)] hover:underline">View Document ↗</a>
+        <div className="p-6 bg-[hsl(220,20%,98%)] text-center">
+          <p className="text-xs text-muted-foreground mb-3">Document File</p>
+          <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-lg text-sm text-[hsl(220,80%,50%)] hover:bg-[hsl(220,30%,97%)] transition-colors" referrerPolicy="no-referrer">
+            View Document ↗
+          </a>
         </div>
       )}
     </div>
@@ -59,10 +67,78 @@ const InfoRow = ({ icon: Icon, label, value }: { icon: any; label: string; value
 const AdminUserManagement = ({ data, actions }: Props) => {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [selectedSeller, setSelectedSeller] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [rejectionTarget, setRejectionTarget] = useState<any>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const handleStatusChange = async (user: any, newStatus: string, reason?: string) => {
+    if (newStatus === "rejected" && !reason) {
+      setRejectionTarget(user);
+      return;
+    }
+
+    setUpdatingStatus(user.id);
+    try {
+      if (newStatus === "approved") {
+        if (user.role === "vet") {
+          await actions.approveVet(user.id);
+        } else if (user.role === "seller" || user.role === "product_seller") {
+          await actions.approveSeller(user.id);
+        } else {
+          const { error } = await supabase.from("profiles").update({ is_admin_approved: true }).eq("id", user.id);
+          if (error) throw error;
+          toast({ title: "Approved" });
+          actions.fetchData();
+        }
+      } else if (newStatus === "rejected") {
+        if (user.role === "vet") {
+          const { error } = await supabase.from("vet_profiles").update({ 
+            verification_status: "rejected",
+            rejection_reason: reason 
+          }).eq("user_id", user.id);
+          if (error) throw error;
+          
+          await supabase.from("profiles").update({ 
+            is_admin_approved: false, 
+            is_onboarding_complete: true // Keep it true so they see the status screen
+          }).eq("id", user.id);
+
+          toast({ title: "Vet Rejected", description: "Reason: " + reason });
+          actions.fetchData();
+        } else if (user.role === "seller" || user.role === "product_seller") {
+          // You might want similar logic for sellers if needed
+          await actions.rejectSeller(user.id);
+          if (reason) {
+            await supabase.from("profiles").update({ rejection_reason: reason }).eq("id", user.id);
+          }
+        } else {
+          const { error } = await supabase.from("profiles").update({ 
+            is_admin_approved: false, 
+            is_onboarding_complete: false,
+            rejection_reason: reason 
+          }).eq("id", user.id);
+          if (error) throw error;
+          toast({ title: "Rejected" });
+          actions.fetchData();
+        }
+      } else if (newStatus === "pending") {
+        const { error } = await supabase.from("profiles").update({ is_admin_approved: false, is_onboarding_complete: true }).eq("id", user.id);
+        if (error) throw error;
+        toast({ title: "Set to Pending" });
+        actions.fetchData();
+      }
+    } catch (err: any) {
+      toast({ title: "Update Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUpdatingStatus(null);
+      setRejectionTarget(null);
+      setRejectionReason("");
+    }
+  };
 
   const filtered = data.allUsers.filter((u: any) => {
     const matchSearch = !search || u.name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase());
@@ -134,17 +210,47 @@ const AdminUserManagement = ({ data, actions }: Props) => {
         </div>
       </div>
 
+      {/* Rejection Reason Modal */}
+      {rejectionTarget && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50" onClick={() => setRejectionTarget(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-md m-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6">
+              <h3 className="text-lg font-bold text-[hsl(220,20%,15%)] mb-4">Reason for Rejection</h3>
+              <p className="text-sm text-[hsl(220,15%,55%)] mb-4">Please provide a clear reason why this user's application is being rejected. The user will see this message.</p>
+              <textarea 
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="e.g. Documents are blurry, missing medical license number..."
+                className="w-full min-h-[120px] p-4 bg-[hsl(220,20%,97%)] border border-[hsl(220,20%,92%)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(0,70%,50%)]/20"
+              />
+            </div>
+            <div className="border-t border-[hsl(220,20%,92%)] px-6 py-4 flex justify-end gap-3">
+              <button onClick={() => setRejectionTarget(null)} className="px-5 py-2.5 border border-[hsl(220,20%,85%)] text-[hsl(220,15%,40%)] text-sm font-medium rounded-xl">
+                Cancel
+              </button>
+              <button 
+                disabled={!rejectionReason.trim()}
+                onClick={() => handleStatusChange(rejectionTarget, "rejected", rejectionReason)} 
+                className="px-5 py-2.5 bg-[hsl(0,70%,50%)] text-white text-sm font-medium rounded-xl disabled:opacity-50"
+              >
+                Reject User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Detail Review Modal */}
-      {selectedSeller && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={() => setSelectedSeller(null)}>
+      {selectedUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={() => setSelectedUser(null)}>
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
             <div className="sticky top-0 bg-white border-b border-[hsl(220,20%,92%)] px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
               <div>
-                <h2 className="text-lg font-bold text-[hsl(220,20%,15%)]">Seller Application Review</h2>
-                <p className="text-[12px] text-[hsl(220,15%,55%)]">{selectedSeller.role?.replace("_", " ")} • Applied {new Date(selectedSeller.created_at).toLocaleDateString()}</p>
+                <h2 className="text-lg font-bold text-[hsl(220,20%,15%)]">Application Review</h2>
+                <p className="text-[12px] text-[hsl(220,15%,55%)]">{selectedUser.role?.replace("_", " ")} • Applied {new Date(selectedUser.created_at).toLocaleDateString()}</p>
               </div>
-              <button onClick={() => setSelectedSeller(null)} className="w-8 h-8 rounded-lg bg-[hsl(220,20%,96%)] flex items-center justify-center hover:bg-[hsl(220,20%,92%)]">
+              <button onClick={() => setSelectedUser(null)} className="w-8 h-8 rounded-lg bg-[hsl(220,20%,96%)] flex items-center justify-center hover:bg-[hsl(220,20%,92%)]">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -153,8 +259,8 @@ const AdminUserManagement = ({ data, actions }: Props) => {
               {/* Profile Photo / Selfie */}
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded-2xl overflow-hidden bg-[hsl(220,20%,94%)] border-2 border-[hsl(220,20%,88%)]">
-                  {selectedSeller.selfie_file || selectedSeller.profile_photo ? (
-                    <img src={selectedSeller.selfie_file || selectedSeller.profile_photo} className="w-full h-full object-cover" />
+                  {selectedUser.profile_photo || selectedUser.selfie_file || selectedUser.passport_photo_file ? (
+                    <img src={selectedUser.profile_photo || selectedUser.selfie_file || selectedUser.passport_photo_file} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Camera className="w-8 h-8 text-[hsl(220,15%,70%)]" />
@@ -162,9 +268,9 @@ const AdminUserManagement = ({ data, actions }: Props) => {
                   )}
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-[hsl(220,20%,15%)]">{selectedSeller.full_name || selectedSeller.name}</h3>
-                  <p className="text-sm text-[hsl(220,15%,55%)]">{selectedSeller.email}</p>
-                  {selectedSeller.priority_fee_paid && (
+                  <h3 className="text-xl font-bold text-[hsl(220,20%,15%)]">{selectedUser.full_name || selectedUser.name}</h3>
+                  <p className="text-sm text-[hsl(220,15%,55%)]">{selectedUser.email}</p>
+                  {selectedUser.priority_fee_paid && (
                     <span className="inline-block mt-1 px-2.5 py-0.5 bg-[hsl(35,90%,90%)] text-[hsl(35,80%,35%)] text-[10px] font-bold rounded-md">PRIORITY VERIFICATION</span>
                   )}
                 </div>
@@ -172,37 +278,110 @@ const AdminUserManagement = ({ data, actions }: Props) => {
 
               {/* Personal Information */}
               <div className="bg-[hsl(220,20%,97%)] rounded-xl p-4">
-                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] mb-3">Personal Information</h4>
+                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] mb-3">Primary Details</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                  <InfoRow icon={Users} label="Full Name" value={selectedSeller.full_name} />
-                  <InfoRow icon={Users} label="Display Name" value={selectedSeller.name} />
-                  <InfoRow icon={Mail} label="Email" value={selectedSeller.email} />
-                  <InfoRow icon={Phone} label="Phone" value={selectedSeller.phone} />
-                  <InfoRow icon={MapPin} label="Address" value={selectedSeller.address} />
-                  {selectedSeller.business_name && <InfoRow icon={Building} label="Business Name" value={selectedSeller.business_name} />}
-                  {selectedSeller.gst_number && <InfoRow icon={FileText} label="GST Number" value={selectedSeller.gst_number} />}
+                  <InfoRow icon={Users} label="Full Name" value={selectedUser.full_name} />
+                  <InfoRow icon={Users} label="Display Name" value={selectedUser.name} />
+                  <InfoRow icon={Mail} label="Email" value={selectedUser.email} />
+                  <InfoRow icon={Phone} label="Phone" value={selectedUser.phone} />
+                  <InfoRow icon={MapPin} label="Address" value={selectedUser.address} />
+                  {selectedUser.qualification && <InfoRow icon={GraduationCap} label="Qualification" value={selectedUser.qualification} />}
+                  {selectedUser.registration_number && <InfoRow icon={FileText} label="Registration #" value={selectedUser.registration_number} />}
+                  {selectedUser.years_of_experience !== undefined && <InfoRow icon={Clock} label="Experience" value={`${selectedUser.years_of_experience} years`} />}
                 </div>
               </div>
 
+              {/* Clinic details for vets */}
+              {selectedUser.role === 'vet' && (
+                <div className="bg-[hsl(345,70%,98%)] rounded-xl p-4 border border-[hsl(345,70%,93%)]">
+                  <h4 className="text-sm font-bold text-[hsl(345,70%40%)] mb-3">Clinical Information</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                    <InfoRow icon={Building} label="Independent Practice" value={selectedUser.self_practice ? "Yes" : "No"} />
+                    <InfoRow icon={MapPin} label="Clinic Address" value={selectedUser.clinic_address} />
+                    <InfoRow icon={Users} label="Specializations" value={selectedUser.specializations?.join(", ")} />
+                    <InfoRow icon={Stethoscope} label="Consultation" value={selectedUser.consultation_type} />
+                    <div className="flex items-start gap-3 py-2">
+                      <Banknote className="w-4 h-4 text-[hsl(220,15%,55%)] mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-[11px] text-[hsl(220,15%,60%)] uppercase tracking-wide">Fees (Online/Offline)</p>
+                        <p className="text-sm font-medium text-[hsl(220,20%,15%)]">₹{selectedUser.online_fee} / ₹{selectedUser.offline_fee}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Education details for vets */}
+              {selectedUser.role === 'vet' && selectedUser.education_details && selectedUser.education_details.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-bold text-[hsl(220,20%,15%)]">Educational Background</h4>
+                  <div className="space-y-2">
+                    {selectedUser.education_details.map((edu: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between p-3 bg-[hsl(220,20%,97%)] rounded-xl border border-[hsl(220,20%,92%)]">
+                        <div>
+                          <p className="text-sm font-bold text-[hsl(220,20%,15%)]">{edu.qualification}</p>
+                          <p className="text-[12px] text-[hsl(220,15%,55%)]">{edu.institution} • {edu.year}</p>
+                        </div>
+                        {edu.certificate_url && (
+                          <a href={edu.certificate_url.startsWith('http') ? edu.certificate_url : supabase.storage.from('vet-documents').getPublicUrl(edu.certificate_url).data.publicUrl} 
+                             target="_blank" rel="noopener noreferrer" 
+                             className="text-[11px] font-medium text-[hsl(220,80%,50%)] hover:underline"
+                             referrerPolicy="no-referrer">
+                            Certificate ↗
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Documents */}
               <div>
-                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] mb-3">Uploaded Documents</h4>
+                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] mb-3">Verification Documents</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <DocViewer label="Aadhaar Card" url={selectedSeller.aadhaar_file} />
-                  <DocViewer label="PAN Card" url={selectedSeller.pan_card_file} />
-                  <DocViewer label="Live Selfie" url={selectedSeller.selfie_file} />
-                  <DocViewer label="Breeder License" url={selectedSeller.breeder_license} />
+                  {/* Handle both Seller (aadhaar_file) and Vet (govt_id_file) paths */}
+                  <DocViewer 
+                    label="Government ID" 
+                    url={selectedUser.aadhaar_file || selectedUser.govt_id_file} 
+                    bucket={selectedUser.role === 'vet' ? 'vet-documents' : 'seller-documents'}
+                  />
+                  <DocViewer 
+                    label="PAN Card" 
+                    url={selectedUser.pan_card_file} 
+                    bucket={selectedUser.role === 'vet' ? 'vet-documents' : 'seller-documents'}
+                  />
+                  {selectedUser.role === 'vet' ? (
+                    <>
+                      <DocViewer label="Medical License / Degree" url={selectedUser.vet_degree_file} bucket="vet-documents" />
+                      <DocViewer label="Clinic Registration" url={selectedUser.clinic_registration_file} bucket="vet-documents" />
+                      <DocViewer label="Shop License" url={selectedUser.clinic_shop_license_file} bucket="vet-documents" />
+                      <DocViewer label="Address Proof" url={selectedUser.clinic_address_proof_file} bucket="vet-documents" />
+                      <DocViewer label="Cancelled Cheque" url={selectedUser.cancelled_cheque_file} bucket="vet-documents" />
+                    </>
+                  ) : (
+                    <>
+                      <DocViewer label="Live Selfie" url={selectedUser.selfie_file} bucket="seller-documents" />
+                      <DocViewer label="Breeder License" url={selectedUser.breeder_license} bucket="seller-documents" />
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Action Footer */}
             <div className="sticky bottom-0 bg-white border-t border-[hsl(220,20%,92%)] px-6 py-4 flex justify-end gap-3 rounded-b-2xl">
-              <button onClick={() => { actions.rejectSeller(selectedSeller.id); setSelectedSeller(null); }} className="px-6 py-2.5 border border-[hsl(0,60%,70%)] text-[hsl(0,65%,50%)] text-sm font-medium rounded-xl hover:bg-[hsl(0,60%,97%)] flex items-center gap-2">
-                <XCircle className="w-4 h-4" /> Reject Application
+              <button 
+                onClick={() => { setRejectionTarget(selectedUser); setSelectedUser(null); }} 
+                className="px-6 py-2.5 border border-[hsl(0,60%,70%)] text-[hsl(0,65%,50%)] text-sm font-medium rounded-xl hover:bg-[hsl(0,60%,97%)] flex items-center gap-2"
+              >
+                <XCircle className="w-4 h-4" /> Reject With Reason
               </button>
-              <button onClick={() => { actions.approveSeller(selectedSeller.id); setSelectedSeller(null); }} className="px-6 py-2.5 bg-[hsl(145,55%,42%)] text-white text-sm font-medium rounded-xl hover:bg-[hsl(145,55%,38%)] flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> Approve Seller
+              <button 
+                onClick={() => { handleStatusChange(selectedUser, "approved"); setSelectedUser(null); }} 
+                className="px-6 py-2.5 bg-[hsl(145,55%,42%)] text-white text-sm font-medium rounded-xl hover:bg-[hsl(145,55%,38%)] flex items-center gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" /> Approve Application
               </button>
             </div>
           </div>
@@ -235,13 +414,13 @@ const AdminUserManagement = ({ data, actions }: Props) => {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setSelectedSeller(seller)} className="px-4 py-2 bg-white border border-[hsl(220,20%,85%)] text-[hsl(220,15%,40%)] text-[12px] font-medium rounded-lg hover:bg-[hsl(220,20%,96%)] flex items-center gap-1.5">
+                  <button onClick={() => setSelectedUser(seller)} className="px-4 py-2 bg-white border border-[hsl(220,20%,85%)] text-[hsl(220,15%,40%)] text-[12px] font-medium rounded-lg hover:bg-[hsl(220,20%,96%)] flex items-center gap-1.5">
                     <Eye className="w-3.5 h-3.5" /> Review
                   </button>
-                  <button onClick={() => actions.approveSeller(seller.id)} className="px-4 py-2 bg-[hsl(220,80%,50%)] text-white text-[12px] font-medium rounded-lg hover:bg-[hsl(220,80%,45%)] flex items-center gap-1.5">
+                  <button onClick={() => handleStatusChange(seller, "approved")} className="px-4 py-2 bg-[hsl(220,80%,50%)] text-white text-[12px] font-medium rounded-lg hover:bg-[hsl(220,80%,45%)] flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Approve
                   </button>
-                  <button onClick={() => actions.rejectSeller(seller.id)} className="px-4 py-2 border border-[hsl(0,60%,70%)] text-[hsl(0,65%,50%)] text-[12px] font-medium rounded-lg hover:bg-[hsl(0,60%,97%)] flex items-center gap-1.5">
+                  <button onClick={() => setRejectionTarget(seller)} className="px-4 py-2 border border-[hsl(0,60%,70%)] text-[hsl(0,65%,50%)] text-[12px] font-medium rounded-lg hover:bg-[hsl(0,60%,97%)] flex items-center gap-1.5">
                     <XCircle className="w-3.5 h-3.5" /> Reject
                   </button>
                 </div>
@@ -307,14 +486,40 @@ const AdminUserManagement = ({ data, actions }: Props) => {
                         <span className="px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap" style={{ backgroundColor: `${rl.color}15`, color: rl.color }}>{rl.label}</span>
                       </td>
                       <td className="py-3.5">
-                        <span className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap ${u.is_admin_approved ? "bg-[hsl(145,50%,92%)] text-[hsl(145,60%,35%)]" : u.is_onboarding_complete ? "bg-[hsl(40,60%,92%)] text-[hsl(40,70%,35%)]" : "bg-[hsl(220,20%,94%)] text-[hsl(220,15%,55%)]"}`}>
-                          {u.is_admin_approved ? "Approved" : u.is_onboarding_complete ? "Pending" : "Active"}
-                        </span>
+                        <div className="relative inline-block">
+                          <select 
+                            value={u.is_admin_approved ? "approved" : u.is_onboarding_complete ? "pending" : "active"}
+                            disabled={updatingStatus === u.id}
+                            onChange={(e) => handleStatusChange(u, e.target.value)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer outline-none border-none
+                              ${u.is_admin_approved 
+                                ? "bg-[hsl(145,50%,92%)] text-[hsl(145,60%,35%)]" 
+                                : u.is_onboarding_complete 
+                                  ? "bg-[hsl(40,60%,92%)] text-[hsl(40,70%,35%)]" 
+                                  : "bg-[hsl(220,20%,94%)] text-[hsl(220,15%,55%)]"}
+                              ${updatingStatus === u.id ? "opacity-50 animate-pulse" : "hover:brightness-95"}`}
+                          >
+                            <option value="approved">Approved</option>
+                            <option value="pending">Pending</option>
+                            <option value="rejected">Rejected (Action)</option>
+                            <option value="active" disabled>Active (User)</option>
+                          </select>
+                        </div>
                       </td>
                       <td className="py-3.5 text-[hsl(220,15%,55%)] text-[13px]">{new Date(u.created_at).toLocaleDateString()}</td>
                       <td className="py-3.5 text-center">
-                        {(u.role === "seller" || u.role === "product_seller") && u.is_onboarding_complete ? (
-                          <button onClick={() => setSelectedSeller(u)} className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] text-[hsl(220,80%,50%)] font-medium rounded-lg border border-[hsl(220,80%,85%)] hover:bg-[hsl(220,80%,96%)] transition-colors">
+                        {(u.role === "seller" || u.role === "product_seller" || u.role === "vet") && u.is_onboarding_complete ? (
+                          <button 
+                            onClick={() => {
+                              if (u.role === "vet") {
+                                const vetDetail = data.allVets.find(v => v.user_id === u.id);
+                                setSelectedUser(vetDetail ? { ...u, ...vetDetail } : u);
+                              } else {
+                                setSelectedUser(u);
+                              }
+                            }} 
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] text-[hsl(220,80%,50%)] font-medium rounded-lg border border-[hsl(220,80%,85%)] hover:bg-[hsl(220,80%,96%)] transition-colors"
+                          >
                             <Eye className="w-3.5 h-3.5" /> View
                           </button>
                         ) : (

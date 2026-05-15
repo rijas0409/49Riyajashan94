@@ -39,18 +39,71 @@ const VetOnboarding = () => {
     const checkStatus = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        const { data: p } = await supabase.from('profiles').select('is_onboarding_complete').eq('id', session.user.id).single();
-        if (p && p.is_onboarding_complete) {
-          navigate("/vet-pending-approval", { replace: true });
+        const uid = session.user.id;
+        const { data: p } = await supabase.from('profiles').select('is_onboarding_complete, is_admin_approved, full_name, phone, email').eq('id', uid).single();
+        
+        // Fetch existing vet profile data to pre-fill
+        const { data: vp } = await supabase.from('vet_profiles').select('*').eq('user_id', uid).maybeSingle();
+        
+        if (vp) {
+          // Check if they should be seeing the pending screen
+          // If they are rejected, we let them STAY here to edit
+          if (p?.is_onboarding_complete && p?.is_admin_approved) {
+            navigate("/vet/home", { replace: true });
+            return;
+          } else if (p?.is_onboarding_complete && !p?.is_admin_approved && vp.verification_status !== 'rejected') {
+            navigate("/vet-pending-approval", { replace: true });
+            return;
+          }
+
+          // Pre-fill form
+          setFormData(prev => ({
+            ...prev,
+            fullName: p?.full_name || "",
+            email: p?.email || "",
+            phone: p?.phone || "",
+            qualification: vp.qualification || "BVSc",
+            registrationNumber: vp.registration_number || "",
+            isIndependentPractice: vp.self_practice || false,
+            yearsOfExperience: vp.years_of_experience?.toString() || "",
+            specializations: vp.specializations || [],
+            consultationTypes: vp.consultation_type?.split(", ") || [],
+            availableDays: vp.available_days || [],
+            morningSlots: vp.morning_slots || false,
+            eveningSlots: vp.evening_slots || false,
+            onlineFee: vp.online_fee?.toString() || "500",
+            offlineFee: vp.offline_fee?.toString() || "800",
+            bankAccountName: vp.bank_account_name || "",
+            bankName: vp.bank_name || "",
+            bankAccountNumber: vp.bank_account_number || "",
+            bankIfsc: vp.bank_ifsc || "",
+            preferred_language: vp.preferred_language || "English",
+            clinicAddress: vp.clinic_address || "",
+            vendorAgreement: vp.vendor_agreement_accepted || false,
+            telemedicineConsent: vp.telemedicine_consent_accepted || false,
+          }));
+
+          // Handle special cases like education rows
+          if (vp.education_details && Array.isArray(vp.education_details)) {
+            setFormData(prev => ({
+              ...prev,
+              educationRows: vp.education_details.map((edu: any) => ({
+                qualification: edu.qualification,
+                institution: edu.institution,
+                year: edu.year,
+                certificateFile: null // Can't pre-fill files
+              }))
+            }));
+          }
+        } else {
+          if (p?.is_onboarding_complete) {
+             navigate("/vet-pending-approval", { replace: true });
+          }
         }
       }
     };
     checkStatus();
-
-    if (profile?.role === 'vet' && profile?.vetStatus === 'pending' && profile.email !== 'gucci@123.com' && profile.email !== 'rijas@lv.com') {
-      navigate("/vet-pending-approval", { replace: true });
-    }
-  }, [profile, navigate]);
+  }, [navigate, profile]);
 
   /* ─── form state ─── */
   const [formData, setFormData] = useState({
@@ -220,7 +273,8 @@ const VetOnboarding = () => {
         telemedicine_consent_accepted: formData.telemedicineConsent,
         clinic_photos: clinicPhotoUrls,
         education_details: eduDetails,
-        verification_status: existingVet?.verification_status || "pending",
+        verification_status: "pending", // Always set to pending on submission/resubmission
+        rejection_reason: null, // Clear reason on resubmission
         is_active: true,
       };
 

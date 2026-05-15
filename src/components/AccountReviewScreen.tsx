@@ -1,13 +1,15 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, Stethoscope, ShieldCheck, LogOut, CheckCircle } from "lucide-react";
+import { Clock, Stethoscope, ShieldCheck, LogOut, CheckCircle, XCircle, AlertCircle, Edit3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AccountReviewScreenProps {
   onLogout?: () => void;
+  rejectionReason?: string | null;
+  onEditProfile?: () => void;
 }
 
-export const AccountReviewScreen = ({ onLogout }: AccountReviewScreenProps) => {
+export const AccountReviewScreen = ({ onLogout, rejectionReason, onEditProfile }: AccountReviewScreenProps) => {
   const handleLogout = async () => { 
     if (onLogout) {
       onLogout();
@@ -16,6 +18,56 @@ export const AccountReviewScreen = ({ onLogout }: AccountReviewScreenProps) => {
       window.location.reload(); 
     }
   };
+
+  if (rejectionReason) {
+    return (
+      <div className="min-h-screen bg-gradient-soft flex flex-col items-center justify-center p-4">
+        <Card className="w-full max-w-md border-0 shadow-card animate-fade-in text-center border-t-4 border-destructive">
+          <CardHeader className="space-y-4">
+            <div className="w-20 h-20 mx-auto bg-destructive/10 rounded-full flex items-center justify-center">
+              <XCircle className="w-10 h-10 text-destructive" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-destructive">
+              Application Rejected
+            </CardTitle>
+            <CardDescription className="text-base text-muted-foreground max-w-sm mx-auto">
+              Unfortunately, your veterinary application was not approved at this time.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="bg-destructive/5 rounded-3xl p-5 space-y-4 border border-destructive/10 text-left">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-sm text-destructive uppercase tracking-wide">Reason for Rejection</p>
+                  <p className="text-sm text-[hsl(220,20%,15%)] font-medium leading-relaxed mt-1">
+                    {rejectionReason}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-muted/40 rounded-2xl border border-border/50 text-xs text-muted-foreground leading-relaxed">
+              Don't worry! You can appeal this decision by editing your information and resubmitting your application for another review.
+            </div>
+            
+            <Button 
+              className="w-full rounded-2xl bg-gradient-primary h-12 text-sm font-bold shadow-lg" 
+              onClick={onEditProfile}
+            >
+              <Edit3 className="w-4 h-4 mr-2" />
+              Edit & Resubmit Application
+            </Button>
+
+            <Button variant="ghost" className="w-full rounded-2xl text-muted-foreground py-0 h-auto" onClick={handleLogout}>
+              <LogOut className="w-3 h-3 mr-1.5" />
+              Sign out
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-soft flex flex-col items-center justify-center p-4">

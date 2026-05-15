@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
-  const fetchProfile = async (userId: string, userEmail: string, metaName: string) => {
+  const fetchProfile = async (userId: string, userEmail: string, metaName: string, metaRole?: string | null) => {
     try {
       const { data } = await supabase
         .from("profiles")
@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .maybeSingle();
 
       let vetStatus: string | null = null;
-      if (data?.role === 'vet') {
+      if (data?.role === 'vet' || metaRole === 'vet') {
         const { data: vetData } = await supabase
           .from("vet_profiles")
           .select("verification_status")
@@ -64,23 +64,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           name: data.name || metaName || "User",
           email: data.email || userEmail || "",
           photo: data.profile_photo,
-          role: data.role,
+          role: data.role || metaRole || null,
           vetStatus,
           is_onboarding_complete: data.is_onboarding_complete,
           is_admin_approved: data.is_admin_approved,
         });
         if (data.role) localStorage.setItem("sruvo_user_role", data.role);
+        else if (metaRole) localStorage.setItem("sruvo_user_role", metaRole);
       } else {
-        const metaRole = (user?.user_metadata as any)?.role;
         setProfile({
           name: metaName || "User",
           email: userEmail || "",
           photo: null,
           role: metaRole || null,
+          vetStatus,
         });
+        if (metaRole) localStorage.setItem("sruvo_user_role", metaRole);
       }
     } catch {
-      const metaRole = (user?.user_metadata as any)?.role;
       setProfile({
         name: metaName || "User",
         email: userEmail || "",
@@ -93,7 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const refreshProfile = async () => {
     if (!user) return;
     const meta = user.user_metadata as Record<string, any>;
-    await fetchProfile(user.id, user.email || "", meta?.name || meta?.full_name || "");
+    await fetchProfile(user.id, user.email || "", meta?.name || meta?.full_name || "", meta?.role);
   };
 
   useEffect(() => {
@@ -126,7 +127,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Then fetch full profile from DB (deferred to avoid deadlock with Supabase auth)
           setTimeout(() => {
             if (mounted) {
-              fetchProfile(currentSession.user.id, currentSession.user.email || "", metaName);
+              fetchProfile(currentSession.user.id, currentSession.user.email || "", metaName, metaRole);
             }
           }, 0);
         } else {
@@ -155,7 +156,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             photo: null,
             role: metaRole,
           });
-          fetchProfile(initialSession.user.id, initialSession.user.email || "", metaName);
+          fetchProfile(initialSession.user.id, initialSession.user.email || "", metaName, metaRole);
         }
         setAuthReady(true);
       }

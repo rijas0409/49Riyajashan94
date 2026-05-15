@@ -55,7 +55,7 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string)
         
         if (roleError) {
            console.error("RPC role check error:", roleError);
-           // If we have metadata role, we trust it over a failing RPC for now
+           // If we have metadata role, we trust it over a failing RPC
            if (metaRole && allowedRoles.includes(metaRole as AllowedRole)) {
              setIsLoading(false);
              return;
@@ -63,9 +63,11 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string)
            throw roleError;
         }
 
-        if (!roleData || !allowedRoles.includes(roleData as AllowedRole)) {
+        const effectiveRole = roleData || metaRole;
+
+        if (!effectiveRole || !allowedRoles.includes(effectiveRole as AllowedRole)) {
           // Redirect to appropriate dashboard based on actual role
-          const role = roleData as AllowedRole;
+          const role = effectiveRole as AllowedRole;
           switch (role) {
             case "buyer": navigate("/buyer/home", { replace: true }); break;
             case "seller": navigate("/seller-dashboard", { replace: true }); break;
