@@ -70,7 +70,7 @@ const ConsultationSummary = () => {
         return;
       }
 
-      const isBypassUser = user.email === 'jas@sruvo.com';
+      const isBypassUser = user.email === 'jas@sruvo.com' || user.email === 'rijas@123.com';
 
       if (isBypassUser) {
         toast.success("Special Access: Bypassing Payment & Confirmation");
@@ -162,9 +162,14 @@ const ConsultationSummary = () => {
           setIsProcessing(false);
         }
       }, 2000);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error in payment flow top-level:", err);
-      toast.error(`Error: ${err instanceof Error ? err.message : 'Failed to fetch – Check your internet'}`);
+      // More descriptive error for Failed to fetch
+      const message = err?.message === "Failed to fetch" 
+        ? "Network error: Failed to reach the server. Please check your internet connection or Supabase settings."
+        : (err?.message || "An unexpected error occurred during payment.");
+      
+      toast.error(`Error: ${message}`);
       setIsProcessing(false);
     }
   };

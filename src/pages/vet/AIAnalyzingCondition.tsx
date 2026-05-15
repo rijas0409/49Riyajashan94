@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Stethoscope, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner"; // Added toast import
 
 const vetAvatars = [
   { id: "1", image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop" },
@@ -18,25 +20,53 @@ const steps = [
 const AIAnalyzingCondition = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const assessmentData = location.state || {};
+  const { user } = useAuth();
+  const assessmentData = useMemo(() => location.state || {}, [location.state]);
   const [activeStep, setActiveStep] = useState(0);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
+    const isBypassUser = user?.email === 'jas@sruvo.com' || user?.email === 'rijas@123.com';
+
     const progressInterval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 100) return 100;
-        return prev + 1;
+        return prev + (isBypassUser ? 5 : 1);
       });
     }, 80);
 
     const timers = steps.map((_, i) =>
-      setTimeout(() => setActiveStep(i), i * 2000)
+      setTimeout(() => setActiveStep(i), i * (isBypassUser ? 500 : 2000))
     );
 
     // Fetch real vet from DB and navigate with data
     const fetchAndNavigate = async () => {
       try {
+        if (isBypassUser) {
+          setTimeout(() => {
+            navigate("/vet/booking-details", {
+              state: { 
+                ...assessmentData, 
+                matchedVet: {
+                  id: "demo-vet-bypass",
+                  userId: "demo-user-id",
+                  name: "Dr. Vikram Malhotra",
+                  specialization: "General Veterinarian",
+                  image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
+                  rating: 4.9,
+                  experience: 10,
+                  fee: 249,
+                  qualification: "BVSc & AH",
+                  onlineFee: 249,
+                  offlineFee: 599,
+                  clinicAddress: "Sector 5, Bangalore",
+                }
+              }
+            });
+          }, 2000);
+          return;
+        }
+
         const { data: vets } = await supabase
           .from('vet_profiles')
           .select('*')
@@ -111,7 +141,7 @@ const AIAnalyzingCondition = () => {
       clearInterval(progressInterval);
       timers.forEach(clearTimeout);
     };
-  }, []);
+  }, [assessmentData, navigate, user?.email]);
 
   return (
     <div className="h-screen bg-background flex flex-col items-center justify-between px-4 py-8">

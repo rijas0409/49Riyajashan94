@@ -1,344 +1,324 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
 import { 
-  XCircle, Search, Bell, Video, Calendar, 
-  MapPin, Home as HomeIcon, Clock, MoreHorizontal, 
-  ChevronRight, BarChart3, Wallet, User, MessageSquare, 
-  Target, LayoutDashboard
-} from "lucide-react";
-import { SRUVO_LOGO_URL } from "@/constants/branding";
+  MagnifyingGlass, Bell, VideoCamera, DotsThree, 
+  Wallet, User, CalendarDots, House, 
+  CaretRight, PawPrint, ClipboardText, 
+  Clock, ClockCounterClockwise, ChatTeardrop,
+  Buildings
+} from "@phosphor-icons/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 
 const VetDashboard = () => {
   const navigate = useNavigate();
   const { isLoading: guardLoading, user, profile, error: guardError } = useRoleGuard(["vet"], "/auth-vet");
-  const [appointments, setAppointments] = useState<any[]>([]);
-  const [vetProfile, setVetProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    try {
+      // Basic fetch to ensure data integrity
+      await supabase.from("vet_profiles").select("*").eq("user_id", user?.id).maybeSingle();
+      setIsLoading(false);
+    } catch (err) {
+      console.error("Error fetching vet data:", err);
+      setIsLoading(false);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (user && profile) {
-      if (!profile.is_onboarding_complete) {
+      if (profile.is_onboarding_complete === false) {
         navigate("/vet-onboarding");
-      } else if (!profile.is_admin_approved) {
+      } else if (profile.is_admin_approved === false) {
         navigate("/vet-pending-approval");
       } else {
         fetchData();
       }
     }
-  }, [user, profile, navigate]);
+  }, [user, profile, navigate, fetchData]);
 
-  const fetchData = async () => {
-    try {
-      const [aptRes, profRes] = await Promise.all([
-        supabase.from("vet_appointments").select("*").eq("vet_id", user?.id).order("appointment_time", { ascending: true }),
-        supabase.from("vet_profiles").select("*").eq("user_id", user?.id).maybeSingle()
-      ]);
-      setAppointments(aptRes.data || []);
-      setVetProfile(profRes.data || null);
-    } catch (err) {
-      console.error("Error fetching vet data:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (guardError) return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#F8F9FD]">
-      <div className="max-w-md w-full bg-white rounded-3xl p-8 text-center shadow-xl shadow-purple-100/50">
-        <XCircle className="w-16 h-16 text-red-500 mx-auto mb-6 opacity-80" />
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
-        <p className="text-gray-500 mb-8">{guardError}</p>
-        <div className="flex gap-4">
-          <Button onClick={() => window.location.reload()} className="flex-1 rounded-2xl bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-200">Try Again</Button>
-          <Button variant="outline" onClick={() => navigate("/auth-vet")} className="flex-1 rounded-2xl border-gray-200">Login</Button>
-        </div>
-      </div>
-    </div>
-  );
+  if (guardError) return <div className="min-h-screen flex items-center justify-center p-4 bg-[#f9f9fb]">{guardError}</div>;
 
   if (guardLoading || !user || !profile || isLoading) {
-    return (
-      <div className="min-h-screen bg-[#F8F9FD] p-6 space-y-6">
-        <div className="flex justify-between items-center px-4">
-          <div className="flex gap-3">
-             <Skeleton className="h-12 w-12 rounded-full" />
-             <div className="space-y-2">
-               <Skeleton className="h-4 w-24" />
-               <Skeleton className="h-6 w-32" />
-             </div>
-          </div>
-          <div className="flex gap-3">
-            <Skeleton className="h-10 w-10 rounded-full" />
-            <Skeleton className="h-10 w-10 rounded-full" />
-          </div>
-        </div>
-        <Skeleton className="h-48 w-full rounded-[40px]" />
-        <Skeleton className="h-40 w-full rounded-[32px]" />
-        <div className="grid grid-cols-2 gap-4">
-          <Skeleton className="h-32 rounded-[32px]" />
-          <Skeleton className="h-32 rounded-[32px]" />
-        </div>
-      </div>
-    );
+    return <div className="min-h-screen bg-[#f9f9fb] flex items-center justify-center font-sans">Loading...</div>;
   }
 
-  const doctorName = profile?.name || "Doctor";
-  const pendingCount = appointments.filter(a => a.status === 'pending').length;
-  const currentAppointment = appointments.find(a => a.status === 'confirmed' || a.status === 'pending') || appointments[0];
+  const doctorName = profile?.name || "Sarah";
+  const doctorFirstName = doctorName.split(' ')[0];
 
   return (
-    <div className="min-h-screen bg-[#F8F9FD] pb-32 font-sans text-gray-900 overflow-x-hidden">
-      {/* Top Header */}
-      <header className="px-6 pt-10 pb-4 flex items-center justify-between sticky top-0 bg-[#F8F9FD]/80 backdrop-blur-md z-40">
-        <div className="flex items-center gap-4">
-          <div className="relative group cursor-pointer" onClick={() => navigate("/vet/profile")}>
-            <Avatar className="w-14 h-14 border-2 border-white shadow-md ring-2 ring-purple-100 transition-transform active:scale-90">
-              <AvatarImage src={profile?.avatar_url || "https://images.unsplash.com/photo-1559839734-2b71ef159961?auto=format&fit=crop&q=80&w=200"} />
-              <AvatarFallback className="bg-purple-50 text-purple-600 font-bold">{doctorName[0]}</AvatarFallback>
-            </Avatar>
-            <div className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 bg-green-500 border-2 border-white rounded-full"></div>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.15em] font-black text-purple-500 mb-0.5">VET PANEL</p>
-            <h1 className="text-xl font-black tracking-tight text-[#1A1C1E]">Welcome, Dr. {doctorName.split(' ')[0]}</h1>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button className="w-11 h-11 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100 hover:bg-gray-50 transition-all active:scale-95">
-            <Search className="w-5 h-5 text-gray-600" />
-          </button>
-          <button className="w-11 h-11 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100 hover:bg-gray-50 transition-all active:scale-95 relative">
-            <Bell className="w-5 h-5 text-gray-600" />
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-          </button>
-        </div>
-      </header>
-
-      <main className="px-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        {/* Main Banner Card */}
-        <section className="relative overflow-hidden group">
-          <div className="bg-gradient-to-br from-[#BF40FF] via-[#A832FF] to-[#8A2BE2] rounded-[40px] p-8 text-white shadow-2xl shadow-purple-200/60 relative z-10">
-            <div className="flex justify-between items-start mb-6">
-              <div className="space-y-2">
-                <h2 className="text-[28px] font-black leading-[1.1] max-w-[220px]">Ready for your next consultation?</h2>
-                <p className="text-purple-100/90 text-sm font-medium">You have {pendingCount} pending consultation requests.</p>
+    <div className="min-h-screen font-sans antialiased text-[#1a1a24] bg-[#f9f9fb] selection:bg-purple-100 overflow-x-hidden">
+      {/* Main Content Container */}
+      <main className="max-w-7xl mx-auto relative pb-[100px] px-[22px] py-[24px] lg:px-10 lg:py-10">
+        
+        {/* Header */}
+        <header className="flex items-center justify-between mb-7 lg:mb-10 max-w-7xl mx-auto">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex-shrink-0 w-12 h-12 rounded-full p-[2.5px] bg-gradient-to-br from-[#d340ff] to-[#8728ff] flex items-center justify-center">
+              <div className="w-full h-full p-0.5 bg-white rounded-full flex items-center justify-center">
+                <Avatar className="w-full h-full border-none">
+                  <AvatarImage src={profile?.avatar_url || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80"} className="object-cover rounded-full" />
+                  <AvatarFallback className="bg-purple-100 text-[#a428ff] font-extrabold">{doctorFirstName[0]}</AvatarFallback>
+                </Avatar>
               </div>
-              <button className="w-11 h-11 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center transition-all active:scale-95">
-                <MoreHorizontal className="w-6 h-6" />
-              </button>
             </div>
-            <div className="flex items-center gap-3">
-              <Button 
-                className="bg-white text-purple-700 hover:bg-purple-50 font-black rounded-2xl h-14 px-7 gap-3 shadow-xl shadow-black/10 transition-all active:scale-95"
-                onClick={() => navigate("/vet/appointments")}
-              >
-                <div className="bg-purple-100 p-1.5 rounded-lg">
-                   <Video className="w-4 h-4 fill-purple-600 text-purple-600" strokeWidth={3} />
-                </div>
-                View Consultations
-              </Button>
+            <div className="flex flex-col justify-center min-w-0">
+              <h4 className="text-[9px] font-extrabold text-[#bd6eff] tracking-[0.8px] uppercase mb-[3px]">VET PANEL</h4>
+              <h1 className="text-base lg:text-lg font-extrabold truncate">Welcome, Dr. {doctorFirstName}</h1>
             </div>
           </div>
-          {/* Decorative glow */}
-          <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-black/10 rounded-full blur-2xl"></div>
-        </section>
+          <div className="flex gap-2.5 flex-shrink-0">
+            <button className="w-[42px] h-[42px] rounded-full bg-white flex items-center justify-center border-none shadow-[0_4px_15px_rgba(0,0,0,0.03)] cursor-pointer active:scale-95 transition-all">
+              <MagnifyingGlass size={20} weight="bold" />
+            </button>
+            <button className="w-[42px] h-[42px] rounded-full bg-white flex items-center justify-center border-none shadow-[0_4px_15px_rgba(0,0,0,0.03)] cursor-pointer relative active:scale-95 transition-all">
+              <Bell size={20} weight="fill" />
+              <span className="absolute top-[10px] right-[12px] w-2 h-2 bg-[#ff4264] rounded-full border-2 border-white"></span>
+            </button>
+          </div>
+        </header>
 
-        {/* Revenue Section */}
-        <section className="bg-white rounded-[32px] p-7 shadow-sm border border-gray-100/50">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <p className="text-gray-400 text-[12px] font-bold uppercase tracking-widest mb-1.5">Today's Revenue</p>
-              <h3 className="text-3xl font-black tracking-tight text-[#1A1C1E]">₹{vetProfile?.today_revenue || "1,284.50"}</h3>
-            </div>
-            <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-500 shadow-inner">
-              <Wallet className="w-6 h-6" />
-            </div>
-          </div>
-          <div className="flex items-end justify-between h-20 gap-2.5">
-            {[15, 25, 20, 28, 40, 35, 30].map((height, i) => (
-              <div 
-                key={i} 
-                className={`flex-1 rounded-xl transition-all duration-700 ease-out h-full flex items-end ${i === 5 ? 'bg-[#A832FF]' : i === 6 ? 'bg-[#D699FF]' : 'bg-purple-50'}`}
-                style={{ height: `${height}%` }}
-              ></div>
-            ))}
-          </div>
-        </section>
-
-        {/* Info Cards Grid */}
-        <div className="grid grid-cols-2 gap-5">
-          <div className="bg-white rounded-[32px] p-7 shadow-sm border border-gray-100/50 group active:scale-95 transition-transform">
-            <div className="w-12 h-12 bg-[#EEF2FF] rounded-2xl flex items-center justify-center text-[#4F46E5] mb-5">
-              <User className="w-6 h-6" />
-            </div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] mb-1.5">ACTIVE PATIENTS</p>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-[#1A1C1E]">42</span>
-              <span className="text-[11px] font-black text-green-500 flex items-center bg-green-50 px-1.5 py-0.5 rounded-lg">
-                 +12%
-              </span>
-            </div>
-          </div>
-          <div className="bg-white rounded-[32px] p-7 shadow-sm border border-gray-100/50 group active:scale-95 transition-transform">
-            <div className="w-12 h-12 bg-[#FFF7ED] rounded-2xl flex items-center justify-center text-[#F97316] mb-5">
-              <Calendar className="w-6 h-6" />
-            </div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] mb-1.5">PENDING TASKS</p>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-[#1A1C1E]">8</span>
-            </div>
-            <p className="text-[10px] font-black text-orange-500 mt-2 flex items-center gap-1.5 uppercase tracking-wider">
-              <Clock className="w-3 h-3" /> Action req.
-            </p>
-          </div>
-        </div>
-
-        {/* Focus Mode Section */}
-        <section>
-          <div className="flex items-center gap-3 mb-6 px-1">
-            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center shadow-inner">
-              <Target className="w-4.5 h-4.5 text-purple-600" />
-            </div>
-            <h2 className="text-xl font-black tracking-tight text-[#1A1C1E]">Focus Mode</h2>
-          </div>
+        {/* Responsive Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10">
           
-          <div className="relative">
-            <Card className="rounded-[44px] border-none shadow-2xl shadow-purple-100/40 overflow-hidden bg-white">
-              <CardContent className="p-8">
-                <div className="flex items-start justify-between mb-8">
-                  <div className="flex items-center gap-5">
-                    <div className="relative">
-                      <Avatar className="w-20 h-20 ring-4 ring-gray-50 shadow-lg">
-                        <AvatarImage src={currentAppointment?.pet_image || "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=200"} />
-                        <AvatarFallback>PET</AvatarFallback>
-                      </Avatar>
-                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-md">
-                        <Video className="w-3 h-3 text-purple-600 fill-purple-600" />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-2xl font-black tracking-tight text-[#1A1C1E]">{currentAppointment?.pet_name || "Oliver"}</h4>
-                        <span className="bg-[#F3E8FF] text-[#A832FF] text-[9px] font-black px-2.5 py-1.5 rounded-xl uppercase tracking-wider shadow-sm">IN 15 MINS</span>
-                      </div>
-                      <p className="text-gray-400 font-bold text-sm">{currentAppointment?.pet_type || "Domestic Shorthair"} • {currentAppointment?.pet_age || "3y"}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="secondary" className="bg-[#FAF5FF] text-[#A832FF] border-none font-black text-[10px] py-2 px-3.5 rounded-2xl gap-2 tracking-wide uppercase">
-                          <Video className="w-3.5 h-3.5 text-purple-600 fill-purple-600" /> VIDEO CONSULTATION
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
+          {/* Left Column: Awareness & Stats */}
+          <div className="lg:col-span-7 flex flex-col gap-6">
+            
+            {/* Main Banner */}
+            <section className="bg-gradient-to-br from-[#d340ff] to-[#8728ff] rounded-[34px] px-6 py-7 lg:py-10 text-white shadow-[0_16px_32px_rgba(164,40,255,0.25)] relative transition-all hover:scale-[1.01]">
+              <div className="max-w-lg">
+                <h2 className="text-[22px] lg:text-[28px] font-extrabold leading-[1.25] mb-3 tracking-[-0.3px]">Ready for your next<br className="sm:hidden" /> consultation?</h2>
+                <p className="text-[13px] lg:text-sm font-medium opacity-95 mb-[22px] leading-[1.4]">You have 4 pending consultation<br className="sm:hidden" /> requests.</p>
+                <div className="flex items-center gap-2.5">
+                  <button 
+                    onClick={() => navigate("/vet/video-consultation")}
+                    className="bg-white text-[#a428ff] py-3.5 px-5 lg:px-8 rounded-[28px] font-bold text-[13px] border-none flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:scale-[0.98] transition-all"
+                  >
+                    <svg viewBox="4 4 16 16" xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px] fill-current">
+                      <path d="M16 6C16.5523 6 17 6.44772 17 7V9.5L21.5 6.5C21.7761 6.3159 22 6.4741 22 6.809V17.191C22 17.5259 21.7761 17.6841 21.5 17.5L17 14.5V17C17 17.5523 16.5523 18 16 18H4C3.44772 18 3 17.5523 3 17V7C3 6.44772 3.44772 6 4 6H16ZM10 9C9.44772 9 9 9.44772 9 10V11H8C7.44772 11 7 11.4477 7 12C7 12.5523 7.44772 13 8 13H9V14C9 14.5523 9.44772 15 10 15C10.5523 15 11 14.5523 11 14V13H12C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11H11V10C11 9.44772 10.5523 9 10 9Z"/>
+                    </svg>
+                    View Consultations
+                  </button>
+                  <button className="bg-white/25 text-white w-11 h-11 flex-shrink-0 rounded-full border-none flex items-center justify-center cursor-pointer active:scale-90 transition-all">
+                    <DotsThree size={24} weight="bold" />
+                  </button>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-10">
-                  <div className="bg-[#F8F9FD] rounded-3xl p-5 border border-gray-100/50">
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.15em] mb-1.5">REASON</p>
-                    <p className="font-black text-[13px] text-[#1A1C1E]">{currentAppointment?.reason || "Post-op Checkup"}</p>
-                  </div>
-                  <div className="bg-[#F8F9FD] rounded-3xl p-5 border border-gray-100/50">
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.15em] mb-1.5">OWNER</p>
-                    <p className="font-black text-[13px] text-[#1A1C1E]">{currentAppointment?.owner_name || "Mark Thompson"}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <Button className="w-full h-18 rounded-[28px] bg-[#A832FF] hover:bg-[#8A2BE2] text-white text-lg font-black gap-3 shadow-2xl shadow-purple-200 transition-all active:scale-95">
-                    <Video className="w-6 h-6 fill-white/20 border-none" strokeWidth={3} /> Join Video Call
-                  </Button>
-                  <div className="grid grid-cols-2 gap-4">
-                    <Button variant="outline" className="h-15 rounded-2xl border-gray-100 bg-[#F6F7FB] font-black gap-2 hover:bg-gray-100 transition-colors active:scale-95">
-                      <FileText className="w-5 h-5 text-gray-500" /> Records
-                    </Button>
-                    <Button variant="outline" className="h-15 rounded-2xl border-gray-100 bg-[#F6F7FB] font-black gap-2 hover:bg-gray-100 transition-colors active:scale-95">
-                      <MessageSquare className="w-5 h-5 text-gray-500" /> Chat
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-
-        {/* Upcoming Section */}
-        <section className="pb-10">
-          <div className="flex items-center justify-between mb-6 px-1">
-            <h2 className="text-xl font-black tracking-tight text-[#1A1C1E]">Upcoming</h2>
-            <button className="text-[#A832FF] font-black text-[13px] hover:opacity-80 transition-opacity tracking-tight" onClick={() => navigate("/vet/schedule")}>View All</button>
-          </div>
-          
-          <div className="space-y-4">
-            {appointments.length > 0 ? appointments.slice(0, 3).map((apt, i) => (
-              <div key={i} className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-50 flex items-center justify-between group cursor-pointer hover:border-purple-200 transition-all active:scale-[0.98]">
-                <div className="flex items-center gap-7">
-                  <span className="text-gray-400 font-black text-[11px] w-14 leading-tight uppercase tracking-tighter">{apt.appointment_time || "11:30 AM"}</span>
-                  <div className="flex items-center gap-5">
-                    <Avatar className="w-13 h-13 ring-4 ring-[#F8F9FD] shadow-sm">
-                      <AvatarImage src={apt.pet_image || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=150"} />
-                      <AvatarFallback>{apt.pet_name?.[0] || 'P'}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h5 className="font-black text-[#1A1C1E]">{apt.pet_name || "Pet"}</h5>
-                      <div className="flex items-center gap-2 mt-1">
-                        <p className="text-[10px] font-bold text-gray-400">{apt.reason || "Checkup"}</p>
-                        <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
-                        <div className="flex items-center gap-1.5">
-                          {apt.appointment_type === 'online' ? <Video className="w-3 h-3 text-purple-400" /> : <MapPin className="w-3 h-3 text-blue-400" />}
-                          <p className="text-[10px] font-black text-gray-500 uppercase tracking-wider">{apt.appointment_type === 'online' ? "Video Call" : "Clinic Visit"}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
               </div>
-            )) : (
-              <div className="text-center py-10 bg-white rounded-[32px] border border-dashed border-gray-200">
-                <Calendar className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm font-bold text-gray-400">No upcoming consultations</p>
+            </section>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Revenue Card */}
+              <section className="bg-white rounded-[32px] p-6 shadow-[0_12px_35px_rgba(0,0,0,0.035)] flex flex-col justify-between h-full">
+                <div>
+                  <div className="flex justify-between items-start mb-[22px]">
+                    <div className="space-y-1.5">
+                      <p className="text-[#8f8f9d] text-xs font-semibold">Today's Revenue</p>
+                      <h3 className="text-[#1a1a24] text-[26px] font-extrabold tracking-[-0.5px]">₹1,284.50</h3>
+                    </div>
+                    <div className="w-10 h-10 bg-[#fae8ff] text-[#a428ff] rounded-[12px] flex items-center justify-center text-xl">
+                      <Wallet size={20} weight="fill" />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-end justify-between h-12 gap-[7px]">
+                  {[14, 24, 20, 30, 34, 48, 34].map((h, i) => (
+                    <div 
+                      key={i} 
+                      className={`grow rounded-[4px] w-full transition-all duration-700 ${i === 5 ? 'bg-[#a428ff]' : 'bg-[#e6c6ff]'}`}
+                      style={{ height: `${h}px` }} 
+                    />
+                  ))}
+                </div>
+              </section>
+
+              {/* Stats Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <article className="bg-white rounded-[26px] p-5 shadow-[0_12px_35px_rgba(0,0,0,0.035)] flex flex-col">
+                  <div className="w-[49px] h-[49px] rounded-full bg-[#eef4ff] text-[#4b83ff] flex items-center justify-center mb-4">
+                    <PawPrint size={24} weight="fill" />
+                  </div>
+                  <p className="text-[#8f8f9d] text-[9.5px] font-extrabold tracking-[0.8px] uppercase mb-1.5 truncate">ACTIVE PATIENTS</p>
+                  <h3 className="text-[#1a1a24] text-[22px] font-extrabold mb-2">42</h3>
+                  <div className="text-[#10b981] font-bold text-xs flex items-center gap-1">
+                    <span className="font-extrabold">↗</span> +12%
+                  </div>
+                </article>
+                <article className="bg-white rounded-[26px] p-5 shadow-[0_12px_35px_rgba(0,0,0,0.035)] flex flex-col">
+                  <div className="w-[49px] h-[49px] rounded-full bg-[#fff8eb] text-[#f5a623] flex items-center justify-center mb-4">
+                    <ClipboardText size={24} weight="fill" />
+                  </div>
+                  <p className="text-[#8f8f9d] text-[9.5px] font-extrabold tracking-[0.8px] uppercase mb-1.5 truncate">PENDING TASKS</p>
+                  <h3 className="text-[#1a1a24] text-[22px] font-extrabold mb-2">8</h3>
+                  <div className="text-[#f59e0b] font-bold text-xs flex items-center gap-1 text-[11px] font-bold">
+                    <Clock size={14} weight="fill" />
+                    Action req.
+                  </div>
+                </article>
               </div>
-            )}
+            </div>
           </div>
-        </section>
+
+          {/* Right Column: Focus & Schedule */}
+          <div className="lg:col-span-5 flex flex-col gap-8">
+            
+            {/* Focus Mode Section */}
+            <section>
+              <div className="flex items-center gap-2.5 mb-[18px]">
+                <svg viewBox="0 0 24 24" style={{ width: '24px', height: '24px', fill: 'none', stroke: '#a428ff', strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' }}>
+                    <circle cx="12" cy="12" r="10" strokeDasharray="4 4" />
+                    <circle cx="12" cy="12" r="6" />
+                    <circle cx="12" cy="12" r="2" fill="#a428ff" />
+                </svg>
+                <h3 className="text-[#1a1a24] text-[17px] font-extrabold">Focus Mode</h3>
+              </div>
+
+              <div className="bg-white rounded-[34px] p-[22px] shadow-[0_16px_40px_rgba(0,0,0,0.04)] relative">
+                <span className="absolute top-3 right-3 bg-[#fbedff] text-[#a428ff] text-[9px] font-extrabold px-2 py-1.5 rounded-lg tracking-[0.3px]">IN 15 MINS</span>
+                
+                <div className="flex items-center gap-3.5 mb-[22px]">
+                  <img 
+                    src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=150&q=80" 
+                    alt="Oliver" 
+                    className="w-[58px] h-[58px] rounded-full object-cover flex-shrink-0"
+                  />
+                  <div className="grow min-w-0">
+                    <h4 className="text-[17px] font-extrabold text-[#1a1a24] mb-[3px]">Oliver</h4>
+                    <p className="text-xs font-medium text-[#8f8f9d] mb-2 truncate">Domestic Shorthair • 3y</p>
+                    <div className="inline-flex items-center gap-1.5 bg-[#fbedff] text-[#a428ff] text-[8.5px] font-extrabold px-2 py-1 rounded-lg tracking-[0.3px] uppercase">
+                      <VideoCamera size={12} weight="fill" />
+                      VIDEO CONSULTATION
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-[22px]">
+                  <div className="bg-[#f7f7fb] p-3.5 rounded-[18px] min-w-0">
+                    <span className="block text-[9px] text-[#b5b5c3] font-extrabold tracking-[0.5px] uppercase mb-1.5">REASON</span>
+                    <strong className="block text-[13px] text-[#1a1a24] font-bold truncate">Post-op Checkup</strong>
+                  </div>
+                  <div className="bg-[#f7f7fb] p-3.5 rounded-[18px] min-w-0">
+                    <span className="block text-[9px] text-[#b5b5c3] font-extrabold tracking-[0.5px] uppercase mb-1.5">OWNER</span>
+                    <strong className="block text-[13px] text-[#1a1a24] font-bold truncate">Mark Thompson</strong>
+                  </div>
+                </div>
+
+                <button className="w-full bg-[#a428ff] text-white p-4 rounded-[22px] border-none font-bold text-sm flex items-center justify-center gap-2 mb-3 shadow-[0_8px_20px_rgba(164,40,255,0.25)] active:scale-[0.98] transition-all">
+                  <VideoCamera size={18} weight="fill" />
+                  Join Video Call
+                </button>
+                
+                <div className="flex gap-3">
+                  <button className="grow bg-[#f3f4f8] text-[#4a4a5e] p-3.5 rounded-[20px] font-bold text-[18px] border-none flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                    <ClockCounterClockwise size={22} weight="bold" className="text-[#7b7b8f]" /> Records
+                  </button>
+                  <button className="grow bg-[#f3f4f8] text-[#4a4a5e] p-3.5 rounded-[20px] font-bold text-[18px] border-none flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                    <ChatTeardrop size={22} weight="fill" className="text-[#7b7b8f]" /> Chat
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            {/* Upcoming Section */}
+            <section>
+              <div className="flex justify-between items-center mb-[18px]">
+                <h3 className="text-[17px] font-extrabold text-[#1a1a24]">Upcoming</h3>
+                <button 
+                  onClick={() => navigate("/vet/appointments")}
+                  className="text-[#a428ff] text-xs font-extrabold no-underline uppercase"
+                >
+                  View All
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                {/* Highlighted Item */}
+                <div className="bg-white rounded-[22px] p-3.5 flex items-center shadow-[0_12px_35px_rgba(0,0,0,0.035)] border-none transition-all active:scale-[0.99] cursor-pointer" onClick={() => navigate("/vet/appointments")}>
+                  <div className="min-w-[55px] text-center pr-3.5 border-r-[1.5px] border-[#f0f0f5] flex-shrink-0">
+                    <strong className="block text-[13px] text-[#8f8f9d] font-bold mb-0.5">11:30</strong>
+                    <span className="text-[10.5px] text-[#b5b5c3] font-semibold">AM</span>
+                  </div>
+                  <div className="flex items-center gap-3 grow pl-3.5 min-w-0">
+                    <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=100&q=80" alt="Bella" className="w-[38px] h-[38px] rounded-full object-cover flex-shrink-0" />
+                    <div className="min-w-0">
+                      <h5 className="text-[14.5px] font-extrabold text-[#1a1a24] mb-[3px] truncate">Bella</h5>
+                      <p className="text-[11.5px] text-[#8f8f9d] font-medium flex items-center gap-1 truncate uppercase">
+                        Vaccination • <Buildings size={14} weight="fill" className="inline-block" /> Clinic Visit
+                      </p>
+                    </div>
+                  </div>
+                  <CaretRight size={16} weight="bold" className="text-[#d1d1e0] flex-shrink-0" />
+                </div>
+
+                {/* Faded Items */}
+                {[
+                  { 
+                    time: "01:00", 
+                    ampm: "PM", 
+                    name: "Cooper", 
+                    type: "Ear Infection • ", 
+                    suffix: "Video Call",
+                    icon: <VideoCamera size={14} weight="fill" className="inline-block" />,
+                    img: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=100&q=80" 
+                  },
+                  { 
+                    time: "02:30", 
+                    ampm: "PM", 
+                    name: "Bruno", 
+                    type: "Skin Allergy • ", 
+                    suffix: "Home Visit",
+                    icon: <House size={14} weight="fill" className="inline-block" />,
+                    img: "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=100&q=80" 
+                  }
+                ].map((apt, idx) => (
+                  <div key={idx} className="bg-transparent rounded-[22px] p-3.5 flex items-center shadow-none opacity-60 grayscale-[30%] cursor-pointer" onClick={() => navigate("/vet/appointments")}>
+                    <div className="min-w-[55px] text-center pr-3.5 border-r-[1.5px] border-[#f0f0f5] flex-shrink-0">
+                      <strong className="block text-[13px] text-[#c4c4d4] font-bold mb-0.5">{apt.time}</strong>
+                      <span className="text-[10.5px] text-[#c4c4d4] font-semibold uppercase">{apt.ampm}</span>
+                    </div>
+                    <div className="flex items-center gap-3 grow pl-3.5 min-w-0">
+                      <img src={apt.img} alt={apt.name} className="w-[38px] h-[38px] rounded-full object-cover flex-shrink-0 opacity-50" />
+                      <div className="min-w-0">
+                        <h5 className="text-[14.5px] font-extrabold text-[#c4c4d4] mb-[3px] truncate">{apt.name}</h5>
+                        <p className="text-[11.5px] text-[#c4c4d4] font-medium flex items-center gap-1 truncate uppercase">
+                          {apt.type} {apt.icon} {apt.suffix}
+                        </p>
+                      </div>
+                    </div>
+                    <CaretRight size={16} weight="bold" className="text-[#c4c4d4] flex-shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        </div>
       </main>
 
-      {/* Bottom Navbar */}
-      <nav className="fixed bottom-0 left-0 right-0 h-28 bg-white/95 backdrop-blur-2xl border-t border-gray-100/50 px-9 flex items-center justify-between z-50 rounded-t-[40px] shadow-[0_-20px_50px_-20px_rgba(168,50,255,0.15)]">
-        <button className="flex flex-col items-center gap-2 group" onClick={() => navigate("/vet/home")}>
-          <div className="bg-[#A832FF] p-3.5 rounded-[22px] shadow-2xl shadow-purple-400/50 transition-all active:scale-90">
-            <HomeIcon className="w-6.5 h-6.5 text-white fill-white/10" strokeWidth={2.5} />
-          </div>
-          <span className="text-[10px] font-black text-[#A832FF] uppercase tracking-[0.2em]">HOME</span>
-        </button>
-        <button className="flex flex-col items-center gap-2 text-gray-300 hover:text-purple-400 transition-all active:scale-90" onClick={() => navigate("/vet/schedule")}>
-          <div className="p-3.5 rounded-[22px]">
-            <Calendar className="w-6.5 h-6.5" strokeWidth={2.5} />
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] mt-0.5">SCHEDULE</span>
-        </button>
-        <button className="flex flex-col items-center gap-2 text-gray-300 hover:text-purple-400 transition-all active:scale-90" onClick={() => navigate("/vet/earnings")}>
-          <div className="p-3.5 rounded-[22px]">
-            <BarChart3 className="w-6.5 h-6.5" strokeWidth={2.5} />
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] mt-0.5">EARNINGS</span>
-        </button>
-        <button className="flex flex-col items-center gap-2 text-gray-300 hover:text-purple-400 transition-all active:scale-90" onClick={() => navigate("/vet/profile")}>
-          <div className="p-3.5 rounded-[22px]">
-            <User className="w-6.5 h-6.5" strokeWidth={2.5} />
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] mt-0.5">PROFILE</span>
-        </button>
+      {/* Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-sm flex justify-center z-50 border-t border-gray-50/50 pb-safe">
+        <div className="w-full max-w-7xl flex justify-between px-6 pt-4 pb-7">
+          <button className="flex flex-col items-center gap-1.5 text-[#a428ff] font-extrabold text-[9px] tracking-[0.5px] w-[60px]" onClick={() => navigate("/vet/home")}>
+            <House size={24} weight="fill" />
+            HOME
+          </button>
+          <button className="flex flex-col items-center gap-1.5 text-[#b5b5c3] font-extrabold text-[9px] tracking-[0.5px] w-[60px]" onClick={() => navigate("/vet/schedule")}>
+            <CalendarDots size={24} />
+            SCHEDULE
+          </button>
+          <button className="flex flex-col items-center gap-1.5 text-[#b5b5c3] font-extrabold text-[9px] tracking-[0.5px] w-[60px]" onClick={() => navigate("/vet/earnings")}>
+            <Wallet size={24} weight="bold" />
+            EARNINGS
+          </button>
+          <button className="flex flex-col items-center gap-1.5 text-[#b5b5c3] font-extrabold text-[9px] tracking-[0.5px] w-[60px]" onClick={() => navigate("/vet/profile")}>
+            <User size={24} weight="bold" />
+            PROFILE
+          </button>
+        </div>
       </nav>
     </div>
   );
+
 };
 
 export default VetDashboard;

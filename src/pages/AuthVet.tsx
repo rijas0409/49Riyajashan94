@@ -30,11 +30,11 @@ const AuthVet = () => {
 
   useEffect(() => {
     if (authReady && user && profile?.role === "vet") {
-      if (!profile.is_onboarding_complete) {
+      if (profile.is_onboarding_complete === false) {
         navigate("/vet-onboarding");
-      } else if (!profile.is_admin_approved) {
+      } else if (profile.is_admin_approved === false) {
         navigate("/vet-pending-approval");
-      } else {
+      } else if (profile.is_onboarding_complete === true && profile.is_admin_approved === true) {
         navigate("/vet/home");
       }
     }
@@ -79,19 +79,39 @@ const AuthVet = () => {
 
         if (userProfile?.role !== "vet") {
           await supabase.auth.signOut();
-          toast.error("This is not a veterinary doctor account. Please use the correct login page.");
+          const roleDisplayName = userProfile?.role === "seller" ? "Breeder" : userProfile?.role?.replace("_", " ") || "different role";
+          toast.error(`This email is registered as a ${roleDisplayName}. Please use the correct login page for your role.`);
           return;
         }
 
         toast.success("Welcome back, Doctor!");
-        if (!userProfile.is_onboarding_complete) {
+        if (userProfile.is_onboarding_complete === false) {
           navigate("/vet-onboarding");
-        } else if (!userProfile.is_admin_approved) {
+        } else if (userProfile.is_admin_approved === false) {
           navigate("/vet-pending-approval");
         } else {
           navigate("/vet/home");
         }
       } else {
+        // Pre-signup role check
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("email", formData.email)
+          .maybeSingle();
+
+        if (existingProfile) {
+          if (existingProfile.role === "vet") {
+            toast.error("You are already registered as a Vet. Please Login instead.");
+            setIsLogin(true);
+          } else {
+            const roleName = existingProfile.role === "seller" ? "Breeder" : existingProfile.role?.replace("_", " ") || "different user type";
+            toast.error(`This email is already registered as a ${roleName}. Please use a different email or log in at the correct portal.`);
+          }
+          setIsLoading(false);
+          return;
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email: formData.email, password: formData.password,
           options: {

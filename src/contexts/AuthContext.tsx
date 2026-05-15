@@ -71,19 +71,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
         if (data.role) localStorage.setItem("sruvo_user_role", data.role);
       } else {
+        const metaRole = (user?.user_metadata as any)?.role;
         setProfile({
           name: metaName || "User",
           email: userEmail || "",
           photo: null,
-          role: null,
+          role: metaRole || null,
         });
       }
     } catch {
+      const metaRole = (user?.user_metadata as any)?.role;
       setProfile({
         name: metaName || "User",
         email: userEmail || "",
         photo: null,
-        role: null,
+        role: metaRole || null,
       });
     }
   };
@@ -108,13 +110,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (currentSession?.user) {
           const meta = currentSession.user.user_metadata as Record<string, any>;
           const metaName = meta?.name || meta?.full_name || "";
+          const metaRole = meta?.role || null;
 
           // Set immediate profile from metadata to avoid "U" flash
           setProfile(prev => ({
             name: prev?.name || metaName || "User",
             email: prev?.email || currentSession.user.email || "",
             photo: prev?.photo || null,
-            role: prev?.role || null,
+            role: prev?.role || metaRole,
             vetStatus: prev?.vetStatus || null,
             is_onboarding_complete: prev?.is_onboarding_complete,
             is_admin_approved: prev?.is_admin_approved,
@@ -145,11 +148,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (initialSession?.user) {
           const meta = initialSession.user.user_metadata as Record<string, any>;
           const metaName = meta?.name || meta?.full_name || "";
+          const metaRole = meta?.role || null;
           setProfile({
             name: metaName || "User",
             email: initialSession.user.email || "",
             photo: null,
-            role: null,
+            role: metaRole,
           });
           fetchProfile(initialSession.user.id, initialSession.user.email || "", metaName);
         }

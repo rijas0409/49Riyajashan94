@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, X, ArrowRight, Smile, AlertTriangle, Asterisk, Camera, Clock } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const petTypes = [
   { id: "dog", label: "Dog", img: "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=120&h=120&fit=crop" },
@@ -70,6 +71,8 @@ const AIVetAssessment = () => {
     setSelectedSymptoms(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
   };
 
+  const { user } = useAuth();
+
   const progressPercent = (step / 5) * 100;
 
   const animClass = animating
@@ -81,6 +84,46 @@ const AIVetAssessment = () => {
       : "animate-slide-in-left";
 
   const ctaLabels = ["Continue", "Continue", "Continue", "Continue", "Analyze Symptoms"];
+
+  const handleAnalyze = () => {
+    const isBypassUser = user?.email === 'rijas@123.com';
+
+    if (isBypassUser) {
+      // Direct jump to consultation summary for bypass user
+      navigate("/vet/consultation-summary", { 
+        state: { 
+          flowType: "instant",
+          selectedPet, 
+          petName, 
+          years, 
+          months, 
+          selectedSymptoms, 
+          duration, 
+          urgency, 
+          additionalDetails, 
+          vaccinated, 
+          existingConditions, 
+          medications,
+          matchedVet: {
+            id: "demo-vet-rijas",
+            userId: "demo-user-id",
+            name: "Dr. Vikram Malhotra",
+            specialization: "General Veterinarian",
+            image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
+            rating: 4.9,
+            experience: 10,
+            fee: 249,
+            qualification: "BVSc & AH",
+            onlineFee: 249,
+            offlineFee: 599,
+          }
+        } 
+      });
+      return;
+    }
+
+    navigate("/vet/ai-analyzing", { state: { selectedPet, petName, years, months, selectedSymptoms, duration, urgency, additionalDetails, vaccinated, existingConditions, medications } });
+  };
 
   return (
     <div className="h-screen bg-white flex flex-col overflow-hidden">
@@ -149,7 +192,7 @@ const AIVetAssessment = () => {
             </button>
           )}
           <button
-            onClick={step === 5 ? () => navigate("/vet/ai-analyzing", { state: { selectedPet, petName, years, months, selectedSymptoms, duration, urgency, additionalDetails, vaccinated, existingConditions, medications } }) : goNext}
+            onClick={step === 5 ? handleAnalyze : goNext}
             className="flex-1 py-4 rounded-2xl font-bold text-white text-base flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-shadow"
             style={{ background: 'linear-gradient(90deg, #FF4D6D, #8B5CF6)' }}
           >

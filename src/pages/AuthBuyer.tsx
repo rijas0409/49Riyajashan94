@@ -86,13 +86,33 @@ const AuthBuyer = () => {
 
         if (profile?.role !== "buyer") {
           await supabase.auth.signOut();
-          toast.error("This is not a buyer account. Please use the correct login page.");
+          const roleDisplayName = profile?.role === "seller" ? "Breeder" : profile?.role?.replace("_", " ") || "different role";
+          toast.error(`This email is already registered as a ${roleDisplayName}. Please use the correct login page.`);
           return;
         }
 
         toast.success("Welcome back!");
         navigate("/buyer/home");
       } else {
+        // Pre-signup role check
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("email", formData.email)
+          .maybeSingle();
+
+        if (existingProfile) {
+          if (existingProfile.role === "buyer") {
+            toast.error("You are already registered as a Buyer. Please Login instead.");
+            setIsLogin(true);
+          } else {
+            const roleName = existingProfile.role === "seller" ? "Breeder" : existingProfile.role?.replace("_", " ") || "different user type";
+            toast.error(`This email is already registered as a ${roleName}. Please use a different email or log in at the correct portal.`);
+          }
+          setIsLoading(false);
+          return;
+        }
+
         const redirectUrl = `${window.location.origin}/`;
         
         const { data, error } = await supabase.auth.signUp({

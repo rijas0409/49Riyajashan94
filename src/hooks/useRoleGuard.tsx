@@ -42,9 +42,27 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string)
           return;
         }
 
-        // If AuthContext profile doesn't have it yet, do the deep check
-        const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: authUser.id });
+        // If AuthContext profile doesn't have it yet, check metadata as fallback
+        const metaRole = (authUser.user_metadata as any)?.role;
+        if (metaRole && allowedRoles.includes(metaRole as AllowedRole)) {
+          setUser(authUser);
+          setProfile({ ...authProfile, role: metaRole });
+          setIsLoading(false);
+          // Don't return, still do the deep check but we are "safe" for now
+        }
+
+        const { data: roleData, error: roleError } = await supabase.rpc("get_user_role", { _user_id: authUser.id });
         
+        if (roleError) {
+           console.error("RPC role check error:", roleError);
+           // If we have metadata role, we trust it over a failing RPC for now
+           if (metaRole && allowedRoles.includes(metaRole as AllowedRole)) {
+             setIsLoading(false);
+             return;
+           }
+           throw roleError;
+        }
+
         if (!roleData || !allowedRoles.includes(roleData as AllowedRole)) {
           // Redirect to appropriate dashboard based on actual role
           const role = roleData as AllowedRole;

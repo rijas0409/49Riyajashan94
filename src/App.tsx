@@ -77,7 +77,16 @@ import VetDoctorProfile from "./pages/vet/VetDoctorProfile";
 import VetsNearYou from "./pages/vet/VetsNearYou";
 import ClinicsNearby from "./pages/vet/ClinicsNearby";
 import AllSpecializedVets from "./pages/vet/AllSpecializedVets";
+import ConsultationDetail from "./pages/vet/ConsultationDetail";
+import HomeVisitDetails from "./pages/vet/HomeVisitDetails";
+import ClinicVisitDetails from "./pages/vet/ClinicVisitDetails";
 import VideoCall from "./pages/vet/VideoCall";
+
+import { AdminUserApprover } from "./components/AdminUserApprover";
+import VetSchedule from "./pages/vet/VetSchedule";
+import VetEarnings from "./pages/vet/VetEarnings";
+import VetProfile from "./pages/vet/VetProfile";
+import VideoConsultation from "./pages/vet/VideoConsultation";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +96,7 @@ const App = () => (
       <AuthProvider>
         <LocationProvider>
           <CartProvider>
+            <AdminUserApprover />
             <Toaster />
             <Sonner />
             <BrowserRouter>
@@ -137,6 +147,15 @@ const App = () => (
                 <Route path="/buyer/shop/:petShopType/catalog" element={<Shop />} />
                 <Route path="/vet" element={<Vet />} />
                 <Route path="/vet/home" element={<VetHome />} />
+                <Route path="/vet/schedule" element={<VetSchedule />} />
+                <Route path="/vet/earnings" element={<VetEarnings />} />
+                <Route path="/vet/profile" element={<VetProfile />} />
+                <Route path="/vet/video-consultation" element={<VideoConsultation />} />
+                <Route path="/vet/consultation-detail" element={<ConsultationDetail />} />
+                <Route path="/vet/home-visit-details" element={<HomeVisitDetails />} />
+                <Route path="/vet/clinic-visit-details" element={<ClinicVisitDetails />} />
+                <Route path="/vet-earnings" element={<Navigate to="/vet/earnings" replace />} />
+                <Route path="/vet-schedule" element={<Navigate to="/vet/schedule" replace />} />
                 <Route path="/vet-onboarding" element={<VetOnboarding />} />
                 <Route path="/vet-pending-approval" element={<VetPendingApproval />} />
                 <Route path="/wallet" element={<WalletPage />} />

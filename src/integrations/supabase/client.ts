@@ -28,19 +28,75 @@ try {
   const key = rawKey.trim();
   
   if (!VITE_SUPABASE_URL || !VITE_SUPABASE_PUBLISHABLE_KEY) {
-    console.warn("Supabase credentials missing from environment. Using fallback project.");
+    console.warn("Supabase credentials missing from environment. Using mock client to prevent 'Failed to fetch' errors.");
+    
+    // Return a mock instance that doesn't make network requests
+    supabaseInstance = { 
+      auth: { 
+        onAuthStateChange: (callback: any) => {
+          // Immediately trigger with null session to allow app to proceed
+          setTimeout(() => callback('INITIAL_SESSION', null), 0);
+          return { data: { subscription: { unsubscribe: () => {} } } }; 
+        }, 
+        getSession: async () => ({ data: { session: null }, error: null }),
+        getUser: async () => ({ data: { user: null }, error: null }),
+        signInWithPassword: async () => ({ data: { session: null, user: null }, error: new Error("Mock mode") }),
+        signUp: async () => ({ data: { session: null, user: null }, error: new Error("Mock mode") }),
+        signOut: async () => ({ error: null })
+      },
+      storage: {
+        from: () => ({
+          upload: async () => ({ data: null, error: new Error("Mock mode") }),
+          getPublicUrl: () => ({ data: { publicUrl: "" } })
+        })
+      },
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            single: async () => ({ data: null, error: null }),
+            maybeSingle: async () => ({ data: null, error: null }),
+            order: () => ({
+              limit: async () => ({ data: [], error: null })
+            })
+          }),
+          order: () => ({
+            limit: async () => ({ data: [], error: null })
+          }),
+          limit: async () => ({ data: [], error: null })
+        }),
+        insert: async () => ({ data: null, error: null }),
+        update: async () => ({ data: null, error: null }),
+        delete: async () => ({ data: null, error: null }),
+        upsert: async () => ({ data: null, error: null })
+      }),
+      rpc: async () => ({ data: null, error: null })
+    } as any;
+  } else {
+    supabaseInstance = createClient<Database>(url, key, {
+      auth: {
+        storage: localStorage,
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+      global: {
+        headers: { 'x-application-name': 'sruvo-web' },
+        fetch: async (...args) => {
+          try {
+            return await fetch(...args);
+          } catch (err) {
+            if (err instanceof Error && err.message === 'Failed to fetch') {
+              console.error("CRITICAL: Network request failed (Failed to fetch).", {
+                url: args[0],
+                supabaseUrl: url,
+                isSupabaseRequest: String(args[0]).includes(url)
+              });
+            }
+            throw err;
+          }
+        }
+      }
+    });
   }
-
-  supabaseInstance = createClient<Database>(url, key, {
-    auth: {
-      storage: localStorage,
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-    global: {
-      headers: { 'x-application-name': 'sruvo-web' },
-    }
-  });
 } catch (err: unknown) {
   const error = err instanceof Error ? err : new Error(String(err));
   console.error("Critical: Failed to initialize Supabase client:", error);

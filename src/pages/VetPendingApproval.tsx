@@ -5,9 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { AccountReviewScreen } from "@/components/AccountReviewScreen";
+import { useAuth } from "@/contexts/AuthContext";
 
 const VetPendingApproval = () => {
   const navigate = useNavigate();
+  const { refreshProfile } = useAuth();
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
@@ -23,7 +25,10 @@ const VetPendingApproval = () => {
         });
 
         const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: session.user.id });
-        if (roleData !== "vet") { navigate("/auth-vet"); return; }
+        const metaRole = (session.user.user_metadata as any)?.role;
+        const effectiveRole = roleData || metaRole;
+
+        if (effectiveRole !== "vet") { navigate("/auth-vet"); return; }
 
         const { data: profile } = await supabase
           .from("profiles")
@@ -32,7 +37,11 @@ const VetPendingApproval = () => {
           .maybeSingle();
 
         if (profile?.is_onboarding_complete === false) { navigate("/vet-onboarding"); return; }
-        if (profile?.is_admin_approved === true) { navigate("/vet/home"); return; }
+        if (profile?.is_admin_approved === true) { 
+          await refreshProfile();
+          navigate("/vet/home"); 
+          return; 
+        }
 
         setIsChecking(false);
       } catch {
@@ -43,7 +52,7 @@ const VetPendingApproval = () => {
     check();
     const interval = setInterval(check, 30000);
     return () => clearInterval(interval);
-  }, [navigate]);
+  }, [navigate, refreshProfile]);
 
   const handleLogout = async () => { await supabase.auth.signOut(); navigate("/auth-vet"); };
 

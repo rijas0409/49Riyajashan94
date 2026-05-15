@@ -92,7 +92,8 @@ const AuthBreeder = () => {
 
         if (profile?.role !== "seller") {
           await supabase.auth.signOut();
-          toast.error("This is not a seller account. Please use the correct login page.");
+          const roleDisplayName = profile?.role === "vet" ? "Veterinary Doctor" : profile?.role?.replace("_", " ") || "different role";
+          toast.error(`This email is already registered as a ${roleDisplayName}. Please use the correct login page.`);
           return;
         }
 
@@ -106,6 +107,25 @@ const AuthBreeder = () => {
           navigate("/seller-dashboard");
         }
       } else {
+        // Pre-signup role check
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("email", formData.email)
+          .maybeSingle();
+
+        if (existingProfile) {
+          if (existingProfile.role === "seller") {
+            toast.error("You are already registered as a Seller/Breeder. Please Login instead.");
+            setIsLogin(true);
+          } else {
+            const roleName = existingProfile.role === "vet" ? "Veterinary Doctor" : existingProfile.role?.replace("_", " ") || "different user type";
+            toast.error(`This email is already registered as a ${roleName}. Please use a different email or log in at the correct portal.`);
+          }
+          setIsLoading(false);
+          return;
+        }
+
         const redirectUrl = `${window.location.origin}/`;
         
         const { data, error } = await supabase.auth.signUp({

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Stethoscope, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +20,7 @@ const InstantAnalyzing = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const assessmentData = location.state || {};
+  const assessmentData = useMemo(() => location.state || {}, [location.state]);
   const [activeStep, setActiveStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [vetFound, setVetFound] = useState(false);
@@ -28,6 +28,8 @@ const InstantAnalyzing = () => {
   const [isFailed, setIsFailed] = useState(false);
 
   useEffect(() => {
+    const isBypassUser = user?.email === 'jas@sruvo.com' || user?.email === 'rijas@123.com';
+
     // Progress bar animation - 94 seconds total (940ms per percent)
     const progressInterval = setInterval(() => {
       setProgress(prev => {
@@ -38,27 +40,30 @@ const InstantAnalyzing = () => {
         }
         // Slow down even more near the end if not found
         if (prev > 80 && !vetFound) return prev + 0.5;
+        // Speed up for bypass users
+        if (isBypassUser) return prev + 5;
         return prev + 1;
       });
-    }, 940);
+    }, isBypassUser ? 100 : 940);
 
     // Step progression - spread across 94 seconds
-    const stepIntervals = [2000, 15000, 45000, 75000];
+    const baseStepIntervals = [2000, 15000, 45000, 75000];
+    const stepIntervals = isBypassUser ? baseStepIntervals.map(i => i / 10) : baseStepIntervals;
     const timers = steps.map((_, i) =>
       setTimeout(() => setActiveStep(i), stepIntervals[i])
     );
 
     // Fetch active vets based on diagnosis data
     const fetchVet = async () => {
-      // Special demo case for jas@sruvo.com
-      if (user?.email === 'jas@sruvo.com') {
+      // Special demo case for jas@sruvo.com and rijas@123.com
+      if (user?.email === 'jas@sruvo.com' || user?.email === 'rijas@123.com') {
         setTimeout(() => {
           setVetFound(true);
           setMatchedVet({
-            id: "demo-vet-jas",
+            id: `demo-vet-${user?.email?.split('@')[0]}`,
             userId: "demo-user-id",
-            name: "Dr. Jashan Pabla",
-            specialization: "Senior Veterinary Surgeon",
+            name: user?.email === 'jas@sruvo.com' ? "Dr. Jashan Pabla" : "Dr. Vikram Malhotra",
+            specialization: user?.email === 'jas@sruvo.com' ? "Senior Veterinary Surgeon" : "General Veterinarian",
             image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
             rating: 5.0,
             experience: 12,
@@ -67,7 +72,7 @@ const InstantAnalyzing = () => {
             onlineFee: 499,
             offlineFee: 999,
           });
-        }, 8000); // Find him in 8 seconds
+        }, 3000); // Find him in 3 seconds for bypass users
         return;
       }
 
@@ -87,7 +92,10 @@ const InstantAnalyzing = () => {
 
         if (error) {
           console.error('Error fetching vets:', error);
-          toast.error("Connection failed! Please check your network and try again.");
+          const errorMsg = error.message === "Failed to fetch" 
+            ? "Network error: Could not connect to database. Please check your internet or Supabase URL."
+            : "Connection failed! Please try again later.";
+          toast.error(errorMsg);
           return;
         }
 
@@ -163,7 +171,7 @@ const InstantAnalyzing = () => {
       clearInterval(progressInterval);
       timers.forEach(clearTimeout);
     };
-  }, []);
+  }, [user?.email, vetFound, assessmentData]);
 
   useEffect(() => {
     if (vetFound && matchedVet) {
