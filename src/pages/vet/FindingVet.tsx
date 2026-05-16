@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, HelpCircle, Check, Stethoscope } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const vetAvatars = [
   { id: "1", image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop" },
@@ -19,41 +20,42 @@ const FindingVet = () => {
       setSearchTime(prev => prev + 1);
     }, 1000);
 
-    // Fetch real vet from DB
-    const fetchAndNavigate = async () => {
-      try {
-        const { data: vets } = await supabase
-          .from('vet_profiles')
-          .select('*')
-          .eq('is_active', true)
-          .eq('verification_status', 'verified')
-          .limit(5);
+      // Fetch real vet from DB
+      const fetchAndNavigate = async () => {
+        try {
+          const { data: vets, error: vetError } = await supabase
+            .from('vet_profiles')
+            .select('*, profile:profiles(is_admin_approved, name, full_name)')
+            .eq('is_active', true)
+            .eq('verification_status', 'verified');
 
-        let matchedVet = stateData.matchedVet || null;
+          if (vetError) throw vetError;
 
-        if (!matchedVet && vets && vets.length > 0) {
-          const bestVet = vets[0];
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('name, full_name, profile_photo')
-            .eq('id', bestVet.user_id)
-            .single();
+          let matchedVet = stateData.matchedVet || null;
 
-          const realName = profileData?.full_name || profileData?.name || "Doctor";
+          if (!matchedVet && vets && vets.length > 0) {
+            // Filter by admin approval
+            const approvedVets = vets.filter(v => v.profile?.is_admin_approved);
+            const sourceVets = approvedVets.length > 0 ? approvedVets : [];
+            
+            if (sourceVets.length > 0) {
+              const bestVet = sourceVets[0];
+              const realName = bestVet.profile?.full_name || bestVet.profile?.name || "Doctor";
 
-          matchedVet = {
-            id: bestVet.id,
-            userId: bestVet.user_id,
-            name: `Dr. ${realName}`,
-            specialization: bestVet.specializations?.[0] || "General Veterinarian",
-            image: bestVet.profile_photo || profileData?.profile_photo || "",
-            rating: bestVet.average_rating || 0,
-            experience: bestVet.years_of_experience || 0,
-            fee: bestVet.online_fee || 499,
-            onlineFee: bestVet.online_fee || 500,
-            offlineFee: bestVet.offline_fee || 800,
-          };
-        }
+              matchedVet = {
+                id: bestVet.id,
+                userId: bestVet.user_id,
+                name: `Dr. ${realName}`,
+                specialization: bestVet.specializations?.[0] || "General Veterinarian",
+                image: bestVet.profile_photo || bestVet.profile?.profile_photo || "",
+                rating: bestVet.average_rating || 0,
+                experience: bestVet.years_of_experience || 0,
+                fee: bestVet.online_fee || 499,
+                onlineFee: bestVet.online_fee || 500,
+                offlineFee: bestVet.offline_fee || 800,
+              };
+            }
+          }
 
         setTimeout(() => {
           navigate("/vet/connection-ready", {
@@ -72,7 +74,7 @@ const FindingVet = () => {
     fetchAndNavigate();
 
     return () => clearInterval(timer);
-  }, []);
+  }, [navigate, stateData]);
 
   return (
     <div className="min-h-screen bg-background pb-24">

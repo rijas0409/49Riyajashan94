@@ -34,24 +34,52 @@ const AllSpecializedVets = () => {
     if (!authReady) return;
 
     const fetchVets = async () => {
-      const { data: vetProfiles } = await supabase
+      // Step 1: Fetch ALL verified and active vet profiles
+      const { data: vetProfiles, error: vetError } = await supabase
         .from("vet_profiles")
-        .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo")
+        .select(`
+          id, 
+          user_id, 
+          specializations, 
+          years_of_experience, 
+          online_fee, 
+          average_rating, 
+          verification_status, 
+          is_active, 
+          profile_photo
+        `)
         .eq("verification_status", "verified")
         .eq("is_active", true);
 
-      let vets: RealVet[] = [];
+      if (vetError) {
+        console.error("Error fetching vet profiles:", vetError);
+        return;
+      }
 
-      if (vetProfiles && vetProfiles.length > 0) {
-        const userIds = vetProfiles.map((v) => v.user_id);
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, name, full_name, profile_photo")
-          .in("id", userIds);
+      if (!vetProfiles || vetProfiles.length === 0) {
+        setAllVets([]);
+        return;
+      }
 
-        const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
+      // Step 2: Fetch corresponding profiles to check admin approval
+      const userIds = vetProfiles.map((v) => v.user_id);
+      const { data: profiles, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, name, full_name, profile_photo, is_admin_approved")
+        .in("id", userIds)
+        .eq("is_admin_approved", true); // ONLY show admin approved profiles
 
-        vets = vetProfiles.map((vp) => {
+      if (profileError) {
+        console.error("Error fetching profiles:", profileError);
+        return;
+      }
+
+      const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
+
+      // Step 3: Map only if profile exists (meaning it passed the is_admin_approved filter)
+      const vets: RealVet[] = vetProfiles
+        .filter(vp => profileMap.has(vp.user_id))
+        .map((vp) => {
           const profile = profileMap.get(vp.user_id);
           const name = profile?.full_name || profile?.name || "Doctor";
           const specs = vp.specializations || [];
@@ -69,7 +97,6 @@ const AllSpecializedVets = () => {
             availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`
           };
         });
-      }
 
       setAllVets(vets);
     };

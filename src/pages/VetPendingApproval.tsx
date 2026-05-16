@@ -42,7 +42,7 @@ const VetPendingApproval = () => {
           .eq("user_id", session.user.id)
           .maybeSingle();
 
-        setRejectionReason(vetProfile?.verification_status === "rejected" ? (vetProfile.rejection_reason || "Reason not provided") : null);
+        setRejectionReason(vetProfile?.verification_status === "failed" ? (vetProfile.rejection_reason || "Your application was not approved. Please review your details and try again.") : null);
 
         if (profile?.is_onboarding_complete === false) { navigate("/vet-onboarding"); return; }
         if (profile?.is_admin_approved === true) { 

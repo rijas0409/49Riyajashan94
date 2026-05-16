@@ -81,29 +81,37 @@ const InstantAnalyzing = () => {
         const symptoms = assessmentData.selectedSymptoms || [];
         const urgencyLevel = assessmentData.urgency || "concerned";
 
-        // Build query - search for active, approved vets
-        let query = supabase
+        // Build query - search for active, verified vets
+        const { data: vets, error: vetError } = await supabase
           .from('vet_profiles')
-          .select('*')
+          .select('*, profile:profiles(is_admin_approved, name, full_name)')
           .eq('is_active', true)
-          .eq('verification_status', 'approved');
+          .eq('verification_status', 'verified');
 
-        const { data: vets, error } = await query.limit(10);
-
-        if (error) {
-          console.error('Error fetching vets:', error);
-          const errorMsg = error.message === "Failed to fetch" 
-            ? "Network error: Could not connect to database. Please check your internet or Supabase URL."
-            : "Connection failed! Please try again later.";
-          toast.error(errorMsg);
+        if (vetError) {
+          console.error('Error fetching vets:', vetError);
           return;
         }
 
         if (vets && vets.length > 0) {
+          // IMPORTANT: Only match with vets whose profiles are also admin-approved
+          const approvedVets = vets.filter(v => v.profile?.is_admin_approved);
+          
+          if (approvedVets.length === 0) {
+            console.warn("No explicitly admin-approved vets found for matching.");
+          }
+
+          const sourceVets = approvedVets.length > 0 ? approvedVets : [];
+          
+          if (sourceVets.length === 0) {
+            // If no approved vets, we can't find a match
+            return;
+          }
+
           let bestVet = null;
           let bestScore = -1;
 
-          for (const vet of vets) {
+          for (const vet of sourceVets) {
             let score = 0;
             const specs = (vet.specializations || []).map((s: string) => s.toLowerCase());
             if (specs.some((s: string) => s.includes(petType.toLowerCase()))) score += 10;
@@ -128,14 +136,7 @@ const InstantAnalyzing = () => {
           }
 
           if (bestVet) {
-            // Fetch real name from profiles table
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('name, full_name, profile_photo')
-              .eq('id', bestVet.user_id)
-              .single();
-
-            const realName = profileData?.full_name || profileData?.name || "Doctor";
+            const realName = bestVet.profile?.full_name || bestVet.profile?.name || "Doctor";
 
             setTimeout(() => {
               setVetFound(true);
@@ -144,7 +145,7 @@ const InstantAnalyzing = () => {
                 userId: bestVet.user_id,
                 name: `Dr. ${realName}`,
                 specialization: bestVet.specializations?.[0] || "General Veterinarian",
-                image: bestVet.profile_photo || profileData?.profile_photo || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
+                image: bestVet.profile_photo || bestVet.profile?.profile_photo || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
                 rating: bestVet.average_rating || 4.9,
                 experience: bestVet.years_of_experience || 0,
                 fee: bestVet.online_fee || 499,
@@ -153,11 +154,7 @@ const InstantAnalyzing = () => {
                 offlineFee: bestVet.offline_fee || 800,
               });
             }, 12000); // Increased find time to be more realistic in the 94s window
-          } else {
-            // No vet found logic is handled by progress reaching 100
           }
-        } else {
-          // No vets in DB at all
         }
       } catch (err) {
         console.error('Error:', err);

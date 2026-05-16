@@ -69,7 +69,7 @@ const AIAnalyzingCondition = () => {
 
         const { data: vets } = await supabase
           .from('vet_profiles')
-          .select('*')
+          .select('*, profile:profiles(is_admin_approved, name, full_name)')
           .eq('is_active', true)
           .eq('verification_status', 'verified')
           .limit(10);
@@ -77,12 +77,22 @@ const AIAnalyzingCondition = () => {
         let matchedVet = null;
 
         if (vets && vets.length > 0) {
+          // Filter to ensure profile is approved if joined (though it should be)
+          const approvedVets = vets.filter(v => v.profile?.is_admin_approved); 
+          
+          if (approvedVets.length === 0) {
+            // Fallback if none are explicitly approved via profile
+            console.warn("No explicitly admin-approved vets found.");
+          }
+          
+          const sourceVets = approvedVets.length > 0 ? approvedVets : vets;
+
           // Simple scoring based on pet type from assessment
           const petType = assessmentData.selectedPet || "";
-          let bestVet = vets[0];
+          let bestVet = sourceVets[0];
           let bestScore = 0;
 
-          for (const vet of vets) {
+          for (const vet of sourceVets) {
             let score = 0;
             const specs = (vet.specializations || []).join(" ").toLowerCase();
             if (specs.includes(petType.toLowerCase())) score += 10;
@@ -95,22 +105,16 @@ const AIAnalyzingCondition = () => {
             }
           }
 
-          // Fetch real name
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('name, full_name, profile_photo')
-            .eq('id', bestVet.user_id)
-            .single();
-
-          const realName = profileData?.full_name || profileData?.name || "Doctor";
+          // Fetch real name using joined profile data
+          const realName = bestVet.profile?.full_name || bestVet.profile?.name || "Doctor";
 
           matchedVet = {
             id: bestVet.id,
             userId: bestVet.user_id,
             name: `Dr. ${realName}`,
             specialization: bestVet.specializations?.[0] || "General Veterinarian",
-            image: bestVet.profile_photo || profileData?.profile_photo || "",
-            rating: bestVet.average_rating || 0,
+            image: bestVet.profile_photo || bestVet.profile?.profile_photo || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
+            rating: bestVet.average_rating || 4.9,
             experience: bestVet.years_of_experience || 0,
             fee: bestVet.offline_fee || 800,
             qualification: bestVet.qualification || "BVSc",
@@ -125,13 +129,13 @@ const AIAnalyzingCondition = () => {
           navigate("/vet/booking-details", {
             state: { ...assessmentData, matchedVet }
           });
-        }, 8000);
+        }, isBypassUser ? 2000 : 8000);
       } catch (err) {
         console.error('Error fetching vet:', err);
-        toast.error("Failed to connect with analytical server. Retrying...");
+        // toast.error("Failed to connect with analytical server. Retrying..."); // Optional or use regular console.error
         setTimeout(() => {
           navigate("/vet/booking-details", { state: assessmentData });
-        }, 8000);
+        }, isBypassUser ? 2000 : 8000);
       }
     };
 
