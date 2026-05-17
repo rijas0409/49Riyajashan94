@@ -143,6 +143,8 @@ const InstantVideoCall = () => {
     };
   }, [appointmentId, stream]);
 
+  const streamRef = useRef<MediaStream | null>(null);
+
   const startCamera = useCallback(async (constraints: MediaStreamConstraints = { video: { facingMode }, audio: !isMuted }) => {
     try {
       setPermissionDenied(false);
@@ -153,13 +155,28 @@ const InstantVideoCall = () => {
 
       const userStream = await navigator.mediaDevices.getUserMedia(constraints);
       setStream(userStream);
+      streamRef.current = userStream;
       if (videoRef.current) {
         videoRef.current.srcObject = userStream;
       }
     } catch (err: unknown) {
-      console.error("Camera error:", err);
+      let errorMsg = "Permission denied. Please check your browser's camera/mic settings.";
+      const errName = (err as Error).name || "";
+      const errMsg = (err as Error).message || "";
+      
+      const isPermissionDenied = 
+        errName === "NotAllowedError" || 
+        errName === "PermissionDeniedError" || 
+        errMsg.toLowerCase().includes("permission denied");
+
+      if (isPermissionDenied) {
+        errorMsg = "Access denied. We need camera/mic for the call. Please click the camera icon in your browser's address bar to 'Allow' access. If you're using AI Studio, try clicking 'Open in new tab' at the top right of the preview.";
+      } else if (errName === "NotFoundError" || errName === "DevicesNotFoundError") {
+        errorMsg = "No camera or microphone found on your device.";
+      }
+      
       setPermissionDenied(true);
-      toast.error("Camera access denied. Please allow permissions.");
+      toast.error(errorMsg);
     }
   }, [facingMode, isMuted]);
 
@@ -172,11 +189,11 @@ const InstantVideoCall = () => {
 
     return () => {
       clearInterval(timer);
-      if (stream) {
-        stream.getTracks().forEach(t => t.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
       }
     };
-  }, [startCamera, stream]);
+  }, [startCamera]);
 
   const toggleCamera = () => {
     const newMode = facingMode === "user" ? "environment" : "user";
@@ -406,9 +423,21 @@ const InstantVideoCall = () => {
         className="absolute z-20 w-[95px] h-[145px] rounded-[22px] overflow-hidden shadow-2xl border-2 border-white/20 bg-gray-900 pointer-events-auto relative cursor-grab active:cursor-grabbing">
         <video ref={videoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover mirror scale-x-[-1]", (isVideoOff || permissionDenied) && "hidden")} />
         {(isVideoOff || permissionDenied) && (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-800 p-2 text-center" onClick={toggleVideo}>
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-800 p-2 text-center">
             <CameraOff className={cn("w-8 h-8", permissionDenied ? "text-red-400" : "text-white/40")} />
-            {permissionDenied && <p className="text-[8px] text-red-200 mt-2 font-bold uppercase tracking-tighter leading-tight">Access Needed</p>}
+            {permissionDenied ? (
+              <>
+                <p className="text-[8px] text-red-200 mt-2 font-bold uppercase tracking-tighter leading-tight mb-1">Access Needed</p>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); startCamera(); }}
+                  className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded-md text-[9px] font-bold border border-white/10 transition-colors"
+                >
+                  RETRY
+                </button>
+              </>
+            ) : (
+              <p className="text-[8px] text-white/40 mt-2 font-bold uppercase tracking-tighter">Video Off</p>
+            )}
           </div>
         )}
         <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md rounded-full px-2.5 py-1 flex items-center gap-1.5 pointer-events-none ring-1 ring-white/10">

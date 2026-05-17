@@ -88,6 +88,7 @@ const VideoCall = () => {
   const peerRef = useRef<Peer.Instance | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragAreaRef = useRef<HTMLDivElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const isVet = user?.role === "vet" || user?.email === "jas@sruvo.com" || user?.email === "rijas@123.com";
 
@@ -129,6 +130,7 @@ const VideoCall = () => {
       // Try to get the stream
       const userStream = await navigator.mediaDevices.getUserMedia(constraints);
       setStream(userStream);
+      streamRef.current = userStream;
       if (videoRef.current) {
         videoRef.current.srcObject = userStream;
       }
@@ -167,11 +169,11 @@ const VideoCall = () => {
         errorMessage.toLowerCase().includes("notallowederror");
 
       if (isPermissionDenied) {
-        errorMsg = "Access denied. Please click the camera icon in your address bar to 'Allow' access, or try opening this app in a new tab if the problem persists.";
+        errorMsg = "Access denied. We need camera/mic for the call. Please click the camera icon in your browser's address bar to 'Allow' access. If you're using AI Studio, try clicking 'Open in new tab' at the top right of the preview.";
       } else if (errorName === "NotFoundError" || errorName === "DevicesNotFoundError") {
-        errorMsg = "No camera or microphone found on your device.";
+        errorMsg = "No camera or microphone found on your device. Please ensure they are connected.";
       } else if (errorName === "NotReadableError" || errorName === "TrackStartError") {
-        errorMsg = "Camera or microphone is already in use by another application.";
+        errorMsg = "Camera or microphone is already in use by another application. Please close other apps and try again.";
       } else if (errorMessage.includes("secure (HTTPS)")) {
         errorMsg = errorMessage;
       }
@@ -183,7 +185,12 @@ const VideoCall = () => {
   useEffect(() => {
     const timer = setInterval(() => setCallDuration(prev => prev + 1), 1000);
     startCamera();
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+      }
+    };
   }, [startCamera]);
 
   const toggleCamera = () => {

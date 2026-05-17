@@ -88,6 +88,39 @@ import VetEarnings from "./pages/vet/VetEarnings";
 import VetProfile from "./pages/vet/VetProfile";
 import VideoConsultation from "./pages/vet/VideoConsultation";
 
+import React, { Component, ReactNode } from "react";
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null; errorInfo: React.ErrorInfo | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+    this.setState({ errorInfo });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 20, whiteSpace: "pre-wrap", color: "red" }}>
+          <h2>Something went wrong.</h2>
+          <p>{this.state.error?.toString()}</p>
+          <details style={{ whiteSpace: 'pre-wrap' }}>
+            {this.state.errorInfo?.componentStack}
+          </details>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -99,7 +132,8 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <Routes>
+              <ErrorBoundary>
+                <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/add-pet" element={<AddPet />} />
                 <Route path="/add-product" element={<AddProduct />} />
@@ -195,6 +229,7 @@ const App = () => (
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </ErrorBoundary>
             </BrowserRouter>
           </CartProvider>
         </LocationProvider>
