@@ -115,14 +115,26 @@ const AdminDashboard = () => {
         supabase.from("pets").select("*, owner:profiles!pets_owner_id_fkey(name, phone)").order("priority_fee_paid", { ascending: false }).order("created_at", { ascending: false }),
         supabase.from("shop_products").select("*, seller:profiles!shop_products_seller_id_fkey(name, phone)").eq("verification_status", "pending").order("priority_fee_paid", { ascending: false }).order("created_at", { ascending: false }),
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-        supabase.from("vet_profiles").select("*, profile:profiles!vet_profiles_user_id_fkey(name, email, phone, is_admin_approved, is_onboarding_complete, profile_photo)").order("created_at", { ascending: false }),
+        supabase.from("vet_profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("shop_products").select("*, seller:profiles!shop_products_seller_id_fkey(name, phone)").order("created_at", { ascending: false }),
         supabase.from("orders").select("*, pet:pets(name), buyer:profiles!orders_buyer_id_fkey(name), seller:profiles!orders_seller_id_fkey(name)").order("created_at", { ascending: false }),
         supabase.from("seller_earnings").select("*").order("created_at", { ascending: false }),
         supabase.from("vet_earnings").select("*").order("created_at", { ascending: false }),
         supabase.from("vet_appointments").select("*, vet:profiles!vet_appointments_vet_id_fkey(name, email, phone), user:profiles!vet_appointments_user_id_fkey(name, email, phone)").order("created_at", { ascending: false }),
       ]);
-      const pendingVetsData = (allVetsRes.data || []).filter((v) => v.verification_status === "pending" && v.profile?.is_onboarding_complete).sort((a, b) => {
+      const allUsersData = allUsersRes.data || [];
+      const rawVetsData = allVetsRes.data || [];
+      const allVetsWithProfile = rawVetsData.map(vet => ({
+        ...vet,
+        profile: allUsersData.find(u => u.id === vet.user_id)
+      }));
+
+      const pendingVetsData = allVetsWithProfile.filter((v) => {
+        const isPending = v.verification_status === "pending";
+        // Allow if onboarding is complete OR if we have valid profile link
+        const isOnboarded = v.profile?.is_onboarding_complete || v.profile;
+        return isPending && isOnboarded;
+      }).sort((a, b) => {
         const aPriority = a.profile?.priority_fee_paid ? 1 : 0;
         const bPriority = b.profile?.priority_fee_paid ? 1 : 0;
         return bPriority - aPriority;
@@ -135,8 +147,8 @@ const AdminDashboard = () => {
         pendingSellers: sellersRes.data || [], pendingPets: newListings,
         reVerificationPets: reVerifications, allPets: allPetsRes.data || [],
         pendingProducts: productsRes.data || [],
-        pendingVets: pendingVetsData, allUsers: allUsersRes.data || [],
-        allVets: allVetsRes.data || [], allProducts: allProductsRes.data || [],
+        pendingVets: pendingVetsData, allUsers: allUsersData,
+        allVets: allVetsWithProfile, allProducts: allProductsRes.data || [],
         allOrders: ordersRes.data || [], sellerEarnings: sellerEarnRes.data || [],
         vetEarnings: vetEarnRes.data || [], vetAppointments: appointmentsRes.data || [],
       });

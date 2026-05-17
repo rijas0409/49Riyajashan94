@@ -288,6 +288,7 @@ const VetOnboarding = () => {
 
       // 3. Update Profile
       const { error: profileError } = await supabase.from("profiles").update({
+        name: formData.fullName,
         full_name: formData.fullName,
         phone: formData.phone,
         email: formData.email,

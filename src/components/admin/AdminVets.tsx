@@ -59,7 +59,8 @@ const AdminVets = ({ data, actions }: Props) => {
   const { toast } = useToast();
 
   const filtered = data.allVets.filter((v: any) => {
-    const matchSearch = !search || v.profile?.name?.toLowerCase().includes(search.toLowerCase());
+    const displayName = v.profile?.name || v.profile?.full_name || "Doctor";
+    const matchSearch = !search || displayName.toLowerCase().includes(search.toLowerCase());
     const matchFilter = filter === "all" || v.verification_status === filter;
     return matchSearch && matchFilter;
   });
@@ -345,7 +346,7 @@ const AdminVets = ({ data, actions }: Props) => {
                     )}
                   </div>
                   <div>
-                    <p className="font-semibold text-[hsl(220,20%,15%)]">{vet.profile?.name || "Doctor"}</p>
+                    <p className="font-semibold text-[hsl(220,20%,15%)]">{vet.profile?.name || vet.profile?.full_name || "Doctor"}</p>
                     <p className="text-[12px] text-[hsl(220,15%,55%)]">{vet.qualification} • {vet.years_of_experience} yrs exp</p>
                     <p className="text-[12px] text-[hsl(220,15%,55%)]">{vet.specializations?.join(", ")}</p>
                   </div>
@@ -412,7 +413,7 @@ const AdminVets = ({ data, actions }: Props) => {
                           ) : (v.profile?.name || "V")[0].toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-[hsl(220,20%,15%)] truncate">{v.profile?.name || "Doctor"}</p>
+                          <p className="font-medium text-[hsl(220,20%,15%)] truncate">{v.profile?.name || v.profile?.full_name || "Doctor"}</p>
                           <p className="text-[11px] text-[hsl(220,15%,60%)]">{v.years_of_experience} yrs exp</p>
                         </div>
                       </div>
