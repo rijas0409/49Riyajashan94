@@ -247,6 +247,10 @@ const VideoCall = () => {
       .on("broadcast", { event: "VET_STATE_CHANGE" }, (payload) => {
         // Handle other sync events
       })
+      .on("broadcast", { event: "USER_READY" }, () => {
+        // Re-init peer when user confirms they are ready
+        initPeer();
+      })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           // Send initial state

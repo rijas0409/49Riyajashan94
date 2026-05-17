@@ -61,10 +61,10 @@ const VideoConsultation = () => {
   const getFilteredConsultations = (tab: string) => {
     const filtered = consultations.filter(c => {
       if (tab === "Active") {
+        if (c.status === 'pending' || c.status === 'analyzing') return true;
         return c.status === 'confirmed' && isTimeReached(c.appointment_date || c.created_at, c.appointment_time || "00:00");
       }
       if (tab === "Upcoming") {
-        if (c.status === 'pending') return true;
         if (c.status === 'confirmed') {
           return !isTimeReached(c.appointment_date || c.created_at, c.appointment_time || "00:00");
         }
@@ -193,6 +193,7 @@ const VideoConsultation = () => {
       toast.success("Demo consultation accepted!");
       navigate("/vet/video-call", { 
         state: { 
+          appointmentId: id,
           consultation: { 
             ...consultation, 
             petName: consultation.pet_name, 
@@ -212,6 +213,7 @@ const VideoConsultation = () => {
       toast.success("Consultation accepted!");
       navigate("/vet/video-call", { 
         state: { 
+          appointmentId: id,
           consultation: { 
             ...consultation, 
             petName: consultation.pet_name, 
@@ -519,6 +521,7 @@ const VideoConsultation = () => {
               <button 
                 onClick={() => navigate("/vet/video-call", { 
                   state: { 
+                    appointmentId: item.id,
                     consultation: { 
                       ...item, 
                       petName: item.pet_name, 

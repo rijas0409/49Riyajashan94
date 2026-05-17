@@ -132,7 +132,14 @@ const InstantVideoCall = () => {
         if (payload.voiceResult !== undefined) setVoiceResult(payload.voiceResult);
         if (payload.isAnalyzingVoice !== undefined) setIsAnalyzingVoice(payload.isAnalyzingVoice);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          channel.send({
+            type: "broadcast",
+            event: "USER_READY"
+          });
+        }
+      });
 
     return () => {
       if (peerRef.current) {
