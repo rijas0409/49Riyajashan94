@@ -55,30 +55,6 @@ const InstantAnalyzing = () => {
 
     // Fetch active vets based on diagnosis data
     const fetchVet = async () => {
-      // Special demo case for jas@sruvo.com and rijas@123.com
-      if (user?.email === 'jas@sruvo.com' || user?.email === 'rijas@123.com') {
-        setTimeout(() => {
-          setVetFound(true);
-          const isJas = user?.email === 'jas@sruvo.com';
-          setMatchedVet({
-            id: isJas ? "gucci-vet-id" : `demo-vet-${user?.email?.split('@')[0]}`,
-            userId: "00000000-0000-0000-0000-000000000000",
-            name: isJas ? "Dr. Gucci" : "Dr. Vikram Malhotra",
-            specialization: isJas ? "Senior Veterinary Surgeon" : "General Veterinarian",
-            image: isJas 
-              ? "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=200&h=100&fit=crop" 
-              : "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
-            rating: 5.0,
-            experience: isJas ? 15 : 12,
-            fee: 499,
-            qualification: "MVSc, Ph.D.",
-            onlineFee: 499,
-            offlineFee: 999,
-          });
-        }, 3000); // Find him in 3 seconds for bypass users
-        return;
-      }
-
       try {
         const petType = assessmentData.selectedPet || "";
         const symptoms = assessmentData.selectedSymptoms || [];

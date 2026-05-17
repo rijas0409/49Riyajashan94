@@ -87,9 +87,10 @@ const ConsultationAnalysisSummary = () => {
           event: "UPDATE",
           schema: "public",
           table: "vet_appointments",
-          filter: `id=eq.${appointmentId}`,
         },
         async (payload) => {
+          if (payload.new.id !== appointmentId) return;
+
           const newStatus = payload.new.status;
           setStatus(newStatus);
 

@@ -22,23 +22,6 @@ const ConsultationConfirmation = () => {
   const [status, setStatus] = useState<string>("pending");
   const [isFindingNext, setIsFindingNext] = useState(false);
 
-  // Auto-bypass for specific user
-  useEffect(() => {
-    const checkBypass = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email === 'jas@sruvo.com') {
-        navigate("/vet/instant-video-call", { 
-          state: { 
-            ...location.state, 
-            vet: currentVet,
-            appointmentId: appointmentId
-          } 
-        });
-      }
-    };
-    checkBypass();
-  }, [navigate, location.state, currentVet, appointmentId]);
-
   // Initial step transition: Payment -> Reviewing after 94ms
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -169,25 +152,19 @@ const ConsultationConfirmation = () => {
     return () => clearInterval(progressTimer);
   }, [status]);
 
-  // AUTOMATED SIMULATION FOR DEMO (only if it stays pending for too long)
+  // Auto call timeout if vet does not respond
   useEffect(() => {
     if (status === 'pending' && !isFindingNext) {
-      const simTimer = setTimeout(() => {
-        // Randomly simulate a response if no real vet is active
-        const simulateReaction = async () => {
-          const rand = Math.random();
+      const timeoutTimer = setTimeout(() => {
+        const handleTimeout = async () => {
           if (!appointmentId) return;
-
-          if (rand > 0.4) { // 60% chance to confirm (accept)
-            await supabase.from('vet_appointments').update({ status: 'confirmed' }).eq('id', appointmentId);
-          } else { // 40% chance to cancel (reject)
-            await supabase.from('vet_appointments').update({ status: 'cancelled' }).eq('id', appointmentId);
-          }
+          await supabase.from('vet_appointments').update({ status: 'cancelled' }).eq('id', appointmentId);
+          toast.error("Vet did not respond in time.");
         };
-        simulateReaction();
-      }, 15000); // 15 seconds wait before simulation kicks in
+        handleTimeout();
+      }, 60000); // 60 seconds timeout
       
-      return () => clearTimeout(simTimer);
+      return () => clearTimeout(timeoutTimer);
     }
   }, [status, isFindingNext, appointmentId]);
 

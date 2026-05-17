@@ -77,21 +77,7 @@ const ConsultationSummary = () => {
         
         // Create the appointment record directly
         try {
-          // If the user is jas@sruvo.com, we want to assign it specifically to gucci@123.com
-          let finalVetId = (!vet.userId || vet.userId === "00000000-0000-0000-0000-000000000000") ? user.id : vet.userId;
-
-          if (user.email === 'jas@sruvo.com') {
-            // Find gucci@123.com's user id
-            const { data: gucciProfile } = await supabase
-              .from('profiles')
-              .select('id')
-              .eq('email', 'gucci@123.com')
-              .single();
-            
-            if (gucciProfile) {
-              finalVetId = gucciProfile.id;
-            }
-          }
+          let finalVetId = vet.userId;
 
           const symptomsStr = selectedSymptoms?.join(", ") || "various symptoms";
           const petStr = selectedPet || "pet";
@@ -181,7 +167,7 @@ const ConsultationSummary = () => {
           const urgencyStr = urgency || "normal";
           const aiSummary = `The patient (${petName || 'Pet'}), a ${petStr}, is presenting with ${symptomsStr}. The owner reports ${urgencyStr} urgency. Initial AI assessment suggests focusing on ${selectedSymptoms?.[0] || 'general condition'} and checking for related secondary symptoms.`;
 
-          const finalVetId = (!vet.userId || vet.userId === "00000000-0000-0000-0000-000000000000") ? user.id : vet.userId;
+          const finalVetId = vet.userId;
 
           // Try to insert with enhanced columns
           let insertResult = await supabase

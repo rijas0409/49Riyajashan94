@@ -172,11 +172,13 @@ const VideoConsultation = () => {
           event: '*',
           schema: 'public',
           table: 'vet_appointments',
-          filter: `vet_id=eq.${user?.id}`
         },
-        () => {
-          // Silent background update
-          backgroundFetch();
+        (payload) => {
+          // Handle inserts/updates/deletes for this vet locally
+          const record = payload.new || payload.old;
+          if (record && record.vet_id === user?.id) {
+            backgroundFetch();
+          }
         }
       )
       .subscribe();

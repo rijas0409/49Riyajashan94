@@ -42,31 +42,6 @@ const AIAnalyzingCondition = () => {
     // Fetch real vet from DB and navigate with data
     const fetchAndNavigate = async () => {
       try {
-        if (isBypassUser) {
-          setTimeout(() => {
-            navigate("/vet/booking-details", {
-              state: { 
-                ...assessmentData, 
-                matchedVet: {
-                  id: "demo-vet-bypass",
-                  userId: "00000000-0000-0000-0000-000000000000",
-                  name: "Dr. Vikram Malhotra",
-                  specialization: "General Veterinarian",
-                  image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
-                  rating: 4.9,
-                  experience: 10,
-                  fee: 249,
-                  qualification: "BVSc & AH",
-                  onlineFee: 249,
-                  offlineFee: 599,
-                  clinicAddress: "Sector 5, Bangalore",
-                }
-              }
-            });
-          }, 2000);
-          return;
-        }
-
         const { data: matchedVets, error } = await supabase
           .from("profiles")
           .select(`

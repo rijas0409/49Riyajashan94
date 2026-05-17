@@ -90,7 +90,7 @@ const VideoCall = () => {
   const dragAreaRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  const isVet = user?.role === "vet" || user?.email === "jas@sruvo.com" || user?.email === "rijas@123.com";
+  const isVet = user?.role === "vet";
 
   const remoteInfo = isVet ? {
     name: consultation?.profiles?.full_name || consultation?.profiles?.name || consultation?.user_name || petName || "Patient Owner",

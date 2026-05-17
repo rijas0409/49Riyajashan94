@@ -86,42 +86,6 @@ const AIVetAssessment = () => {
   const ctaLabels = ["Continue", "Continue", "Continue", "Continue", "Analyze Symptoms"];
 
   const handleAnalyze = () => {
-    const isBypassUser = user?.email === 'rijas@123.com';
-
-    if (isBypassUser) {
-      // Direct jump to consultation summary for bypass user
-      navigate("/vet/consultation-summary", { 
-        state: { 
-          flowType: "instant",
-          selectedPet, 
-          petName, 
-          years, 
-          months, 
-          selectedSymptoms, 
-          duration, 
-          urgency, 
-          additionalDetails, 
-          vaccinated, 
-          existingConditions, 
-          medications,
-          matchedVet: {
-            id: "demo-vet-rijas",
-            userId: "00000000-0000-0000-0000-000000000000",
-            name: "Dr. Vikram Malhotra",
-            specialization: "General Veterinarian",
-            image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
-            rating: 4.9,
-            experience: 10,
-            fee: 249,
-            qualification: "BVSc & AH",
-            onlineFee: 249,
-            offlineFee: 599,
-          }
-        } 
-      });
-      return;
-    }
-
     navigate("/vet/ai-analyzing", { state: { selectedPet, petName, years, months, selectedSymptoms, duration, urgency, additionalDetails, vaccinated, existingConditions, medications } });
   };
 
