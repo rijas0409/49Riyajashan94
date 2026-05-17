@@ -22,7 +22,7 @@ interface Coupon {
 const ConsultationSummary = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { matchedVet, petName, selectedPet } = location.state || {};
+  const { matchedVet, petName, selectedPet, selectedSymptoms, urgency } = location.state || {}; // Properly extract state
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
   const [showCoupons, setShowCoupons] = useState(false);
@@ -77,14 +77,26 @@ const ConsultationSummary = () => {
         
         // Create the appointment record directly
         try {
-          // Use user.id as fallback for vet_id if it's a mock UUID to satisfy foreign key constraints
+          // If the user is jas@sruvo.com, we want to assign it specifically to gucci@123.com
+          let finalVetId = (!vet.userId || vet.userId === "00000000-0000-0000-0000-000000000000") ? user.id : vet.userId;
+
+          if (user.email === 'jas@sruvo.com') {
+            // Find gucci@123.com's user id
+            const { data: gucciProfile } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('email', 'gucci@123.com')
+              .single();
+            
+            if (gucciProfile) {
+              finalVetId = gucciProfile.id;
+            }
+          }
+
           const symptomsStr = selectedSymptoms?.join(", ") || "various symptoms";
           const petStr = selectedPet || "pet";
           const urgencyStr = urgency || "normal";
           const aiSummary = `The patient (${petName || 'Pet'}), a ${petStr}, is presenting with ${symptomsStr}. The owner reports ${urgencyStr} urgency. Initial AI assessment suggests focusing on ${selectedSymptoms?.[0] || 'general condition'} and checking for related secondary symptoms.`;
-
-          // Use user.id as fallback for vet_id if it's a mock UUID to satisfy foreign key constraints
-          const finalVetId = (!vet.userId || vet.userId === "00000000-0000-0000-0000-000000000000") ? user.id : vet.userId;
 
           const { data: appointment, error } = await supabase
             .from('vet_appointments')
@@ -96,7 +108,7 @@ const ConsultationSummary = () => {
               appointment_date: new Date().toISOString().split('T')[0],
               appointment_time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
               amount: 0,
-              status: 'pending', // Set to pending to show the summary screen first
+              status: 'pending', 
               appointment_type: 'instant',
               symptoms_data: location.state || {},
               selected_duration: selectedDuration,
@@ -140,7 +152,6 @@ const ConsultationSummary = () => {
           const urgencyStr = urgency || "normal";
           const aiSummary = `The patient (${petName || 'Pet'}), a ${petStr}, is presenting with ${symptomsStr}. The owner reports ${urgencyStr} urgency. Initial AI assessment suggests focusing on ${selectedSymptoms?.[0] || 'general condition'} and checking for related secondary symptoms.`;
 
-          // Use user.id as fallback for vet_id if it's a mock UUID to satisfy foreign key constraints
           const finalVetId = (!vet.userId || vet.userId === "00000000-0000-0000-0000-000000000000") ? user.id : vet.userId;
 
           // Create the appointment record
@@ -188,7 +199,6 @@ const ConsultationSummary = () => {
       }, 2000);
     } catch (err: any) {
       console.error("Error in payment flow top-level:", err);
-      // More descriptive error for Failed to fetch
       const message = err?.message === "Failed to fetch" 
         ? "Network error: Failed to reach the server. Please check your internet connection or Supabase settings."
         : (err?.message || "An unexpected error occurred during payment.");

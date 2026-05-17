@@ -59,14 +59,17 @@ const InstantAnalyzing = () => {
       if (user?.email === 'jas@sruvo.com' || user?.email === 'rijas@123.com') {
         setTimeout(() => {
           setVetFound(true);
+          const isJas = user?.email === 'jas@sruvo.com';
           setMatchedVet({
-            id: `demo-vet-${user?.email?.split('@')[0]}`,
+            id: isJas ? "gucci-vet-id" : `demo-vet-${user?.email?.split('@')[0]}`,
             userId: "00000000-0000-0000-0000-000000000000",
-            name: user?.email === 'jas@sruvo.com' ? "Dr. Jashan Pabla" : "Dr. Vikram Malhotra",
-            specialization: user?.email === 'jas@sruvo.com' ? "Senior Veterinary Surgeon" : "General Veterinarian",
-            image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
+            name: isJas ? "Dr. Gucci" : "Dr. Vikram Malhotra",
+            specialization: isJas ? "Senior Veterinary Surgeon" : "General Veterinarian",
+            image: isJas 
+              ? "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=200&h=100&fit=crop" 
+              : "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
             rating: 5.0,
-            experience: 12,
+            experience: isJas ? 15 : 12,
             fee: 499,
             qualification: "MVSc, Ph.D.",
             onlineFee: 499,

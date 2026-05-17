@@ -7,13 +7,37 @@ import {
 } from "@phosphor-icons/react";
 import { supabase } from "@/integrations/supabase/client";
 
+interface Consultation {
+  id: string;
+  vet_id: string;
+  user_id: string;
+  pet_name: string;
+  pet_type: string;
+  appointment_type: string;
+  status: string;
+  amount: number;
+  selected_duration: string;
+  created_at: string;
+  symptoms_data?: {
+    photoUrl?: string;
+    urgency?: string;
+    selectedSymptoms?: string[];
+    additionalNotes?: string;
+  };
+  ai_summary?: string;
+}
+
 const ConsultationDetail = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { consultationId } = location.state || {};
-  const [appointment, setAppointment] = useState<any>(null);
+  const [appointment, setAppointment] = useState<Consultation | null>(null);
   const [loading, setLoading] = useState(true);
-  const [ownerProfile, setOwnerProfile] = useState<any>(null);
+  const [ownerProfile, setOwnerProfile] = useState<{
+    full_name: string | null;
+    name: string | null;
+    profile_photo: string | null;
+  } | null>(null);
 
   useEffect(() => {
     const fetchDetail = async () => {

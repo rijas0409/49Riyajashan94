@@ -118,7 +118,7 @@ const InstantAssessment = () => {
   const ctaLabels = ["Continue", "Continue", "Continue", "Continue", "Analyze Symptoms"];
 
   const handleAnalyze = () => {
-    const isBypassUser = user?.email === 'rijas@123.com';
+    const isBypassUser = user?.email === 'jas@sruvo.com' || user?.email === 'rijas@123.com';
 
     if (isBypassUser) {
       // Direct jump to consultation summary for bypass user
@@ -138,15 +138,15 @@ const InstantAssessment = () => {
           medications,
           photoPreview,
           matchedVet: {
-            id: "demo-vet-rijas",
+            id: "gucci-vet-id",
             userId: "00000000-0000-0000-0000-000000000000",
-            name: "Dr. Vikram Malhotra",
-            specialization: "General Veterinarian",
+            name: "Dr. Gucci",
+            specialization: "Specialized Veterinarian",
             image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
-            rating: 4.9,
-            experience: 10,
+            rating: 5.0,
+            experience: 15,
             fee: 249,
-            qualification: "BVSc & AH",
+            qualification: "MVSc",
             onlineFee: 249,
             offlineFee: 599,
           }

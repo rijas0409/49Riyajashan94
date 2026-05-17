@@ -47,6 +47,7 @@ const AdminDashboard = () => {
   const isMobile = useIsMobile();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeSection, setActiveSection] = useState("overview");
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -83,53 +84,65 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchData = async () => {
-    setLoading(true);
-    const [requestsRes, partnersRes, sellersRes, petsRes, allPetsRes, productsRes, allUsersRes, allVetsRes, allProductsRes, ordersRes, sellerEarnRes, vetEarnRes, appointmentsRes] = await Promise.all([
-      supabase.from("transport_requests").select("*, pet:pets(name, breed, images), seller:profiles!transport_requests_seller_id_fkey(name, phone), buyer:profiles!transport_requests_buyer_id_fkey(name, phone), partner:profiles!transport_requests_assigned_partner_id_fkey(name, phone)").order("created_at", { ascending: false }),
-      supabase.from("profiles").select("id, name, phone, email").eq("role", "delivery_partner"),
-      supabase.from("profiles").select("*").in("role", ["seller", "product_seller"]).eq("is_onboarding_complete", true).eq("is_admin_approved", false).order("priority_fee_paid", { ascending: false }).order("created_at", { ascending: false }),
-      supabase.from("pets").select("*, owner:profiles!pets_owner_id_fkey(name, phone)").eq("verification_status", "pending").order("priority_fee_paid", { ascending: false }).order("created_at", { ascending: false }),
-      supabase.from("pets").select("*, owner:profiles!pets_owner_id_fkey(name, phone)").order("priority_fee_paid", { ascending: false }).order("created_at", { ascending: false }),
-      supabase.from("shop_products").select("*, seller:profiles!shop_products_seller_id_fkey(name, phone)").eq("verification_status", "pending").order("priority_fee_paid", { ascending: false }).order("created_at", { ascending: false }),
-      supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-      supabase.from("vet_profiles").select("*, profile:profiles!vet_profiles_user_id_fkey(name, email, phone, is_admin_approved, is_onboarding_complete, profile_photo)").order("created_at", { ascending: false }),
-      supabase.from("shop_products").select("*, seller:profiles!shop_products_seller_id_fkey(name, phone)").order("created_at", { ascending: false }),
-      supabase.from("orders").select("*, pet:pets(name), buyer:profiles!orders_buyer_id_fkey(name), seller:profiles!orders_seller_id_fkey(name)").order("created_at", { ascending: false }),
-      supabase.from("seller_earnings").select("*").order("created_at", { ascending: false }),
-      supabase.from("vet_earnings").select("*").order("created_at", { ascending: false }),
-      supabase.from("vet_appointments").select("*, vet:profiles!vet_appointments_vet_id_fkey(name, email, phone), user:profiles!vet_appointments_user_id_fkey(name, email, phone)").order("created_at", { ascending: false }),
-    ]);
-    const pendingVetsData = (allVetsRes.data || []).filter((v) => v.verification_status === "pending" && v.profile?.is_onboarding_complete).sort((a, b) => {
-      const aPriority = a.profile?.priority_fee_paid ? 1 : 0;
-      const bPriority = b.profile?.priority_fee_paid ? 1 : 0;
-      return bPriority - aPriority;
-    });
-    const pendingPets = petsRes.data || [];
-    const newListings = pendingPets.filter((pet) => !pet.updated_at || pet.created_at === pet.updated_at);
-    const reVerifications = pendingPets.filter((pet) => pet.updated_at && pet.created_at !== pet.updated_at);
-    setData({
-      requests: requestsRes.data || [], partners: partnersRes.data || [],
-      pendingSellers: sellersRes.data || [], pendingPets: newListings,
-      reVerificationPets: reVerifications, allPets: allPetsRes.data || [],
-      pendingProducts: productsRes.data || [],
-      pendingVets: pendingVetsData, allUsers: allUsersRes.data || [],
-      allVets: allVetsRes.data || [], allProducts: allProductsRes.data || [],
-      allOrders: ordersRes.data || [], sellerEarnings: sellerEarnRes.data || [],
-      vetEarnings: vetEarnRes.data || [], vetAppointments: appointmentsRes.data || [],
-    });
-    setLoading(false);
+  const fetchData = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
+    else setRefreshing(true);
+    
+    try {
+      const [requestsRes, partnersRes, sellersRes, petsRes, allPetsRes, productsRes, allUsersRes, allVetsRes, allProductsRes, ordersRes, sellerEarnRes, vetEarnRes, appointmentsRes] = await Promise.all([
+        supabase.from("transport_requests").select("*, pet:pets(name, breed, images), seller:profiles!transport_requests_seller_id_fkey(name, phone), buyer:profiles!transport_requests_buyer_id_fkey(name, phone), partner:profiles!transport_requests_assigned_partner_id_fkey(name, phone)").order("created_at", { ascending: false }),
+        supabase.from("profiles").select("id, name, phone, email").eq("role", "delivery_partner"),
+        supabase.from("profiles").select("*").in("role", ["seller", "product_seller"]).eq("is_onboarding_complete", true).eq("is_admin_approved", false).order("priority_fee_paid", { ascending: false }).order("created_at", { ascending: false }),
+        supabase.from("pets").select("*, owner:profiles!pets_owner_id_fkey(name, phone)").eq("verification_status", "pending").order("priority_fee_paid", { ascending: false }).order("created_at", { ascending: false }),
+        supabase.from("pets").select("*, owner:profiles!pets_owner_id_fkey(name, phone)").order("priority_fee_paid", { ascending: false }).order("created_at", { ascending: false }),
+        supabase.from("shop_products").select("*, seller:profiles!shop_products_seller_id_fkey(name, phone)").eq("verification_status", "pending").order("priority_fee_paid", { ascending: false }).order("created_at", { ascending: false }),
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("vet_profiles").select("*, profile:profiles!vet_profiles_user_id_fkey(name, email, phone, is_admin_approved, is_onboarding_complete, profile_photo)").order("created_at", { ascending: false }),
+        supabase.from("shop_products").select("*, seller:profiles!shop_products_seller_id_fkey(name, phone)").order("created_at", { ascending: false }),
+        supabase.from("orders").select("*, pet:pets(name), buyer:profiles!orders_buyer_id_fkey(name), seller:profiles!orders_seller_id_fkey(name)").order("created_at", { ascending: false }),
+        supabase.from("seller_earnings").select("*").order("created_at", { ascending: false }),
+        supabase.from("vet_earnings").select("*").order("created_at", { ascending: false }),
+        supabase.from("vet_appointments").select("*, vet:profiles!vet_appointments_vet_id_fkey(name, email, phone), user:profiles!vet_appointments_user_id_fkey(name, email, phone)").order("created_at", { ascending: false }),
+      ]);
+      const pendingVetsData = (allVetsRes.data || []).filter((v) => v.verification_status === "pending" && v.profile?.is_onboarding_complete).sort((a, b) => {
+        const aPriority = a.profile?.priority_fee_paid ? 1 : 0;
+        const bPriority = b.profile?.priority_fee_paid ? 1 : 0;
+        return bPriority - aPriority;
+      });
+      const pendingPets = petsRes.data || [];
+      const newListings = pendingPets.filter((pet) => !pet.updated_at || pet.created_at === pet.updated_at);
+      const reVerifications = pendingPets.filter((pet) => pet.updated_at && pet.created_at !== pet.updated_at);
+      setData({
+        requests: requestsRes.data || [], partners: partnersRes.data || [],
+        pendingSellers: sellersRes.data || [], pendingPets: newListings,
+        reVerificationPets: reVerifications, allPets: allPetsRes.data || [],
+        pendingProducts: productsRes.data || [],
+        pendingVets: pendingVetsData, allUsers: allUsersRes.data || [],
+        allVets: allVetsRes.data || [], allProducts: allProductsRes.data || [],
+        allOrders: ordersRes.data || [], sellerEarnings: sellerEarnRes.data || [],
+        vetEarnings: vetEarnRes.data || [], vetAppointments: appointmentsRes.data || [],
+      });
+    } catch (err) {
+      console.error("Fetch Data Error:", err);
+      // If error is refresh token related, we might want to notify
+      if (err instanceof Error && err.message.includes("Refresh Token")) {
+        toast({ title: "Session Expired", description: "Please log in again.", variant: "destructive" });
+      }
+    } finally {
+      if (!isSilent) setLoading(false);
+      else setRefreshing(false);
+    }
   };
 
-  const approveSeller = async (id: string) => { const { error } = await supabase.from("profiles").update({ is_admin_approved: true }).eq("id", id); if (error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Approved" }); await fetchData(); } };
-  const rejectSeller = async (id: string) => { const { error } = await supabase.from("profiles").update({ is_onboarding_complete: false, is_admin_approved: false }).eq("id", id); if (error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Rejected" }); await fetchData(); } };
-  const verifyPet = async (id: string) => { const { error } = await supabase.from("pets").update({ verification_status: "verified" }).eq("id", id); if (error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Pet Verified" }); await fetchData(); } };
-  const rejectPet = async (id: string) => { const { error } = await supabase.from("pets").update({ verification_status: "failed" }).eq("id", id); if (error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Pet Rejected" }); await fetchData(); } };
-  const verifyProduct = async (id: string) => { const { error } = await supabase.from("shop_products").update({ verification_status: "verified" }).eq("id", id); if (error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Product Verified" }); await fetchData(); } };
-  const rejectProduct = async (id: string) => { const { error } = await supabase.from("shop_products").update({ verification_status: "failed" }).eq("id", id); if (error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Product Rejected" }); await fetchData(); } };
-  const approveVet = async (id: string) => { const [r1, r2] = await Promise.all([supabase.from("profiles").update({ is_admin_approved: true }).eq("id", id), supabase.from("vet_profiles").update({ verification_status: "verified" }).eq("user_id", id)]); if (r1.error || r2.error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Vet Approved" }); await fetchData(); } };
-  const rejectVet = async (id: string) => { const [r1, r2] = await Promise.all([supabase.from("profiles").update({ is_admin_approved: false, is_onboarding_complete: false }).eq("id", id), supabase.from("vet_profiles").update({ verification_status: "failed" }).eq("user_id", id)]); if (r1.error || r2.error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Vet Rejected" }); await fetchData(); } };
-  const assignPartner = async (requestId: string, partnerId: string) => { const { error } = await supabase.from("transport_requests").update({ assigned_partner_id: partnerId, status: "assigned", updated_at: new Date().toISOString() }).eq("id", requestId); if (error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Partner Assigned" }); await fetchData(); } };
+  const approveSeller = async (id: string) => { const { error } = await supabase.from("profiles").update({ is_admin_approved: true }).eq("id", id); if (error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Approved" }); await fetchData(true); } };
+  const rejectSeller = async (id: string) => { const { error } = await supabase.from("profiles").update({ is_onboarding_complete: false, is_admin_approved: false }).eq("id", id); if (error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Rejected" }); await fetchData(true); } };
+  const verifyPet = async (id: string) => { const { error } = await supabase.from("pets").update({ verification_status: "verified" }).eq("id", id); if (error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Pet Verified" }); await fetchData(true); } };
+  const rejectPet = async (id: string) => { const { error } = await supabase.from("pets").update({ verification_status: "failed" }).eq("id", id); if (error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Pet Rejected" }); await fetchData(true); } };
+  const verifyProduct = async (id: string) => { const { error } = await supabase.from("shop_products").update({ verification_status: "verified" }).eq("id", id); if (error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Product Verified" }); await fetchData(true); } };
+  const rejectProduct = async (id: string) => { const { error } = await supabase.from("shop_products").update({ verification_status: "failed" }).eq("id", id); if (error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Product Rejected" }); await fetchData(true); } };
+  const approveVet = async (id: string) => { const [r1, r2] = await Promise.all([supabase.from("profiles").update({ is_admin_approved: true }).eq("id", id), supabase.from("vet_profiles").update({ verification_status: "verified" }).eq("user_id", id)]); if (r1.error || r2.error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Vet Approved" }); await fetchData(true); } };
+  const rejectVet = async (id: string) => { const [r1, r2] = await Promise.all([supabase.from("profiles").update({ is_admin_approved: false, is_onboarding_complete: false }).eq("id", id), supabase.from("vet_profiles").update({ verification_status: "failed" }).eq("user_id", id)]); if (r1.error || r2.error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Vet Rejected" }); await fetchData(true); } };
+  const assignPartner = async (requestId: string, partnerId: string) => { const { error } = await supabase.from("transport_requests").update({ assigned_partner_id: partnerId, status: "assigned", updated_at: new Date().toISOString() }).eq("id", requestId); if (error) toast({ title: "Error", variant: "destructive" }); else { toast({ title: "Partner Assigned" }); await fetchData(true); } };
   const handleLogout = async () => { await supabase.auth.signOut(); navigate("/auth-admin"); };
 
   const handleSectionChange = (s: string) => {
@@ -207,6 +220,14 @@ const AdminDashboard = () => {
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           {renderSection()}
         </main>
+        <footer className="px-6 py-4 flex items-center justify-between border-t bg-white relative">
+          {refreshing && (
+             <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-100 overflow-hidden">
+                <div className="h-full bg-blue-600 animate-loading-bar w-1/3"></div>
+             </div>
+          )}
+          <p className="text-[12px] text-muted-foreground">© 2024 Sruvo Admin Intelligence System</p>
+        </footer>
       </div>
     </div>
   );

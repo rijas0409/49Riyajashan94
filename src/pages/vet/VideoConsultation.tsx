@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { 
@@ -9,19 +9,76 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+interface Consultation {
+  id: string;
+  vet_id: string;
+  user_id: string;
+  pet_name: string;
+  pet_type: string;
+  appointment_type: string;
+  status: string;
+  amount: number;
+  selected_duration: string;
+  created_at: string;
+  appointment_date?: string;
+  appointment_time?: string;
+  symptoms_data?: {
+    photoUrl?: string;
+    urgency?: string;
+    selectedSymptoms?: string[];
+    additionalNotes?: string[];
+  };
+  ai_summary?: string;
+}
+
 const VideoConsultation = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("Pending");
-  const [activeStat, setActiveStat] = useState("Pending");
-  const [consultations, setConsultations] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState("Active");
+  const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 30000); // Update every 30s
+    return () => clearInterval(timer);
+  }, []);
+
+  const isTimeReached = (dateStr: string, timeStr: string) => {
+    try {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      const appDate = new Date(dateStr);
+      appDate.setHours(hours, minutes, 0, 0);
+      return currentTime >= appDate;
+    } catch (e) {
+      return true;
+    }
+  };
+
+  const getFilteredConsultations = (tab: string) => {
+    return consultations.filter(c => {
+      if (tab === "Active") {
+        return c.status === 'confirmed' && isTimeReached(c.appointment_date || c.created_at, c.appointment_time || "00:00");
+      }
+      if (tab === "Upcoming") {
+        // If pending, it's upcoming. If confirmed but time not reached, it's upcoming.
+        if (c.status === 'pending') return true;
+        if (c.status === 'confirmed') {
+          return !isTimeReached(c.appointment_date || c.created_at, c.appointment_time || "00:00");
+        }
+        return false;
+      }
+      if (tab === "Cancelled") return c.status === 'rejected' || c.status === 'cancelled';
+      if (tab === "Done") return c.status === 'completed';
+      return false;
+    });
+  };
 
   const stats = [
-    { label: "Pending", value: consultations.filter(c => c.status === 'pending').length.toString().padStart(2, '0') },
-    { label: "Upcoming", value: (consultations.filter(c => c.status === 'confirmed').length + consultations.filter(c => c.status === 'accepted').length).toString().padStart(2, '0') },
-    { label: "Active", value: "00" },
-    { label: "Done", value: consultations.filter(c => c.status === 'completed').length.toString().padStart(2, '0') },
+    { label: "Active", value: getFilteredConsultations("Active").length.toString().padStart(2, '0') },
+    { label: "Upcoming", value: getFilteredConsultations("Upcoming").length.toString().padStart(2, '0') },
+    { label: "Cancelled", value: getFilteredConsultations("Cancelled").length.toString().padStart(2, '0') },
+    { label: "Done", value: getFilteredConsultations("Done").length.toString().padStart(2, '0') },
   ];
 
   const fetchConsultations = useCallback(async () => {
@@ -86,7 +143,7 @@ const VideoConsultation = () => {
     };
   }, [user?.id, fetchConsultations, backgroundFetch]);
 
-  const handleAccept = async (id: string, consultation: any) => {
+  const handleAccept = async (id: string, consultation: Consultation) => {
     try {
       const { error } = await supabase
         .from('vet_appointments')
@@ -123,12 +180,6 @@ const VideoConsultation = () => {
     }
   };
 
-  const filteredConsultations = consultations.filter(c => {
-    if (activeTab === "Pending") return c.status === 'pending';
-    if (activeTab === "Upcoming") return c.status === 'confirmed' || c.status === 'accepted';
-    return c.status === activeTab.toLowerCase();
-  });
-
   return (
     <div className="bg-[#f8f8fb] min-h-screen pb-24 font-sans text-[#1e1e2d] selection:bg-purple-100">
       {/* Header */}
@@ -153,32 +204,32 @@ const VideoConsultation = () => {
       {/* Stats Row */}
       <div className="flex gap-3.5 px-5 pb-8 overflow-x-auto no-scrollbar">
         {stats.map((stat) => (
-          <button
+          <div
             key={stat.label}
-            onClick={() => setActiveStat(stat.label)}
-            className={`flex-1 min-w-[85px] p-4 rounded-[24px] text-center transition-all ${
-              activeStat === stat.label 
-                ? "bg-[#f8e9ff] shadow-[0_8px_20px_rgba(161,81,255,0.08)]" 
+            onClick={() => setActiveTab(stat.label)}
+            className={`flex-1 min-w-[85px] p-4 rounded-[24px] text-center cursor-pointer transition-all ${
+              activeTab === stat.label 
+                ? "bg-[#f8e9ff] shadow-[0_8px_20px_rgba(161,81,255,0.08)] ring-2 ring-[#a151ff]/20" 
                 : "bg-[#f1f5f9]"
             }`}
           >
             <div className={`text-[11px] font-bold uppercase tracking-wider mb-2 ${
-              activeStat === stat.label ? "text-[#a151ff]" : "text-[#7e8299]"
+              activeTab === stat.label ? "text-[#a151ff]" : "text-[#7e8299]"
             }`}>
               {stat.label}
             </div>
             <div className="text-[22px] font-extrabold text-[#131a2d]">{stat.value}</div>
-          </button>
+          </div>
         ))}
       </div>
 
       {/* Tab Switcher */}
       <div className="mx-5 mb-6 bg-[#f0f0f5] rounded-full flex p-1">
-        {["Pending", "Upcoming", "Active"].map((tab) => (
+        {["Active", "Upcoming", "Cancelled", "Done"].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-3 text-center text-sm font-semibold rounded-full transition-all ${
+            className={`flex-1 py-3 text-center text-[12px] font-bold rounded-full transition-all ${
               activeTab === tab 
                 ? "bg-[#9d34da] text-white shadow-[0_4px_12px_rgba(157,52,218,0.2)]" 
                 : "text-[#7e8299]"
@@ -191,14 +242,14 @@ const VideoConsultation = () => {
 
       {/* Consultations List */}
       <main className="px-5 space-y-5 pb-10">
-        {filteredConsultations.length === 0 ? (
+        {getFilteredConsultations(activeTab).length === 0 ? (
           <div className="bg-white rounded-[32px] p-10 shadow-[0_10px_30px_rgba(0,0,0,0.04)] flex flex-col items-center justify-center text-center border border-gray-100">
             <div className="w-20 h-20 bg-purple-50 rounded-full flex items-center justify-center mb-6">
               <VideoCamera size={40} className="text-[#9d34da] opacity-40" />
             </div>
             <h3 className="text-xl font-black text-[#131a2d] mb-2">No {activeTab} Requests</h3>
             <p className="text-[#7e8299] text-sm mb-8 max-w-[200px] leading-relaxed font-medium">
-              You don't have any incoming {activeTab.toLowerCase()} consultations right now.
+              You don't have any {activeTab.toLowerCase()} consultations right now.
             </p>
             <button 
               onClick={() => fetchConsultations()}
@@ -208,12 +259,19 @@ const VideoConsultation = () => {
               REFRESH NOW
             </button>
           </div>
-        ) : filteredConsultations.map((item) => (
+        ) : getFilteredConsultations(activeTab).map((item) => (
           <div key={item.id} className="bg-white rounded-[24px] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.04)] relative overflow-hidden group">
-            {/* Expiration Badge */}
-            <div className="absolute top-0 right-0 bg-[#e1fbf0] text-[#04824f] text-[10px] font-bold px-3 py-1.5 rounded-bl-[12px] flex items-center gap-1.5">
-              <Timer size={14} weight="bold" />
-              {item.status === 'pending' ? 'EXPIRES SOON' : item.status.toUpperCase()}
+            {/* Status Badge */}
+            <div className={`absolute top-0 right-0 ${
+              item.status === 'pending' ? 'bg-[#fff8eb] text-[#f5a623]' : 
+              item.status === 'confirmed' ? 'bg-[#e1fbf0] text-[#04824f]' :
+              item.status === 'rejected' || item.status === 'cancelled' ? 'bg-[#fff1f1] text-[#ff4d4f]' :
+              'bg-[#f0f0f5] text-[#7e8299]'
+            } text-[10px] font-bold px-3 py-1.5 rounded-bl-[12px] flex items-center gap-1.5`}>
+              {item.status === 'pending' ? 'PENDING' : 
+               item.status === 'confirmed' ? (isTimeReached(item.appointment_date || item.created_at, item.appointment_time || "00:00") ? 'ACTIVE' : 'SCHEDULED') :
+               item.status === 'rejected' || item.status === 'cancelled' ? 'CANCELLED' : 
+               item.status.toUpperCase()}
             </div>
 
             <div className="flex gap-4 mb-5 mt-2">
@@ -280,12 +338,12 @@ const VideoConsultation = () => {
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-sm flex justify-center z-50 border-t border-gray-50/50 pb-safe">
         <div className="w-full max-w-7xl flex justify-between px-6 pt-4 pb-7">
-          <button className="flex flex-col items-center gap-1.5 text-[#a428ff] font-extrabold text-[9px] tracking-[0.5px] w-[60px]" onClick={() => navigate("/vet/home")}>
-            <House size={24} weight="fill" />
+          <button className="flex flex-col items-center gap-1.5 text-[#b5b5c3] font-extrabold text-[9px] tracking-[0.5px] w-[60px]" onClick={() => navigate("/vet/home")}>
+            <House size={24} weight="bold" />
             HOME
           </button>
           <button className="flex flex-col items-center gap-1.5 text-[#b5b5c3] font-extrabold text-[9px] tracking-[0.5px] w-[60px]" onClick={() => navigate("/vet/schedule")}>
-            <CalendarDots size={24} />
+            <CalendarDots size={24} weight="bold" />
             SCHEDULE
           </button>
           <button className="flex flex-col items-center gap-1.5 text-[#b5b5c3] font-extrabold text-[9px] tracking-[0.5px] w-[60px]" onClick={() => navigate("/vet/earnings")}>

@@ -23,23 +23,47 @@ const FindingVet = () => {
       // Fetch real vet from DB
       const fetchAndNavigate = async () => {
         try {
-          const { data: vets, error: vetError } = await supabase
-            .from('vet_profiles')
-            .select('*, profile:profiles(is_admin_approved, name, full_name)')
-            .eq('is_active', true)
-            .eq('verification_status', 'verified');
+          const { data: matchedVets, error } = await supabase
+            .from("profiles")
+            .select(`
+              id,
+              name,
+              full_name,
+              profile_photo,
+              is_admin_approved,
+              vet_profiles!vet_profiles_user_id_fkey(
+                id,
+                user_id,
+                specializations,
+                years_of_experience,
+                online_fee,
+                average_rating,
+                verification_status,
+                is_active,
+                profile_photo,
+                offline_fee
+              )
+            `)
+            .eq("role", "vet")
+            .eq("is_admin_approved", true);
 
-          if (vetError) throw vetError;
+          if (error) throw error;
 
           let matchedVet = stateData.matchedVet || null;
 
-          if (!matchedVet && vets && vets.length > 0) {
-            // Filter by admin approval
-            const approvedVets = vets.filter(v => v.profile?.is_admin_approved);
-            const sourceVets = approvedVets.length > 0 ? approvedVets : [];
+          if (!matchedVet && matchedVets && matchedVets.length > 0) {
+            const verifiedVets = matchedVets
+              .filter(p => {
+                const vp = Array.isArray(p.vet_profiles) ? p.vet_profiles[0] : (p.vet_profiles as any);
+                return vp && vp.verification_status === "verified" && vp.is_active;
+              })
+              .map(p => ({
+                ...Array.isArray(p.vet_profiles) ? p.vet_profiles[0] : (p.vet_profiles as any),
+                profile: p
+              }));
             
-            if (sourceVets.length > 0) {
-              const bestVet = sourceVets[0];
+            if (verifiedVets.length > 0) {
+              const bestVet = verifiedVets[0];
               const realName = bestVet.profile?.full_name || bestVet.profile?.name || "Doctor";
 
               matchedVet = {

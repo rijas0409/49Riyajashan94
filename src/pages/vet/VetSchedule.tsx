@@ -1,248 +1,381 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
-  MagnifyingGlass, Bell, House, 
-  CalendarDots, Wallet, User,
-  Clock, MapPin, Person,
-  Timer, NavigationArrow,
-  CaretRight, VideoCamera,
-  Buildings
+  CaretLeft, MagnifyingGlass, Bell, Clock, User, 
+  CaretRight, CalendarDots, House, Wallet,
+  Buildings, Syringe, Timer, Stethoscope
 } from "@phosphor-icons/react";
 
 const VetSchedule = () => {
   const navigate = useNavigate();
+  const today = useMemo(() => new Date(), []);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [selectedDateId, setSelectedDateId] = useState(today.toISOString().split('T')[0]);
+  const [activeTab, setActiveTab] = useState<"Active" | "Upcoming" | "Cancelled" | "Done">("Active");
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const isInitialMount = React.useRef(true);
 
-  // Generate 4 days before and 4 days after today
-  const dates = React.useMemo(() => {
+  // Month and Year display for the selected date
+  const monthYearHeader = useMemo(() => {
+    const d = new Date(selectedDateId);
+    return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  }, [selectedDateId]);
+
+  // Update current time periodically
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      setCurrentTime(now);
+      // Auto-update today if date changes
+      if (now.toISOString().split('T')[0] !== today.toISOString().split('T')[0]) {
+        // This would require more complex state handling for 'today', 
+        // but for demo it's fine as initialized.
+      }
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [today]);
+
+  // Generate 8 days before and 8 days after today
+  const yesterday = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - 1);
+    return d;
+  }, [today]);
+
+  const dates = useMemo(() => {
     const arr = [];
-    for (let i = -4; i <= 4; i++) {
-       const d = new Date();
-       d.setDate(d.getDate() + i);
-       arr.push({
-         dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
-         dayNumber: d.getDate(),
-         fullDate: d,
-         isToday: i === 0
-       });
+    for (let i = -8; i <= 8; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() + i);
+      arr.push({
+        day: d.toLocaleDateString("en-US", { weekday: "short" }),
+        date: d.getDate(),
+        fullDate: d,
+        id: d.toISOString().split('T')[0]
+      });
     }
     return arr;
-  }, []);
+  }, [today]);
 
-  const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const isToday = selectedDateId === today.toISOString().split('T')[0];
+  const isPast = new Date(selectedDateId) < new Date(today.toISOString().split('T')[0]);
+  const isFuture = new Date(selectedDateId) > new Date(today.toISOString().split('T')[0]);
+
+  // Utility to check if a specific time is reached today
+  const isTimeReached = (timeStr: string) => {
+    if (!isToday) return isPast;
+    try {
+      const [time, period] = timeStr.split(' ');
+      const [rawHours, minutes] = time.split(':').map(Number);
+      let hours = rawHours;
+      if (period === 'PM' && hours < 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      
+      const appTime = new Date(currentTime);
+      appTime.setHours(hours, minutes, 0, 0);
+      return currentTime >= appTime;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  // Auto-scroll to selected date
+  React.useEffect(() => {
+    const element = document.getElementById(`date-${selectedDateId}`);
+    if (element) {
+      if (isInitialMount.current) {
+        // Instant scroll on first load
+        element.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+        isInitialMount.current = false;
+      } else {
+        // Smooth scroll on user selection
+        element.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [selectedDateId]);
+
+  const tabs = useMemo(() => {
+    if (isPast) return ["Cancelled", "Done"];
+    return ["Active", "Upcoming", "Cancelled", "Done"];
+  }, [isPast]);
+
+  // Ensure activeTab is valid for the current selection
+  React.useEffect(() => {
+    if (isPast && (activeTab === "Active" || activeTab === "Upcoming")) {
+      setActiveTab("Cancelled");
+    }
+  }, [isPast, activeTab]);
+
+  // Mock filtering for demo purposes
+  const filteredAppointments = useMemo(() => {
+    const all = [
+      {
+        id: "HV-123",
+        date: today.toISOString().split('T')[0],
+        type: "home",
+        petName: "Bella",
+        breed: "Golden Retriever • 2Y",
+        ownerName: "Sarah Jenkins",
+        time: "11:30 AM",
+        status: "confirmed",
+        image: "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80"
+      },
+      {
+        id: "CV-124",
+        date: today.toISOString().split('T')[0],
+        type: "clinic",
+        petName: "Gabru",
+        breed: "Labrador • 3Y",
+        ownerName: "Michael Ross",
+        time: "12:30 PM",
+        status: "pending",
+        image: "https://images.unsplash.com/photo-1593134257782-e89567b7718a?auto=format&fit=crop&w=150&q=80"
+      },
+      {
+        id: "CV-125",
+        date: today.toISOString().split('T')[0],
+        type: "clinic",
+        petName: "Cooper",
+        breed: "Beagle • 1Y",
+        ownerName: "Alice Cooper",
+        time: "09:00 AM",
+        status: "completed",
+        image: "https://images.unsplash.com/photo-1537151608804-ea6f254191eb?auto=format&fit=crop&w=150&q=80"
+      },
+      {
+        id: "CAN-1",
+        date: today.toISOString().split('T')[0],
+        type: "clinic",
+        petName: "Luna",
+        breed: "Persian Cat • 1Y",
+        ownerName: "Emily Davis",
+        time: "03:00 PM",
+        status: "cancelled",
+        image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=150&q=80"
+      },
+      {
+        id: "OLD-1",
+        date: yesterday.toISOString().split('T')[0],
+        type: "clinic",
+        petName: "Rocky",
+        breed: "Doberman • 4Y",
+        ownerName: "John Wick",
+        time: "10:00 AM",
+        status: "completed",
+        image: "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80"
+      }
+    ];
+
+    return all.filter(apt => {
+      // Only show items for the selected date
+      if (apt.date !== selectedDateId) return false;
+      
+      // Logic for each tab
+      if (activeTab === "Active") {
+        if (!isToday) return false;
+        return apt.status === "confirmed" && isTimeReached(apt.time);
+      }
+      
+      if (activeTab === "Upcoming") {
+        if (isPast) return false; // User requested: "upcoming" should not show on previous dates
+        if (isToday) {
+          return (apt.status === "pending" || (apt.status === "confirmed" && !isTimeReached(apt.time)));
+        }
+        return (apt.status === "pending" || apt.status === "confirmed"); // All future are upcoming
+      }
+
+      if (activeTab === "Cancelled") {
+        return apt.status === "cancelled" || apt.status === "rejected";
+      }
+
+      if (activeTab === "Done") {
+        if (isPast) return apt.status === "completed" || apt.status === "confirmed" || apt.status === "pending"; // All past events are essentially done
+        if (isToday) return apt.status === "completed";
+        return false; // Future can't be done
+      }
+      
+      return false;
+    });
+  }, [activeTab, isToday, isPast, isFuture, currentTime, isTimeReached, selectedDateId, today]);
+
+  const handleHomeVisitClick = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    navigate("/vet/home-visit-details", { 
+      state: { 
+        visit: {
+          id: "HV-123",
+          petName: "Bella",
+          petBreed: "Golden Retriever • 2Y",
+          ownerName: "Sarah Jenkins",
+          ownerPhone: "+1 (555) 987-6543",
+          address: "123 Premium Residency, Indiranagar",
+          time: "Today, 11:30 AM",
+          reason: "Vaccination & General Checkup",
+          image: "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
+          distance: "1.2 MILES AWAY"
+        } 
+      } 
+    });
+  };
+
+  const handleClinicVisitClick = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    navigate("/vet/clinic-visit-details", { 
+      state: { 
+        visit: {
+          id: "CV-124",
+          petName: "Gabru",
+          petBreed: "Labrador • 3Y",
+          ownerName: "Michael Ross",
+          ownerPhone: "+1 (555) 345-6789",
+          address: "HSR Paws Clinic, Sector 2",
+          time: "Today, 12:30 PM",
+          reason: "Routine Checkup",
+          image: "https://images.unsplash.com/photo-1593134257782-e89567b7718a?auto=format&fit=crop&w=300&q=80",
+          distance: ""
+        } 
+      } 
+    });
+  };
 
   return (
-    <div className="bg-[#f9f9fb] min-h-screen pb-28 font-sans antialiased text-[#1a1a24] selection:bg-purple-100 overflow-x-hidden">
-      {/* Header - Matching VetHome exactly */}
-      <header className="flex items-center justify-between px-[22px] py-[24px] lg:px-10 lg:py-10 max-w-7xl mx-auto w-full">
-        <h1 className="text-2xl font-extrabold tracking-tight">Schedule</h1>
-        <div className="flex gap-2.5 flex-shrink-0">
-          <button className="w-[42px] h-[42px] rounded-full bg-white flex items-center justify-center border-none shadow-[0_4px_15px_rgba(0,0,0,0.03)] cursor-pointer active:scale-95 transition-all">
+    <div className="bg-[#f7f7fa] min-h-screen pb-24 font-['Nunito'] overflow-x-hidden">
+      {/* Header */}
+      <header className="flex items-center justify-between px-5 py-6">
+        <button onClick={() => navigate(-1)} className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-[#1f1f2e] shadow-sm active:scale-95 transition-all">
+          <CaretLeft size={20} weight="bold" />
+        </button>
+        <h1 className="text-[22px] font-[800] text-[#1f1f2e] flex-grow ml-4">Schedule</h1>
+        <div className="flex gap-3">
+          <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-[#1f1f2e] shadow-sm active:scale-95 transition-all">
             <MagnifyingGlass size={20} weight="bold" />
           </button>
-          <button className="w-[42px] h-[42px] rounded-full bg-white flex items-center justify-center border-none shadow-[0_4px_15px_rgba(0,0,0,0.03)] cursor-pointer relative active:scale-95 transition-all">
-            <Bell size={20} weight="fill" />
-            <span className="absolute top-[10px] right-[12px] w-2 h-2 bg-[#ff4264] rounded-full border-2 border-white"></span>
+          <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-[#1f1f2e] shadow-sm active:scale-95 transition-all">
+            <Bell size={20} weight="bold" />
           </button>
         </div>
       </header>
-
-      {/* Horizontal Calendar Strip */}
-      <div className="px-6 pb-4 pt-1 max-w-7xl mx-auto overflow-x-auto no-scrollbar scroll-smooth">
-        <div className="flex flex-col items-center min-w-max md:min-w-0">
-          <div className="mb-4 text-center">
-            <span className="text-[10px] font-bold text-[#b5b5c3] uppercase tracking-[0.15em]">{currentMonth}</span>
-          </div>
-          <div className="flex gap-3 md:gap-4 w-full justify-start md:justify-center pb-2">
-            {dates.map((item, idx) => (
-              <div 
-                key={idx}
-                className={`flex flex-col items-center justify-center w-[58px] h-[78px] rounded-[22px] border transition-all flex-shrink-0 ${
-                  item.isToday 
-                    ? "bg-[#a428ff] text-white border-transparent shadow-[0_12px_24px_rgba(164,40,255,0.3)]" 
-                    : "bg-white border-slate-100/60 shadow-sm text-slate-500"
-                }`}
-              >
-                <span className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${item.isToday ? "opacity-80" : "text-[#b5b5c3]"}`}>{item.dayName}</span>
-                <span className={`text-lg font-bold ${item.isToday ? "text-white" : "text-[#1a1a24]"}`}>{item.dayNumber}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+      
+      {/* Month & Year Display */}
+      <div className="px-5 mb-4">
+        <h2 className="text-[14px] font-[800] text-[#a428ff] uppercase tracking-[1px]">{monthYearHeader}</h2>
       </div>
 
-      {/* Timeline Container */}
-      <main className="max-w-7xl mx-auto relative px-6 mt-8">
-        {/* Glowing Vertical Line */}
-        <div className="absolute left-[35px] top-6 bottom-0 w-[2.5px] bg-gradient-to-b from-[#a428ff] via-[#a428ff]/50 to-[#a428ff]/10 shadow-[0_0_15px_rgba(164,40,255,0.4)]"></div>
-
-        {/* Appointment 1: Active/Expanded */}
-        <div className="relative flex gap-6 mb-10 group">
-          <div className="z-10 mt-6 h-[18px] w-[18px] rounded-full bg-[#a428ff] border-[4px] border-[#f9f9fb] shadow-[0_0_15px_rgba(164,40,255,0.5)] ring-[6px] ring-[#a428ff]/10 flex-shrink-0"></div>
-          <div className="flex-1 bg-white p-5 lg:p-7 rounded-[32px] border border-[#f0f0f5] shadow-[0_20px_40px_rgba(164,40,255,0.06)] relative overflow-hidden transition-all duration-300 hover:shadow-[0_25px_50px_rgba(164,40,255,0.1)]">
-            <div className="absolute top-0 left-0 w-1.5 h-full bg-[#a428ff]"></div>
-            <div className="flex justify-between items-start mb-3">
-              <span className="text-[9px] font-black uppercase tracking-widest text-[#a428ff] bg-[#a428ff]/10 px-3 py-1.5 rounded-full">Active Now</span>
-              <div className="flex items-center gap-1.5 py-1 px-3 bg-green-500/10 rounded-full">
-                <Timer size={16} className="text-green-600" weight="bold" />
-                <span className="text-[11px] font-bold text-green-600">Expires 49m</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <House size={22} className="text-[#a428ff]" weight="fill" />
-              <h3 className="text-[19px] font-bold text-[#1a1a24]">Home Visit</h3>
-            </div>
-
-            <p className="text-[#b5b5c3] text-sm flex items-center gap-1 mt-1">
-              <Person size={18} weight="bold" />
-              <span className="text-sm font-medium">Rajesh Kumar</span>
-            </p>
-            <p className="text-[#b5b5c3] text-sm flex items-center gap-1 mt-1">
-              <Clock size={16} weight="bold" /> 10:00 AM - 11:30 AM
-            </p>
-            <p className="text-[#b5b5c3] text-sm flex items-center gap-1 mt-1">
-              <MapPin size={16} weight="bold" /> 123 Premium Residency, Indiranagar
-            </p>
-            <div className="mt-4 pt-4 border-t border-[#a428ff]/10 flex gap-3">  
-              <button 
-                className="flex-1 bg-[#1a1a24] text-white text-sm font-bold py-3 lg:py-4 rounded-full active:scale-95 transition-all shadow-lg" 
-                onClick={() => navigate("/vet/home-visit-details", { 
-                  state: { 
-                    visit: {
-                      id: "HV-123",
-                      petName: "Bella",
-                      petBreed: "Golden Retriever • 3 Years",
-                      ownerName: "Rajesh Kumar",
-                      ownerPhone: "+1 (555) 987-6543",
-                      address: "123 Premium Residency, Indiranagar",
-                      time: "Today, 10:00 AM (In 49 mins)",
-                      reason: "Vaccination & General Checkup",
-                      image: "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
-                      distance: "1.2 MILES AWAY"
-                    } 
-                  } 
-                })}
-              >
-                Details
-              </button>
-              <button className="flex-1 bg-[#a428ff] text-white text-[12px] font-bold py-3 lg:py-4 rounded-full flex items-center justify-center gap-2 shadow-lg shadow-[#a428ff]/20 active:scale-95 transition-all">  
-                <NavigationArrow size={14} weight="fill" /> View Route 
-              </button>  
-            </div>
-          </div>
-        </div>
-
-        {/* Appointment 2 */}
-        <div className="relative flex gap-6 mb-10 group">
-          <div className="z-10 mt-6 h-[14px] w-[14px] rounded-full bg-[#c4c4d4] border-[3px] border-[#f9f9fb] flex-shrink-0 ml-[2px]"></div>
-          <div className="flex-1 bg-white/80 p-6 rounded-[28px] border border-[#f0f0f5] shadow-[0_10px_25px_rgba(0,0,0,0.02)] transition-all hover:shadow-[0_15px_35px_rgba(0,0,0,0.04)] hover:scale-[1.01]">
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex items-center gap-2">
-                <Buildings size={20} className="text-[#a428ff]" weight="fill" />
-                <h3 className="text-lg font-bold text-[#1a1a24]">Clinic Visit</h3>
-              </div>
-              <p className="font-black text-[#a428ff] text-lg">₹1,200</p>
-            </div>
-            <div className="space-y-1.5 mb-4">
-              <div className="flex items-center gap-2 text-[#b5b5c3]">
-                <Person size={18} weight="bold" />
-                <span className="text-sm font-medium">Sarah Chen</span>
-              </div>
-              <div className="flex items-center gap-2 text-[#b5b5c3]">
-                <Clock size={18} weight="bold" />
-                <span className="text-sm font-medium">01:00 PM - 02:00 PM</span>
-              </div>
-            </div>
-            <button 
-              onClick={() => navigate("/vet/clinic-visit-details", { 
-                state: { 
-                  visit: {
-                    id: "CV-124",
-                    petName: "Luna",
-                    petBreed: "Siamese Cat • 2 Years",
-                    ownerName: "Sarah Chen",
-                    ownerPhone: "+1 (555) 345-6789",
-                    address: "HSR Paws Clinic, Sector 2",
-                    time: "Today, 01:00 PM",
-                    reason: "Routine Checkup",
-                    image: "https://images.unsplash.com/photo-1513245530410-af097495b6a7?auto=format&fit=crop&w=300&q=80",
-                    distance: ""
-                  } 
-                } 
-              })}
-              className="text-[#a428ff] text-xs font-bold flex items-center gap-1 bg-[#a428ff]/5 px-4 py-2 rounded-full w-fit hover:bg-[#a428ff]/10 active:scale-95 transition-all"
+      {/* Date Picker */}
+      <div ref={scrollContainerRef} className="flex px-5 gap-4 overflow-x-auto no-scrollbar pb-6 scroll-smooth pt-2">
+        {dates.map((item) => {
+          const isRealToday = item.id === today.toISOString().split('T')[0];
+          const isSelected = selectedDateId === item.id;
+          
+          return (
+            <button
+              key={item.id}
+              id={`date-${item.id}`}
+              onClick={() => setSelectedDateId(item.id)}
+              className={`min-w-[68px] h-[88px] rounded-[22px] flex flex-col items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                isSelected 
+                  ? "bg-gradient-to-br from-[#ae41ff] to-[#8a14f5] shadow-[0_12px_28px_rgba(155,40,245,0.35)] text-white scale-110 z-10" 
+                  : isRealToday
+                    ? "bg-white border-2 border-[#ae41ff]/20 text-[#1f1f2e] scale-105"
+                    : "bg-white shadow-[0_10px_30px_rgba(155,40,245,0.08)] text-[#1f1f2e] opacity-80"
+              }`}
             >
-              View Details <CaretRight size={16} weight="bold" />
+              <span className={`text-[12px] font-[700] mb-1.5 uppercase tracking-wider ${isSelected ? "text-white/80" : "text-[#8d8d9c]"}`}>
+                {item.day}
+              </span>
+              <span className="text-[20px] font-[900] tracking-tight">{item.date}</span>
+              {isRealToday && !isSelected && (
+                <div className="w-1.5 h-1.5 bg-[#ae41ff] rounded-full mt-1 animate-pulse"></div>
+              )}
             </button>
-          </div>
-        </div>
+          );
+        })}
+      </div>
 
-        {/* Appointment 3 */}
-        <div className="relative flex gap-6 mb-10 group">
-          <div className="z-10 mt-6 h-[14px] w-[14px] rounded-full bg-[#c4c4d4] border-[3px] border-[#f9f9fb] flex-shrink-0 ml-[2px]"></div>
-          <div className="flex-1 bg-white/80 p-6 rounded-[28px] border border-[#f0f0f5] shadow-[0_10px_25px_rgba(0,0,0,0.02)] transition-all hover:shadow-[0_15px_35px_rgba(0,0,0,0.04)] hover:scale-[1.01]">
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex items-center gap-2">
-                <House size={20} className="text-[#a428ff]" weight="fill" />
-                <h3 className="text-lg font-bold text-[#1a1a24]">Home Visit</h3>
-              </div>
-              <p className="font-black text-[#a428ff] text-lg">₹850</p>
-            </div>
-            <div className="space-y-1.5 mb-4">
-              <div className="flex items-center gap-2 text-[#b5b5c3]">
-                <Person size={18} weight="bold" />
-                <span className="text-sm font-medium">Amit Singh</span>
-              </div>
-              <div className="flex items-center gap-2 text-[#b5b5c3]">
-                <Clock size={18} weight="bold" />
-                <span className="text-sm font-medium">04:30 PM - 05:45 PM</span>
-              </div>
-            </div>
-            <button 
-              onClick={() => navigate("/vet/home-visit-details", { 
-                state: { 
-                  visit: {
-                    id: "HV-124",
-                    petName: "Max",
-                    petBreed: "German Shepherd • 2 Years",
-                    ownerName: "Amit Singh",
-                    ownerPhone: "+1 (555) 123-4567",
-                    address: "Sector 45, HSR Layout",
-                    time: "Today, 04:30 PM",
-                    reason: "Wound Dressing",
-                    image: "https://images.unsplash.com/photo-1589944118318-c23147948331?auto=format&fit=crop&w=300&q=80",
-                    distance: "4.8 MILES AWAY"
-                  } 
-                } 
-              })}
-              className="text-[#a428ff] text-xs font-bold flex items-center gap-1 bg-[#a428ff]/5 px-4 py-2 rounded-full w-fit hover:bg-[#a428ff]/10 active:scale-95 transition-all"
+      {/* View Toggle / Tabs */}
+      <div className="mx-5 my-6 bg-[#ececf3] rounded-[30px] flex p-1 relative overflow-x-auto no-scrollbar">
+        {tabs.map((tab) => (
+          <label
+            key={tab}
+            className={`flex-1 min-w-[80px] text-center py-[12px] text-[13px] font-[700] rounded-[26px] z-10 cursor-pointer transition-all whitespace-nowrap px-2 ${
+              activeTab === tab ? "bg-white text-[#9b28f5] shadow-[0_2px_8px_rgba(0,0,0,0.05)]" : "text-[#8d8d9c]"
+            }`}
+            onClick={() => setActiveTab(tab as "Active" | "Upcoming" | "Cancelled" | "Done")}
+          >
+            {tab}
+          </label>
+        ))}
+      </div>
+
+      {/* Section Header */}
+      <div className="flex items-center px-5 mb-4 mt-2">
+        <h2 className="text-[18px] font-[800] text-[#1f1f2e]">
+          {isToday ? "Today's Appointments" : `Appointments for ${new Date(selectedDateId).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}`}
+        </h2>
+        {filteredAppointments.length > 0 && (
+          <div className="bg-[#eedaff] text-[#9b28f5] w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-[800] ml-3">
+            {filteredAppointments.length}
+          </div>
+        )}
+      </div>
+
+      {/* Appointments List */}
+      <div className="px-5 flex flex-col gap-5 pb-10">
+        {(filteredAppointments.length === 0) ? (
+          <div className="bg-white rounded-[24px] p-10 shadow-[0_10px_30px_rgba(155,40,245,0.08)] flex flex-col items-center justify-center text-center">
+            <CalendarDots className="text-[#8d8d9c] mb-4 opacity-20" size={54} />
+            <p className="text-[#8d8d9c] font-bold">No {activeTab.toLowerCase()} consultations for this date.</p>
+          </div>
+        ) : (
+          filteredAppointments.map((apt) => (
+            <div 
+              key={apt.id}
+              onClick={apt.type === 'home' ? handleHomeVisitClick : handleClinicVisitClick}
+              className="bg-white rounded-[24px] p-5 shadow-[0_10px_30px_rgba(155,40,245,0.08)] relative overflow-hidden cursor-pointer active:scale-[0.98] transition-all"
             >
-              View Details <CaretRight size={16} weight="bold" />
-            </button>
-          </div>
-        </div>
-      </main>
-
-      {/* Map Preview Card */}
-      <div className="px-6 mb-8 max-w-7xl mx-auto">
-        <div className="relative h-48 w-full rounded-[30px] overflow-hidden shadow-xl hover:scale-[1.005] transition-all">
-          <div className="absolute inset-0 bg-slate-200 flex items-center justify-center">
-            <img 
-              className="w-full h-full object-cover opacity-60" 
-              alt="Minimalist purple themed map showing delivery route" 
-              src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80" 
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#f9f9fb]/80 to-transparent"></div>
-          </div>
-          <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
-            <div>
-              <p className="text-[10px] font-black text-[#a428ff] uppercase tracking-wider">Next Destination</p>
-              <p className="text-sm font-bold text-[#1a1a24]">Whitefield, Bangalore</p>
+              {isToday && activeTab === 'Active' && (
+                <div className="absolute top-0 right-0 bg-[#d4f7e5] text-[#199450] px-3 py-1.5 rounded-bl-[12px] text-[10px] font-[800] tracking-[0.5px] flex items-center gap-1">
+                  <Timer size={12} weight="bold" className="animate-pulse" /> LIVE NOW
+                </div>
+              )}
+              {activeTab === 'Done' && (
+                <div className="absolute top-0 right-0 bg-[#eef4ff] text-[#4b83ff] px-3 py-1.5 rounded-bl-[12px] text-[10px] font-[800] tracking-[0.5px] flex items-center gap-1 uppercase">
+                  Processed
+                </div>
+              )}
+              <div className="flex gap-4 mb-5">
+                <div className="relative">
+                  <img 
+                    src={apt.image} 
+                    alt={apt.petName} 
+                    className="w-[60px] h-[60px] rounded-[16px] object-cover"
+                  />
+                  <div className="absolute -bottom-1 -right-1 w-[22px] h-[22px] bg-gradient-to-br from-[#ae41ff] to-[#8a14f5] border-2 border-white rounded-full flex items-center justify-center text-white">
+                    {apt.type === 'home' ? <House size={11} weight="bold" /> : <Buildings size={11} weight="bold" />}
+                  </div>
+                </div>
+                <div className="pt-1">
+                  <h3 className="text-[18px] font-[800] text-[#1f1f2e] mb-0.5">{apt.petName}</h3>
+                  <div className="text-[11px] text-[#8d8d9c] font-[700] uppercase tracking-[0.5px] mb-1.5">{apt.breed}</div>
+                  <div className="text-[13px] text-[#8d8d9c] font-[600] flex items-center gap-1.5">
+                    <User size={14} weight="bold" /> {apt.ownerName}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 bg-[#f7f7fa] px-4 py-2.5 rounded-[20px] text-[13px] font-[800] text-[#1f1f2e]">
+                  <Clock size={16} className="text-[#9b28f5]" weight="bold" /> {apt.time}
+                </div>
+                <button 
+                  onClick={apt.type === 'home' ? handleHomeVisitClick : handleClinicVisitClick}
+                  className="bg-gradient-to-br from-[#ae41ff] to-[#8a14f5] text-white px-6 py-2.5 rounded-[20px] text-[13px] font-[800] shadow-[0_12px_24px_rgba(155,40,245,0.3)] active:scale-95 transition-all"
+                >
+                  {apt.type === 'home' ? 'View Route' : 'View Details'}
+                </button>
+              </div>
             </div>
-            <div className="bg-[#a428ff] w-14 h-14 flex items-center justify-center rounded-full text-white shadow-xl shadow-[#a428ff]/40 hover:scale-110 transition-transform cursor-pointer">
-              <NavigationArrow size={24} weight="fill" />
-            </div>
-          </div>
-        </div>
+          ))
+        )}
       </div>
 
       {/* Bottom Navigation */}
@@ -252,7 +385,7 @@ const VetSchedule = () => {
             <House size={24} weight="bold" />
             HOME
           </button>
-          <button className="flex flex-col items-center gap-1.5 text-[#a428ff] font-extrabold text-[9px] tracking-[0.5px] w-[60px]">
+          <button className="flex flex-col items-center gap-1.5 text-[#a428ff] font-extrabold text-[9px] tracking-[0.5px] w-[60px]" onClick={() => navigate("/vet/schedule")}>
             <CalendarDots size={24} weight="fill" />
             SCHEDULE
           </button>

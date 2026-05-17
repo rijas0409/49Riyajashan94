@@ -339,7 +339,7 @@ const VetDashboard = () => {
             HOME
           </button>
           <button className="flex flex-col items-center gap-1.5 text-[#b5b5c3] font-extrabold text-[9px] tracking-[0.5px] w-[60px]" onClick={() => navigate("/vet/schedule")}>
-            <CalendarDots size={24} />
+            <CalendarDots size={24} weight="bold" />
             SCHEDULE
           </button>
           <button className="flex flex-col items-center gap-1.5 text-[#b5b5c3] font-extrabold text-[9px] tracking-[0.5px] w-[60px]" onClick={() => navigate("/vet/earnings")}>

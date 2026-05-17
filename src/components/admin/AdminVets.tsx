@@ -101,7 +101,7 @@ const AdminVets = ({ data, actions }: Props) => {
         if (error1 || error2) throw error1 || error2;
         toast({ title: "Status Reset to Pending" });
       }
-      await actions.fetchData();
+      await actions.fetchData(true);
     } catch (err: any) {
       toast({ title: "Update Failed", description: err.message, variant: "destructive" });
     } finally {

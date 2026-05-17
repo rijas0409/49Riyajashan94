@@ -129,7 +129,7 @@ const AdminUserManagement = ({ data, actions }: Props) => {
           const { error } = await supabase.from("profiles").update({ is_admin_approved: true, rejection_reason: null }).eq("id", user.id);
           if (error) throw error;
           toast({ title: "Approved" });
-          await actions.fetchData();
+          await actions.fetchData(true);
         }
       } else if (newStatus === "rejected") {
         if (user.role === "vet") {
@@ -146,13 +146,13 @@ const AdminUserManagement = ({ data, actions }: Props) => {
           if (profileError) throw profileError;
 
           toast({ title: "Vet Rejected", description: "Reason: " + reason });
-          await actions.fetchData();
+          await actions.fetchData(true);
         } else if (user.role === "seller" || user.role === "product_seller") {
           await actions.rejectSeller(user.id);
           if (reason) {
             await supabase.from("profiles").update({ rejection_reason: reason }).eq("id", user.id);
           }
-          await actions.fetchData();
+          await actions.fetchData(true);
         } else {
           const { error } = await supabase.from("profiles").update({ 
             is_admin_approved: false, 
@@ -161,13 +161,13 @@ const AdminUserManagement = ({ data, actions }: Props) => {
           }).eq("id", user.id);
           if (error) throw error;
           toast({ title: "Rejected" });
-          await actions.fetchData();
+          await actions.fetchData(true);
         }
       } else if (newStatus === "pending") {
         const { error } = await supabase.from("profiles").update({ is_admin_approved: false, is_onboarding_complete: true, rejection_reason: null }).eq("id", user.id);
         if (error) throw error;
         toast({ title: "Set to Pending" });
-        await actions.fetchData();
+        await actions.fetchData(true);
       }
     } catch (err: any) {
       toast({ title: "Update Failed", description: err.message, variant: "destructive" });
@@ -214,7 +214,7 @@ const AdminUserManagement = ({ data, actions }: Props) => {
       if (result?.error) throw new Error(result.error);
       toast({ title: "User Deleted", description: `${userName} has been permanently removed from the platform.` });
       setDeleteTarget(null);
-      actions.fetchData();
+      actions.fetchData(true);
     } catch (err: any) {
       toast({ title: "Delete Failed", description: err.message || "Something went wrong", variant: "destructive" });
     } finally {

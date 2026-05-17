@@ -157,17 +157,17 @@ const VetEarnings = () => {
       </div>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-sm flex justify-center z-50 border-t border-gray-50/50 pb-safe shadow-[0_-10px_25px_rgba(0,0,0,0.03)] rounded-t-[30px]">
+      <nav className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-sm flex justify-center z-50 border-t border-gray-50/50 pb-safe">
         <div className="w-full max-w-7xl flex justify-between px-6 pt-4 pb-7">
           <button className="flex flex-col items-center gap-1.5 text-[#b5b5c3] font-extrabold text-[9px] tracking-[0.5px] w-[60px]" onClick={() => navigate("/vet/home")}>
             <House size={24} weight="bold" />
             HOME
           </button>
           <button className="flex flex-col items-center gap-1.5 text-[#b5b5c3] font-extrabold text-[9px] tracking-[0.5px] w-[60px]" onClick={() => navigate("/vet/schedule")}>
-            <CalendarDots size={24} />
+            <CalendarDots size={24} weight="bold" />
             SCHEDULE
           </button>
-          <button className="flex flex-col items-center gap-1.5 text-[#9A3EF8] font-extrabold text-[9px] tracking-[0.5px] w-[60px]">
+          <button className="flex flex-col items-center gap-1.5 text-[#a428ff] font-extrabold text-[9px] tracking-[0.5px] w-[60px]" onClick={() => navigate("/vet/earnings")}>
             <Wallet size={24} weight="fill" />
             EARNINGS
           </button>
