@@ -110,9 +110,11 @@ const ConsultationSummary = () => {
               amount: 0,
               status: 'pending', 
               appointment_type: 'instant',
-              symptoms_data: location.state || {},
-              selected_duration: selectedDuration,
-              ai_summary: aiSummary
+              symptoms_data: { 
+                ...(location.state || {}), 
+                aiSummary,
+                selected_duration: selectedDuration 
+              }
             })
             .select()
             .single();
@@ -167,9 +169,11 @@ const ConsultationSummary = () => {
               amount: totalPayable,
               status: 'pending',
               appointment_type: 'instant',
-              symptoms_data: location.state || {},
-              selected_duration: selectedDuration,
-              ai_summary: aiSummary
+              symptoms_data: {
+                ...(location.state || {}),
+                aiSummary,
+                selected_duration: selectedDuration
+              }
             })
             .select()
             .single();

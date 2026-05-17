@@ -134,6 +134,7 @@ const ConsultationDetail = () => {
   const symptoms = appointment.symptoms_data?.selectedSymptoms || [];
   const petType = appointment.pet_type || "Pet";
   const urgency = appointment.symptoms_data?.urgency || "None";
+  const aiSummary = appointment.ai_summary || appointment.symptoms_data?.aiSummary;
 
   return (
     <div className="bg-[#fcfcfd] min-h-screen pb-32 font-sans text-[#2d3142]">
@@ -235,7 +236,7 @@ const ConsultationDetail = () => {
           AI Analysis Summary
         </div>
         <p className="text-[13px] font-medium leading-relaxed text-[#4a4d61]">
-          {appointment.ai_summary || `The patient (${appointment.pet_name}), a ${petType.toLowerCase()}, is presenting with ${symptoms.join(", ")}. The user identifies the urgency as '${urgency}'. Preliminary AI analysis suggests initial assessment for ${symptoms[0]?.toLowerCase() || 'general health concerns'} is required during the live video consultation.`}
+          {aiSummary || `The patient (${appointment.pet_name}), a ${petType.toLowerCase()}, is presenting with ${symptoms.join(", ")}. The user identifies the urgency as '${urgency}'. Preliminary AI analysis suggests initial assessment for ${symptoms[0]?.toLowerCase() || 'general health concerns'} is required during the live video consultation.`}
         </p>
       </div>
 

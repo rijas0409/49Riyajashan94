@@ -333,7 +333,7 @@ const InstantVideoCall = () => {
                    <h3 className="font-black text-sm uppercase tracking-widest">AI Assessment</h3>
                  </div>
                  <p className="text-[13px] leading-relaxed font-medium opacity-90">
-                   {consultation?.ai_summary || "Patient shows signs of acute gastrointestinal distress. Recommend checking heart rate and respiratory pattern during call."}
+                   {consultation?.ai_summary || consultation?.symptoms_data?.aiSummary || "Patient shows signs of acute gastrointestinal distress. Recommend checking heart rate and respiratory pattern during call."}
                  </p>
               </section>
             </div>
