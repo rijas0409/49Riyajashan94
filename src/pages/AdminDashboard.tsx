@@ -60,7 +60,25 @@ const AdminDashboard = () => {
   });
 
   useEffect(() => { checkUser(); }, []);
-  useEffect(() => { if (user) { fetchData(); fetchProfilePhoto(); } }, [user]);
+  useEffect(() => { 
+    if (user) { 
+      fetchData(); 
+      fetchProfilePhoto(); 
+      
+      const channel = supabase.channel('admin_changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'vet_profiles' }, () => {
+          fetchData(true);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+          fetchData(true);
+        })
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } 
+  }, [user]);
 
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();

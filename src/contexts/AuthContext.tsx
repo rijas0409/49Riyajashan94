@@ -168,6 +168,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Real-time listener for profile updates
+  useEffect(() => {
+    if (!user) return;
+    
+    // Subscribe to changes on the user's profile and vet_profile
+    const channel = supabase.channel(`auth_profile_${user.id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, () => {
+        refreshProfile();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'vet_profiles', filter: `user_id=eq.${user.id}` }, () => {
+        refreshProfile();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const signOut = async () => {
     await supabase.auth.signOut();
     localStorage.removeItem("sruvo_user_role");

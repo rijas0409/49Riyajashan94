@@ -54,6 +54,8 @@ const AdminVets = ({ data, actions }: Props) => {
   const [rejectionTarget, setRejectionTarget] = useState<any>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [isEditingDocs, setIsEditingDocs] = useState(false);
+  const [editForm, setEditForm] = useState<any>({});
   const { toast } = useToast();
 
   const filtered = data.allVets.filter((v: any) => {
@@ -73,8 +75,30 @@ const AdminVets = ({ data, actions }: Props) => {
     setUpdatingStatus(vet.user_id);
     try {
       if (newStatus === "verified") {
-        await actions.approveVet(vet.user_id);
+        const { error: error1 } = await supabase.from("profiles").update({ 
+          is_admin_approved: true 
+        }).eq("id", vet.user_id);
+
+        const { error: error2 } = await supabase.from("vet_profiles").update({ 
+          verification_status: "verified",
+          rejection_reason: null,
+          is_active: true
+        }).eq("user_id", vet.user_id);
+        
+        if (error1 || error2) throw error1 || error2;
         toast({ title: "Vet Approved Successfully" });
+      } else if (newStatus === "suspended") {
+        const { error: error1 } = await supabase.from("profiles").update({ 
+          is_admin_approved: false 
+        }).eq("id", vet.user_id);
+
+        const { error: error2 } = await supabase.from("vet_profiles").update({ 
+          verification_status: "suspended",
+          is_active: false
+        }).eq("user_id", vet.user_id);
+        
+        if (error1 || error2) throw error1 || error2;
+        toast({ title: "Vet Suspended" });
       } else if (newStatus === "failed") {
         const { error: error1 } = await supabase.from("profiles").update({ 
           is_admin_approved: false 
@@ -108,6 +132,28 @@ const AdminVets = ({ data, actions }: Props) => {
       setUpdatingStatus(null);
       setRejectionTarget(null);
       setRejectionReason("");
+    }
+  };
+
+  const handleEditSave = async () => {
+    try {
+      setUpdatingStatus(selectedVet.user_id);
+      const { error } = await supabase.from('vet_profiles').update({
+        qualification: editForm.qualification,
+        online_fee: editForm.online_fee,
+        offline_fee: editForm.offline_fee,
+        years_of_experience: editForm.years_of_experience,
+      }).eq('id', selectedVet.id);
+      
+      if (error) throw error;
+      toast({ title: "Vet Details Updated" });
+      setIsEditingDocs(false);
+      setSelectedVet({ ...selectedVet, ...editForm });
+      actions.fetchData(true);
+    } catch (err: any) {
+      toast({ title: "Save Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUpdatingStatus(null);
     }
   };
 
@@ -162,9 +208,20 @@ const AdminVets = ({ data, actions }: Props) => {
                 <h2 className="text-lg font-bold text-[hsl(220,20%,15%)]">Vet Application Review</h2>
                 <p className="text-[12px] text-[hsl(220,15%,55%)]">Applied {new Date(selectedVet.created_at).toLocaleDateString()}</p>
               </div>
-              <button onClick={() => setSelectedVet(null)} className="w-8 h-8 rounded-lg bg-[hsl(220,20%,96%)] flex items-center justify-center hover:bg-[hsl(220,20%,92%)]">
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                {isEditingDocs ? (
+                  <button onClick={handleEditSave} disabled={!!updatingStatus} className="px-3 py-1 bg-green-500 text-white rounded font-medium text-sm hover:bg-green-600 disabled:opacity-50">
+                    {updatingStatus === selectedVet?.user_id ? "Saving..." : "Save"}
+                  </button>
+                ) : (
+                  <button onClick={() => { setIsEditingDocs(true); setEditForm(selectedVet); }} className="px-3 py-1 bg-blue-500 text-white rounded font-medium text-sm hover:bg-blue-600">
+                    Edit Info
+                  </button>
+                )}
+                <button onClick={() => setSelectedVet(null)} className="w-8 h-8 rounded-lg bg-[hsl(220,20%,96%)] flex items-center justify-center hover:bg-[hsl(220,20%,92%)]">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="p-6 space-y-6">
@@ -182,7 +239,11 @@ const AdminVets = ({ data, actions }: Props) => {
                   <p className="text-sm text-[hsl(220,15%,55%)]">{selectedVet.profile?.email}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="px-2.5 py-0.5 bg-[hsl(220,60%,95%)] text-[hsl(220,70%,45%)] text-[11px] font-bold rounded-md">{selectedVet.qualification}</span>
-                    <span className="text-[12px] text-[hsl(220,15%,55%)]">{selectedVet.years_of_experience} yrs experience</span>
+                    {isEditingDocs ? (
+                      <input type="number" placeholder="Exp (Yrs)" value={editForm.years_of_experience || ''} onChange={e => setEditForm({...editForm, years_of_experience: e.target.value})} className="border rounded px-2 py-0.5 text-[12px] bg-white w-20" />
+                    ) : (
+                      <span className="text-[12px] text-[hsl(220,15%,55%)]">{selectedVet.years_of_experience} yrs experience</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -191,7 +252,12 @@ const AdminVets = ({ data, actions }: Props) => {
               <div className="bg-[hsl(220,20%,97%)] rounded-xl p-4">
                 <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] mb-3 flex items-center gap-2"><GraduationCap className="w-4 h-4" /> Professional Details</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                  <InfoRow icon={Stethoscope} label="Qualification" value={selectedVet.qualification} />
+                  {isEditingDocs ? (
+                    <div className="flex flex-col gap-1 py-1">
+                      <label className="text-[11px] text-[hsl(220,15%,60%)] uppercase tracking-wide">Qualification</label>
+                      <input type="text" value={editForm.qualification || ''} onChange={e => setEditForm({...editForm, qualification: e.target.value})} className="border rounded px-2 py-1 text-sm bg-white" />
+                    </div>
+                  ) : <InfoRow icon={Stethoscope} label="Qualification" value={selectedVet.qualification} />}
                   <InfoRow icon={FileText} label="Registration Number" value={selectedVet.registration_number} />
                   <InfoRow icon={Stethoscope} label="Specializations" value={selectedVet.specializations?.join(", ")} />
                   <InfoRow icon={Clock} label="Consultation Type" value={selectedVet.consultation_type} />
@@ -209,8 +275,18 @@ const AdminVets = ({ data, actions }: Props) => {
                   <InfoRow icon={Calendar} label="Available Days" value={selectedVet.available_days?.join(", ")} />
                   <InfoRow icon={Clock} label="Morning Slots" value={selectedVet.morning_slots ? "Available" : "Not Available"} />
                   <InfoRow icon={Clock} label="Evening Slots" value={selectedVet.evening_slots ? "Available" : "Not Available"} />
-                  <InfoRow icon={CreditCard} label="Online Fee" value={`₹${selectedVet.online_fee}`} />
-                  <InfoRow icon={CreditCard} label="Offline Fee" value={`₹${selectedVet.offline_fee}`} />
+                  {isEditingDocs ? (
+                    <div className="flex flex-col gap-1 py-1">
+                      <label className="text-[11px] text-[hsl(220,15%,60%)] uppercase tracking-wide">Online Fee</label>
+                      <input type="number" value={editForm.online_fee || ''} onChange={e => setEditForm({...editForm, online_fee: e.target.value})} className="border rounded px-2 py-1 text-sm bg-white" />
+                    </div>
+                  ) : <InfoRow icon={CreditCard} label="Online Fee" value={`₹${selectedVet.online_fee}`} />}
+                  {isEditingDocs ? (
+                    <div className="flex flex-col gap-1 py-1">
+                      <label className="text-[11px] text-[hsl(220,15%,60%)] uppercase tracking-wide">Offline Fee</label>
+                      <input type="number" value={editForm.offline_fee || ''} onChange={e => setEditForm({...editForm, offline_fee: e.target.value})} className="border rounded px-2 py-1 text-sm bg-white" />
+                    </div>
+                  ) : <InfoRow icon={CreditCard} label="Offline Fee" value={`₹${selectedVet.offline_fee}`} />}
                 </div>
               </div>
 
@@ -305,6 +381,7 @@ const AdminVets = ({ data, actions }: Props) => {
             <option value="verified">Verified</option>
             <option value="pending">Pending</option>
             <option value="failed">Rejected</option>
+            <option value="suspended">Suspended</option>
           </select>
         </div>
 
@@ -357,12 +434,14 @@ const AdminVets = ({ data, actions }: Props) => {
                           className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer outline-none border-none pr-7 appearance-none
                             ${v.verification_status === "verified" ? "bg-[hsl(145,50%,92%)] text-[hsl(145,60%,35%)]" :
                               v.verification_status === "pending" ? "bg-[hsl(40,60%,92%)] text-[hsl(40,70%,35%)]" :
+                              v.verification_status === "suspended" ? "bg-[hsl(0,0%,90%)] text-[hsl(0,0%,40%)]" :
                               "bg-[hsl(0,50%,93%)] text-[hsl(0,65%,45%)]"}
                             ${updatingStatus === v.user_id ? "opacity-50 animate-pulse" : "hover:brightness-95"}`}
                         >
                           <option value="verified">Verified</option>
                           <option value="pending">Pending</option>
                           <option value="failed">Rejected</option>
+                          <option value="suspended">Suspended</option>
                         </select>
                         <ChevronRight className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 rotate-90" />
                       </div>
