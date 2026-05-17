@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import Peer from "simple-peer";
 import { Mic, MicOff, PhoneOff, Camera, CameraOff, X, FileText, Info, Paperclip, Check } from "lucide-react";
 import { 
   LockSimple, 
@@ -28,6 +29,13 @@ const USER_DOCUMENTS = [
   { name: "X-Ray Chest", type: "img", date: "2023-11-16", url: "https://images.unsplash.com/photo-1581594658553-35942489435b?w=800&h=1200&fit=crop" },
 ];
 
+const PASSPORT_DATA = {
+  "health records": { title: "Clinical Case Sheets", desc: "Primary vet clinical summary, health tracking diagnostics telemetry records, and systemic updates log lines.", icon: ShieldCheck },
+  "medication": { title: "Prescriptions Timelines", desc: "Active pharmaceutical medical treatment cycles, schedule anti-parasitic metrics, and custom drug dosages maps.", icon: ShieldCheck },
+  "lab reports": { title: "Diagnostic Blood Panels", desc: "Comprehensive hematology panels, microbiological cultures data, metabolic checks, and laboratory values charts.", icon: ShieldCheck },
+  "full health history": { title: "Chronological Life Summary", desc: "Master digital overview tracker summary mapping health logs from early puppy stages up to recent clinical setups.", icon: ShieldCheck }
+};
+
 const InstantVideoCall = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -49,12 +57,15 @@ const InstantVideoCall = () => {
   const [activeNodes, setActiveNodes] = useState<string[]>([]);
   const [activePanel, setActivePanel] = useState<string | null>(null);
   const [selectedPads, setSelectedPads] = useState<string[]>([]);
-  const [activePassportTab, setActivePassportTab] = useState<any>(null);
+  const [activePassportTab, setActivePassportTab] = useState<string | null>(null);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [voiceResult, setVoiceResult] = useState<string | null>(null);
   const [isAnalyzingVoice, setIsAnalyzingVoice] = useState(false);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const peerRef = useRef<Peer.Instance | null>(null);
   const petType = consultation?.pet_type?.toLowerCase() || 'dog';
 
   // Remote Info
@@ -64,27 +75,73 @@ const InstantVideoCall = () => {
     specialty: vet?.specialization || "Senior Veterinarian"
   };
 
-  // Sync with Vet
+  // Sync with Vet and handle WebRTC
   useEffect(() => {
-    if (!appointmentId) return;
+    if (!appointmentId || !stream) return;
 
-    const channel = supabase.channel(`call_sync_${appointmentId}`);
+    const channel = supabase.channel(`call_sync_${appointmentId}`, {
+      config: {
+        broadcast: { self: false }
+      }
+    });
 
-    channel.on("broadcast", { event: "VET_UI_SYNC" }, ({ payload }) => {
-      console.log("Received Sync Data:", payload);
-      if (payload.activeNodes !== undefined) setActiveNodes(payload.activeNodes);
-      if (payload.activePanel !== undefined) setActivePanel(payload.activePanel);
-      if (payload.selectedPads !== undefined) setSelectedPads(payload.selectedPads);
-      if (payload.activePassportTab !== undefined) setActivePassportTab(payload.activePassportTab);
-      if (payload.galleryIndex !== undefined) setGalleryIndex(payload.galleryIndex);
-      if (payload.voiceResult !== undefined) setVoiceResult(payload.voiceResult);
-      if (payload.isAnalyzingVoice !== undefined) setIsAnalyzingVoice(payload.isAnalyzingVoice);
-    }).subscribe();
+    const initPeer = () => {
+      if (peerRef.current) peerRef.current.destroy();
+
+      const p = new Peer({
+        initiator: false,
+        trickle: true,
+        stream: stream
+      });
+
+      p.on("signal", (data) => {
+        channel.send({
+          type: "broadcast",
+          event: "WEBRTC_SIGNAL",
+          payload: { signal: data, sender: "user" }
+        });
+      });
+
+      p.on("stream", (remoteStream) => {
+        setRemoteStream(remoteStream);
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = remoteStream;
+        }
+      });
+
+      p.on("error", (err) => console.error("Peer error:", err));
+      p.on("close", () => setRemoteStream(null));
+
+      peerRef.current = p;
+    };
+
+    channel
+      .on("broadcast", { event: "WEBRTC_SIGNAL" }, ({ payload }) => {
+        if (payload.sender === "vet") {
+          if (!peerRef.current) initPeer();
+          peerRef.current?.signal(payload.signal);
+        }
+      })
+      .on("broadcast", { event: "VET_UI_SYNC" }, ({ payload }) => {
+        console.log("Received Sync Data:", payload);
+        if (payload.activeNodes !== undefined) setActiveNodes(payload.activeNodes);
+        if (payload.activePanel !== undefined) setActivePanel(payload.activePanel);
+        if (payload.selectedPads !== undefined) setSelectedPads(payload.selectedPads);
+        if (payload.activePassportTab !== undefined) setActivePassportTab(payload.activePassportTab);
+        if (payload.galleryIndex !== undefined) setGalleryIndex(payload.galleryIndex);
+        if (payload.voiceResult !== undefined) setVoiceResult(payload.voiceResult);
+        if (payload.isAnalyzingVoice !== undefined) setIsAnalyzingVoice(payload.isAnalyzingVoice);
+      })
+      .subscribe();
 
     return () => {
+      if (peerRef.current) {
+        peerRef.current.destroy();
+        peerRef.current = null;
+      }
       supabase.removeChannel(channel);
     };
-  }, [appointmentId]);
+  }, [appointmentId, stream]);
 
   const startCamera = useCallback(async (constraints: MediaStreamConstraints = { video: { facingMode }, audio: !isMuted }) => {
     try {
@@ -99,7 +156,7 @@ const InstantVideoCall = () => {
       if (videoRef.current) {
         videoRef.current.srcObject = userStream;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Camera error:", err);
       setPermissionDenied(true);
       toast.error("Camera access denied. Please allow permissions.");
@@ -155,12 +212,21 @@ const InstantVideoCall = () => {
   return (
     <div ref={containerRef} className="h-screen w-screen relative overflow-hidden bg-[#07080a] font-sans text-white">
       {/* Remote Video (Background) */}
-      <div className="absolute inset-0 z-0">
-        <img 
-          src={remoteInfo.image}
-          alt={remoteInfo.name}
-          className="w-full h-full object-cover opacity-90"
-        />
+      <div className="absolute inset-0 z-0 bg-black">
+        {remoteStream ? (
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            className="w-full h-full object-cover opacity-90"
+          />
+        ) : (
+          <img 
+            src={remoteInfo.image}
+            alt={remoteInfo.name}
+            className="w-full h-full object-cover opacity-90"
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 z-[2] pointer-events-none" />
       </div>
 
@@ -310,21 +376,21 @@ const InstantVideoCall = () => {
                    <LockSimple size={20} className="text-[#4f86ff]" />
                    Sruvo Health Passport
                 </div>
-                {activePassportTab ? (
+                {activePassportTab && PASSPORT_DATA[activePassportTab as keyof typeof PASSPORT_DATA] ? (
                    <div className="w-full bg-white/5 p-5 rounded-3xl border border-white/10">
                      <div className="flex items-center justify-between mb-4">
                        <div className="flex items-center gap-3">
                          <div className="w-10 h-10 rounded-2xl bg-[#4f86ff]/10 flex items-center justify-center text-[#4f86ff] font-black text-xs uppercase">HP</div>
                          <div>
-                           <h4 className="font-bold text-sm">{activePassportTab.title}</h4>
+                           <h4 className="font-bold text-sm">{PASSPORT_DATA[activePassportTab as keyof typeof PASSPORT_DATA].title}</h4>
                            <p className="text-[10px] text-white/40 uppercase font-black">Verified by Sruvo</p>
                          </div>
                        </div>
                        <Check className="text-green-400" size={18} />
                      </div>
-                     <div className="flex flex-wrap gap-2">
-                       {activePassportTab.values.map((v: string) => <span key={v} className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs font-bold">{v}</span>)}
-                     </div>
+                     <p className="text-white/60 text-xs leading-relaxed">
+                       {PASSPORT_DATA[activePassportTab as keyof typeof PASSPORT_DATA].desc}
+                     </p>
                    </div>
                 ) : (
                    <div className="text-white/20 font-bold py-10 uppercase text-xs tracking-widest">Awaiting Diagnostic Data...</div>

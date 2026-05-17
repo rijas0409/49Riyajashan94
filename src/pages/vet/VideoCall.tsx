@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import Peer from "simple-peer";
 import { 
   VideoCamera, VideoCameraSlash, Microphone, MicrophoneSlash, 
   SpeakerHigh, SpeakerNone, Phone, DotsThree, X, 
@@ -54,7 +55,7 @@ const VideoCall = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { consultation, vet, petName } = location.state || {};
+  const { consultation, vet, petName, appointmentId } = location.state || {};
 
   // Standard Call State
   const [isMuted, setIsMuted] = useState(false);
@@ -64,10 +65,7 @@ const VideoCall = () => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [permissionError, setPermissionError] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const dragAreaRef = useRef<HTMLDivElement>(null);
-
+  
   // Premium UI State
   const [activePanel, setActivePanel] = useState<string | null>(null);
   const [showSlider, setShowSlider] = useState(false);
@@ -80,9 +78,16 @@ const VideoCall = () => {
   const [isAnalyzingVoice, setIsAnalyzingVoice] = useState(false);
   const [voiceResult, setVoiceResult] = useState<AIScenario | null>(null);
   const [sliderView, setSliderView] = useState<"hub" | "paw" | "passport" | "clip" | "voice">("hub");
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
   // PIP Drag State (simplified for React)
   const [pipPos, setPipPos] = useState({ top: 112, right: 16 });
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const peerRef = useRef<Peer.Instance | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragAreaRef = useRef<HTMLDivElement>(null);
 
   const isVet = user?.role === "vet" || user?.email === "jas@sruvo.com" || user?.email === "rijas@123.com";
 
@@ -187,18 +192,62 @@ const VideoCall = () => {
     startCamera({ video: { facingMode: newMode } });
   };
 
-  // Real-time synchronization
   useEffect(() => {
-    if (!appointmentId) return;
+    if (!appointmentId || !stream) return;
 
-    const channel = supabase.channel(`call_sync_${appointmentId}`);
+    const channel = supabase.channel(`call_sync_${appointmentId}`, {
+      config: {
+        broadcast: { self: false }
+      }
+    });
 
-    channel.on("broadcast", { event: "VET_STATE_CHANGE" }, (payload) => {
-      // Vet doesn't need to respond to their own broadcast usually, 
-      // but if there are multiple vets (not the case here), it might.
-    }).subscribe();
+    const initPeer = () => {
+      if (peerRef.current) peerRef.current.destroy();
 
-    // Broadcast current state whenever it changes
+      const p = new Peer({
+        initiator: true,
+        trickle: true,
+        stream: stream
+      });
+
+      p.on("signal", (data) => {
+        channel.send({
+          type: "broadcast",
+          event: "WEBRTC_SIGNAL",
+          payload: { signal: data, sender: "vet" }
+        });
+      });
+
+      p.on("stream", (remoteStream) => {
+        setRemoteStream(remoteStream);
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = remoteStream;
+        }
+      });
+
+      p.on("error", (err) => console.error("Peer error:", err));
+      p.on("close", () => setRemoteStream(null));
+
+      peerRef.current = p;
+    };
+
+    channel
+      .on("broadcast", { event: "WEBRTC_SIGNAL" }, ({ payload }) => {
+        if (payload.sender === "user" && peerRef.current) {
+          peerRef.current.signal(payload.signal);
+        }
+      })
+      .on("broadcast", { event: "VET_STATE_CHANGE" }, (payload) => {
+        // Handle other sync events
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          // Send initial state
+          initPeer();
+        }
+      });
+
+    // Broadcast current UI state whenever it changes
     const broadcastState = () => {
       channel.send({
         type: "broadcast",
@@ -218,9 +267,13 @@ const VideoCall = () => {
     broadcastState();
 
     return () => {
+      if (peerRef.current) {
+        peerRef.current.destroy();
+        peerRef.current = null;
+      }
       supabase.removeChannel(channel);
     };
-  }, [appointmentId, activeNodes, activePanel, selectedPads, activePassportTab, galleryIndex, voiceResult, isAnalyzingVoice, startCamera]);
+  }, [appointmentId, activeNodes, activePanel, selectedPads, activePassportTab, galleryIndex, voiceResult, isAnalyzingVoice, stream]);
 
   // Separate effect for stream cleanup to handle changes correctly
   useEffect(() => {
@@ -301,12 +354,21 @@ const VideoCall = () => {
   return (
     <div ref={containerRef} className="h-screen w-screen bg-black overflow-hidden relative font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Display','SF_Pro_Text',sans-serif] text-white">
       {/* Background Stream Feed */}
-      <div className="absolute inset-0 z-0">
-        <img 
-          src={remoteInfo.image} 
-          alt={remoteInfo.name} 
-          className="w-full h-full object-cover opacity-90 transition-all duration-700"
-        />
+      <div className="absolute inset-0 z-0 bg-black">
+        {remoteStream ? (
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            className="w-full h-full object-cover opacity-90 transition-all duration-700"
+          />
+        ) : (
+          <img 
+            src={remoteInfo.image} 
+            alt={remoteInfo.name} 
+            className="w-full h-full object-cover opacity-90 transition-all duration-700"
+          />
+        )}
         {/* Cinematic Overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-[rgba(7,8,10,0.7)] via-[rgba(7,8,10,0.05)] to-[rgba(7,8,10,0.85)] z-[2] pointer-events-none" />
       </div>
