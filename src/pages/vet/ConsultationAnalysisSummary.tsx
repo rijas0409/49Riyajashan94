@@ -96,10 +96,12 @@ const ConsultationAnalysisSummary = () => {
           if (newStatus === "confirmed" || newStatus === "accepted") {
             toast.success("Vet accepted your request! Transitioning to call...");
             setTimeout(() => {
-              navigate("/vet/video-call", { 
+              navigate("/vet/instant-video-call", { 
                 state: { 
                   appointmentId, 
-                  vet: currentVet 
+                  vet: currentVet,
+                  consultation: payload.new,
+                  petName: payload.new.pet_name
                 } 
               });
             }, 1500);
@@ -149,13 +151,15 @@ const ConsultationAnalysisSummary = () => {
             </div>
           </div>
           
-          <h2 className="text-xl font-black text-[#151B32] mb-2">
+          <h2 className="text-xl font-black text-[#151B32] mb-2 text-balance">
             {isSearchingNewVet ? "Finding New Specialist..." : 
+             status === "analyzing" ? "Vet is Analyzing your Summary..." :
              status === "pending" ? "Waiting for Vet to Join" : 
              "Connecting to Call..."}
           </h2>
           <p className="text-sm text-muted-foreground max-w-[240px] mx-auto">
-            {status === "pending" ? "Doctor is reviewing your pet's analysis report. Typically takes 30-60 seconds." : 
+            {status === "analyzing" ? "Dr. Malhotra is reviewing your pet's report to provide specialized care." :
+             status === "pending" ? "Doctor is reviewing your pet's analysis report. Typically takes 30-60 seconds." : 
              "Get ready! Your consultation is starting."}
           </p>
         </motion.div>

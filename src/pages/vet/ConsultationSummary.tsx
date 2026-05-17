@@ -98,7 +98,8 @@ const ConsultationSummary = () => {
           const urgencyStr = urgency || "normal";
           const aiSummary = `The patient (${petName || 'Pet'}), a ${petStr}, is presenting with ${symptomsStr}. The owner reports ${urgencyStr} urgency. Initial AI assessment suggests focusing on ${selectedSymptoms?.[0] || 'general condition'} and checking for related secondary symptoms.`;
 
-          const { data: appointment, error } = await supabase
+          // Try to insert with enhanced columns first
+          let insertResult = await supabase
             .from('vet_appointments')
             .insert({
               user_id: user.id,
@@ -114,17 +115,42 @@ const ConsultationSummary = () => {
                 ...(location.state || {}), 
                 aiSummary,
                 selected_duration: selectedDuration 
-              }
+              },
+              ai_summary: aiSummary,
+              selected_duration: typeof selectedDuration === 'number' ? selectedDuration : parseInt(selectedDuration) || 15
             })
             .select()
             .single();
 
-          if (error) {
-            console.error("Bypass insert error:", error);
-            toast.error(`Appointment error: ${error.message || 'Unknown error'}`);
+          // Fallback if columns are missing
+          if (insertResult.error && insertResult.error.message.includes('column') && 
+             (insertResult.error.message.includes('symptoms_data') || insertResult.error.message.includes('ai_summary'))) {
+            console.warn("Bypass: Missing enhanced columns, falling back to minimal insert");
+            insertResult = await supabase
+              .from('vet_appointments')
+              .insert({
+                user_id: user.id,
+                vet_id: finalVetId,
+                pet_name: petName || 'Pet',
+                pet_type: selectedPet || 'Dog',
+                appointment_date: new Date().toISOString().split('T')[0],
+                appointment_time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+                amount: 0,
+                status: 'pending', 
+                appointment_type: 'instant'
+              })
+              .select()
+              .single();
+          }
+
+          if (insertResult.error) {
+            console.error("Bypass insert error:", insertResult.error);
+            toast.error(`Appointment error: ${insertResult.error.message || 'Unknown error'}`);
             setIsProcessing(false);
             return;
           }
+
+          const appointment = insertResult.data;
 
           // Navigate to analysis summary screen
           navigate("/vet/analysis-summary", { 
@@ -149,6 +175,7 @@ const ConsultationSummary = () => {
         const paymentId = "pay_fake_" + Date.now();
         
         try {
+          // Normal insert for other users
           const symptomsStr = selectedSymptoms?.join(", ") || "various symptoms";
           const petStr = selectedPet || "pet";
           const urgencyStr = urgency || "normal";
@@ -156,8 +183,8 @@ const ConsultationSummary = () => {
 
           const finalVetId = (!vet.userId || vet.userId === "00000000-0000-0000-0000-000000000000") ? user.id : vet.userId;
 
-          // Create the appointment record
-          const { data: appointment, error } = await supabase
+          // Try to insert with enhanced columns
+          let insertResult = await supabase
             .from('vet_appointments')
             .insert({
               user_id: user.id,
@@ -173,17 +200,42 @@ const ConsultationSummary = () => {
                 ...(location.state || {}),
                 aiSummary,
                 selected_duration: selectedDuration
-              }
+              },
+              ai_summary: aiSummary,
+              selected_duration: typeof selectedDuration === 'number' ? selectedDuration : parseInt(selectedDuration) || 15
             })
             .select()
             .single();
 
-          if (error) {
-            console.error("Appointment insert error:", error);
-            toast.error(`Failed to create appointment: ${error.message || 'Check connection'}`);
+          // Fallback if columns are missing
+          if (insertResult.error && insertResult.error.message.includes('column') && 
+             (insertResult.error.message.includes('symptoms_data') || insertResult.error.message.includes('ai_summary'))) {
+            console.warn("Missing enhanced columns, falling back to minimal insert");
+            insertResult = await supabase
+              .from('vet_appointments')
+              .insert({
+                user_id: user.id,
+                vet_id: finalVetId,
+                pet_name: petName || 'Pet',
+                pet_type: selectedPet || 'Dog',
+                appointment_date: new Date().toISOString().split('T')[0],
+                appointment_time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+                amount: totalPayable,
+                status: 'pending',
+                appointment_type: 'instant'
+              })
+              .select()
+              .single();
+          }
+
+          if (insertResult.error) {
+            console.error("Appointment insert error:", insertResult.error);
+            toast.error(`Failed to create appointment: ${insertResult.error.message || 'Check connection'}`);
             setIsProcessing(false);
             return;
           }
+
+          const appointment = insertResult.data;
 
           toast.success("Payment Received Successfully!");
           navigate("/vet/analysis-summary", { 

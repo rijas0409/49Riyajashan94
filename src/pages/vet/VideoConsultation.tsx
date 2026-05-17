@@ -4,10 +4,13 @@ import { toast } from "sonner";
 import { 
   CaretLeft, MagnifyingGlass, Faders, Timer, 
   VideoCamera, User, House, CalendarDots, 
-  Wallet, IdentificationCard, Clock, ArrowsClockwise
+  Wallet, IdentificationCard, Clock, ArrowsClockwise,
+  Pulse as Activity, X, Sparkle as Sparkles, Check
 } from "@phosphor-icons/react";
+import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 
 interface Consultation {
   id: string;
@@ -56,12 +59,11 @@ const VideoConsultation = () => {
   };
 
   const getFilteredConsultations = (tab: string) => {
-    return consultations.filter(c => {
+    const filtered = consultations.filter(c => {
       if (tab === "Active") {
         return c.status === 'confirmed' && isTimeReached(c.appointment_date || c.created_at, c.appointment_time || "00:00");
       }
       if (tab === "Upcoming") {
-        // If pending, it's upcoming. If confirmed but time not reached, it's upcoming.
         if (c.status === 'pending') return true;
         if (c.status === 'confirmed') {
           return !isTimeReached(c.appointment_date || c.created_at, c.appointment_time || "00:00");
@@ -72,6 +74,33 @@ const VideoConsultation = () => {
       if (tab === "Done") return c.status === 'completed';
       return false;
     });
+
+    // Add demo card for Active/Upcoming if user is jas or gucci or just for testing
+    if (filtered.length === 0 && (tab === "Active" || tab === "Upcoming")) {
+      const demoCard: Consultation = {
+        id: "demo-id-" + tab,
+        user_id: "demo-user",
+        vet_id: user?.id || "demo-vet",
+        pet_name: "Bella (Demo)",
+        pet_type: "Golden Retriever",
+        appointment_type: "instant",
+        status: tab === "Active" ? "confirmed" : "pending",
+        amount: 249,
+        selected_duration: "15",
+        created_at: new Date().toISOString(),
+        appointment_date: new Date().toISOString().split('T')[0],
+        appointment_time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+        symptoms_data: {
+          urgency: "urgent",
+          selectedSymptoms: ["Lethargy", "Loss of Appetite", "Vomiting"],
+          photoUrl: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&h=600&fit=crop"
+        },
+        ai_summary: "Patient shows signs of acute gastrointestinal distress. Recommend checking heart rate and respiratory pattern during call."
+      };
+      return [demoCard];
+    }
+
+    return filtered;
   };
 
   const stats = [
@@ -87,7 +116,14 @@ const VideoConsultation = () => {
     try {
       const { data, error } = await supabase
         .from('vet_appointments')
-        .select('*')
+        .select(`
+          *,
+          profiles:user_id (
+            full_name,
+            profile_photo,
+            name
+          )
+        `)
         .eq('vet_id', user.id)
         .eq('appointment_type', 'instant')
         .order('created_at', { ascending: false });
@@ -107,7 +143,14 @@ const VideoConsultation = () => {
     try {
       const { data, error } = await supabase
         .from('vet_appointments')
-        .select('*')
+        .select(`
+          *,
+          profiles:user_id (
+            full_name,
+            profile_photo,
+            name
+          )
+        `)
         .eq('vet_id', user.id)
         .eq('appointment_type', 'instant')
         .order('created_at', { ascending: false });
@@ -143,7 +186,22 @@ const VideoConsultation = () => {
     };
   }, [user?.id, fetchConsultations, backgroundFetch]);
 
+  const [showSummaryModal, setShowSummaryModal] = useState<Consultation | null>(null);
+
   const handleAccept = async (id: string, consultation: Consultation) => {
+    if (id.startsWith('demo-id-')) {
+      toast.success("Demo consultation accepted!");
+      navigate("/vet/video-call", { 
+        state: { 
+          consultation: { 
+            ...consultation, 
+            petName: consultation.pet_name, 
+            ownerName: consultation.profiles?.full_name || consultation.profiles?.name || 'Demo Owner' 
+          } 
+        } 
+      });
+      return;
+    }
     try {
       const { error } = await supabase
         .from('vet_appointments')
@@ -157,7 +215,7 @@ const VideoConsultation = () => {
           consultation: { 
             ...consultation, 
             petName: consultation.pet_name, 
-            ownerName: 'Pet Owner' 
+            ownerName: consultation.profiles?.full_name || consultation.profiles?.name || 'Patient Owner' 
           } 
         } 
       });
@@ -167,6 +225,10 @@ const VideoConsultation = () => {
   };
 
   const handleDecline = async (id: string) => {
+    if (id.startsWith('demo-id-')) {
+      toast.info("Demo consultation declined");
+      return;
+    }
     try {
       const { error } = await supabase
         .from('vet_appointments')
@@ -180,8 +242,139 @@ const VideoConsultation = () => {
     }
   };
 
+  const handleViewSummary = async (consultation: Consultation) => {
+    setShowSummaryModal(consultation);
+    if (!consultation.id.startsWith('demo-')) {
+      try {
+        await supabase
+          .from('vet_appointments')
+          .update({ status: 'analyzing' })
+          .eq('id', consultation.id);
+      } catch (err) {
+        console.error("Error updating status to analyzing:", err);
+      }
+    }
+  };
+
+  const handleCloseSummary = async () => {
+    if (showSummaryModal && !showSummaryModal.id.startsWith('demo-') && showSummaryModal.status === 'analyzing') {
+       // Optionally revert to pending if closed without accepting? 
+    }
+    setShowSummaryModal(null);
+  };
+
   return (
-    <div className="bg-[#f8f8fb] min-h-screen pb-24 font-sans text-[#1e1e2d] selection:bg-purple-100">
+    <div className="bg-[#f8f8fb] min-h-screen pb-24 font-sans text-[#1e1e2d] selection:bg-purple-100 relative">
+      {/* Summary Modal Overlay */}
+      <AnimatePresence>
+        {showSummaryModal && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleCloseSummary}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]" 
+            />
+            <motion.div 
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[32px] z-[101] p-6 max-h-[85vh] overflow-y-auto shadow-2xl border-t border-gray-100"
+            >
+              <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" onClick={handleCloseSummary} />
+              
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center text-[#9d34da]">
+                    <Activity size={24} weight="bold" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-[#131a2d]">Consultation Summary</h2>
+                    <p className="text-xs text-[#7e8299] font-bold uppercase tracking-wider">Reviewing {showSummaryModal.pet_name}'s Symptoms</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={handleCloseSummary}
+                  className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-[#7e8299] hover:bg-gray-100 transition-all"
+                >
+                  <X size={20} weight="bold" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Pet Identity */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                    <span className="text-[10px] font-bold text-[#b5b5c3] uppercase tracking-widest block mb-1">Pet Patient</span>
+                    <p className="text-sm font-black text-[#131a2d]">{showSummaryModal.pet_name}</p>
+                    <p className="text-[11px] font-bold text-[#9d34da]">{showSummaryModal.pet_type}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                    <span className="text-[10px] font-bold text-[#b5b5c3] uppercase tracking-widest block mb-1">Urgency Level</span>
+                    <div className="flex items-center gap-2">
+                       <div className={cn("w-2 h-2 rounded-full animate-pulse", showSummaryModal.symptoms_data?.urgency === 'urgent' ? "bg-red-500" : "bg-amber-500")} />
+                       <p className={cn("text-xs font-black uppercase tracking-wide", showSummaryModal.symptoms_data?.urgency === 'urgent' ? "text-red-500" : "text-amber-500")}>
+                         {showSummaryModal.symptoms_data?.urgency || 'Concerned'}
+                       </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Symptoms */}
+                <div className="bg-white border-2 border-gray-50 p-5 rounded-[24px]">
+                  <h3 className="text-xs font-black text-[#131a2d] uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <div className="w-1.5 h-4 bg-[#9d34da] rounded-full" />
+                    Key Symptoms Reported
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {(showSummaryModal.symptoms_data?.selectedSymptoms || ["General weakness", "Not eating properly"]).map((s: string) => (
+                      <span key={s} className="px-4 py-2 bg-purple-50 text-[#9d34da] rounded-full text-[12px] font-black border border-purple-100/50">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* AI Summary Card */}
+                <div className="bg-gradient-to-br from-[#131a2d] to-[#252c41] p-6 rounded-[28px] text-white shadow-xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <Sparkles size={60} weight="fill" />
+                  </div>
+                  <div className="flex items-center gap-2.5 mb-4 relative z-10">
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/10">
+                       <span className="text-[10px] font-black">AI</span>
+                    </div>
+                    <h3 className="text-xs font-black uppercase tracking-[2px] opacity-80">AI Assessment Insight</h3>
+                  </div>
+                  <p className="text-[13px] leading-relaxed font-medium text-white/90 relative z-10 italic">
+                    "{showSummaryModal.ai_summary || "Based on the reported symptoms of lethargy and vomiting, the patient likely has a mild gastrointestinal upset. Immediate assessment of hydration and abdomen sensitivity is recommended during the call."}"
+                  </p>
+                </div>
+
+                {/* Action Buttons in Modal */}
+                <div className="grid grid-cols-2 gap-4 pt-4">
+                  <button 
+                    onClick={() => { handleDecline(showSummaryModal.id); handleCloseSummary(); }}
+                    className="py-4 bg-gray-100 text-[#7e8299] rounded-[20px] text-sm font-bold active:scale-95 transition-all"
+                  >
+                    Reject Call
+                  </button>
+                  <button 
+                    onClick={() => { handleAccept(showSummaryModal.id, showSummaryModal); handleCloseSummary(); }}
+                    className="py-4 bg-[#9d34da] text-white rounded-[20px] text-sm font-bold shadow-lg shadow-purple-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    Accept & Connect
+                    <Check size={18} weight="bold" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[#f8f8fb]/80 backdrop-blur-md px-5 py-6 flex items-center justify-between">
         <button 
@@ -324,7 +517,15 @@ const VideoConsultation = () => {
 
             {item.status === 'confirmed' && (
               <button 
-                onClick={() => navigate("/vet/video-call", { state: { consultation: { ...item, petName: item.pet_name, ownerName: 'User' } } })}
+                onClick={() => navigate("/vet/video-call", { 
+                  state: { 
+                    consultation: { 
+                      ...item, 
+                      petName: item.pet_name, 
+                      ownerName: item.profiles?.full_name || item.profiles?.name || 'Patient Owner' 
+                    } 
+                  } 
+                })}
                 className="w-full py-3.5 bg-[#9d34da] text-white rounded-full text-sm font-bold shadow-[0_8px_24px_rgba(157,52,218,0.15)] active:scale-95 transition-all flex items-center justify-center gap-2"
               >
                 <VideoCamera size={18} weight="fill" />
