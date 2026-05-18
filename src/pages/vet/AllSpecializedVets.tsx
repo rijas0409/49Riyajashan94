@@ -102,6 +102,7 @@ const AllSpecializedVets = () => {
     const channel = supabase
       .channel('vet_profiles_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vet_profiles' }, fetchVets)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, fetchVets)
       .subscribe();
 
     return () => {

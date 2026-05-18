@@ -135,13 +135,14 @@ const Vet = () => {
       const { data: vetProfiles, error: vetError } = await supabase
         .from("vet_profiles")
         .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo")
-        .eq("verification_status", "verified")
-        .eq("is_active", true);
+        .eq("verification_status", "verified");
 
       if (vetError) {
         console.error("Error fetching vets:", vetError);
         return;
       }
+      
+      console.log("Fetched vet profiles:", vetProfiles);
 
       let vets: RealVet[] = [];
 
@@ -180,10 +181,13 @@ const Vet = () => {
 
     fetchVets();
 
-    // Real-time listener for vet profiles
+    // Real-time listener for vet profiles and profiles
     const channel = supabase
       .channel('vet_profiles_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vet_profiles' }, () => {
+        fetchVets();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
         fetchVets();
       })
       .subscribe();
@@ -576,18 +580,22 @@ const Vet = () => {
         </section>
 
         {/* All Specialized Vets */}
-        {displayVets.length > 0 && (
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[19px] font-extrabold text-[#151B32] tracking-tight">All Specialized Vets</h2>
-              <button 
-                onClick={() => navigate("/vet/all-specialists")}
-                className="text-[16px] font-medium text-[#D674A3] hover:opacity-80 transition-opacity"
-              >
-                See All
-              </button>
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[19px] font-extrabold text-[#151B32] tracking-tight">All Specialized Vets</h2>
+            <button 
+              onClick={() => navigate("/vet/all-specialists")}
+              className="text-[16px] font-medium text-[#D674A3] hover:opacity-80 transition-opacity"
+            >
+              See All
+            </button>
+          </div>
+          {displayVets.length === 0 ? (
+            <div className="bg-card rounded-2xl p-6 border border-border text-center">
+              <p className="text-sm text-muted-foreground">No specialized vets available yet</p>
             </div>
-            {displayVets.filter(v => v.rating >= 4.5).slice(0, 4).map((doctor) => (
+          ) : (
+            displayVets.slice(0, 4).map((doctor) => (
               <div 
                 key={doctor.id} 
                 onClick={() => navigate(`/vet/doctor/${doctor.id}`)} 
@@ -597,7 +605,7 @@ const Vet = () => {
                   <div className="relative">
                     <div className="w-[100px] h-[100px] rounded-[24px] overflow-hidden bg-muted shadow-inner group-hover:scale-105 transition-transform">
                       {doctor.image ? (
-                        <img src={doctor.image} alt={doctor.name} className="w-full h-full object-cover" />
+                        <SafeImage src={doctor.image} alt={doctor.name} className="w-full h-full" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                           <Stethoscope className="w-10 h-10" />
@@ -642,9 +650,9 @@ const Vet = () => {
                   </button>
                 </div>
               </div>
-            ))}
-          </section>
-        )}
+            ))
+          )}
+        </section>
 
         {/* Vet's Daily Tip */}
         <section className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-3xl p-5 border border-pink-100">

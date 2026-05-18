@@ -3,13 +3,14 @@ import { useState } from "react";
 import { Search, CheckCircle2, XCircle, Eye, Star, X, FileText, Phone, Mail, MapPin, Clock, Calendar, CreditCard, Stethoscope, Camera, GraduationCap, Building, ChevronRight, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { SafeImage } from "../SafeImage";
 
 interface Props {
   data: AdminData;
   actions: any;
 }
 
-const DocViewer = ({ label, url }: { label: string; url: string | null }) => {
+const DocViewer = ({ label, url, onOpenPreview }: { label: string; url: string | null; onOpenPreview: (label: string, url: string) => void }) => {
   if (!url) return (
     <div className="flex items-center gap-2 p-3 bg-[hsl(0,50%,97%)] rounded-xl border border-[hsl(0,40%,90%)]">
       <FileText className="w-4 h-4 text-[hsl(0,50%,60%)]" />
@@ -24,13 +25,13 @@ const DocViewer = ({ label, url }: { label: string; url: string | null }) => {
           <FileText className="w-4 h-4 text-[hsl(220,80%,50%)]" />
           <span className="text-sm font-medium text-[hsl(220,20%,25%)]">{label}</span>
         </div>
-        <a href={url} target="_blank" rel="noopener noreferrer" className="text-[11px] font-medium text-[hsl(220,80%,50%)] hover:underline">Open Full</a>
+        <button onClick={() => onOpenPreview(label, url)} className="text-[11px] font-medium text-[hsl(220,80%,50%)] hover:underline">Open Full</button>
       </div>
       {isImage ? (
-        <img src={url} alt={label} className="w-full max-h-[200px] object-contain bg-[hsl(220,20%,98%)]" />
+        <SafeImage src={url} alt={label} onClick={() => onOpenPreview(label, url)} className="w-full max-h-[200px] cursor-pointer hover:opacity-90" />
       ) : (
         <div className="p-4 bg-[hsl(220,20%,98%)] text-center">
-          <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-[hsl(220,80%,50%)] hover:underline">View Document ↗</a>
+          <button onClick={() => onOpenPreview(label, url)} className="text-sm text-[hsl(220,80%,50%)] hover:underline">View Document ↗</button>
         </div>
       )}
     </div>
@@ -56,6 +57,7 @@ const AdminVets = ({ data, actions }: Props) => {
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [isEditingDocs, setIsEditingDocs] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
+  const [previewDoc, setPreviewDoc] = useState<{label: string, url: string} | null>(null);
   const { toast } = useToast();
 
   const filtered = data.allVets.filter((v: any) => {
@@ -230,7 +232,7 @@ const AdminVets = ({ data, actions }: Props) => {
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded-2xl overflow-hidden bg-[hsl(220,20%,94%)] border-2 border-[hsl(220,20%,88%)]">
                   {selectedVet.profile_photo || selectedVet.profile?.profile_photo ? (
-                    <img src={selectedVet.profile_photo || selectedVet.profile?.profile_photo} className="w-full h-full object-cover" />
+                    <SafeImage src={selectedVet.profile_photo || selectedVet.profile?.profile_photo} className="w-full h-full" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center"><Camera className="w-8 h-8 text-[hsl(220,15%,70%)]" /></div>
                   )}
@@ -306,10 +308,10 @@ const AdminVets = ({ data, actions }: Props) => {
               <div>
                 <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] mb-3">Uploaded Documents</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <DocViewer label="Veterinary Degree" url={selectedVet.vet_degree_file} />
-                  <DocViewer label="Government ID" url={selectedVet.govt_id_file} />
-                  <DocViewer label="Clinic Registration" url={selectedVet.clinic_registration_file} />
-                  <DocViewer label="Profile Photo" url={selectedVet.profile_photo || selectedVet.profile?.profile_photo} />
+                  <DocViewer label="Veterinary Degree" url={selectedVet.vet_degree_file} onOpenPreview={(label, url) => setPreviewDoc({label, url})} />
+                  <DocViewer label="Government ID" url={selectedVet.govt_id_file} onOpenPreview={(label, url) => setPreviewDoc({label, url})} />
+                  <DocViewer label="Clinic Registration" url={selectedVet.clinic_registration_file} onOpenPreview={(label, url) => setPreviewDoc({label, url})} />
+                  <DocViewer label="Profile Photo" url={selectedVet.profile_photo || selectedVet.profile?.profile_photo} onOpenPreview={(label, url) => setPreviewDoc({label, url})} />
                 </div>
               </div>
             </div>
@@ -327,7 +329,26 @@ const AdminVets = ({ data, actions }: Props) => {
         </div>
       )}
 
-      {/* Pending Vet Approvals */}
+      {/* Document Preview Modal */}
+      {previewDoc && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4" onClick={() => setPreviewDoc(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-[hsl(220,20%,92%)]">
+              <h3 className="font-bold text-[hsl(220,20%,15%)]">{previewDoc.label}</h3>
+              <button onClick={() => setPreviewDoc(null)} className="w-8 h-8 rounded-lg bg-[hsl(220,20%,96%)] flex items-center justify-center hover:bg-[hsl(220,20%,92%)]">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto bg-gray-100 flex items-center justify-center p-4">
+              {previewDoc.url.match(/\.(jpg|jpeg|png|gif|webp)(\?|$)/i) ? (
+                <SafeImage src={previewDoc.url} alt={previewDoc.label} className="max-w-full max-h-full" />
+              ) : (
+                <iframe src={previewDoc.url} className="w-full h-full min-h-[60vh]" title={previewDoc.label} referrerPolicy="no-referrer" />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {pendingVets.length > 0 && (
         <div className="bg-white rounded-2xl border border-[hsl(220,20%,92%)] p-6 mb-6">
           <h2 className="text-lg font-bold text-[hsl(220,20%,15%)] mb-4 flex items-center gap-2">
@@ -340,7 +361,7 @@ const AdminVets = ({ data, actions }: Props) => {
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl overflow-hidden bg-[hsl(220,20%,94%)]">
                     {vet.profile?.profile_photo || vet.profile_photo ? (
-                      <img src={vet.profile?.profile_photo || vet.profile_photo} className="w-full h-full object-cover" />
+                      <SafeImage src={vet.profile?.profile_photo || vet.profile_photo} className="w-full h-full" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[hsl(220,15%,55%)] font-bold">{(vet.profile?.name || "V")[0]}</div>
                     )}
@@ -409,7 +430,7 @@ const AdminVets = ({ data, actions }: Props) => {
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[hsl(220,20%,94%)] flex items-center justify-center text-[12px] font-bold text-[hsl(220,15%,45%)] overflow-hidden shrink-0">
                           {v.profile?.profile_photo || v.profile_photo ? (
-                            <img src={v.profile?.profile_photo || v.profile_photo} className="w-full h-full object-cover" />
+                            <SafeImage src={v.profile?.profile_photo || v.profile_photo} className="w-full h-full" />
                           ) : (v.profile?.name || "V")[0].toUpperCase()}
                         </div>
                         <div className="min-w-0">
