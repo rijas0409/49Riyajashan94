@@ -119,12 +119,18 @@ const VetDoctorProfile = () => {
           return;
         }
 
-        // Fetch the associated user profile for name
+        // Fetch the associated user profile for name and approval status
         const { data: userProfile } = await supabase
           .from("profiles")
-          .select("name, full_name, profile_photo")
+          .select("name, full_name, profile_photo, is_admin_approved")
           .eq("id", vetProfile.user_id)
           .single();
+
+        if (!userProfile?.is_admin_approved || vetProfile.verification_status !== "verified") {
+           setDoctor(null);
+           setLoading(false);
+           return;
+        }
 
         const name = userProfile?.full_name || userProfile?.name || "Doctor";
         const specializations = vetProfile.specializations || [];

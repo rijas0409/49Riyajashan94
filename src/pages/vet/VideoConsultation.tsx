@@ -10,6 +10,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoleGuard } from "@/hooks/useRoleGuard";
 import { cn } from "@/lib/utils";
 
 interface Consultation {
@@ -37,6 +38,7 @@ interface Consultation {
 const VideoConsultation = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isLoading: guardLoading } = useRoleGuard(["vet"], "/auth-vet", true);
   const [activeTab, setActiveTab] = useState("Active");
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -266,6 +268,10 @@ const VideoConsultation = () => {
     }
     setShowSummaryModal(null);
   };
+
+  if (guardLoading) {
+    return <div className="bg-[#f8f8fb] min-h-screen pb-24 font-sans text-[#1e1e2d] selection:bg-purple-100 flex items-center justify-center">Loading...</div>;
+  }
 
   return (
     <div className="bg-[#f8f8fb] min-h-screen pb-24 font-sans text-[#1e1e2d] selection:bg-purple-100 relative">

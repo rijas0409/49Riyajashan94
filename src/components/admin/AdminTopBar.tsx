@@ -1,6 +1,7 @@
 import { Search, Bell, LayoutGrid, LogOut, Menu, Settings } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { User } from "@supabase/supabase-js";
+import { SafeImage } from "../SafeImage";
 
 interface AdminTopBarProps {
   user: User | null;
@@ -69,7 +70,7 @@ const AdminTopBar = ({ user, profilePhoto, onLogout, onMenuToggle, onProfileSett
                 className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-[hsl(220,80%,55%)] to-[hsl(250,70%,55%)] flex items-center justify-center text-white font-bold text-sm shadow-md hover:shadow-lg transition-all"
               >
                 {profilePhoto ? (
-                  <img src={profilePhoto} alt="Admin" className="w-full h-full object-cover" />
+                  <SafeImage src={profilePhoto} alt="Admin" className="w-full h-full" />
                 ) : (
                   initial
                 )}
@@ -81,7 +82,7 @@ const AdminTopBar = ({ user, profilePhoto, onLogout, onMenuToggle, onProfileSett
                 <div className="px-4 py-3 border-b border-[hsl(220,20%,94%)] bg-[hsl(220,20%,98%)] flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-[hsl(220,80%,55%)] to-[hsl(250,70%,55%)] flex items-center justify-center shrink-0">
                     {profilePhoto ? (
-                      <img src={profilePhoto} alt="Admin" className="w-full h-full object-cover" />
+                      <SafeImage src={profilePhoto} alt="Admin" className="w-full h-full" />
                     ) : (
                       <span className="text-white font-bold text-sm">{initial}</span>
                     )}

@@ -44,7 +44,7 @@ const Index = () => {
             return;
           }
 
-          if (profile.vetStatus !== 'approved' && profile.email !== 'gucci@123.com' && profile.email !== 'rijas@lv.com') {
+          if (profile.vetStatus !== 'verified' && profile.vetStatus !== 'approved' && profile.email !== 'gucci@123.com' && profile.email !== 'rijas@lv.com') {
             navigate("/vet-pending-approval", { replace: true });
             return;
           }

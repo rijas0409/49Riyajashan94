@@ -46,29 +46,32 @@ const VetsNearYou = () => {
         const userIds = vetProfiles.map((v) => v.user_id);
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("id, name, full_name, profile_photo")
-          .in("id", userIds);
+          .select("id, name, full_name, profile_photo, is_admin_approved")
+          .in("id", userIds)
+          .eq("is_admin_approved", true);
 
         const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
-        vets = vetProfiles.map((vp) => {
-          const profile = profileMap.get(vp.user_id);
-          const name = profile?.full_name || profile?.name || "Doctor";
-          const specs = vp.specializations || [];
-          return {
-            id: vp.id,
-            name: `Dr. ${name}`,
-            specialty: specs[0] || "General Veterinarian",
-            experience: `${vp.years_of_experience || 0} yrs exp.`,
-            rating: vp.average_rating || 0,
-            price: vp.online_fee || 500,
-            image: vp.profile_photo || profile?.profile_photo || "",
-            verified: vp.verification_status === "verified",
-            isActive: vp.is_active ?? true,
-            distance: Math.floor(Math.random() * 25) + 1,
-            availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`
-          };
-        });
+        vets = vetProfiles
+          .filter(vp => profileMap.has(vp.user_id))
+          .map((vp) => {
+            const profile = profileMap.get(vp.user_id);
+            const name = profile?.full_name || profile?.name || "Doctor";
+            const specs = vp.specializations || [];
+            return {
+              id: vp.id,
+              name: `Dr. ${name}`,
+              specialty: specs[0] || "General Veterinarian",
+              experience: `${vp.years_of_experience || 0} yrs exp.`,
+              rating: vp.average_rating || 0,
+              price: vp.online_fee || 500,
+              image: vp.profile_photo || profile?.profile_photo || "",
+              verified: vp.verification_status === "verified",
+              isActive: vp.is_active ?? true,
+              distance: Math.floor(Math.random() * 25) + 1,
+              availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`
+            };
+          });
       }
 
       setAllVets(vets.sort((a, b) => (a.distance || 0) - (b.distance || 0)));
@@ -76,13 +79,23 @@ const VetsNearYou = () => {
 
     fetchVets();
 
+    const handleRealtimeChange = () => {
+      setTimeout(fetchVets, 500);
+    };
+
     const channel = supabase
       .channel('vet_profiles_nearby')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'vet_profiles' }, fetchVets)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vet_profiles' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleRealtimeChange)
       .subscribe();
+
+    const pollInterval = setInterval(() => {
+      fetchVets();
+    }, 10000);
 
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
     };
   }, [authReady]);
 

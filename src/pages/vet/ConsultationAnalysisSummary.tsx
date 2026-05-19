@@ -23,7 +23,7 @@ const ConsultationAnalysisSummary = () => {
         .from('vet_profiles')
         .select('*')
         .eq('is_active', true)
-        .eq('verification_status', 'approved')
+        .eq('verification_status', 'verified')
         .neq('user_id', currentVet?.userId) // Don't pick the same one
         .limit(5);
 

@@ -7,11 +7,40 @@ import {
   House, CalendarDots, CaretRight, User
 } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoleGuard } from "@/hooks/useRoleGuard";
 import { toast } from "sonner";
+import { SafeImage } from "@/components/SafeImage";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 
 const VetProfile = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
+  const { user, profile: roleGuardProfile, isLoading: guardLoading } = useRoleGuard(["vet"], "/auth-vet", true);
+  const [vetData, setVetData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchVetData = async () => {
+      if (!user) return;
+      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      const { data: vetProfile } = await supabase.from("vet_profiles").select("*").eq("user_id", user.id).single();
+      
+      const photo = vetProfile?.profile_photo || profile?.profile_photo;
+      let photoUrl = photo;
+      if (photo && !photo.startsWith("http")) {
+        photoUrl = supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
+      }
+
+      setVetData({
+        name: profile?.full_name || profile?.name || "Doctor",
+        specialty: vetProfile?.specializations?.[0] || "Specialist",
+        rating: vetProfile?.average_rating || 5.0,
+        reviews: 0,
+        photo: photoUrl
+      });
+    };
+    fetchVetData();
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -32,6 +61,10 @@ const VetProfile = () => {
     { icon: <ChatTeardropText size={24} />, label: "Recent Reviews", path: "#" },
     { icon: <Gear size={24} />, label: "Settings", path: "/profile-settings" },
   ];
+
+  if (guardLoading) {
+    return <div className="min-h-screen bg-[#FDFBFF] flex items-center justify-center font-sans">Loading...</div>;
+  }
 
   return (
     <div className="bg-[#FDFBFF] min-h-screen pb-24 font-sans text-slate-900 selection:bg-purple-100">
@@ -54,12 +87,18 @@ const VetProfile = () => {
         <section className="flex flex-col items-center mt-6 text-center" data-purpose="user-profile-header">
           <div className="relative w-32 h-32 mb-4">
             {/* Avatar Container */}
-            <div className="w-full h-full rounded-full border-4 border-white shadow-lg overflow-hidden">
-              <img 
-                alt="Dr. Sarah Smith" 
-                className="w-full h-full object-cover object-top scale-[1.3] translate-y-[-10%]" 
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_dZyOWwZeR-WN7Mq8D3m_DSvHC0uxe-qbC5lFD2cd4AwSJRNaS8xqNsbSCzXXfKI-IUPTkXFhkOtBEg2iwZL66GUpr91ReSJ5siyikZVdfp4YIZyIBDcIGV71DX--xgznDKKY9pWpbsABl6O61BKbjqAnfPTz4Mp149X8ehGFI1bsLwVV4Y1kOfG96w-Bn86j_IqQL4_4vN03z4ohnqkvg2bfnl8FC7I8PU2j52Emmx9jtaKrYVCxv08LKkVRi-QTX7PHAMA-iW_Y"
-              />
+            <div className="w-full h-full rounded-full border-4 border-white shadow-lg overflow-hidden bg-muted">
+              {vetData?.photo ? (
+                <SafeImage 
+                  src={vetData.photo}
+                  alt={vetData.name}
+                  className="w-full h-full" 
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-purple-100 text-purple-400">
+                   <User size={64} weight="fill" />
+                </div>
+              )}
             </div>
             {/* Verified Badge */}
             <div className="absolute bottom-1 right-2">
@@ -70,12 +109,12 @@ const VetProfile = () => {
               />
             </div>
           </div>
-          <h2 class="text-2xl font-extrabold text-slate-900">Dr. Sarah Smith</h2>
-          <p class="text-purple-600 font-semibold mt-1">Senior Veterinarian</p>
-          <div class="flex items-center justify-center gap-1 mt-2 text-slate-500">
+          <h2 className="text-2xl font-extrabold text-slate-900">{vetData?.name || "Loading..."}</h2>
+          <p className="text-purple-600 font-semibold mt-1">{vetData?.specialty || "Senior Veterinarian"}</p>
+          <div className="flex items-center justify-center gap-1 mt-2 text-slate-500">
             <Star size={18} weight="fill" className="text-yellow-400" />
-            <span class="font-bold text-slate-900">4.9</span>
-            <span class="text-sm font-medium opacity-60">(128 reviews)</span>
+            <span className="font-bold text-slate-900">{vetData?.rating?.toFixed(1) || "5.0"}</span>
+            <span className="text-sm font-medium opacity-60">({vetData?.reviews || 0} reviews)</span>
           </div>
           <button 
             onClick={() => navigate("/profile-settings")}

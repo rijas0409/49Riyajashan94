@@ -5,9 +5,11 @@ import {
   CaretRight, CalendarDots, House, Wallet,
   Buildings, Syringe, Timer, Stethoscope
 } from "@phosphor-icons/react";
+import { useRoleGuard } from "@/hooks/useRoleGuard";
 
 const VetSchedule = () => {
   const navigate = useNavigate();
+  const { isLoading: guardLoading } = useRoleGuard(["vet"], "/auth-vet", true);
   const today = useMemo(() => new Date(), []);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDateId, setSelectedDateId] = useState(today.toISOString().split('T')[0]);
@@ -237,6 +239,10 @@ const VetSchedule = () => {
       } 
     });
   };
+
+  if (guardLoading) {
+    return <div className="min-h-screen bg-[#f7f7fa] flex items-center justify-center font-sans">Loading...</div>;
+  }
 
   return (
     <div className="bg-[#f7f7fa] min-h-screen pb-24 font-['Nunito'] overflow-x-hidden">

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Camera } from "lucide-react";
 import { toast } from "sonner";
+import { SafeImage } from "@/components/SafeImage";
 
 const ProfileSettings = () => {
   const navigate = useNavigate();
@@ -34,12 +35,16 @@ const ProfileSettings = () => {
       .single();
 
     if (data) {
+      let photoUrl = data.profile_photo || "";
+      if (photoUrl && !photoUrl.startsWith("http")) {
+        photoUrl = supabase.storage.from("seller-documents").getPublicUrl(photoUrl).data.publicUrl;
+      }
       setProfile({
         name: data.name || "",
         email: data.email || "",
         phone: data.phone || "",
         full_name: data.full_name || "",
-        profile_photo: data.profile_photo || "",
+        profile_photo: photoUrl,
       });
     }
     setLoading(false);
@@ -94,7 +99,7 @@ const ProfileSettings = () => {
           <div className="relative">
             <div className="w-24 h-24 rounded-full overflow-hidden bg-primary/10">
               {profile.profile_photo ? (
-                <img src={profile.profile_photo} alt="Profile" className="w-full h-full object-cover" />
+                <SafeImage src={profile.profile_photo} alt="Profile" className="w-full h-full" />
               ) : (
                 <div className="w-full h-full bg-gradient-primary flex items-center justify-center text-white text-3xl font-bold">
                   {getInitial()}

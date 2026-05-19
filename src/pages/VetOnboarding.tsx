@@ -51,7 +51,7 @@ const VetOnboarding = () => {
           if (p?.is_onboarding_complete && p?.is_admin_approved) {
             navigate("/vet/home", { replace: true });
             return;
-          } else if (p?.is_onboarding_complete && !p?.is_admin_approved && vp.verification_status !== 'rejected') {
+          } else if (p?.is_onboarding_complete && !p?.is_admin_approved && vp.verification_status !== 'failed') {
             navigate("/vet-pending-approval", { replace: true });
             return;
           }
@@ -240,7 +240,7 @@ const VetOnboarding = () => {
         .eq("user_id", uid)
         .maybeSingle();
 
-      const upsertData = {
+      let upsertData = {
         user_id: uid,
         qualification: formData.qualification,
         self_practice: formData.isIndependentPractice,
@@ -273,16 +273,37 @@ const VetOnboarding = () => {
         telemedicine_consent_accepted: formData.telemedicineConsent,
         clinic_photos: clinicPhotoUrls,
         education_details: eduDetails,
-        verification_status: "pending", // Always set to pending on submission/resubmission
-        rejection_reason: null, // Clear reason on resubmission
+        verification_status: "pending", 
+        rejection_reason: null, 
+        reviewed_at: null,
+        reviewed_by: null,
+        appeal_requested: false,
         is_active: true,
-      };
+      } as any;
 
       if (existingVet) {
-        const { error: vetError } = await supabase.from("vet_profiles").update(upsertData).eq("id", existingVet.id);
+        let { error: vetError } = await supabase.from("vet_profiles").update(upsertData).eq("id", existingVet.id);
+        if (vetError && vetError.message?.includes("Could not find the")) {
+           delete upsertData.rejection_reason;
+           delete upsertData.reviewed_at;
+           delete upsertData.reviewed_by;
+           delete upsertData.appeal_requested;
+           delete upsertData.self_practice;
+           const fallback = await supabase.from("vet_profiles").update(upsertData).eq("id", existingVet.id);
+           vetError = fallback.error;
+        }
         if (vetError) throw vetError;
       } else {
-        const { error: vetError } = await supabase.from("vet_profiles").insert(upsertData);
+        let { error: vetError } = await supabase.from("vet_profiles").insert([upsertData]);
+        if (vetError && vetError.message?.includes("Could not find the")) {
+           delete upsertData.rejection_reason;
+           delete upsertData.reviewed_at;
+           delete upsertData.reviewed_by;
+           delete upsertData.appeal_requested;
+           delete upsertData.self_practice;
+           const fallback = await supabase.from("vet_profiles").insert([upsertData]);
+           vetError = fallback.error;
+        }
         if (vetError) throw vetError;
       }
 

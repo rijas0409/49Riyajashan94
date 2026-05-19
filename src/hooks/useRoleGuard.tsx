@@ -12,7 +12,7 @@ interface RoleGuardResult {
   error: string | null;
 }
 
-export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string): RoleGuardResult => {
+export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string, requireAdminApproval: boolean = false): RoleGuardResult => {
   const navigate = useNavigate();
   const { user: authUser, profile: authProfile, authReady } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
@@ -34,10 +34,33 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string)
 
     const checkAccess = async () => {
       try {
+        let currentProfile = authProfile;
+
+        // Force a DB fetch if we require admin approval but authProfile says it's not approved
+        // This prevents the race condition when navigate happens before context updates fully
+        if (requireAdminApproval && (!authProfile || authProfile.is_admin_approved !== true)) {
+           const { data: dbProfile } = await supabase
+             .from("profiles")
+             .select("*")
+             .eq("id", authUser.id)
+             .maybeSingle();
+           
+           if (dbProfile) {
+             currentProfile = { ...authProfile, ...dbProfile };
+           }
+        }
+
+        // Check if admin approval is required and fail fast
+        if (requireAdminApproval && currentProfile && currentProfile.is_admin_approved === false) {
+           navigate("/vet-pending-approval", { replace: true });
+           setIsLoading(false);
+           return;
+        }
+
         // Use profile from AuthContext if it already has the role we need
-        if (authProfile && authProfile.role && allowedRoles.includes(authProfile.role as AllowedRole)) {
+        if (currentProfile && currentProfile.role && allowedRoles.includes(currentProfile.role as AllowedRole)) {
           setUser(authUser);
-          setProfile(authProfile);
+          setProfile(currentProfile);
           setIsLoading(false);
           return;
         }

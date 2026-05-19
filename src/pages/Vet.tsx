@@ -12,6 +12,7 @@ import vetDoctorBanner from "@/assets/vet-doctor-banner-BZtq7iJf.png";
 import { cn } from "@/lib/utils";
 import BottomNavigation from "@/components/BottomNavigation";
 import HeaderProfileDropdown from "@/components/HeaderProfileDropdown";
+import { SafeImage } from "@/components/SafeImage";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useLocation } from "@/contexts/LocationContext";
 import { toast } from "sonner";
@@ -135,7 +136,8 @@ const Vet = () => {
       const { data: vetProfiles, error: vetError } = await supabase
         .from("vet_profiles")
         .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo")
-        .eq("verification_status", "verified");
+        .eq("verification_status", "verified")
+        .eq("is_active", true);
 
       if (vetError) {
         console.error("Error fetching vets:", vetError);
@@ -144,56 +146,72 @@ const Vet = () => {
       
       console.log("Fetched vet profiles:", vetProfiles);
 
-      let vets: RealVet[] = [];
+      let vetsArr: RealVet[] = [];
 
       if (vetProfiles && vetProfiles.length > 0) {
         const userIds = vetProfiles.map((v) => v.user_id);
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("id, name, full_name, profile_photo")
-          .in("id", userIds);
+          .select("id, name, full_name, profile_photo, is_admin_approved")
+          .in("id", userIds)
+          .eq("is_admin_approved", true);
 
         const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
-        vets = vetProfiles.map((vp) => {
-          const profile = profileMap.get(vp.user_id);
-          const name = profile?.full_name || profile?.name || "Doctor";
-          const specs = vp.specializations || [];
-          return {
-            id: vp.id,
-            name: `Dr. ${name}`,
-            specialty: specs[0] || "General Veterinarian",
-            experience: `${vp.years_of_experience || 0} yrs exp.`,
-            rating: vp.average_rating || 0,
-            price: vp.online_fee || 500,
-            image: vp.profile_photo || profile?.profile_photo || "",
-            verified: vp.verification_status === "verified",
-            isActive: vp.is_active ?? true,
-            distance: Math.floor(Math.random() * 20) + 1,
-            availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`
-          };
-        });
+        const getPublicUrl = (photo: string) => {
+          if (!photo) return "";
+          if (photo.startsWith("http")) return photo;
+          return supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
+        };
+
+        vetsArr = vetProfiles
+          .filter(vp => profileMap.has(vp.user_id))
+          .map((vp) => {
+            const profile = profileMap.get(vp.user_id);
+            const name = profile?.full_name || profile?.name || "Doctor";
+            const specs = vp.specializations || [];
+            return {
+              id: vp.id,
+              name: `Dr. ${name}`,
+              specialty: specs[0] || "General Veterinarian",
+              experience: `${vp.years_of_experience || 0} yrs exp.`,
+              rating: vp.average_rating || 0,
+              price: vp.online_fee || 500,
+              image: getPublicUrl(vp.profile_photo || profile?.profile_photo || ""),
+              verified: vp.verification_status === "verified",
+              isActive: vp.is_active ?? true,
+              distance: Math.floor(Math.random() * 20) + 1,
+              availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`
+            };
+          });
       }
 
-      setRealVets(vets);
-      setDisplayVets(vets);
+      setRealVets(vetsArr);
+      setDisplayVets(vetsArr);
     };
 
     fetchVets();
 
+    const handleRealtimeChange = () => {
+      // Delay fetching slightly to allow DB sequential updates to settle
+      setTimeout(fetchVets, 500);
+    };
+
     // Real-time listener for vet profiles and profiles
     const channel = supabase
       .channel('vet_profiles_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'vet_profiles' }, () => {
-        fetchVets();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-        fetchVets();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vet_profiles' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleRealtimeChange)
       .subscribe();
 
+    // Polling fallback every 10 seconds just in case Realtime isn't configured for these tables
+    const pollInterval = setInterval(() => {
+      fetchVets();
+    }, 10000);
+
     return () => {
-      supabase.removeChannel(channel);
+      channel.unsubscribe();
+      clearInterval(pollInterval);
     };
   }, [authReady]);
 

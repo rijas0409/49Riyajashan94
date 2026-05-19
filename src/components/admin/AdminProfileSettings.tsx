@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Camera, Save, ArrowLeft, User, Mail, Phone, MapPin } from "lucide-react";
+import { SafeImage } from "../SafeImage";
 
 interface Props {
   user: any;
@@ -31,13 +32,17 @@ const AdminProfileSettings = ({ user, onBack, onProfileUpdate }: Props) => {
     if (!user?.id) return;
     const { data } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
     if (data) {
+      let photoUrl = data.profile_photo;
+      if (photoUrl && !photoUrl.startsWith("http")) {
+        photoUrl = supabase.storage.from("seller-documents").getPublicUrl(photoUrl).data.publicUrl;
+      }
       setProfile({
         name: data.name || "",
         full_name: data.full_name || "",
         email: data.email || user.email || "",
         phone: data.phone || "",
         address: data.address || "",
-        profile_photo: data.profile_photo,
+        profile_photo: photoUrl,
       });
     }
   };
@@ -113,7 +118,7 @@ const AdminProfileSettings = ({ user, onBack, onProfileUpdate }: Props) => {
           <div className="relative">
             <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-[hsl(220,80%,55%)] to-[hsl(250,70%,55%)] flex items-center justify-center shadow-lg">
               {profile.profile_photo ? (
-                <img src={profile.profile_photo} alt="Profile" className="w-full h-full object-cover" />
+                <SafeImage src={profile.profile_photo} alt="Profile" className="w-full h-full" />
               ) : (
                 <span className="text-white font-bold text-3xl">{initial}</span>
               )}

@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const VetDashboard = () => {
   const navigate = useNavigate();
-  const { isLoading: guardLoading, user, profile, error: guardError } = useRoleGuard(["vet"], "/auth-vet");
+  const { isLoading: guardLoading, user, profile, error: guardError } = useRoleGuard(["vet"], "/auth-vet", true);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -47,8 +47,6 @@ const VetDashboard = () => {
     if (user && profile) {
       if (profile.is_onboarding_complete === false) {
         navigate("/vet-onboarding");
-      } else if (profile.is_admin_approved === false) {
-        navigate("/vet-pending-approval");
       } else {
         fetchData();
 

@@ -7,6 +7,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "@/contexts/LocationContext";
+import { SafeImage } from "@/components/SafeImage";
 import { toast } from "sonner";
 
 interface RealVet {
@@ -43,6 +44,7 @@ const AllSpecializedVets = () => {
           full_name,
           profile_photo,
           is_admin_approved,
+          role,
           vet_profiles!vet_profiles_user_id_fkey(
             id,
             specializations,
@@ -56,8 +58,7 @@ const AllSpecializedVets = () => {
           )
         `)
         .eq("role", "vet")
-        .eq("is_admin_approved", true)
-        .not("vet_profiles", "is", null);
+        .eq("is_admin_approved", true);
 
       if (error) {
         console.error("Error fetching vets:", error);
@@ -69,25 +70,33 @@ const AllSpecializedVets = () => {
         return;
       }
 
+      const getPublicUrl = (photo: string) => {
+        if (!photo) return "";
+        if (photo.startsWith("http")) return photo;
+        return supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
+      };
+
       const vets: RealVet[] = profilesWithVets
         .filter(p => {
-          const vp = Array.isArray(p.vet_profiles) ? p.vet_profiles[0] : (p.vet_profiles as any);
-          return vp && vp.verification_status === "verified" && vp.is_active;
+          const vpList = Array.isArray(p.vet_profiles) ? p.vet_profiles : [p.vet_profiles];
+          const vp = vpList[0] as any;
+          return vp && vp.verification_status === "verified" && p.is_admin_approved;
         })
         .map((p) => {
-          const vp = Array.isArray(p.vet_profiles) ? p.vet_profiles[0] : (p.vet_profiles as any);
+          const vpList = Array.isArray(p.vet_profiles) ? p.vet_profiles : [p.vet_profiles];
+          const vp = vpList[0] as any;
           const name = p.full_name || p.name || "Doctor";
-          const specs = vp.specializations || [];
+          const specs = vp?.specializations || [];
           return {
-            id: vp.id,
+            id: vp?.id || p.id,
             name: `Dr. ${name}`,
             specialty: specs[0] || "General Veterinarian",
-            experience: `${vp.years_of_experience || 0} yrs exp.`,
-            rating: vp.average_rating || 0,
-            price: vp.online_fee || 500,
-            image: vp.profile_photo || p.profile_photo || "",
-            verified: vp.verification_status === "verified",
-            isActive: vp.is_active ?? true,
+            experience: `${vp?.years_of_experience || 0} yrs exp.`,
+            rating: vp?.average_rating || 0,
+            price: vp?.online_fee || 500,
+            image: getPublicUrl(vp?.profile_photo || p.profile_photo || ""),
+            verified: vp?.verification_status === "verified" && p.is_admin_approved,
+            isActive: vp?.is_active ?? true,
             distance: Math.floor(Math.random() * 25) + 1,
             availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`
           };
@@ -98,15 +107,25 @@ const AllSpecializedVets = () => {
 
     fetchVets();
 
+    const handleRealtimeChange = () => {
+      // Delay fetching slightly to allow DB sequential updates to settle
+      setTimeout(fetchVets, 500);
+    };
+
     // Set up real-time listener
     const channel = supabase
       .channel('vet_profiles_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'vet_profiles' }, fetchVets)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, fetchVets)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vet_profiles' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleRealtimeChange)
       .subscribe();
+
+    const pollInterval = setInterval(() => {
+      fetchVets();
+    }, 10000);
 
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
     };
   }, [authReady]);
 
@@ -164,7 +183,7 @@ const AllSpecializedVets = () => {
               <div className="relative">
                 <div className="w-[100px] h-[100px] rounded-[24px] overflow-hidden bg-muted shadow-inner group-hover:scale-105 transition-transform">
                   {doctor.image ? (
-                    <img src={doctor.image} alt={doctor.name} className="w-full h-full object-cover" />
+                    <SafeImage src={doctor.image} alt={doctor.name} className="w-full h-full" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                       <Stethoscope className="w-10 h-10" />

@@ -9,61 +9,88 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const VetPendingApproval = () => {
   const navigate = useNavigate();
-  const { refreshProfile } = useAuth();
+  const { profile, user, refreshProfile } = useAuth();
   const [isChecking, setIsChecking] = useState(true);
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
 
   useEffect(() => {
+    if (profile?.is_admin_approved === true) {
+      navigate("/vet/home");
+    }
+  }, [profile?.is_admin_approved, navigate]);
+
+  useEffect(() => {
+    let channel: any = null;
+    let pollInterval: NodeJS.Timeout | null = null;
+    
     const check = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { navigate("/auth-vet"); return; }
-
-        await supabase.rpc("ensure_user_initialized" as any, {
-          _role: "vet",
-          _name: (session.user.user_metadata as any)?.name || "User",
-          _email: session.user.email || "",
-        });
-
-        const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: session.user.id });
-        const metaRole = (session.user.user_metadata as any)?.role;
-        const effectiveRole = roleData || metaRole;
-
-        if (effectiveRole !== "vet") { navigate("/auth-vet"); return; }
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("is_admin_approved, is_onboarding_complete")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
+ 
         const { data: vetProfile } = await supabase
           .from("vet_profiles")
-          .select("verification_status, rejection_reason")
+          .select("*")
           .eq("user_id", session.user.id)
           .maybeSingle();
-
+ 
         setRejectionReason(vetProfile?.verification_status === "failed" ? (vetProfile.rejection_reason || "Your application was not approved. Please review your details and try again.") : null);
-
-        if (profile?.is_onboarding_complete === false) { navigate("/vet-onboarding"); return; }
-        if (profile?.is_admin_approved === true) { 
-          await refreshProfile();
-          navigate("/vet/home"); 
-          return; 
+ 
+        const { data: currentProfile } = await supabase.from("profiles").select("is_admin_approved, is_onboarding_complete").eq("id", session.user.id).single();
+        if (currentProfile?.is_admin_approved) {
+           await refreshProfile();
+           navigate("/vet/home");
+           return;
         }
 
+        if (currentProfile?.is_onboarding_complete === false) { navigate("/vet-onboarding"); return; }
+        
         setIsChecking(false);
+
+        // Setup real-time listener only when we have a valid session id
+        if (!channel) {
+          channel = supabase.channel('vet_approval_check_' + session.user.id)
+            .on('postgres_changes', { 
+              event: '*', 
+              schema: 'public', 
+              table: 'profiles',
+              filter: `id=eq.${session.user.id}`
+            }, async () => {
+              console.log("Profile change detected in Pending Approval page - profiles");
+              await refreshProfile();
+              check(); 
+            })
+            .on('postgres_changes', {
+              event: '*',
+              schema: 'public',
+              table: 'vet_profiles',
+              filter: `user_id=eq.${session.user.id}`
+            }, async () => {
+              console.log("Profile change detected in Pending Approval page - vet_profiles");
+              await refreshProfile();
+              check();
+            })
+            .subscribe();
+        }
+
+        // Add robust polling fallback in case Realtime publication is not enabled on tables
+        if (!pollInterval) {
+           pollInterval = setInterval(() => {
+              check();
+           }, 3000);
+        }
       } catch (err) {
         console.error("Check error:", err);
-        // Keep user on this screen; stop infinite spinner
         setIsChecking(false);
       }
     };
     check();
-    const interval = setInterval(check, 30000);
-    return () => clearInterval(interval);
-  }, [navigate, refreshProfile]);
-
-  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
+ 
+    return () => { 
+      if (channel) supabase.removeChannel(channel); 
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [navigate]);
 
   const handleLogout = async () => { await supabase.auth.signOut(); navigate("/auth-vet"); };
 

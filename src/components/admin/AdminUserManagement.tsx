@@ -1,12 +1,12 @@
 import { AdminData } from "@/pages/AdminDashboard";
-import { useState } from "react";
-import { Search, CheckCircle2, XCircle, Users, Shield, ShoppingBag, Truck as TruckIcon, Stethoscope, Eye, X, FileText, Camera, MapPin, Phone, Mail, Building, Trash2, AlertTriangle, GraduationCap, Clock, Banknote, Calendar, User, Building2, CreditCard, ScrollText, ChevronLeft, ChevronRight, Globe, Activity, Briefcase, AlertCircle } from "lucide-react";
+import { useState, useCallback } from "react";
+import { Search, CheckCircle2, XCircle, Users, Shield, ShoppingBag, Truck as TruckIcon, Stethoscope, Eye, X, FileText, Camera, MapPin, Phone, Mail, Building, Trash2, AlertTriangle, GraduationCap, Clock, Banknote, Calendar, User, Building2, CreditCard, ScrollText, ChevronLeft, ChevronRight, Globe, Activity, Briefcase, AlertCircle, Download, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface Props {
   data: AdminData;
-  actions: any;
+  actions: Record<string, any>;
 }
 
 const roleLabels: Record<string, { label: string; color: string; icon: any }> = {
@@ -36,7 +36,9 @@ const InfoBox = ({ icon: Icon, label, value, capitalize = false, muted = false, 
   </div>
 );
 
-const DocViewer = ({ label, url, bucket = "vet-documents" }: { label: string; url: string | null; bucket?: string }) => {
+const DocViewer = ({ label, url, bucket = "vet-documents", onPreview }: { label: string; url: string | null; bucket?: string; onPreview?: (label: string, url: string) => void }) => {
+  const getFullUrl = (u: string) => u.startsWith("http") ? u : supabase.storage.from(bucket).getPublicUrl(u).data.publicUrl;
+
   if (!url) return (
     <div className="flex items-center gap-2 p-3 bg-[hsl(0,50%,97%)] rounded-xl border border-[hsl(0,40%,90%)]">
       <FileText className="w-4 h-4 text-[hsl(0,50%,60%)]" />
@@ -45,10 +47,10 @@ const DocViewer = ({ label, url, bucket = "vet-documents" }: { label: string; ur
   );
 
   const urls = url.split('|').filter(Boolean);
-  const fullUrls = urls.map(u => u.startsWith("http") ? u : supabase.storage.from(bucket).getPublicUrl(u).data.publicUrl);
+  const fullUrls = urls.map(getFullUrl);
   
   // Determine type based on first file
-  const isImage = !fullUrls[0].match(/\.(pdf|doc|docx|txt|rtf|xls|xlsx|ppt|pptx)(\?|$)/i);
+  const isImage = (u: string) => !u.match(/\.(pdf|doc|docx|txt|rtf|xls|xlsx|ppt|pptx)(\?|$)/i);
 
   return (
     <div className="rounded-xl border border-[hsl(220,20%,90%)] overflow-hidden">
@@ -59,30 +61,44 @@ const DocViewer = ({ label, url, bucket = "vet-documents" }: { label: string; ur
         </div>
         <div className="flex gap-2">
           {fullUrls.map((fu, idx) => (
-             <a key={idx} href={fu} target="_blank" rel="noopener noreferrer" className="text-[11px] font-medium text-[hsl(220,80%,50%)] hover:underline shrink-0" referrerPolicy="no-referrer">
-               Open {fullUrls.length > 1 ? idx + 1 : ""}
-             </a>
+             <div key={idx} className="flex gap-2">
+               <button 
+                onClick={() => onPreview?.(label, fu)}
+                className="text-[11px] font-medium text-[hsl(220,80%,50%)] hover:underline shrink-0"
+               >
+                 Preview {fullUrls.length > 1 ? idx + 1 : ""}
+               </button>
+               <a href={fu} target="_blank" rel="noopener noreferrer" className="text-[11px] font-medium text-[hsl(220,15%,45%)] hover:underline shrink-0" referrerPolicy="no-referrer">
+                 Full ↗
+               </a>
+             </div>
           ))}
         </div>
       </div>
-      {isImage ? (
-        <div className="w-full bg-[hsl(220,20%,96%)] flex items-center justify-center p-2 gap-2 overflow-x-auto min-h-32">
-          {fullUrls.map((fu, idx) => (
-            <img key={idx} src={fu} alt={`${label} ${idx + 1}`} className="max-w-full max-h-32 object-contain rounded-md shadow-sm shrink-0" referrerPolicy="no-referrer" />
-          ))}
-        </div>
-      ) : (
-        <div className="p-6 bg-[hsl(220,20%,98%)] text-center h-32 flex flex-col justify-center">
-          <p className="text-xs text-muted-foreground mb-3 truncate px-2 text-ellipsis overflow-hidden">Document File</p>
-          <div className="flex justify-center gap-2">
-             {fullUrls.map((fu, idx) => (
-                <a key={idx} href={fu} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-border rounded-lg text-xs text-[hsl(220,80%,50%)] hover:bg-[hsl(220,30%,97%)] transition-colors" referrerPolicy="no-referrer">
-                  View {fullUrls.length > 1 ? idx + 1 : ""} ↗
-                </a>
-             ))}
-          </div>
-        </div>
-      )}
+      <div className="w-full bg-[hsl(220,20%,96%)] flex items-center justify-center p-2 gap-2 overflow-x-auto min-h-32">
+        {fullUrls.map((fu, idx) => (
+          isImage(fu) ? (
+            <img 
+              key={idx} 
+              src={fu} 
+              alt={`${label} ${idx + 1}`} 
+              onClick={() => onPreview?.(label, fu)}
+              className="max-w-full max-h-32 object-contain rounded-md shadow-sm shrink-0 cursor-zoom-in hover:opacity-90 transition-opacity" 
+              referrerPolicy="no-referrer" 
+            />
+          ) : (
+            <div key={idx} className="p-6 bg-[hsl(220,20%,98%)] text-center h-32 flex flex-col justify-center shrink-0 min-w-[150px]">
+              <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+              <button 
+                onClick={() => onPreview?.(label, fu)}
+                className="text-[11px] font-medium text-[hsl(220,80%,50%)] hover:underline"
+              >
+                View PDF/Doc
+              </button>
+            </div>
+          )
+        ))}
+      </div>
     </div>
   );
 };
@@ -104,6 +120,22 @@ const AdminUserManagement = ({ data, actions }: Props) => {
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [rejectionTarget, setRejectionTarget] = useState<any>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [previewDoc, setPreviewDoc] = useState<{ label: string; url: string } | null>(null);
+
+  const handleOpenPreview = useCallback((label: string, url: string) => {
+    setPreviewDoc({ label, url });
+  }, []);
+
+  const handleClosePreview = useCallback(() => {
+    setPreviewDoc(null);
+  }, []);
+
+  const getProfilePhotoUrl = (u: any) => {
+    const photo = u.profile_photo || u.selfie_file || u.passport_photo_file;
+    if (!photo) return null;
+    if (photo.startsWith("http")) return photo;
+    return supabase.storage.from(u.role === 'vet' ? 'vet-documents' : 'seller-documents').getPublicUrl(photo).data.publicUrl;
+  };
   const [deleting, setDeleting] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [adminVetStep, setAdminVetStep] = useState(1);
@@ -714,21 +746,8 @@ const AdminUserManagement = ({ data, actions }: Props) => {
                         <span className="px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap" style={{ backgroundColor: `${rl.color}15`, color: rl.color }}>{rl.label}</span>
                       </td>
                       <td className="py-3.5">
-                        <div className="relative inline-block w-min">
-                          <select 
-                            value={getStatusObj(u).value}
-                            disabled={updatingStatus === u.id}
-                            onChange={(e) => handleStatusChange(u, e.target.value)}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer outline-none border-none pr-8 appearance-none
-                              ${getStatusObj(u).cls}
-                              ${updatingStatus === u.id ? "opacity-50 animate-pulse" : "hover:brightness-95"}`}
-                          >
-                            <option value="approved">Approved</option>
-                            <option value="pending">Pending</option>
-                            <option value="rejected">Rejected</option>
-                            <option value="active" disabled>Active</option>
-                          </select>
-                          <ChevronRight className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 rotate-90" />
+                        <div className={`px-2.5 py-1 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 ${getStatusObj(u).cls}`}>
+                          {getStatusObj(u).label.toUpperCase()}
                         </div>
                       </td>
                       <td className="py-3.5 text-[hsl(220,15%,55%)] text-[13px]">{new Date(u.created_at).toLocaleDateString()}</td>

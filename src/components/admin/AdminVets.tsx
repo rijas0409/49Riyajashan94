@@ -11,13 +11,22 @@ interface Props {
 }
 
 const DocViewer = ({ label, url, onOpenPreview }: { label: string; url: string | null; onOpenPreview: (label: string, url: string) => void }) => {
+  const getFullUrl = (u: string) => {
+    if (!u) return "";
+    if (u.startsWith("http")) return u;
+    return supabase.storage.from("vet-documents").getPublicUrl(u).data.publicUrl;
+  };
+
   if (!url) return (
     <div className="flex items-center gap-2 p-3 bg-[hsl(0,50%,97%)] rounded-xl border border-[hsl(0,40%,90%)]">
       <FileText className="w-4 h-4 text-[hsl(0,50%,60%)]" />
       <span className="text-sm text-[hsl(0,50%,50%)]">{label}: Not uploaded</span>
     </div>
   );
-  const isImage = url.match(/\.(jpg|jpeg|png|gif|webp)(\?|$)/i);
+  
+  const fullUrl = getFullUrl(url);
+  const isImage = fullUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i);
+  
   return (
     <div className="rounded-xl border border-[hsl(220,20%,90%)] overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 bg-[hsl(220,20%,97%)]">
@@ -25,13 +34,13 @@ const DocViewer = ({ label, url, onOpenPreview }: { label: string; url: string |
           <FileText className="w-4 h-4 text-[hsl(220,80%,50%)]" />
           <span className="text-sm font-medium text-[hsl(220,20%,25%)]">{label}</span>
         </div>
-        <button onClick={() => onOpenPreview(label, url)} className="text-[11px] font-medium text-[hsl(220,80%,50%)] hover:underline">Open Full</button>
+        <button onClick={() => onOpenPreview(label, fullUrl)} className="text-[11px] font-medium text-[hsl(220,80%,50%)] hover:underline">Open Full</button>
       </div>
       {isImage ? (
-        <SafeImage src={url} alt={label} onClick={() => onOpenPreview(label, url)} className="w-full max-h-[200px] cursor-pointer hover:opacity-90" />
+        <SafeImage src={fullUrl} alt={label} onClick={() => onOpenPreview(label, fullUrl)} className="w-full max-h-[200px] cursor-pointer hover:opacity-90" />
       ) : (
         <div className="p-4 bg-[hsl(220,20%,98%)] text-center">
-          <button onClick={() => onOpenPreview(label, url)} className="text-sm text-[hsl(220,80%,50%)] hover:underline">View Document ↗</button>
+          <button onClick={() => onOpenPreview(label, fullUrl)} className="text-sm text-[hsl(220,80%,50%)] hover:underline">View Document ↗</button>
         </div>
       )}
     </div>
@@ -49,6 +58,7 @@ const InfoRow = ({ icon: Icon, label, value }: { icon: any; label: string; value
 );
 
 const AdminVets = ({ data, actions }: Props) => {
+  const [activeTab, setActiveTab] = useState<"all" | "pending">("all");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [selectedVet, setSelectedVet] = useState<any>(null);
@@ -78,64 +88,40 @@ const AdminVets = ({ data, actions }: Props) => {
     setUpdatingStatus(vet.user_id);
     try {
       if (newStatus === "verified") {
-        const { error: error1 } = await supabase.from("profiles").update({ 
-          is_admin_approved: true 
-        }).eq("id", vet.user_id);
-
-        const { error: error2 } = await supabase.from("vet_profiles").update({ 
-          verification_status: "verified",
-          rejection_reason: null,
-          is_active: true
-        }).eq("user_id", vet.user_id);
-        
-        if (error1 || error2) throw error1 || error2;
-        toast({ title: "Vet Approved Successfully" });
-      } else if (newStatus === "suspended") {
-        const { error: error1 } = await supabase.from("profiles").update({ 
-          is_admin_approved: false 
-        }).eq("id", vet.user_id);
-
-        const { error: error2 } = await supabase.from("vet_profiles").update({ 
-          verification_status: "suspended",
-          is_active: false
-        }).eq("user_id", vet.user_id);
-        
-        if (error1 || error2) throw error1 || error2;
-        toast({ title: "Vet Suspended" });
+        await actions.approveVet(vet.user_id);
       } else if (newStatus === "failed") {
+        await actions.rejectVet(vet.user_id, reason);
+      } else {
+        // Handle other status changes (suspended, pending)
         const { error: error1 } = await supabase.from("profiles").update({ 
           is_admin_approved: false 
         }).eq("id", vet.user_id);
 
         const { error: error2 } = await supabase.from("vet_profiles").update({ 
-          verification_status: "failed",
-          rejection_reason: reason 
+          verification_status: newStatus as any,
+          is_active: newStatus === "verified"
         }).eq("user_id", vet.user_id);
         
         if (error1 || error2) throw error1 || error2;
-        
-        toast({ title: "Vet Application Rejected" });
-      } else if (newStatus === "pending") {
-        const { error: error1 } = await supabase.from("profiles").update({ 
-          is_admin_approved: false 
-        }).eq("id", vet.user_id);
-
-        const { error: error2 } = await supabase.from("vet_profiles").update({ 
-          verification_status: "pending", 
-          rejection_reason: null 
-        }).eq("user_id", vet.user_id);
-
-        if (error1 || error2) throw error1 || error2;
-        toast({ title: "Status Reset to Pending" });
+        toast({ title: `Status Updated to ${newStatus}` });
+        // Let the realtime listener handle the refresh or call it explicitly
       }
-      await actions.fetchData(true);
+      
+      setSelectedVet(null);
+      setRejectionTarget(null);
     } catch (err: any) {
       toast({ title: "Update Failed", description: err.message, variant: "destructive" });
     } finally {
       setUpdatingStatus(null);
-      setRejectionTarget(null);
       setRejectionReason("");
     }
+  };
+
+  const getVetPhotoUrl = (v: any) => {
+    const photo = v.profile_photo || v.profile?.profile_photo;
+    if (!photo) return null;
+    if (photo.startsWith("http")) return photo;
+    return supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
   };
 
   const handleEditSave = async () => {
@@ -168,6 +154,37 @@ const AdminVets = ({ data, actions }: Props) => {
           <p className="text-sm text-[hsl(220,15%,55%)] mt-1">Manage all registered veterinary doctors</p>
         </div>
       </div>
+
+      {/* Tabs */}
+      <div className="flex items-center gap-1 bg-[hsl(220,20%,94%)] p-1 rounded-xl w-fit mb-8">
+        <button 
+          onClick={() => setActiveTab("all")}
+          className={`px-6 py-2 text-sm font-semibold rounded-lg transition-all ${
+            activeTab === 'all' 
+              ? 'bg-white text-[hsl(220,80%,50%)] shadow-sm' 
+              : 'text-[hsl(220,15%,50%)] hover:text-[hsl(220,20%,15%)]'
+          }`}
+        >
+          All Veterinarians
+        </button>
+        <button 
+          onClick={() => setActiveTab("pending")}
+          className={`px-6 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${
+            activeTab === 'pending' 
+              ? 'bg-white text-[hsl(220,80%,50%)] shadow-sm' 
+              : 'text-[hsl(220,15%,50%)] hover:text-[hsl(220,20%,15%)]'
+          }`}
+        >
+          Pending Verification
+          {pendingVets.length > 0 && (
+            <span className="px-1.5 py-0.5 bg-[hsl(0,75%,55%)] text-white text-[10px] rounded-full">
+              {pendingVets.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Overview Stats (Optional, could add here) */}
 
       {/* Rejection Reason Modal */}
       {rejectionTarget && (
@@ -231,8 +248,8 @@ const AdminVets = ({ data, actions }: Props) => {
               {/* Profile Photo */}
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded-2xl overflow-hidden bg-[hsl(220,20%,94%)] border-2 border-[hsl(220,20%,88%)]">
-                  {selectedVet.profile_photo || selectedVet.profile?.profile_photo ? (
-                    <SafeImage src={selectedVet.profile_photo || selectedVet.profile?.profile_photo} className="w-full h-full" />
+                  {getVetPhotoUrl(selectedVet) ? (
+                    <SafeImage src={getVetPhotoUrl(selectedVet)!} className="w-full h-full" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center"><Camera className="w-8 h-8 text-[hsl(220,15%,70%)]" /></div>
                   )}
@@ -317,14 +334,29 @@ const AdminVets = ({ data, actions }: Props) => {
             </div>
 
             {/* Action Footer */}
-            <div className="sticky bottom-0 bg-white border-t border-[hsl(220,20%,92%)] px-6 py-4 flex justify-end gap-3 rounded-b-2xl">
-              <button onClick={() => handleStatusChange(selectedVet, "failed")} className="px-6 py-2.5 border border-[hsl(0,60%,70%)] text-[hsl(0,65%,50%)] text-sm font-medium rounded-xl hover:bg-[hsl(0,60%,97%)] flex items-center gap-2">
-                <XCircle className="w-4 h-4" /> Reject Application
-              </button>
-              <button onClick={() => handleStatusChange(selectedVet, "verified")} className="px-6 py-2.5 bg-[hsl(145,55%,42%)] text-white text-sm font-medium rounded-xl hover:bg-[hsl(145,55%,38%)] flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> Approve Vet
-              </button>
-            </div>
+            {selectedVet.verification_status === "pending" && (
+              <div className="sticky bottom-0 bg-white border-t border-[hsl(220,20%,92%)] px-6 py-4 flex justify-end gap-3 rounded-b-2xl">
+                <button onClick={() => handleStatusChange(selectedVet, "failed")} className="px-6 py-2.5 border border-[hsl(0,60%,70%)] text-[hsl(0,65%,50%)] text-sm font-medium rounded-xl hover:bg-[hsl(0,60%,97%)] flex items-center gap-2">
+                  <XCircle className="w-4 h-4" /> Reject Application
+                </button>
+                <button onClick={() => handleStatusChange(selectedVet, "verified")} className="px-6 py-2.5 bg-[hsl(145,55%,42%)] text-white text-sm font-medium rounded-xl hover:bg-[hsl(145,55%,38%)] flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" /> Approve Vet
+                </button>
+              </div>
+            )}
+            {selectedVet.verification_status !== "pending" && (
+              <div className="sticky bottom-0 bg-white border-t border-[hsl(220,20%,92%)] px-6 py-4 flex justify-end gap-3 rounded-b-2xl">
+                <div className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 ${
+                  selectedVet.verification_status === 'verified' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                }`}>
+                  {selectedVet.verification_status === 'verified' ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                  Status: {selectedVet.verification_status.toUpperCase()}
+                </div>
+                <button onClick={() => setSelectedVet(null)} className="px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50">
+                  Close
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -349,138 +381,159 @@ const AdminVets = ({ data, actions }: Props) => {
           </div>
         </div>
       )}
-      {pendingVets.length > 0 && (
-        <div className="bg-white rounded-2xl border border-[hsl(220,20%,92%)] p-6 mb-6">
-          <h2 className="text-lg font-bold text-[hsl(220,20%,15%)] mb-4 flex items-center gap-2">
-            Pending Verifications
-            <span className="px-2.5 py-0.5 bg-[hsl(0,75%,55%)] text-white text-[11px] font-bold rounded-full">{pendingVets.length}</span>
-          </h2>
-          <div className="space-y-3">
-            {pendingVets.map((vet: any) => (
-              <div key={vet.id} className="flex items-center justify-between p-4 bg-[hsl(40,60%,97%)] rounded-xl">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-[hsl(220,20%,94%)]">
-                    {vet.profile?.profile_photo || vet.profile_photo ? (
-                      <SafeImage src={vet.profile?.profile_photo || vet.profile_photo} className="w-full h-full" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[hsl(220,15%,55%)] font-bold">{(vet.profile?.name || "V")[0]}</div>
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-[hsl(220,20%,15%)]">{vet.profile?.name || vet.profile?.full_name || "Doctor"}</p>
-                    <p className="text-[12px] text-[hsl(220,15%,55%)]">{vet.qualification} • {vet.years_of_experience} yrs exp</p>
-                    <p className="text-[12px] text-[hsl(220,15%,55%)]">{vet.specializations?.join(", ")}</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => setSelectedVet(vet)} className="px-4 py-2 bg-white border border-[hsl(220,20%,85%)] text-[hsl(220,15%,40%)] text-[12px] font-medium rounded-lg hover:bg-[hsl(220,20%,96%)] flex items-center gap-1.5">
-                    <Eye className="w-3.5 h-3.5" /> Review
-                  </button>
-                  <button onClick={() => handleStatusChange(vet, "verified")} className="px-4 py-2 bg-[hsl(220,80%,50%)] text-white text-[12px] font-medium rounded-lg hover:bg-[hsl(220,80%,45%)] flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Approve
-                  </button>
-                  <button onClick={() => handleStatusChange(vet, "failed")} className="px-4 py-2 border border-[hsl(0,60%,70%)] text-[hsl(0,65%,50%)] text-[12px] font-medium rounded-lg hover:bg-[hsl(0,60%,97%)] flex items-center gap-1.5">
-                    <XCircle className="w-3.5 h-3.5" /> Reject
-                  </button>
-                </div>
+      {activeTab === "pending" ? (
+        <div className="space-y-6">
+          {pendingVets.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-[hsl(220,20%,92%)] p-12 text-center">
+              <div className="w-16 h-16 bg-[hsl(145,50%,95%)] rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="w-8 h-8 text-[hsl(145,55%,45%)]" />
               </div>
-            ))}
+              <h3 className="text-lg font-bold text-[hsl(220,20%,15%)]">No Pending Verifications</h3>
+              <p className="text-sm text-[hsl(220,15%,55%)] mt-1">All veterinary doctor applications have been processed.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {pendingVets.map((vet: any) => (
+                <div key={vet.id} className="bg-white rounded-2xl border border-[hsl(220,20%,92%)] p-5 flex flex-col md:flex-row items-center justify-between gap-6 hover:shadow-md transition-all">
+                  <div className="flex items-center gap-5 flex-1 w-full">
+                    <div className="w-16 h-16 rounded-2xl overflow-hidden bg-[hsl(220,20%,94%)] border border-[hsl(220,20%,90%)] shrink-0">
+                      {getVetPhotoUrl(vet) ? (
+                        <SafeImage src={getVetPhotoUrl(vet)!} className="w-full h-full" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xl font-bold text-[hsl(220,15%,50%)]">{(vet.profile?.name || "V")[0]}</div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-lg font-bold text-[hsl(220,20%,15%)]">{vet.profile?.name || "Doctor"}</p>
+                        {vet.profile?.priority_fee_paid && (
+                          <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded-md uppercase tracking-wider">Priority</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-[hsl(220,15%,45%)] font-medium mb-1">{vet.qualification} • {vet.years_of_experience} years exp</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {vet.specializations?.map((s: string, idx: number) => (
+                          <span key={idx} className="px-2 py-0.5 bg-[hsl(220,40%,96%)] text-[hsl(220,15%,45%)] text-[11px] rounded-md font-medium">{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 w-full md:w-auto">
+                    <button onClick={() => setSelectedVet(vet)} className="flex-1 md:flex-none px-5 py-2.5 bg-white border border-[hsl(220,20%,88%)] text-[hsl(220,20%,25%)] text-sm font-semibold rounded-xl hover:bg-[hsl(220,20%,97%)] flex items-center justify-center gap-2 transition-all">
+                      <Eye className="w-4 h-4" /> Review Profile
+                    </button>
+                    <button onClick={() => handleStatusChange(vet, "verified")} className="flex-1 md:flex-none px-5 py-2.5 bg-[hsl(145,55%,42%)] text-white text-sm font-semibold rounded-xl hover:bg-[hsl(145,55%,38%)] shadow-sm shadow-[hsl(145,55%,42%)]/20 flex items-center justify-center gap-2 transition-all">
+                      <CheckCircle2 className="w-4 h-4" /> Approve
+                    </button>
+                    <button onClick={() => handleStatusChange(vet, "failed")} className="flex-1 md:flex-none px-5 py-2.5 border border-[hsl(0,60%,85%)] text-[hsl(0,65%,50%)] text-sm font-semibold rounded-xl hover:bg-[hsl(0,60%,98%)] flex items-center justify-center gap-2 transition-all">
+                      <XCircle className="w-4 h-4" /> Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-[hsl(220,20%,92%)] p-6">
+          <div className="flex flex-col md:flex-row items-center gap-4 mb-6">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[hsl(220,15%,60%)]" />
+              <input type="text" placeholder="Search by name, qualification..." value={search} onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-[hsl(220,20%,97%)] border border-[hsl(220,20%,92%)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(220,80%,50%)]/20 transition-all"
+              />
+            </div>
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <p className="text-sm font-medium text-[hsl(220,15%,50%)] whitespace-nowrap">Filter Status:</p>
+              <select value={filter} onChange={(e) => setFilter(e.target.value)} className="w-full md:w-[160px] px-4 py-2.5 border border-[hsl(220,20%,88%)] rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[hsl(220,80%,50%)]/20 cursor-pointer">
+                <option value="all">All Status</option>
+                <option value="verified">Verified</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Rejected</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[hsl(220,20%,92%)]">
+                  <th className="pb-4 text-left font-bold text-[hsl(220,15%,55%)] uppercase tracking-wider text-[11px]">Doctor</th>
+                  <th className="pb-4 text-left font-bold text-[hsl(220,15%,55%)] uppercase tracking-wider text-[11px]">Experience</th>
+                  <th className="pb-4 text-left font-bold text-[hsl(220,15%,55%)] uppercase tracking-wider text-[11px]">Specializations</th>
+                  <th className="pb-4 text-left font-bold text-[hsl(220,15%,55%)] uppercase tracking-wider text-[11px]">Status</th>
+                  <th className="pb-4 text-left font-bold text-[hsl(220,15%,55%)] uppercase tracking-wider text-[11px]">Rating</th>
+                  <th className="pb-4 text-left font-bold text-[hsl(220,15%,55%)] uppercase tracking-wider text-[11px]">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[hsl(220,20%,96%)]">
+                {filtered.length === 0 ? (
+                  <tr><td colSpan={6} className="py-12 text-center text-[hsl(220,15%,60%)] bg-[hsl(220,20%,99%)] rounded-b-2xl">No veterinarians found matching your search</td></tr>
+                ) : (
+                  filtered.map((v: any) => (
+                    <tr key={v.id} className="hover:bg-[hsl(220,20%,98%)] transition-colors group">
+                      <td className="py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-[hsl(220,20%,94%)] flex items-center justify-center text-[12px] font-bold text-[hsl(220,15%,45%)] overflow-hidden shrink-0 border border-[hsl(220,20%,90%)]">
+                            {getVetPhotoUrl(v) ? (
+                              <SafeImage src={getVetPhotoUrl(v)!} className="w-full h-full" />
+                            ) : (v.profile?.name || "V")[0].toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-[hsl(220,20%,15%)] truncate">Dr. {v.profile?.name || v.profile?.full_name || "Doctor"}</p>
+                            <p className="text-[11px] text-[hsl(220,15%,60%)] font-medium">{v.qualification}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 font-medium text-[hsl(220,15%,45%)]">{v.years_of_experience} yrs</td>
+                      <td className="py-4">
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                          {v.specializations?.slice(0, 2).map((s: string, idx: number) => (
+                            <span key={idx} className="px-1.5 py-0.5 bg-[hsl(220,20%,94%)] text-[hsl(220,15%,40%)] text-[10px] rounded font-medium">{s}</span>
+                          ))}
+                          {v.specializations?.length > 2 && <span className="text-[10px] text-[hsl(220,15%,60%)]">+{v.specializations.length - 2}</span>}
+                        </div>
+                      </td>
+                      <td className="py-4">
+                        <div className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold inline-flex items-center gap-1.5 tracking-wide
+                          ${v.verification_status === "verified" ? "bg-[hsl(145,50%,92%)] text-[hsl(145,60%,35%)]" :
+                            v.verification_status === "pending" ? "bg-[hsl(40,60%,92%)] text-[hsl(40,70%,35%)]" :
+                            v.verification_status === "suspended" ? "bg-[hsl(0,0%,90%)] text-[hsl(0,0%,40%)]" :
+                            "bg-[hsl(0,50%,93%)] text-[hsl(0,65%,45%)]"}
+                          ${updatingStatus === v.user_id ? "opacity-50 animate-pulse" : ""}`}
+                        >
+                          {updatingStatus === v.user_id ? (
+                            <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <>
+                              {v.verification_status === "verified" && <CheckCircle2 className="w-3.5 h-3.5" />}
+                              {v.verification_status === "failed" && <XCircle className="w-3.5 h-3.5" />}
+                              {v.verification_status === "pending" && <Clock className="w-3.5 h-3.5" />}
+                            </>
+                          )}
+                          {v.verification_status === "verified" ? "APPROVED" : (v.verification_status || "Pending").toUpperCase()}
+                        </div>
+                      </td>
+                      <td className="py-4">
+                        <div className="flex items-center gap-1.5">
+                          <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                          <span className="text-[hsl(220,20%,15%)] font-bold">{v.average_rating || "0.0"}</span>
+                        </div>
+                      </td>
+                      <td className="py-4">
+                        <button onClick={() => setSelectedVet(v)} className="px-3 py-1.5 bg-[hsl(220,20%,97%)] text-[hsl(220,80%,50%)] font-bold text-[11px] rounded-lg hover:bg-[hsl(220,80%,50%)] hover:text-white transition-all flex items-center gap-1.5">
+                          <Eye className="w-3.5 h-3.5" /> DETAILS
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
-
-      {/* All Vets Table */}
-      <div className="bg-white rounded-2xl border border-[hsl(220,20%,92%)] p-6">
-        <div className="flex items-center gap-4 mb-5">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[hsl(220,15%,60%)]" />
-            <input type="text" placeholder="Search vets..." value={search} onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-[hsl(220,20%,97%)] border border-[hsl(220,20%,92%)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(220,80%,50%)]/20"
-            />
-          </div>
-          <select value={filter} onChange={(e) => setFilter(e.target.value)} className="px-4 py-2.5 border border-[hsl(220,20%,88%)] rounded-xl text-sm bg-white focus:outline-none">
-            <option value="all">All Status</option>
-            <option value="verified">Verified</option>
-            <option value="pending">Pending</option>
-            <option value="failed">Rejected</option>
-            <option value="suspended">Suspended</option>
-          </select>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[hsl(220,20%,92%)]">
-                <th className="pb-3 text-left font-semibold text-[hsl(220,15%,55%)]">Doctor</th>
-                <th className="pb-3 text-left font-semibold text-[hsl(220,15%,55%)]">Qualification</th>
-                <th className="pb-3 text-left font-semibold text-[hsl(220,15%,55%)]">Specializations</th>
-                <th className="pb-3 text-left font-semibold text-[hsl(220,15%,55%)]">Rating</th>
-                <th className="pb-3 text-left font-semibold text-[hsl(220,15%,55%)]">Status</th>
-                <th className="pb-3 text-left font-semibold text-[hsl(220,15%,55%)]">Fee</th>
-                <th className="pb-3 text-left font-semibold text-[hsl(220,15%,55%)]">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={7} className="py-8 text-center text-[hsl(220,15%,60%)]">No vets found</td></tr>
-              ) : (
-                filtered.map((v: any) => (
-                  <tr key={v.id} className="border-b border-[hsl(220,20%,95%)] hover:bg-[hsl(220,20%,98%)]">
-                    <td className="py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[hsl(220,20%,94%)] flex items-center justify-center text-[12px] font-bold text-[hsl(220,15%,45%)] overflow-hidden shrink-0">
-                          {v.profile?.profile_photo || v.profile_photo ? (
-                            <SafeImage src={v.profile?.profile_photo || v.profile_photo} className="w-full h-full" />
-                          ) : (v.profile?.name || "V")[0].toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-[hsl(220,20%,15%)] truncate">{v.profile?.name || v.profile?.full_name || "Doctor"}</p>
-                          <p className="text-[11px] text-[hsl(220,15%,60%)]">{v.years_of_experience} yrs exp</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 text-[hsl(220,15%,45%)]">{v.qualification}</td>
-                    <td className="py-3 text-[hsl(220,15%,45%)] max-w-[150px] truncate">{v.specializations?.slice(0, 2).join(", ") || "—"}</td>
-                    <td className="py-3">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-3.5 h-3.5 fill-[hsl(40,90%,50%)] text-[hsl(40,90%,50%)]" />
-                        <span className="text-[hsl(220,20%,15%)] font-medium">{v.average_rating || "0"}</span>
-                      </div>
-                    </td>
-                    <td className="py-3">
-                      <div className="relative inline-block">
-                        <select 
-                          value={v.verification_status}
-                          disabled={updatingStatus === v.user_id}
-                          onChange={(e) => handleStatusChange(v, e.target.value)}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer outline-none border-none pr-7 appearance-none
-                            ${v.verification_status === "verified" ? "bg-[hsl(145,50%,92%)] text-[hsl(145,60%,35%)]" :
-                              v.verification_status === "pending" ? "bg-[hsl(40,60%,92%)] text-[hsl(40,70%,35%)]" :
-                              v.verification_status === "suspended" ? "bg-[hsl(0,0%,90%)] text-[hsl(0,0%,40%)]" :
-                              "bg-[hsl(0,50%,93%)] text-[hsl(0,65%,45%)]"}
-                            ${updatingStatus === v.user_id ? "opacity-50 animate-pulse" : "hover:brightness-95"}`}
-                        >
-                          <option value="verified">Verified</option>
-                          <option value="pending">Pending</option>
-                          <option value="failed">Rejected</option>
-                          <option value="suspended">Suspended</option>
-                        </select>
-                        <ChevronRight className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 rotate-90" />
-                      </div>
-                    </td>
-                    <td className="py-3 font-medium text-[hsl(220,20%,15%)]">₹{v.online_fee}</td>
-                    <td className="py-3">
-                      <button onClick={() => setSelectedVet(v)} className="text-[12px] text-[hsl(220,80%,50%)] font-medium hover:underline flex items-center gap-1">
-                        <Eye className="w-3.5 h-3.5" /> View
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   );
 };

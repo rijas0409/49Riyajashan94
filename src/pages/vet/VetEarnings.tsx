@@ -6,9 +6,11 @@ import {
   HouseLine, CalendarDots, Wallet, User,
   CaretRight
 } from "@phosphor-icons/react";
+import { useRoleGuard } from "@/hooks/useRoleGuard";
 
 const VetEarnings = () => {
   const navigate = useNavigate();
+  const { isLoading: guardLoading } = useRoleGuard(["vet"], "/auth-vet", true);
   const [activeTab, setActiveTab] = useState("This Week");
 
   const transactions = [
@@ -43,6 +45,10 @@ const VetEarnings = () => {
       icon: <HouseLine size={22} weight="fill" className="text-[#F97116]" />
     }
   ];
+
+  if (guardLoading) {
+    return <div className="min-h-screen bg-[#F7F8FC] flex items-center justify-center font-sans">Loading...</div>;
+  }
 
   return (
     <div className="bg-[#F7F8FC] min-h-screen pb-32 font-sans text-[#1A1A2A] overflow-x-hidden selection:bg-purple-100">
