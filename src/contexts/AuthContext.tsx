@@ -38,11 +38,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchProfile = async (userId: string, userEmail: string, metaName: string, metaRole?: string | null) => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .select("name, email, profile_photo, role, is_onboarding_complete, is_admin_approved")
         .eq("id", userId)
         .maybeSingle();
+
+      console.log("AuthContext: Fresh profile fetch for", userEmail, ":", data);
+      if (error) console.error("AuthContext: Profile fetch error:", error);
 
       let vetStatus: string | null = null;
       if (data?.role === 'vet' || metaRole === 'vet') {

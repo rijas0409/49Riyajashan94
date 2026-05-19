@@ -36,16 +36,18 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
       try {
         let currentProfile = authProfile;
         
-        // Instant check using localStorage to avoid any render flash
+        // Instant check using localStorage to avoid any render flash, 
+        // BUT we don't return here if requireAdminApproval is true because we need to check the DB for updates
         const isApproved = localStorage.getItem("sruvo_admin_approved") === "true";
         if (requireAdminApproval && !isApproved) {
-            navigate("/vet-pending-approval", { replace: true });
-            setIsLoading(false);
-            return;
+            // We'll proceed to the DB check below instead of returning immediately
+            console.log("Checking approval sync...");
         }
 
-        // Force a DB fetch if we require admin approval and current local state is uncertain
+        // Force a DB fetch if we require admin approval and current local state is uncertain 
+        // Or if we specifically need to verify approval status
         if (requireAdminApproval && (!authProfile || authProfile.is_admin_approved !== true)) {
+           console.log("useRoleGuard: Forcing DB check for", authUser.email);
            const { data: dbProfile } = await supabase
              .from("profiles")
              .select("*")
@@ -53,13 +55,23 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
              .maybeSingle();
            
            if (dbProfile) {
+             console.log("useRoleGuard: Fresh DB sync check result:", dbProfile.is_admin_approved);
              currentProfile = { ...authProfile, ...dbProfile };
              localStorage.setItem("sruvo_admin_approved", String(!!dbProfile.is_admin_approved));
+           } else {
+             console.warn("useRoleGuard: No profile found in DB for forced check");
            }
         }
 
+        console.log("useRoleGuard: Approval status check before routing:", {
+          requireAdminApproval,
+          isApproved: currentProfile?.is_admin_approved,
+          email: authUser.email
+        });
+
         // Final check after potential DB fetch
         if (requireAdminApproval && currentProfile && currentProfile.is_admin_approved === false) {
+           console.log("useRoleGuard: REJECTED - navigating to pending approval");
            navigate("/vet-pending-approval", { replace: true });
            setIsLoading(false);
            return;
@@ -67,6 +79,7 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
 
         // Use profile from AuthContext if it already has the role we need
         if (currentProfile && currentProfile.role && allowedRoles.includes(currentProfile.role as AllowedRole)) {
+          console.log("useRoleGuard: Role match found, allowing access");
           setUser(authUser);
           setProfile(currentProfile);
           setIsLoading(false);

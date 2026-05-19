@@ -3,9 +3,11 @@ import { SRUVO_LOGO_URL } from "@/constants/branding";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, RefreshCcw } from "lucide-react";
 import { AccountReviewScreen } from "@/components/AccountReviewScreen";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const VetPendingApproval = () => {
   const navigate = useNavigate();
@@ -94,6 +96,19 @@ const VetPendingApproval = () => {
 
   const handleLogout = async () => { await supabase.auth.signOut(); navigate("/auth-vet"); };
 
+  const handleManualCheck = async () => {
+    setIsChecking(true);
+    await refreshProfile();
+    const { data } = await supabase.from("profiles").select("is_admin_approved").eq("id", user?.id).single();
+    if (data?.is_admin_approved) {
+      toast.success("Account approved! Redirecting...");
+      navigate("/vet/home");
+    } else {
+      toast.info("Account still under review.");
+    }
+    setIsChecking(false);
+  };
+
   if (isChecking) return (
     <div className="min-h-screen bg-gradient-soft flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
@@ -111,7 +126,16 @@ const VetPendingApproval = () => {
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Vet Portal</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleLogout}><LogOut className="w-5 h-5" /></Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleManualCheck} className="hidden sm:flex gap-2">
+              <RefreshCcw className={cn("w-4 h-4", isChecking && "animate-spin")} />
+              Check Status
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleManualCheck} className="sm:hidden">
+              <RefreshCcw className={cn("w-5 h-5", isChecking && "animate-spin")} />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleLogout}><LogOut className="w-5 h-5" /></Button>
+          </div>
         </div>
       </header>
       <AccountReviewScreen 
