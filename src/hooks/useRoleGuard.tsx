@@ -70,7 +70,9 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
         });
 
         // Final check after potential DB fetch
-        if (requireAdminApproval && currentProfile && currentProfile.is_admin_approved === false) {
+        const isActuallyApproved = !!currentProfile?.is_admin_approved;
+        
+        if (requireAdminApproval && !isActuallyApproved) {
            console.log("useRoleGuard: REJECTED - navigating to pending approval");
            navigate("/vet-pending-approval", { replace: true });
            setIsLoading(false);

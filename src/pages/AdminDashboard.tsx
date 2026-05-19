@@ -252,7 +252,18 @@ const AdminDashboard = () => {
     // Removed optimistic update to prevent sync issues if DB fails.
     
     try {
-      const { error: r1 } = await supabase.from("profiles").update({ is_admin_approved: true }).eq("id", id);
+      console.log("Starting approval for vet:", id);
+      const { data: pUpdate, error: r1 } = await supabase
+        .from("profiles")
+        .update({ is_admin_approved: true, is_onboarding_complete: true })
+        .eq("id", id)
+        .select();
+      
+      if (r1) throw r1;
+      if (!pUpdate || pUpdate.length === 0) {
+        console.warn("Profiles update affected 0 rows for ID:", id);
+        throw new Error("Could not update user profile. You may not have administrative permissions to modify this user.");
+      }
       
       let payload: any = { 
         verification_status: "verified",
@@ -264,21 +275,25 @@ const AdminDashboard = () => {
       
       let { data: d2, error: r2 } = await supabase.from("vet_profiles").update(payload).eq("user_id", id).select("*");
 
-      if (r2 && r2.message?.includes("Could not find the")) {
-        // Fallback for missing columns in supabase, avoiding the error
+      if (r2 && r2.message?.includes("Could not find the") || (r2 && r2.code === 'PGRST204')) {
+        // Fallback for missing columns or schema issues
         payload = { verification_status: "verified", is_active: true };
         const fallbackRes = await supabase.from("vet_profiles").update(payload).eq("user_id", id).select("*");
         d2 = fallbackRes.data;
         r2 = fallbackRes.error;
       }
 
-      if (r1 || r2) throw r1 || r2;
-      if (!d2 || d2.length === 0) throw new Error("Update failed: No rows updated. Possibly due to RLS.");
+      if (r2) throw r2;
+      if (!d2 || d2.length === 0) {
+        console.warn("Vet profiles update affected 0 rows for user_id:", id);
+        throw new Error("Could not update vet database. The vet profile might not exist for this user.");
+      }
       
+      console.log("Approval successful for:", id);
       toast({ title: "Vet Approved Successfully" });
       
-      // Delay fetch to let DB settle and avoid race with Realtime listener
-      setTimeout(() => fetchData(true), 500);
+      // Force immediate refresh
+      fetchData(true);
     } catch (err: any) {
       console.error("Approval error:", err);
       toast({ title: "Error Approving Vet", description: err.message, variant: "destructive" });

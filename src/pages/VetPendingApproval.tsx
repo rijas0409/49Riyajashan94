@@ -57,8 +57,14 @@ const VetPendingApproval = () => {
               schema: 'public', 
               table: 'profiles',
               filter: `id=eq.${session.user.id}`
-            }, async () => {
-              console.log("Profile change detected in Pending Approval page - profiles");
+            }, async (payload: any) => {
+              console.log("Profile change detected in Pending Approval page - profiles", payload);
+              if (payload.new && payload.new.is_admin_approved === true) {
+                toast.success("Account approved! Unlocking portal...");
+                localStorage.setItem("sruvo_admin_approved", "true");
+                navigate("/vet/home");
+                return;
+              }
               await refreshProfile();
               check(); 
             })
@@ -67,8 +73,14 @@ const VetPendingApproval = () => {
               schema: 'public',
               table: 'vet_profiles',
               filter: `user_id=eq.${session.user.id}`
-            }, async () => {
-              console.log("Profile change detected in Pending Approval page - vet_profiles");
+            }, async (payload: any) => {
+              console.log("Profile change detected in Pending Approval page - vet_profiles", payload);
+              if (payload.new && (payload.new.verification_status === "verified" || payload.new.verification_status === "approved")) {
+                toast.success("Identity verified! Redirecting to dashboard...");
+                localStorage.setItem("sruvo_admin_approved", "true");
+                navigate("/vet/home");
+                return;
+              }
               await refreshProfile();
               check();
             })
@@ -98,15 +110,39 @@ const VetPendingApproval = () => {
 
   const handleManualCheck = async () => {
     setIsChecking(true);
-    await refreshProfile();
-    const { data } = await supabase.from("profiles").select("is_admin_approved").eq("id", user?.id).single();
-    if (data?.is_admin_approved) {
-      toast.success("Account approved! Redirecting...");
-      navigate("/vet/home");
-    } else {
-      toast.info("Account still under review.");
+    try {
+      console.log("Starting manual status check...");
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("No user found");
+
+      // Clear any local cache of the profile
+      await refreshProfile();
+      
+      // Direct non-cached query
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("is_admin_approved")
+        .eq("id", authUser.id)
+        .single();
+      
+      if (error) throw error;
+
+      console.log("Manual check status result:", data?.is_admin_approved);
+
+      if (data?.is_admin_approved) {
+        toast.success("Account approved! Redirecting...");
+        localStorage.setItem("sruvo_admin_approved", "true");
+        // Force a small delay to ensure local state updates are visible to guards
+        setTimeout(() => navigate("/vet/home"), 100);
+      } else {
+        toast.info("Account still under review.");
+      }
+    } catch (err: any) {
+      console.error("Manual check error:", err);
+      toast.error("Failed to check status: " + err.message);
+    } finally {
+      setIsChecking(false);
     }
-    setIsChecking(false);
   };
 
   if (isChecking) return (
