@@ -1,5 +1,10 @@
+-- 1. Ensure the user's account has the 'admin' role
+-- Adjust the email below to match your actual admin email
+UPDATE public.profiles 
+SET role = 'admin' 
+WHERE email = 'jashanpabla6691@gmail.com';
 
--- Ensure Admin can update profiles
+-- 2. Ensure Admin can update profiles
 DROP POLICY IF EXISTS "Admin can update any profile" ON public.profiles;
 CREATE POLICY "Admin can update any profile"
 ON public.profiles

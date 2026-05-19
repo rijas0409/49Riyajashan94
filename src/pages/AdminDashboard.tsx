@@ -260,9 +260,16 @@ const AdminDashboard = () => {
         .select();
       
       if (r1) throw r1;
+      
       if (!pUpdate || pUpdate.length === 0) {
         console.warn("Profiles update affected 0 rows for ID:", id);
-        throw new Error("Could not update user profile. You may not have administrative permissions to modify this user.");
+        // Check if it's already approved (maybe someone else did it)
+        const { data: checkData } = await supabase.from("profiles").select("is_admin_approved").eq("id", id).single();
+        if (checkData?.is_admin_approved) {
+          console.log("Profile was already approved, continuing with vet_profiles...");
+        } else {
+          throw new Error("Could not update user profile. This usually means your database permissions (RLS) aren't allowing this update or your user ID is not set as an 'admin' in the profiles table.");
+        }
       }
       
       let payload: any = { 
