@@ -35,9 +35,16 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
     const checkAccess = async () => {
       try {
         let currentProfile = authProfile;
+        
+        // Instant check using localStorage to avoid any render flash
+        const isApproved = localStorage.getItem("sruvo_admin_approved") === "true";
+        if (requireAdminApproval && !isApproved) {
+            navigate("/vet-pending-approval", { replace: true });
+            setIsLoading(false);
+            return;
+        }
 
-        // Force a DB fetch if we require admin approval but authProfile says it's not approved
-        // This prevents the race condition when navigate happens before context updates fully
+        // Force a DB fetch if we require admin approval and current local state is uncertain
         if (requireAdminApproval && (!authProfile || authProfile.is_admin_approved !== true)) {
            const { data: dbProfile } = await supabase
              .from("profiles")
@@ -47,10 +54,11 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
            
            if (dbProfile) {
              currentProfile = { ...authProfile, ...dbProfile };
+             localStorage.setItem("sruvo_admin_approved", String(!!dbProfile.is_admin_approved));
            }
         }
 
-        // Check if admin approval is required and fail fast
+        // Final check after potential DB fetch
         if (requireAdminApproval && currentProfile && currentProfile.is_admin_approved === false) {
            navigate("/vet-pending-approval", { replace: true });
            setIsLoading(false);

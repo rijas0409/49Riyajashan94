@@ -82,17 +82,45 @@ const VetOnboarding = () => {
             vendorAgreement: vp.vendor_agreement_accepted || false,
             telemedicineConsent: vp.telemedicine_consent_accepted || false,
           }));
+          
+          // Pre-fill file previews for existing documents
+          const getUrl = (path: string | null) => {
+            if (!path) return null;
+            if (path.startsWith("http")) return path;
+            return supabase.storage.from("vet-documents").getPublicUrl(path).data.publicUrl;
+          };
+
+          setFilePreviews({
+            govtIdFile: getUrl(vp.govt_id_file) || "",
+            panCardFile: getUrl(vp.pan_card_file) || "",
+            passportPhotoFile: getUrl(vp.passport_photo_file) || "",
+            vetDegreeFile: getUrl(vp.vet_degree_file) || "",
+            clinicRegistrationFile: getUrl(vp.clinic_registration_file) || "",
+            clinicShopLicenseFile: getUrl(vp.clinic_shop_license_file) || "",
+            gstCertificateFile: getUrl(vp.gst_certificate_file) || "",
+            clinicAddressProofFile: getUrl(vp.clinic_address_proof_file) || "",
+            cancelledChequeFile: getUrl(vp.cancelled_cheque_file) || "",
+            profilePhoto: getUrl(vp.profile_photo) || "",
+          });
 
           // Handle special cases like education rows
           if (vp.education_details && Array.isArray(vp.education_details)) {
             setFormData(prev => ({
               ...prev,
-              educationRows: vp.education_details.map((edu: any) => ({
-                qualification: edu.qualification,
-                institution: edu.institution,
-                year: edu.year,
-                certificateFile: null // Can't pre-fill files
-              }))
+              educationRows: vp.education_details.map((edu: any, idx: number) => {
+                if (edu.certificate_url) {
+                  setFilePreviews(prevPrevs => ({
+                    ...prevPrevs,
+                    [`edu_${idx}`]: getUrl(edu.certificate_url) || ""
+                  }));
+                }
+                return {
+                  qualification: edu.qualification,
+                  institution: edu.institution,
+                  year: edu.year,
+                  certificateFile: null
+                };
+              })
             }));
           }
         } else {
@@ -207,40 +235,58 @@ const VetOnboarding = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { navigate("/auth-vet"); return; }
       const uid = session.user.id;
+      const { data: existingVp } = await supabase.from('vet_profiles').select('*').eq('user_id', uid).maybeSingle();
 
-      // Upload files
-      const up = async (file: File | null, type: string) => file ? await uploadFile(file, uid, type) : null;
-      const [govtIdUrl, panUrl, passportUrl, vetDegreeUrl, clinicRegUrl, shopLicUrl, gstUrl, clinicAddrProofUrl, chequeUrl, profilePhotoUrl] = await Promise.all([
-        up(formData.govtIdFile, 'govt_id'), up(formData.panCardFile, 'pan_card'),
-        up(formData.passportPhotoFile, 'passport_photo'), up(formData.vetDegreeFile, 'vet_degree'),
-        up(formData.clinicRegistrationFile, 'clinic_reg'), up(formData.clinicShopLicenseFile, 'shop_license'),
-        up(formData.gstCertificateFile, 'gst_cert'), up(formData.clinicAddressProofFile, 'clinic_addr_proof'),
-        up(formData.cancelledChequeFile, 'cancelled_cheque'), up(formData.profilePhoto, 'profile_photo'),
+      // Helper to handle new upload or preserve existing
+      const handleFile = async (file: File | null, type: string, existingPath: string | null) => {
+        if (file) return await uploadFile(file, uid, type);
+        return existingPath;
+      };
+
+      const [
+        govtIdUrl, panUrl, passportUrl, vetDegreeUrl, clinicRegUrl, 
+        shopLicUrl, gstUrl, clinicAddrProofUrl, chequeUrl, profilePhotoUrl
+      ] = await Promise.all([
+        handleFile(formData.govtIdFile, 'govt_id', existingVp?.govt_id_file),
+        handleFile(formData.panCardFile, 'pan_card', existingVp?.pan_card_file),
+        handleFile(formData.passportPhotoFile, 'passport_photo', existingVp?.passport_photo_file),
+        handleFile(formData.vetDegreeFile, 'vet_degree', existingVp?.vet_degree_file),
+        handleFile(formData.clinicRegistrationFile, 'clinic_reg', existingVp?.clinic_registration_file),
+        handleFile(formData.clinicShopLicenseFile, 'shop_license', existingVp?.clinic_shop_license_file),
+        handleFile(formData.gstCertificateFile, 'gst_cert', existingVp?.gst_certificate_file),
+        handleFile(formData.clinicAddressProofFile, 'clinic_addr_proof', existingVp?.clinic_address_proof_file),
+        handleFile(formData.cancelledChequeFile, 'cancelled_cheque', existingVp?.cancelled_cheque_file),
+        handleFile(formData.profilePhoto, 'profile_photo', existingVp?.profile_photo),
       ]);
 
       // Upload education certificates
       const eduDetails = [];
+      const oldEdu = existingVp?.education_details || [];
       for (let i = 0; i < formData.educationRows.length; i++) {
         const row = formData.educationRows[i];
         let certUrl = null;
-        if (row.certificateFile) certUrl = await uploadFile(row.certificateFile, uid, `edu_cert_${i}`);
+        if (row.certificateFile) {
+          certUrl = await uploadFile(row.certificateFile, uid, `edu_cert_${i}`);
+        } else if (oldEdu[i]?.certificate_url) {
+          certUrl = oldEdu[i].certificate_url;
+        }
         eduDetails.push({ qualification: row.qualification, institution: row.institution, year: row.year, certificate_url: certUrl });
       }
 
       // Upload clinic photos
-      const clinicPhotoUrls: string[] = [];
-      for (const photo of formData.clinicPhotos) {
-        clinicPhotoUrls.push(await uploadFile(photo, uid, 'clinic_photo'));
+      let clinicPhotoUrls: string[] = existingVp?.clinic_photos || [];
+      if (formData.clinicPhotos.length > 0) {
+        const newPhotos = [];
+        for (const photo of formData.clinicPhotos) {
+          newPhotos.push(await uploadFile(photo, uid, 'clinic_photo'));
+        }
+        clinicPhotoUrls = [...clinicPhotoUrls, ...newPhotos];
       }
 
       // 2. Insert or Update Profile
-      const { data: existingVet } = await supabase
-        .from("vet_profiles")
-        .select("id, verification_status")
-        .eq("user_id", uid)
-        .maybeSingle();
+      const existingVet = existingVp;
 
-      let upsertData = {
+      const upsertData = {
         user_id: uid,
         qualification: formData.qualification,
         self_practice: formData.isIndependentPractice,
@@ -274,34 +320,36 @@ const VetOnboarding = () => {
         clinic_photos: clinicPhotoUrls,
         education_details: eduDetails,
         verification_status: "pending", 
-        rejection_reason: null, 
-        reviewed_at: null,
-        reviewed_by: null,
+        rejection_reason: null as string | null, 
+        reviewed_at: null as string | null,
+        reviewed_by: null as string | null,
         appeal_requested: false,
         is_active: true,
-      } as any;
+      };
 
       if (existingVet) {
         let { error: vetError } = await supabase.from("vet_profiles").update(upsertData).eq("id", existingVet.id);
         if (vetError && vetError.message?.includes("Could not find the")) {
-           delete upsertData.rejection_reason;
-           delete upsertData.reviewed_at;
-           delete upsertData.reviewed_by;
-           delete upsertData.appeal_requested;
-           delete upsertData.self_practice;
-           const fallback = await supabase.from("vet_profiles").update(upsertData).eq("id", existingVet.id);
+           const fallbackData = { ...upsertData };
+           delete (fallbackData as any).rejection_reason;
+           delete (fallbackData as any).reviewed_at;
+           delete (fallbackData as any).reviewed_by;
+           delete (fallbackData as any).appeal_requested;
+           delete (fallbackData as any).self_practice;
+           const fallback = await supabase.from("vet_profiles").update(fallbackData).eq("id", existingVet.id);
            vetError = fallback.error;
         }
         if (vetError) throw vetError;
       } else {
         let { error: vetError } = await supabase.from("vet_profiles").insert([upsertData]);
         if (vetError && vetError.message?.includes("Could not find the")) {
-           delete upsertData.rejection_reason;
-           delete upsertData.reviewed_at;
-           delete upsertData.reviewed_by;
-           delete upsertData.appeal_requested;
-           delete upsertData.self_practice;
-           const fallback = await supabase.from("vet_profiles").insert([upsertData]);
+           const fallbackData = { ...upsertData };
+           delete (fallbackData as any).rejection_reason;
+           delete (fallbackData as any).reviewed_at;
+           delete (fallbackData as any).reviewed_by;
+           delete (fallbackData as any).appeal_requested;
+           delete (fallbackData as any).self_practice;
+           const fallback = await supabase.from("vet_profiles").insert([fallbackData]);
            vetError = fallback.error;
         }
         if (vetError) throw vetError;
@@ -370,27 +418,37 @@ const VetOnboarding = () => {
   };
 
   /* ─── file upload UI helper ─── */
-  const FileUploadBox = ({ field, label, accept = "image/*,.pdf", icon: Icon = Upload }: { field: string; label: string; accept?: string; icon?: any }) => (
-    <div className="space-y-2">
-      <Label className="flex items-center gap-2"><Icon className="w-4 h-4 text-primary" />{label}</Label>
-      <div className="border-2 border-dashed border-border rounded-2xl p-4 text-center hover:border-primary/50 transition-colors">
-        <input type="file" accept={accept} onChange={handleFileChange(field)} className="hidden" id={`file-${field}`} />
-        <label htmlFor={`file-${field}`} className="cursor-pointer">
-          {filePreviews[field] ? (
-            <div className="flex items-center justify-center gap-2 text-primary">
-              <CheckCircle className="w-5 h-5" />
-              <span className="text-sm font-medium">Uploaded ✓</span>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-1">
-              <Upload className="w-5 h-5 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Upload (max 5MB)</span>
-            </div>
-          )}
-        </label>
+  const FileUploadBox = ({ field, label, accept = "image/*,.pdf", icon: Icon = Upload }: { field: string; label: string; accept?: string; icon?: any }) => {
+    const hasExistingFile = (formData as any)[field] === null && filePreviews[field];
+    const isFileUploaded = (formData as any)[field] !== null || filePreviews[field];
+
+    return (
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2"><Icon className="w-4 h-4 text-primary" />{label}</Label>
+        <div className="border-2 border-dashed border-border rounded-2xl p-4 text-center hover:border-primary/50 transition-colors">
+          <input type="file" accept={accept} onChange={handleFileChange(field)} className="hidden" id={`file-${field}`} />
+          <label htmlFor={`file-${field}`} className="cursor-pointer">
+            {isFileUploaded ? (
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center justify-center gap-2 text-primary">
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="text-sm font-medium">{hasExistingFile ? "Existing File Kept ✓" : "Uploaded ✓"}</span>
+                </div>
+                {filePreviews[field] && filePreviews[field].startsWith("http") && (
+                   <span className="text-[10px] text-muted-foreground underline">View Current</span>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-1">
+                <Upload className="w-5 h-5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Upload (max 5MB)</span>
+              </div>
+            )}
+          </label>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-soft">

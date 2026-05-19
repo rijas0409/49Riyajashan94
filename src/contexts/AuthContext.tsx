@@ -71,6 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
         if (data.role) localStorage.setItem("sruvo_user_role", data.role);
         else if (metaRole) localStorage.setItem("sruvo_user_role", metaRole);
+        localStorage.setItem("sruvo_admin_approved", String(!!data.is_admin_approved));
       } else {
         setProfile({
           name: metaName || "User",

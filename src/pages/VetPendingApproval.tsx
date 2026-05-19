@@ -90,7 +90,7 @@ const VetPendingApproval = () => {
       if (channel) supabase.removeChannel(channel); 
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [navigate]);
+  }, [navigate, refreshProfile]);
 
   const handleLogout = async () => { await supabase.auth.signOut(); navigate("/auth-vet"); };
 
@@ -118,6 +118,7 @@ const VetPendingApproval = () => {
         onLogout={handleLogout} 
         rejectionReason={rejectionReason}
         onEditProfile={() => navigate("/vet-onboarding")}
+        isRejected={rejectionReason !== null}
       />
     </div>
   );
