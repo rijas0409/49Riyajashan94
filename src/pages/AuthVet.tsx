@@ -29,6 +29,9 @@ const AuthVet = () => {
   const { authReady, user, profile } = useAuth();
 
   useEffect(() => {
+    // Only perform auto-redirect if we are explicitly on the auth page
+    if (window.location.pathname !== "/auth-vet") return;
+
     if (authReady && user && profile?.role === "vet") {
       if (profile.is_onboarding_complete === false) {
         navigate("/vet-onboarding");

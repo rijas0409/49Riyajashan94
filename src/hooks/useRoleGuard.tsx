@@ -14,7 +14,7 @@ interface RoleGuardResult {
 
 export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string, requireAdminApproval: boolean = false): RoleGuardResult => {
   const navigate = useNavigate();
-  const { user: authUser, profile: authProfile, authReady } = useAuth();
+  const { user: authUser, profile: authProfile, authReady, refreshProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -47,17 +47,22 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
         // Force a DB fetch if we require admin approval and current local state is uncertain 
         // Or if we specifically need to verify approval status
         if (requireAdminApproval && (!authProfile || authProfile.is_admin_approved !== true)) {
-           console.log("useRoleGuard: Forcing DB check for", authUser.email);
-           const { data: dbProfile } = await supabase
+           console.log("useRoleGuard: Forcing DB check for", authUser.email, "Current is_admin_approved:", authProfile?.is_admin_approved);
+           const { data: dbProfile, error: dbError } = await supabase
              .from("profiles")
-             .select("*")
+             .select("role, is_admin_approved, is_onboarding_complete")
              .eq("id", authUser.id)
              .maybeSingle();
+           
+           if (dbError) console.error("useRoleGuard: DB check error:", dbError);
            
            if (dbProfile) {
              console.log("useRoleGuard: Fresh DB sync check result:", dbProfile.is_admin_approved);
              currentProfile = { ...authProfile, ...dbProfile };
-             localStorage.setItem("sruvo_admin_approved", String(!!dbProfile.is_admin_approved));
+             // Update localStorage to prevent repetitive flash on next page load
+             if (dbProfile.is_admin_approved) {
+               localStorage.setItem("sruvo_admin_approved", "true");
+             }
            } else {
              console.warn("useRoleGuard: No profile found in DB for forced check");
            }
@@ -72,11 +77,32 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
         // Final check after potential DB fetch
         const isActuallyApproved = !!currentProfile?.is_admin_approved;
         
+        console.log("useRoleGuard: Final approval check result:", {
+          isActuallyApproved,
+          requireAdminApproval,
+          currentPath: window.location.pathname
+        });
+
         if (requireAdminApproval && !isActuallyApproved) {
+           // Skip redirect if we are already on the pending approval page to avoid loops
+           if (window.location.pathname === "/vet-pending-approval") {
+              setIsLoading(false);
+              return;
+           }
            console.log("useRoleGuard: REJECTED - navigating to pending approval");
            navigate("/vet-pending-approval", { replace: true });
            setIsLoading(false);
            return;
+        }
+
+        // Check onboarding status for vets if they are approved
+        if (currentProfile?.role === "vet" && currentProfile.is_admin_approved === true && currentProfile.is_onboarding_complete === false) {
+           if (window.location.pathname !== "/vet-onboarding") {
+             console.log("useRoleGuard: Approved but onboarding incomplete - navigating to onboarding");
+             navigate("/vet-onboarding", { replace: true });
+             setIsLoading(false);
+             return;
+           }
         }
 
         // Use profile from AuthContext if it already has the role we need
@@ -109,10 +135,33 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
            throw roleError;
         }
 
+        // Final role resolution
         const effectiveRole = roleData || metaRole;
+        
+        console.log("useRoleGuard: Final role check:", {
+           effectiveRole,
+           allowedRoles,
+           match: effectiveRole && allowedRoles.includes(effectiveRole as AllowedRole)
+        });
+
+        if (!effectiveRole) {
+           // If we still don't have a role, wait a bit longer or fail if we've tried enough
+           // But let's check profile from context one last time
+           if (authProfile?.role) {
+              // Role exists in context, logic below will handle it
+           } else {
+              console.log("useRoleGuard: No role found yet, waiting...");
+              // We'll let the effect re-run or wait for next tick
+              // However, if we are definitely not logged in, we should have returned earlier
+              // If we reach here, we are logged in but role is elusive
+              setIsLoading(false); 
+              return;
+           }
+        }
 
         if (!effectiveRole || !allowedRoles.includes(effectiveRole as AllowedRole)) {
           // Redirect to appropriate dashboard based on actual role
+          console.log("useRoleGuard: ROLE MISMATCH - redirecting to correct dashboard for", effectiveRole);
           const role = effectiveRole as AllowedRole;
           switch (role) {
             case "buyer": navigate("/buyer/home", { replace: true }); break;
@@ -120,8 +169,17 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
             case "admin": navigate("/admin", { replace: true }); break;
             case "delivery_partner": navigate("/delivery", { replace: true }); break;
             case "product_seller": navigate("/products-dashboard", { replace: true }); break;
-            case "vet": navigate("/vet/home", { replace: true }); break;
-            default: navigate(redirectPath || "/auth", { replace: true });
+            case "vet": 
+               // Only redirect to home if we are NOT already on a vet page
+               if (!window.location.pathname.startsWith("/vet/")) {
+                 navigate("/vet/home", { replace: true }); 
+               }
+               break;
+            default: 
+               // Final fallback - only if we are absolutely sure
+               if (effectiveRole || initialized.current) {
+                 navigate(redirectPath || "/auth", { replace: true });
+               }
           }
           setIsLoading(false);
           return;
@@ -145,7 +203,7 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
     };
 
     checkAccess();
-  }, [authReady, authUser, authProfile, allowedRolesString, navigate, redirectPath]);
+  }, [authReady, authUser, authProfile, allowedRolesString, navigate, redirectPath, requireAdminApproval, refreshProfile]);
 
   return { isLoading, user, profile, error };
 };
