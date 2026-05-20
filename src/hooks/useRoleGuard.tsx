@@ -75,7 +75,7 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
         });
 
         // Final check after potential DB fetch
-        const isActuallyApproved = !!currentProfile?.is_admin_approved;
+        const isActuallyApproved = currentProfile?.is_admin_approved === true || localStorage.getItem("sruvo_admin_approved") === "true";
         
         console.log("useRoleGuard: Final approval check result:", {
           isActuallyApproved,
@@ -96,7 +96,8 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
         }
 
         // Check onboarding status for vets if they are approved
-        if (currentProfile?.role === "vet" && currentProfile.is_admin_approved === true && currentProfile.is_onboarding_complete === false) {
+        const isApprovedForOnboardingCheck = currentProfile?.is_admin_approved === true || localStorage.getItem("sruvo_admin_approved") === "true";
+        if (currentProfile?.role === "vet" && isApprovedForOnboardingCheck && currentProfile.is_onboarding_complete === false) {
            if (window.location.pathname !== "/vet-onboarding") {
              console.log("useRoleGuard: Approved but onboarding incomplete - navigating to onboarding");
              navigate("/vet-onboarding", { replace: true });

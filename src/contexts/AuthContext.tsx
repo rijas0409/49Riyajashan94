@@ -194,6 +194,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signOut = async () => {
     await supabase.auth.signOut();
     localStorage.removeItem("sruvo_user_role");
+    localStorage.removeItem("sruvo_admin_approved");
     setSession(null);
     setUser(null);
     setProfile(null);
