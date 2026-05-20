@@ -69,41 +69,35 @@ const AllSpecializedVets = () => {
     if (!authReady) return;
 
     const fetchVets = async () => {
-      // Fetch vets that are both verified in vet_profiles AND approved in profiles
-      const { data: profilesWithVets, error } = await supabase
+      // 1. Fetch profiles
+      const { data: profiles, error: profileErr } = await supabase
         .from("profiles")
-        .select(`
-          id,
-          name,
-          full_name,
-          profile_photo,
-          is_admin_approved,
-          role,
-          address,
-          vet_profiles!vet_profiles_user_id_fkey(
-            id,
-            specializations,
-            years_of_experience,
-            online_fee,
-            average_rating,
-            verification_status,
-            is_active,
-            profile_photo,
-            offline_fee
-          )
-        `)
+        .select("id, name, full_name, profile_photo, is_admin_approved, role, address")
         .eq("role", "vet")
         .eq("is_admin_approved", true);
 
-      if (error) {
-        console.error("Error fetching vets:", error);
+      if (profileErr) {
+        console.error("Error fetching profiles for vets:", profileErr);
         return;
       }
 
-      if (!profilesWithVets) {
+      if (!profiles || profiles.length === 0) {
         setAllVets([]);
         return;
       }
+
+      // 2. Fetch corresponding vet_profiles
+      const { data: vetProfiles, error: vpErr } = await supabase
+        .from("vet_profiles")
+        .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, clinic_address")
+        .in("user_id", profiles.map(p => p.id));
+
+      if (vpErr) {
+        console.error("Error fetching vet_profiles for vets:", vpErr);
+        return;
+      }
+
+      console.log("Fetched profiles and vet_profiles in AllSpecializedVets:", { profiles, vetProfiles });
 
       const getPublicUrl = (photo: string) => {
         if (!photo) return "";
@@ -113,6 +107,7 @@ const AllSpecializedVets = () => {
 
       interface VetProfileItem {
         id?: string;
+        user_id: string;
         specializations?: string[];
         years_of_experience?: number;
         online_fee?: number;
@@ -121,21 +116,20 @@ const AllSpecializedVets = () => {
         is_active?: boolean | null;
         profile_photo?: string | null;
         offline_fee?: number;
+        clinic_address?: string | null;
       }
 
-      const vets: RealVet[] = profilesWithVets
+      const vpMap = new Map((vetProfiles || []).map((vp) => [vp.user_id, vp as unknown as VetProfileItem]));
+
+      const vets: RealVet[] = profiles
         .filter(p => {
-          const vpList = Array.isArray(p.vet_profiles) ? p.vet_profiles : [p.vet_profiles];
-          const vp = vpList[0] as unknown as VetProfileItem;
-          
+          const vp = vpMap.get(p.id);
           if (!vp || !p.is_admin_approved) return false;
-          
-          // Filter by city selection
-          return matchCity(p.address, city);
+          // Filter by city selection supporting both profile address and clinic address
+          return matchCity(p.address, city) || matchCity(vp.clinic_address, city);
         })
         .map((p) => {
-          const vpList = Array.isArray(p.vet_profiles) ? p.vet_profiles : [p.vet_profiles];
-          const vp = vpList[0] as unknown as VetProfileItem;
+          const vp = vpMap.get(p.id);
           const name = p.full_name || p.name || "Doctor";
           const specs = vp?.specializations || [];
           return {

@@ -42,46 +42,40 @@ const AIAnalyzingCondition = () => {
     // Fetch real vet from DB and navigate with data
     const fetchAndNavigate = async () => {
       try {
-        const { data: matchedVets, error } = await supabase
+        // 1. Fetch profiles
+        const { data: profiles, error: profileErr } = await supabase
           .from("profiles")
-          .select(`
-            id,
-            name,
-            full_name,
-            profile_photo,
-            is_admin_approved,
-            vet_profiles!vet_profiles_user_id_fkey(
-              id,
-              user_id,
-              specializations,
-              years_of_experience,
-              online_fee,
-              average_rating,
-              verification_status,
-              is_active,
-              profile_photo,
-              offline_fee,
-              qualification,
-              clinic_address
-            )
-          `)
+          .select("id, name, full_name, profile_photo, is_admin_approved, role")
           .eq("role", "vet")
           .eq("is_admin_approved", true);
 
-        if (error) throw error;
+        if (profileErr) throw profileErr;
 
         let matchedVet = null;
 
-        if (matchedVets && matchedVets.length > 0) {
-          const verifiedVets = matchedVets
+        if (profiles && profiles.length > 0) {
+          // 2. Fetch corresponding vet_profiles
+          const { data: vetProfiles, error: vpErr } = await supabase
+            .from("vet_profiles")
+            .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, qualification, clinic_address")
+            .in("user_id", profiles.map(p => p.id));
+
+          if (vpErr) throw vpErr;
+
+          const vpMap = new Map((vetProfiles || []).map((vp) => [vp.user_id, vp]));
+
+          const verifiedVets = profiles
             .filter(p => {
-              const vp = Array.isArray(p.vet_profiles) ? p.vet_profiles[0] : (p.vet_profiles as any);
+              const vp = vpMap.get(p.id);
               return vp && vp.verification_status === "verified" && vp.is_active;
             })
-            .map(p => ({
-              ...Array.isArray(p.vet_profiles) ? p.vet_profiles[0] : (p.vet_profiles as any),
-              profile: p
-            }));
+            .map(p => {
+              const vp = vpMap.get(p.id)!;
+              return {
+                ...vp,
+                profile: p
+              };
+            });
           
           if (verifiedVets.length === 0) {
             console.warn("No verified and approved vets found.");
@@ -107,23 +101,24 @@ const AIAnalyzingCondition = () => {
             }
           }
 
-          // Fetch real name using joined profile data
-          const realName = bestVet.profile?.full_name || bestVet.profile?.name || "Doctor";
+          if (bestVet) {
+            const realName = bestVet.profile?.full_name || bestVet.profile?.name || "Doctor";
 
-          matchedVet = {
-            id: bestVet.id,
-            userId: bestVet.user_id,
-            name: `Dr. ${realName}`,
-            specialization: bestVet.specializations?.[0] || "General Veterinarian",
-            image: bestVet.profile_photo || bestVet.profile?.profile_photo || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
-            rating: bestVet.average_rating || 4.9,
-            experience: bestVet.years_of_experience || 0,
-            fee: bestVet.offline_fee || 800,
-            qualification: bestVet.qualification || "BVSc",
-            onlineFee: bestVet.online_fee || 500,
-            offlineFee: bestVet.offline_fee || 800,
-            clinicAddress: bestVet.clinic_address || "",
-          };
+            matchedVet = {
+              id: bestVet.id,
+              userId: bestVet.user_id,
+              name: `Dr. ${realName}`,
+              specialization: bestVet.specializations?.[0] || "General Veterinarian",
+              image: bestVet.profile_photo || bestVet.profile?.profile_photo || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
+              rating: bestVet.average_rating || 4.9,
+              experience: bestVet.years_of_experience || 0,
+              fee: bestVet.offline_fee || 800,
+              qualification: bestVet.qualification || "BVSc",
+              onlineFee: bestVet.online_fee || 500,
+              offlineFee: bestVet.offline_fee || 800,
+              clinicAddress: bestVet.clinic_address || "",
+            };
+          }
         }
 
         // Wait for animation to complete then navigate

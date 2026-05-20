@@ -12,74 +12,68 @@ const vetAvatars = [
 const FindingVet = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const stateData = location.state || {};
   const [searchTime, setSearchTime] = useState(0);
 
   useEffect(() => {
+    const stateData = location.state || {};
     const timer = setInterval(() => {
       setSearchTime(prev => prev + 1);
     }, 1000);
 
-      // Fetch real vet from DB
-      const fetchAndNavigate = async () => {
-        try {
-          const { data: matchedVets, error } = await supabase
-            .from("profiles")
-            .select(`
-              id,
-              name,
-              full_name,
-              profile_photo,
-              is_admin_approved,
-              vet_profiles!vet_profiles_user_id_fkey(
-                id,
-                user_id,
-                specializations,
-                years_of_experience,
-                online_fee,
-                average_rating,
-                verification_status,
-                is_active,
-                profile_photo,
-                offline_fee
-              )
-            `)
-            .eq("role", "vet")
-            .eq("is_admin_approved", true);
+    const fetchAndNavigate = async () => {
+      try {
+        // Fetch real vet from DB
+        const { data: profiles, error: profileErr } = await supabase
+          .from("profiles")
+          .select("id, name, full_name, profile_photo, is_admin_approved, role")
+          .eq("role", "vet")
+          .eq("is_admin_approved", true);
 
-          if (error) throw error;
+        if (profileErr) throw profileErr;
 
-          let matchedVet = stateData.matchedVet || null;
+        let matchedVet = stateData.matchedVet || null;
 
-          if (!matchedVet && matchedVets && matchedVets.length > 0) {
-            const verifiedVets = matchedVets
-              .filter(p => {
-                const vp = Array.isArray(p.vet_profiles) ? p.vet_profiles[0] : (p.vet_profiles as any);
-                return vp && vp.verification_status === "verified" && vp.is_active;
-              })
-              .map(p => ({
-                ...Array.isArray(p.vet_profiles) ? p.vet_profiles[0] : (p.vet_profiles as any),
+        if (!matchedVet && profiles && profiles.length > 0) {
+          const { data: vetProfiles, error: vpErr } = await supabase
+            .from("vet_profiles")
+            .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee")
+            .in("user_id", profiles.map(p => p.id));
+
+          if (vpErr) throw vpErr;
+
+          const vpMap = new Map((vetProfiles || []).map((vp) => [vp.user_id, vp]));
+
+          const verifiedVets = profiles
+            .filter(p => {
+              const vp = vpMap.get(p.id);
+              return vp && vp.verification_status === "verified" && vp.is_active;
+            })
+            .map(p => {
+              const vp = vpMap.get(p.id)!;
+              return {
+                ...vp,
                 profile: p
-              }));
-            
-            if (verifiedVets.length > 0) {
-              const bestVet = verifiedVets[0];
-              const realName = bestVet.profile?.full_name || bestVet.profile?.name || "Doctor";
-
-              matchedVet = {
-                id: bestVet.id,
-                userId: bestVet.user_id,
-                name: `Dr. ${realName}`,
-                specialization: bestVet.specializations?.[0] || "General Veterinarian",
-                image: bestVet.profile_photo || bestVet.profile?.profile_photo || "",
-                rating: bestVet.average_rating || 0,
-                experience: bestVet.years_of_experience || 0,
-                fee: bestVet.online_fee || 499,
-                onlineFee: bestVet.online_fee || 500,
-                offlineFee: bestVet.offline_fee || 800,
               };
-            }
+            });
+          
+          if (verifiedVets.length > 0) {
+            const bestVet = verifiedVets[0];
+            const realName = bestVet.profile?.full_name || bestVet.profile?.name || "Doctor";
+
+            matchedVet = {
+              id: bestVet.id,
+              userId: bestVet.user_id,
+              name: `Dr. ${realName}`,
+              specialization: bestVet.specializations?.[0] || "General Veterinarian",
+              image: bestVet.profile_photo || bestVet.profile?.profile_photo || "",
+              rating: bestVet.average_rating || 0,
+              experience: bestVet.years_of_experience || 0,
+              fee: bestVet.online_fee || 499,
+              onlineFee: bestVet.online_fee || 500,
+              offlineFee: bestVet.offline_fee || 800,
+            };
           }
+        }
 
         setTimeout(() => {
           navigate("/vet/connection-ready", {
@@ -98,7 +92,7 @@ const FindingVet = () => {
     fetchAndNavigate();
 
     return () => clearInterval(timer);
-  }, [navigate, stateData]);
+  }, [navigate, location]);
 
   return (
     <div className="min-h-screen bg-background pb-24">
