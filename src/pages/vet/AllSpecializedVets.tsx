@@ -24,6 +24,40 @@ interface RealVet {
   availability?: string;
 }
 
+const matchCity = (vetAddress: string | null, selectedCity: string): boolean => {
+  if (!vetAddress) return false;
+  if (!selectedCity) return true;
+  
+  const normalizedAddr = vetAddress.trim().toLowerCase();
+  const normalizedCity = selectedCity.trim().toLowerCase();
+  
+  if (normalizedCity === "all" || normalizedCity === "") return true;
+
+  // Split address by commas or spaces and try to find the city
+  if (normalizedCity === "noida") {
+    if (normalizedAddr.includes("greater noida")) {
+      return false;
+    }
+    return normalizedAddr.includes("noida");
+  }
+
+  if (normalizedCity === "greater noida") {
+    return normalizedAddr.includes("greater noida");
+  }
+
+  // Handle Gurugram vs Gurgaon
+  if (normalizedCity === "gurgaon" || normalizedCity === "gurugram") {
+    return normalizedAddr.includes("gurgaon") || normalizedAddr.includes("gurugram");
+  }
+
+  // Handle Bangalore vs Bengaluru
+  if (normalizedCity === "bangalore" || normalizedCity === "bengaluru") {
+    return normalizedAddr.includes("bangalore") || normalizedAddr.includes("bengaluru");
+  }
+  
+  return normalizedAddr.includes(normalizedCity);
+};
+
 const AllSpecializedVets = () => {
   const navigate = useNavigate();
   const { authReady } = useAuth();
@@ -45,6 +79,7 @@ const AllSpecializedVets = () => {
           profile_photo,
           is_admin_approved,
           role,
+          address,
           vet_profiles!vet_profiles_user_id_fkey(
             id,
             specializations,
@@ -76,15 +111,31 @@ const AllSpecializedVets = () => {
         return supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
       };
 
+      interface VetProfileItem {
+        id?: string;
+        specializations?: string[];
+        years_of_experience?: number;
+        online_fee?: number;
+        average_rating?: number | null;
+        verification_status?: string;
+        is_active?: boolean | null;
+        profile_photo?: string | null;
+        offline_fee?: number;
+      }
+
       const vets: RealVet[] = profilesWithVets
         .filter(p => {
           const vpList = Array.isArray(p.vet_profiles) ? p.vet_profiles : [p.vet_profiles];
-          const vp = vpList[0] as any;
-          return vp && vp.verification_status === "verified" && p.is_admin_approved;
+          const vp = vpList[0] as unknown as VetProfileItem;
+          
+          if (!vp || !p.is_admin_approved) return false;
+          
+          // Filter by city selection
+          return matchCity(p.address, city);
         })
         .map((p) => {
           const vpList = Array.isArray(p.vet_profiles) ? p.vet_profiles : [p.vet_profiles];
-          const vp = vpList[0] as any;
+          const vp = vpList[0] as unknown as VetProfileItem;
           const name = p.full_name || p.name || "Doctor";
           const specs = vp?.specializations || [];
           return {
@@ -127,7 +178,7 @@ const AllSpecializedVets = () => {
       supabase.removeChannel(channel);
       clearInterval(pollInterval);
     };
-  }, [authReady]);
+  }, [authReady, city]);
 
   const filteredVets = allVets.filter(vet => 
     vet.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

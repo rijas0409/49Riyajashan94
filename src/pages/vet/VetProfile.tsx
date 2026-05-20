@@ -8,6 +8,7 @@ import {
 } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
+import SplashScreen from "@/components/SplashScreen";
 import { toast } from "sonner";
 import { SafeImage } from "@/components/SafeImage";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +17,7 @@ import { useEffect, useState } from "react";
 const VetProfile = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { user, profile: roleGuardProfile, isLoading: guardLoading } = useRoleGuard(["vet"], "/auth-vet", true);
+  const { user, profile: roleGuardProfile, isLoading: guardLoading, showSpinner } = useRoleGuard(["vet"], "/auth-vet", true);
   const [vetData, setVetData] = useState<any>(null);
 
   useEffect(() => {
@@ -62,8 +63,13 @@ const VetProfile = () => {
     { icon: <Gear size={24} />, label: "Settings", path: "/profile-settings" },
   ];
 
-  if (guardLoading) {
-    return <div className="min-h-screen bg-[#FDFBFF] flex items-center justify-center font-sans">Loading...</div>;
+  if (showSpinner) {
+    return <SplashScreen message="Loading profile..." />;
+  }
+
+  const hasCache = localStorage.getItem("sruvo_user_role") === "vet";
+  if (guardLoading && !hasCache) {
+    return null;
   }
 
   return (

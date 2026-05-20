@@ -10,10 +10,11 @@ import {
   Buildings
 } from "@phosphor-icons/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import SplashScreen from "@/components/SplashScreen";
 
 const VetDashboard = () => {
   const navigate = useNavigate();
-  const { isLoading: guardLoading, user, profile, error: guardError } = useRoleGuard(["vet"], "/auth-vet", true);
+  const { isLoading: guardLoading, showSpinner, user, profile, error: guardError } = useRoleGuard(["vet"], "/auth-vet", true);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -75,8 +76,13 @@ const VetDashboard = () => {
 
   if (guardError) return <div className="min-h-screen flex items-center justify-center p-4 bg-[#f9f9fb]">{guardError}</div>;
 
-  if (guardLoading || !user || !profile || isLoading) {
-    return <div className="min-h-screen bg-[#f9f9fb] flex items-center justify-center font-sans">Loading...</div>;
+  if (showSpinner) {
+    return <SplashScreen message="Preparing vet dashboard..." />;
+  }
+
+  const hasCache = localStorage.getItem("sruvo_user_role") === "vet";
+  if ((guardLoading || !user || !profile || isLoading) && !hasCache) {
+    return null;
   }
 
   const doctorName = profile?.name || "Sarah";

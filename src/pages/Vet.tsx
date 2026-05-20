@@ -79,6 +79,40 @@ interface Clinic {
   doctorImages?: string[];
 }
 
+const matchCity = (vetAddress: string | null, selectedCity: string): boolean => {
+  if (!vetAddress) return false;
+  if (!selectedCity) return true;
+  
+  const normalizedAddr = vetAddress.trim().toLowerCase();
+  const normalizedCity = selectedCity.trim().toLowerCase();
+  
+  if (normalizedCity === "all" || normalizedCity === "") return true;
+
+  // Split address by commas or spaces and try to find the city
+  if (normalizedCity === "noida") {
+    if (normalizedAddr.includes("greater noida")) {
+      return false;
+    }
+    return normalizedAddr.includes("noida");
+  }
+
+  if (normalizedCity === "greater noida") {
+    return normalizedAddr.includes("greater noida");
+  }
+
+  // Handle Gurugram vs Gurgaon
+  if (normalizedCity === "gurgaon" || normalizedCity === "gurugram") {
+    return normalizedAddr.includes("gurgaon") || normalizedAddr.includes("gurugram");
+  }
+
+  // Handle Bangalore vs Bengaluru
+  if (normalizedCity === "bangalore" || normalizedCity === "bengaluru") {
+    return normalizedAddr.includes("bangalore") || normalizedAddr.includes("bengaluru");
+  }
+  
+  return normalizedAddr.includes(normalizedCity);
+};
+
 const Vet = () => {
   const { authReady } = useAuth();
   const navigate = useNavigate();
@@ -133,53 +167,84 @@ const Vet = () => {
   useEffect(() => {
     if (!authReady) return;
     const fetchVets = async () => {
-      const { data: vetProfiles, error: vetError } = await supabase
-        .from("vet_profiles")
-        .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo")
-        .eq("verification_status", "verified")
-        .eq("is_active", true);
+      const { data: profilesWithVets, error: vetError } = await supabase
+        .from("profiles")
+        .select(`
+          id,
+          name,
+          full_name,
+          profile_photo,
+          is_admin_approved,
+          role,
+          address,
+          vet_profiles!vet_profiles_user_id_fkey(
+            id,
+            specializations,
+            years_of_experience,
+            online_fee,
+            average_rating,
+            verification_status,
+            is_active,
+            profile_photo,
+            offline_fee
+          )
+        `)
+        .eq("role", "vet")
+        .eq("is_admin_approved", true);
 
       if (vetError) {
         console.error("Error fetching vets:", vetError);
         return;
       }
       
-      console.log("Fetched vet profiles:", vetProfiles);
+      console.log("Fetched profiles with vets:", profilesWithVets);
 
       let vetsArr: RealVet[] = [];
 
-      if (vetProfiles && vetProfiles.length > 0) {
-        const userIds = vetProfiles.map((v) => v.user_id);
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, name, full_name, profile_photo, is_admin_approved")
-          .in("id", userIds)
-          .eq("is_admin_approved", true);
-
-        const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
-
+      if (profilesWithVets && profilesWithVets.length > 0) {
         const getPublicUrl = (photo: string) => {
           if (!photo) return "";
           if (photo.startsWith("http")) return photo;
           return supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
         };
 
-        vetsArr = vetProfiles
-          .filter(vp => profileMap.has(vp.user_id))
-          .map((vp) => {
-            const profile = profileMap.get(vp.user_id);
-            const name = profile?.full_name || profile?.name || "Doctor";
-            const specs = vp.specializations || [];
+        interface VetProfileItem {
+          id?: string;
+          specializations?: string[];
+          years_of_experience?: number;
+          online_fee?: number;
+          average_rating?: number | null;
+          verification_status?: string;
+          is_active?: boolean | null;
+          profile_photo?: string | null;
+          offline_fee?: number;
+        }
+
+        vetsArr = profilesWithVets
+          .filter(p => {
+            const vpList = Array.isArray(p.vet_profiles) ? p.vet_profiles : [p.vet_profiles];
+            const vp = vpList[0] as unknown as VetProfileItem;
+            
+            if (!vp || !p.is_admin_approved) return false;
+            
+            // Filter by city selection
+            return matchCity(p.address, location);
+          })
+          .map((p) => {
+            const vpList = Array.isArray(p.vet_profiles) ? p.vet_profiles : [p.vet_profiles];
+            const vp = vpList[0] as unknown as VetProfileItem;
+            const name = p.full_name || p.name || "Doctor";
+            const specs = vp?.specializations || [];
             return {
-              id: vp.id,
+              id: vp?.id || p.id,
               name: `Dr. ${name}`,
               specialty: specs[0] || "General Veterinarian",
-              experience: `${vp.years_of_experience || 0} yrs exp.`,
-              rating: vp.average_rating || 0,
-              price: vp.online_fee || 500,
-              image: getPublicUrl(vp.profile_photo || profile?.profile_photo || ""),
-              verified: vp.verification_status === "verified",
-              isActive: vp.is_active ?? true,
+              experience: `${vp?.years_of_experience || 0} yrs exp.`,
+              rating: vp?.average_rating || 0,
+              price: vp?.online_fee || 500,
+              image: getPublicUrl(vp?.profile_photo || p.profile_photo || ""),
+              verified: vp?.verification_status === "verified" && p.is_admin_approved,
+              isActive: vp?.is_active ?? true,
               distance: Math.floor(Math.random() * 20) + 1,
               availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`
             };
@@ -210,10 +275,10 @@ const Vet = () => {
     }, 10000);
 
     return () => {
-      channel.unsubscribe();
+      supabase.removeChannel(channel);
       clearInterval(pollInterval);
     };
-  }, [authReady]);
+  }, [authReady, location]);
 
   const filteredCities = locationCities.filter(city =>
     city.name.toLowerCase().includes(searchCity.toLowerCase()) ||

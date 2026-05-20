@@ -7,6 +7,7 @@ type AllowedRole = "buyer" | "seller" | "admin" | "delivery_partner" | "product_
 
 interface RoleGuardResult {
   isLoading: boolean;
+  showSpinner: boolean;
   user: any;
   profile: any;
   error: string | null;
@@ -15,11 +16,31 @@ interface RoleGuardResult {
 export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string, requireAdminApproval: boolean = false): RoleGuardResult => {
   const navigate = useNavigate();
   const { user: authUser, profile: authProfile, authReady, refreshProfile } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
+  
+  const cachedRole = localStorage.getItem("sruvo_user_role");
+  const cachedApproved = localStorage.getItem("sruvo_admin_approved") === "true";
+  const hasCachedAccess = !!(cachedRole && allowedRoles.includes(cachedRole as AllowedRole) && (!requireAdminApproval || cachedApproved));
+
+  const [isLoading, setIsLoading] = useState(!hasCachedAccess);
+  const [showSpinner, setShowSpinner] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const initialized = useRef(false);
+
+  useEffect(() => {
+    let spinnerTimer: NodeJS.Timeout | null = null;
+    if (isLoading) {
+      spinnerTimer = setTimeout(() => {
+        setShowSpinner(true);
+      }, 300);
+    } else {
+      setShowSpinner(false);
+    }
+    return () => {
+      if (spinnerTimer) clearTimeout(spinnerTimer);
+    };
+  }, [isLoading]);
 
   const allowedRolesString = allowedRoles.join(",");
 
@@ -206,5 +227,5 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
     checkAccess();
   }, [authReady, authUser, authProfile, allowedRolesString, navigate, redirectPath, requireAdminApproval, refreshProfile]);
 
-  return { isLoading, user, profile, error };
+  return { isLoading, showSpinner, user, profile, error };
 };

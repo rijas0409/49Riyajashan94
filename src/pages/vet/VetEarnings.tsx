@@ -7,10 +7,11 @@ import {
   CaretRight
 } from "@phosphor-icons/react";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
+import SplashScreen from "@/components/SplashScreen";
 
 const VetEarnings = () => {
   const navigate = useNavigate();
-  const { isLoading: guardLoading } = useRoleGuard(["vet"], "/auth-vet", true);
+  const { isLoading: guardLoading, showSpinner } = useRoleGuard(["vet"], "/auth-vet", true);
   const [activeTab, setActiveTab] = useState("This Week");
 
   const transactions = [
@@ -46,8 +47,13 @@ const VetEarnings = () => {
     }
   ];
 
-  if (guardLoading) {
-    return <div className="min-h-screen bg-[#F7F8FC] flex items-center justify-center font-sans">Loading...</div>;
+  if (showSpinner) {
+    return <SplashScreen message="Loading earnings..." />;
+  }
+
+  const hasCache = localStorage.getItem("sruvo_user_role") === "vet";
+  if (guardLoading && !hasCache) {
+    return null;
   }
 
   return (

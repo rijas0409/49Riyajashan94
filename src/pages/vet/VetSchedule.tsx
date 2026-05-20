@@ -6,10 +6,11 @@ import {
   Buildings, Syringe, Timer, Stethoscope
 } from "@phosphor-icons/react";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
+import SplashScreen from "@/components/SplashScreen";
 
 const VetSchedule = () => {
   const navigate = useNavigate();
-  const { isLoading: guardLoading } = useRoleGuard(["vet"], "/auth-vet", true);
+  const { isLoading: guardLoading, showSpinner } = useRoleGuard(["vet"], "/auth-vet", true);
   const today = useMemo(() => new Date(), []);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDateId, setSelectedDateId] = useState(today.toISOString().split('T')[0]);
@@ -240,8 +241,13 @@ const VetSchedule = () => {
     });
   };
 
-  if (guardLoading) {
-    return <div className="min-h-screen bg-[#f7f7fa] flex items-center justify-center font-sans">Loading...</div>;
+  if (showSpinner) {
+    return <SplashScreen message="Loading schedule..." />;
+  }
+
+  const hasCache = localStorage.getItem("sruvo_user_role") === "vet";
+  if (guardLoading && !hasCache) {
+    return null;
   }
 
   return (
