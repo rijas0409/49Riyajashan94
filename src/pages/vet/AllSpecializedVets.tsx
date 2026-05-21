@@ -31,7 +31,7 @@ const matchCity = (vetAddress: string | null, selectedCity: string): boolean => 
   const normalizedAddr = vetAddress.trim().toLowerCase();
   const normalizedCity = selectedCity.trim().toLowerCase();
   
-  // Mappings
+  // Mappings for common Indian city name variations
   const cityMap: Record<string, string[]> = {
     "gurgaon": ["gurgaon", "gurugram"],
     "gurugram": ["gurgaon", "gurugram"],
@@ -39,13 +39,24 @@ const matchCity = (vetAddress: string | null, selectedCity: string): boolean => 
     "bangalore": ["bangalore", "bengaluru"],
     "bengaluru": ["bangalore", "bengaluru"],
     "bengaluru (bangalore)": ["bangalore", "bengaluru"],
-    "delhi": ["delhi", "new delhi"],
-    "new delhi": ["delhi", "new delhi"],
+    "delhi": ["delhi", "new delhi", "ncr"],
+    "new delhi": ["delhi", "new delhi", "ncr"],
+    "noida": ["noida", "greater noida"],
+    "greater noida": ["noida", "greater noida"],
   };
 
   const cityNicknames = cityMap[normalizedCity] || [normalizedCity];
   
-  return cityNicknames.some(nick => normalizedAddr.includes(nick));
+  // Check if any nickname is in the address, OR if the address contains parts of the selected city
+  const directMatch = cityNicknames.some(nick => normalizedAddr.includes(nick));
+  if (directMatch) return true;
+
+  // Handle cases like "Gurugram (Gurgaon)" being in the address but not matching "gurugram" directly due to parentheses
+  // We split by non-alphanumeric characters and check intersections
+  const addrWords = normalizedAddr.split(/[^a-z0-9]/).filter(w => w.length > 2);
+  const cityWords = normalizedCity.split(/[^a-z0-9]/).filter(w => w.length > 2);
+  
+  return cityWords.some(cw => addrWords.includes(cw));
 };
 
 const AllSpecializedVets = () => {
@@ -163,20 +174,24 @@ const AllSpecializedVets = () => {
     fetchVets();
 
     const handleRealtimeChange = () => {
-      // Delay fetching slightly to allow DB sequential updates to settle
+      console.log("Debug: Real-time change detected, refreshing vets...");
+      // Fetch multiple times to catch staggered DB updates
+      fetchVets();
       setTimeout(fetchVets, 500);
+      setTimeout(fetchVets, 1500);
+      setTimeout(fetchVets, 3000);
     };
 
     // Set up real-time listener
     const channel = supabase
-      .channel('vet_profiles_changes')
+      .channel('vet_list_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vet_profiles' }, handleRealtimeChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleRealtimeChange)
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Debug: Real-time status:", status);
+      });
 
-    const pollInterval = setInterval(() => {
-      fetchVets();
-    }, 10000);
+    const pollInterval = setInterval(fetchVets, 8000);
 
     return () => {
       supabase.removeChannel(channel);
@@ -228,7 +243,25 @@ const AllSpecializedVets = () => {
 
       {/* Content */}
       <div className="px-4 py-6 space-y-6">
-        {filteredVets.map((doctor) => (
+        {filteredVets.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-4">
+              <Stethoscope className="w-10 h-10 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-bold text-[#151B32]">No Veterinarians Found</h3>
+            <p className="text-sm text-muted-foreground mt-1 max-w-[250px]">
+              We couldn't find any verified specialists in {city} matching your search.
+            </p>
+            {(city && city.toLowerCase() !== "all") && (
+               <button 
+                onClick={() => navigate("/vet")}
+                className="mt-6 text-primary font-bold text-sm underline"
+               >
+                 Change Location
+               </button>
+            )}
+          </div>
+        ) : filteredVets.map((doctor) => (
           <div 
             key={doctor.id} 
             onClick={() => navigate(`/vet/doctor/${doctor.id}`)} 
