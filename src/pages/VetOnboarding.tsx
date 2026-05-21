@@ -16,6 +16,7 @@ import {
   CreditCard, GraduationCap, Plus, Trash2
 } from "lucide-react";
 import { AccountReviewScreen } from "@/components/AccountReviewScreen";
+import { INDIA_STATES, INDIA_STATES_AND_CITIES } from "@/constants/indiaLocations";
 
 /* ─── types ─── */
 interface EducationRow {
@@ -40,7 +41,7 @@ const VetOnboarding = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const uid = session.user.id;
-        const { data: p } = await supabase.from('profiles').select('is_onboarding_complete, is_admin_approved, full_name, phone, email').eq('id', uid).single();
+        const { data: p } = await supabase.from('profiles').select('is_onboarding_complete, is_admin_approved, full_name, phone, email, city, state').eq('id', uid).single();
         
         // Fetch existing vet profile data to pre-fill
         const { data: vp } = await supabase.from('vet_profiles').select('*').eq('user_id', uid).maybeSingle();
@@ -81,6 +82,8 @@ const VetOnboarding = () => {
             clinicAddress: vp.clinic_address || "",
             vendorAgreement: vp.vendor_agreement_accepted || false,
             telemedicineConsent: vp.telemedicine_consent_accepted || false,
+            city: vp.city || (p as any)?.city || "",
+            state: vp.state || (p as any)?.state || "",
           }));
           
           // Pre-fill file previews for existing documents
@@ -544,12 +547,37 @@ const VetOnboarding = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label>City *</Label>
-                      <Input value={formData.city} onChange={e => setFormData({ ...formData, city: e.target.value })} placeholder="Mumbai" className="rounded-2xl" />
+                      <Label>State *</Label>
+                      <Select 
+                        value={formData.state} 
+                        onValueChange={v => setFormData({ ...formData, state: v, city: "" })}
+                      >
+                        <SelectTrigger className="rounded-2xl">
+                          <SelectValue placeholder="Select State" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          {INDIA_STATES.map(s => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>State *</Label>
-                      <Input value={formData.state} onChange={e => setFormData({ ...formData, state: e.target.value })} placeholder="Maharashtra" className="rounded-2xl" />
+                      <Label>City *</Label>
+                      <Select 
+                        value={formData.city} 
+                        onValueChange={v => setFormData({ ...formData, city: v })}
+                        disabled={!formData.state}
+                      >
+                        <SelectTrigger className="rounded-2xl">
+                          <SelectValue placeholder={formData.state ? "Select City" : "Select State first"} />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          {formData.state && (INDIA_STATES_AND_CITIES[formData.state] || []).map(c => (
+                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
