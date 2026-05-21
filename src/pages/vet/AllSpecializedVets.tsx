@@ -25,28 +25,14 @@ interface RealVet {
 }
 
 const matchCity = (vetAddress: string | null, selectedCity: string): boolean => {
+  if (!selectedCity || selectedCity.trim() === "" || selectedCity.trim().toLowerCase() === "all" || selectedCity.trim().toLowerCase() === "any") return true;
   if (!vetAddress) return false;
-  if (!selectedCity) return true;
   
   const normalizedAddr = vetAddress.trim().toLowerCase();
   const normalizedCity = selectedCity.trim().toLowerCase();
   
-  if (normalizedCity === "all" || normalizedCity === "") return true;
-
-  // Split address by commas or spaces and try to find the city
-  if (normalizedCity === "noida") {
-    if (normalizedAddr.includes("greater noida")) {
-      return false;
-    }
-    return normalizedAddr.includes("noida");
-  }
-
-  if (normalizedCity === "greater noida") {
-    return normalizedAddr.includes("greater noida");
-  }
-
   // Handle Gurugram vs Gurgaon
-  if (normalizedCity === "gurgaon" || normalizedCity === "gurugram") {
+  if (normalizedCity === "gurgaon" || normalizedCity === "gurugram" || normalizedCity.includes("gurugram")) {
     return normalizedAddr.includes("gurgaon") || normalizedAddr.includes("gurugram");
   }
 
@@ -123,10 +109,13 @@ const AllSpecializedVets = () => {
 
       const vets: RealVet[] = profiles
         .filter(p => {
+          if (!p.is_admin_approved) return false;
           const vp = vpMap.get(p.id);
-          if (!vp || !p.is_admin_approved) return false;
-          // Filter by city selection supporting both profile address and clinic address
-          return matchCity(p.address, city) || matchCity(vp.clinic_address, city);
+          
+          const addrMatch = matchCity(p.address, city);
+          const clinicMatch = matchCity(vp?.clinic_address || null, city);
+          
+          return addrMatch || clinicMatch;
         })
         .map((p) => {
           const vp = vpMap.get(p.id);
@@ -140,7 +129,7 @@ const AllSpecializedVets = () => {
             rating: vp?.average_rating || 0,
             price: vp?.online_fee || 500,
             image: getPublicUrl(vp?.profile_photo || p.profile_photo || ""),
-            verified: vp?.verification_status === "verified" && p.is_admin_approved,
+            verified: (vp?.verification_status === "verified" || !vp) && p.is_admin_approved,
             isActive: vp?.is_active ?? true,
             distance: Math.floor(Math.random() * 25) + 1,
             availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`
