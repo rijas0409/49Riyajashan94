@@ -469,6 +469,7 @@ export const INDIA_STATES_AND_CITIES: Record<string, string[]> = {
     "Diu"
   ],
   "Delhi": [
+    "Delhi",
     "New Delhi",
     "Central Delhi",
     "East Delhi",

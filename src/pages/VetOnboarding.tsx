@@ -18,6 +18,8 @@ import {
 import { AccountReviewScreen } from "@/components/AccountReviewScreen";
 import { INDIA_STATES, INDIA_STATES_AND_CITIES } from "@/constants/indiaLocations";
 
+const ALLOWED_VET_STATES = ["Delhi", "Haryana", "Madhya Pradesh", "Punjab"];
+
 /* ─── types ─── */
 interface EducationRow {
   qualification: string;
@@ -556,7 +558,7 @@ const VetOnboarding = () => {
                           <SelectValue placeholder="Select State" />
                         </SelectTrigger>
                         <SelectContent className="max-h-[300px]">
-                          {INDIA_STATES.map(s => (
+                          {ALLOWED_VET_STATES.map(s => (
                             <SelectItem key={s} value={s}>{s}</SelectItem>
                           ))}
                         </SelectContent>

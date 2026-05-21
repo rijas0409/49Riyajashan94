@@ -27,9 +27,9 @@ const cities = [
   { id: "greater-noida", name: "Greater Noida", state: "Uttar Pradesh" },
   { id: "noida", name: "Noida", state: "Uttar Pradesh" },
   { id: "delhi", name: "Delhi", state: "Delhi" },
-  { id: "gurgaon", name: "Gurgaon", state: "Haryana" },
+  { id: "gurgaon", name: "Gurugram (Gurgaon)", state: "Haryana" },
   { id: "mumbai", name: "Mumbai", state: "Maharashtra" },
-  { id: "bangalore", name: "Bangalore", state: "Karnataka" },
+  { id: "bangalore", name: "Bengaluru (Bangalore)", state: "Karnataka" },
   { id: "hyderabad", name: "Hyderabad", state: "Telangana" },
   { id: "chennai", name: "Chennai", state: "Tamil Nadu" },
   { id: "pune", name: "Pune", state: "Maharashtra" },
@@ -101,12 +101,12 @@ const matchCity = (vetAddress: string | null, selectedCity: string): boolean => 
   }
 
   // Handle Gurugram vs Gurgaon
-  if (normalizedCity === "gurgaon" || normalizedCity === "gurugram") {
+  if (normalizedCity.includes("gurgaon") || normalizedCity.includes("gurugram")) {
     return normalizedAddr.includes("gurgaon") || normalizedAddr.includes("gurugram");
   }
 
   // Handle Bangalore vs Bengaluru
-  if (normalizedCity === "bangalore" || normalizedCity === "bengaluru") {
+  if (normalizedCity.includes("bangalore") || normalizedCity.includes("bengaluru")) {
     return normalizedAddr.includes("bangalore") || normalizedAddr.includes("bengaluru");
   }
   

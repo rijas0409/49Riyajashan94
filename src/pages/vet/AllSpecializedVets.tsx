@@ -31,15 +31,21 @@ const matchCity = (vetAddress: string | null, selectedCity: string): boolean => 
   const normalizedAddr = vetAddress.trim().toLowerCase();
   const normalizedCity = selectedCity.trim().toLowerCase();
   
-  if (normalizedCity === "gurgaon" || normalizedCity === "gurugram" || normalizedCity.includes("gurugram")) {
-    return normalizedAddr.includes("gurgaon") || normalizedAddr.includes("gurugram");
-  }
+  // Mappings
+  const cityMap: Record<string, string[]> = {
+    "gurgaon": ["gurgaon", "gurugram"],
+    "gurugram": ["gurgaon", "gurugram"],
+    "gurugram (gurgaon)": ["gurgaon", "gurugram"],
+    "bangalore": ["bangalore", "bengaluru"],
+    "bengaluru": ["bangalore", "bengaluru"],
+    "bengaluru (bangalore)": ["bangalore", "bengaluru"],
+    "delhi": ["delhi", "new delhi"],
+    "new delhi": ["delhi", "new delhi"],
+  };
 
-  if (normalizedCity === "bangalore" || normalizedCity === "bengaluru") {
-    return normalizedAddr.includes("bangalore") || normalizedAddr.includes("bengaluru");
-  }
+  const cityNicknames = cityMap[normalizedCity] || [normalizedCity];
   
-  return normalizedAddr.includes(normalizedCity);
+  return cityNicknames.some(nick => normalizedAddr.includes(nick));
 };
 
 const AllSpecializedVets = () => {
@@ -54,6 +60,7 @@ const AllSpecializedVets = () => {
 
     const fetchVets = async () => {
       // 1. Fetch verified active vet_profiles first
+      console.log("Debug: Fetching verified active vet_profiles...");
       const { data: vetProfiles, error: vpErr } = await supabase
         .from("vet_profiles")
         .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, clinic_address")
@@ -65,7 +72,7 @@ const AllSpecializedVets = () => {
         return;
       }
 
-      console.log("Debug: vetProfiles fetched in AllSpecializedVets:", vetProfiles);
+      console.log("Debug: vetProfiles fetched in AllSpecializedVets:", vetProfiles ? vetProfiles.length : 0);
 
       if (!vetProfiles || vetProfiles.length === 0) {
         console.log("Debug: No verified and active vet_profiles returned.");
@@ -74,6 +81,7 @@ const AllSpecializedVets = () => {
       }
 
       // 2. Fetch corresponding profiles
+      console.log("Debug: Fetching profiles for user_ids:", vetProfiles.map(p => p.user_id));
       const { data: profiles, error: profileErr } = await supabase
         .from("profiles")
         .select("id, name, full_name, profile_photo, is_admin_approved, role, address, created_at, updated_at")
@@ -83,7 +91,7 @@ const AllSpecializedVets = () => {
         console.error("Error fetching profiles for vets:", profileErr);
       }
 
-      console.log("Fetched profiles and vet_profiles in AllSpecializedVets:", { profiles, vetProfiles });
+      console.log("Fetched profiles and vet_profiles in AllSpecializedVets:", { profiles: profiles ? profiles.length : 0, vetProfiles: vetProfiles ? vetProfiles.length : 0 });
 
       const getPublicUrl = (photo: string) => {
         if (!photo) return "";
