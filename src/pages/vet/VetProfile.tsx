@@ -37,7 +37,9 @@ const VetProfile = () => {
         specialty: vetProfile?.specializations?.[0] || "Specialist",
         rating: vetProfile?.average_rating || 5.0,
         reviews: 0,
-        photo: photoUrl
+        photo: photoUrl,
+        isAdminApproved: profile?.is_admin_approved,
+        approvedAt: profile?.approved_at
       });
     };
     fetchVetData();
@@ -131,6 +133,35 @@ const VetProfile = () => {
             Edit Profile
           </button>
         </section>
+
+        {/* Visibility Status Card */}
+        {vetData?.isAdminApproved ? (
+          <section className={`mt-8 relative overflow-hidden rounded-[2.5rem] p-6 flex flex-col items-start gap-2 border ${vetData?.approvedAt && (Date.now() - new Date(vetData.approvedAt).getTime()) / (1000 * 60 * 60) < 24 ? "bg-amber-50 border-amber-200" : "bg-emerald-50 border-emerald-200"}`}>
+             <div className="flex items-center gap-2">
+                 <div className={`w-3 h-3 rounded-full ${vetData?.approvedAt && (Date.now() - new Date(vetData.approvedAt).getTime()) / (1000 * 60 * 60) < 24 ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
+                 <h3 className={`text-lg font-bold ${vetData?.approvedAt && (Date.now() - new Date(vetData.approvedAt).getTime()) / (1000 * 60 * 60) < 24 ? "text-amber-800" : "text-emerald-800"}`}>
+                   {vetData?.approvedAt && (Date.now() - new Date(vetData.approvedAt).getTime()) / (1000 * 60 * 60) < 24 ? "Syncing Profile" : "Profile is Live"}
+                 </h3>
+             </div>
+             <p className={`text-sm font-medium ${vetData?.approvedAt && (Date.now() - new Date(vetData.approvedAt).getTime()) / (1000 * 60 * 60) < 24 ? "text-amber-700/80" : "text-emerald-700/80"}`}>
+               {vetData?.approvedAt && (Date.now() - new Date(vetData.approvedAt).getTime()) / (1000 * 60 * 60) < 24 
+                 ? `Your profile has been approved and is being synchronized across the network. It will be visible to pet owners in approximately ${Math.ceil(24 - ((Date.now() - new Date(vetData.approvedAt).getTime()) / (1000 * 60 * 60)))} hours.`
+                 : "Your profile is fully synchronized and visible to pet owners searching for vets in your area."}
+             </p>
+          </section>
+        ) : (
+          <section className="mt-8 relative overflow-hidden rounded-[2.5rem] p-6 flex flex-col items-start gap-2 border bg-blue-50 border-blue-200">
+             <div className="flex items-center gap-2">
+                 <div className="w-3 h-3 rounded-full bg-blue-500" />
+                 <h3 className="text-lg font-bold text-blue-800">
+                   Pending Approval
+                 </h3>
+             </div>
+             <p className="text-sm font-medium text-blue-700/80">
+               Your profile is currently under review by our admin team. Once approved, it will undergo a synchronization process before becoming visible to users.
+             </p>
+          </section>
+        )}
 
         {/* Premium Profile Card */}
         <section className="mt-8 relative overflow-hidden bg-[#F9F5FF] border border-[#E9D5FF] rounded-[2.5rem] p-6 flex items-center gap-5 shadow-[0_12px_40px_rgba(164,40,255,0.06)]" data-purpose="verified-qr-card">

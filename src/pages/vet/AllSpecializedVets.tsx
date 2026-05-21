@@ -31,12 +31,10 @@ const matchCity = (vetAddress: string | null, selectedCity: string): boolean => 
   const normalizedAddr = vetAddress.trim().toLowerCase();
   const normalizedCity = selectedCity.trim().toLowerCase();
   
-  // Handle Gurugram vs Gurgaon
   if (normalizedCity === "gurgaon" || normalizedCity === "gurugram" || normalizedCity.includes("gurugram")) {
     return normalizedAddr.includes("gurgaon") || normalizedAddr.includes("gurugram");
   }
 
-  // Handle Bangalore vs Bengaluru
   if (normalizedCity === "bangalore" || normalizedCity === "bengaluru") {
     return normalizedAddr.includes("bangalore") || normalizedAddr.includes("bengaluru");
   }
@@ -58,16 +56,18 @@ const AllSpecializedVets = () => {
       // 1. Fetch profiles
       const { data: profiles, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, name, full_name, profile_photo, is_admin_approved, role, address")
-        .eq("role", "vet")
-        .eq("is_admin_approved", true);
+        .select("id, name, full_name, profile_photo, is_admin_approved, role, address, approved_at, created_at")
+        .eq("role", "vet");
 
       if (profileErr) {
         console.error("Error fetching profiles for vets:", profileErr);
         return;
       }
 
+      console.log("Debug: profiles fetched:", profiles);
+
       if (!profiles || profiles.length === 0) {
+        console.log("Debug: No profiles returned. RLS or role mismatch?");
         setAllVets([]);
         return;
       }
@@ -110,6 +110,12 @@ const AllSpecializedVets = () => {
       const vets: RealVet[] = profiles
         .filter(p => {
           if (!p.is_admin_approved) return false;
+          
+          if (p.approved_at) {
+             const hoursPassed = (Date.now() - new Date(p.approved_at).getTime()) / (1000 * 60 * 60);
+             if (hoursPassed < 24) return false;
+          }
+
           const vp = vpMap.get(p.id);
           
           const addrMatch = matchCity(p.address, city);

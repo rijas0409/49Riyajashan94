@@ -255,7 +255,7 @@ const AdminDashboard = () => {
       console.log("Starting approval for vet:", id);
       const { data: pUpdate, error: r1 } = await supabase
         .from("profiles")
-        .update({ is_admin_approved: true, is_onboarding_complete: true })
+        .update({ is_admin_approved: true, is_onboarding_complete: true, approved_at: new Date().toISOString() })
         .eq("id", id)
         .select();
       
