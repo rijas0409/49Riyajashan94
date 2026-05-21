@@ -281,6 +281,8 @@ const AdminVets = ({ data, actions }: Props) => {
                   <InfoRow icon={FileText} label="Registration Number" value={selectedVet.registration_number} />
                   <InfoRow icon={Stethoscope} label="Specializations" value={selectedVet.specializations?.join(", ")} />
                   <InfoRow icon={Clock} label="Consultation Type" value={selectedVet.consultation_type} />
+                  <InfoRow icon={MapPin} label="City" value={selectedVet.city || selectedVet.profile?.city || (selectedVet.profile?.address ? selectedVet.profile.address.split(',')[0]?.trim() : null)} />
+                  <InfoRow icon={MapPin} label="State" value={selectedVet.state || selectedVet.profile?.state || (selectedVet.profile?.address ? selectedVet.profile.address.split(',')[1]?.trim() : null)} />
                   <InfoRow icon={MapPin} label="Clinic Address" value={selectedVet.clinic_address} />
                   <InfoRow icon={Phone} label="Phone" value={selectedVet.profile?.phone} />
                   <InfoRow icon={Mail} label="Email" value={selectedVet.profile?.email} />
@@ -410,7 +412,9 @@ const AdminVets = ({ data, actions }: Props) => {
                           <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded-md uppercase tracking-wider">Priority</span>
                         )}
                       </div>
-                      <p className="text-sm text-[hsl(220,15%,45%)] font-medium mb-1">{vet.qualification} • {vet.years_of_experience} years exp</p>
+                      <p className="text-sm text-[hsl(220,15%,45%)] font-medium mb-1">
+                        {vet.qualification} • {vet.years_of_experience} years exp • Location: {vet.profile?.address || (vet.profile?.city && vet.profile?.state ? `${vet.profile.city}, ${vet.profile.state}` : null) || (vet.city && vet.state ? `${vet.city}, ${vet.state}` : null) || "Not provided"}
+                      </p>
                       <div className="flex flex-wrap gap-1.5">
                         {vet.specializations?.map((s: string, idx: number) => (
                           <span key={idx} className="px-2 py-0.5 bg-[hsl(220,40%,96%)] text-[hsl(220,15%,45%)] text-[11px] rounded-md font-medium">{s}</span>
@@ -461,6 +465,7 @@ const AdminVets = ({ data, actions }: Props) => {
                 <tr className="border-b border-[hsl(220,20%,92%)]">
                   <th className="pb-4 text-left font-bold text-[hsl(220,15%,55%)] uppercase tracking-wider text-[11px]">Doctor</th>
                   <th className="pb-4 text-left font-bold text-[hsl(220,15%,55%)] uppercase tracking-wider text-[11px]">Experience</th>
+                  <th className="pb-4 text-left font-bold text-[hsl(220,15%,55%)] uppercase tracking-wider text-[11px]">Location</th>
                   <th className="pb-4 text-left font-bold text-[hsl(220,15%,55%)] uppercase tracking-wider text-[11px]">Specializations</th>
                   <th className="pb-4 text-left font-bold text-[hsl(220,15%,55%)] uppercase tracking-wider text-[11px]">Status</th>
                   <th className="pb-4 text-left font-bold text-[hsl(220,15%,55%)] uppercase tracking-wider text-[11px]">Rating</th>
@@ -469,7 +474,7 @@ const AdminVets = ({ data, actions }: Props) => {
               </thead>
               <tbody className="divide-y divide-[hsl(220,20%,96%)]">
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={6} className="py-12 text-center text-[hsl(220,15%,60%)] bg-[hsl(220,20%,99%)] rounded-b-2xl">No veterinarians found matching your search</td></tr>
+                  <tr><td colSpan={7} className="py-12 text-center text-[hsl(220,15%,60%)] bg-[hsl(220,20%,99%)] rounded-b-2xl">No veterinarians found matching your search</td></tr>
                 ) : (
                   filtered.map((v: any) => (
                     <tr key={v.id} className="hover:bg-[hsl(220,20%,98%)] transition-colors group">
@@ -487,6 +492,9 @@ const AdminVets = ({ data, actions }: Props) => {
                         </div>
                       </td>
                       <td className="py-4 font-medium text-[hsl(220,15%,45%)]">{v.years_of_experience} yrs</td>
+                      <td className="py-4 font-medium text-[hsl(220,15%,45%)]">
+                        {v.profile?.address || (v.profile?.city && v.profile?.state ? `${v.profile.city}, ${v.profile.state}` : null) || (v.city && v.state ? `${v.city}, ${v.state}` : null) || "Not provided"}
+                      </td>
                       <td className="py-4">
                         <div className="flex flex-wrap gap-1 max-w-[200px]">
                           {v.specializations?.slice(0, 2).map((s: string, idx: number) => (

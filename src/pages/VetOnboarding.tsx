@@ -325,30 +325,36 @@ const VetOnboarding = () => {
         reviewed_by: null as string | null,
         appeal_requested: false,
         is_active: true,
+        city: formData.city,
+        state: formData.state,
       };
 
       if (existingVet) {
         let { error: vetError } = await supabase.from("vet_profiles").update(upsertData).eq("id", existingVet.id);
-        if (vetError && vetError.message?.includes("Could not find the")) {
+        if (vetError && (vetError.message?.includes("Could not find the") || vetError.message?.includes("column"))) {
            const fallbackData = { ...upsertData };
            delete (fallbackData as any).rejection_reason;
            delete (fallbackData as any).reviewed_at;
            delete (fallbackData as any).reviewed_by;
            delete (fallbackData as any).appeal_requested;
            delete (fallbackData as any).self_practice;
+           delete (fallbackData as any).city;
+           delete (fallbackData as any).state;
            const fallback = await supabase.from("vet_profiles").update(fallbackData).eq("id", existingVet.id);
            vetError = fallback.error;
         }
         if (vetError) throw vetError;
       } else {
         let { error: vetError } = await supabase.from("vet_profiles").insert([upsertData]);
-        if (vetError && vetError.message?.includes("Could not find the")) {
+        if (vetError && (vetError.message?.includes("Could not find the") || vetError.message?.includes("column"))) {
            const fallbackData = { ...upsertData };
            delete (fallbackData as any).rejection_reason;
            delete (fallbackData as any).reviewed_at;
            delete (fallbackData as any).reviewed_by;
            delete (fallbackData as any).appeal_requested;
            delete (fallbackData as any).self_practice;
+           delete (fallbackData as any).city;
+           delete (fallbackData as any).state;
            const fallback = await supabase.from("vet_profiles").insert([fallbackData]);
            vetError = fallback.error;
         }
@@ -356,7 +362,8 @@ const VetOnboarding = () => {
       }
 
       // 3. Update Profile
-      const { error: profileError } = await supabase.from("profiles").update({
+      const { error: profileError } = await supabase.from("profiles").upsert({
+        id: uid,
         name: formData.fullName,
         full_name: formData.fullName,
         phone: formData.phone,
@@ -364,10 +371,12 @@ const VetOnboarding = () => {
         gender: formData.gender,
         birth_date: formData.dob || null,
         address: `${formData.city}, ${formData.state}`,
+        city: formData.city,
+        state: formData.state,
         is_onboarding_complete: true,
         is_admin_approved: false,
         role: 'vet',
-      } as any).eq("id", uid);
+      } as any);
 
       if (profileError) throw profileError;
 

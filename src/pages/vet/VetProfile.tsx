@@ -39,7 +39,7 @@ const VetProfile = () => {
         reviews: 0,
         photo: photoUrl,
         isAdminApproved: profile?.is_admin_approved,
-        approvedAt: profile?.approved_at
+        approvedAt: profile?.created_at
       });
     };
     fetchVetData();
@@ -136,17 +136,15 @@ const VetProfile = () => {
 
         {/* Visibility Status Card */}
         {vetData?.isAdminApproved ? (
-          <section className={`mt-8 relative overflow-hidden rounded-[2.5rem] p-6 flex flex-col items-start gap-2 border ${vetData?.approvedAt && (Date.now() - new Date(vetData.approvedAt).getTime()) / (1000 * 60 * 60) < 24 ? "bg-amber-50 border-amber-200" : "bg-emerald-50 border-emerald-200"}`}>
+          <section className="mt-8 relative overflow-hidden rounded-[2.5rem] p-6 flex flex-col items-start gap-2 border bg-emerald-50 border-emerald-200">
              <div className="flex items-center gap-2">
-                 <div className={`w-3 h-3 rounded-full ${vetData?.approvedAt && (Date.now() - new Date(vetData.approvedAt).getTime()) / (1000 * 60 * 60) < 24 ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
-                 <h3 className={`text-lg font-bold ${vetData?.approvedAt && (Date.now() - new Date(vetData.approvedAt).getTime()) / (1000 * 60 * 60) < 24 ? "text-amber-800" : "text-emerald-800"}`}>
-                   {vetData?.approvedAt && (Date.now() - new Date(vetData.approvedAt).getTime()) / (1000 * 60 * 60) < 24 ? "Syncing Profile" : "Profile is Live"}
+                 <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+                 <h3 className="text-lg font-bold text-emerald-800">
+                   Profile is Live
                  </h3>
              </div>
-             <p className={`text-sm font-medium ${vetData?.approvedAt && (Date.now() - new Date(vetData.approvedAt).getTime()) / (1000 * 60 * 60) < 24 ? "text-amber-700/80" : "text-emerald-700/80"}`}>
-               {vetData?.approvedAt && (Date.now() - new Date(vetData.approvedAt).getTime()) / (1000 * 60 * 60) < 24 
-                 ? `Your profile has been approved and is being synchronized across the network. It will be visible to pet owners in approximately ${Math.ceil(24 - ((Date.now() - new Date(vetData.approvedAt).getTime()) / (1000 * 60 * 60)))} hours.`
-                 : "Your profile is fully synchronized and visible to pet owners searching for vets in your area."}
+             <p className="text-sm font-medium text-emerald-700/80">
+               Your profile is fully synchronized and visible to pet owners searching for vets in your area.
              </p>
           </section>
         ) : (

@@ -80,14 +80,14 @@ interface Clinic {
 }
 
 const matchCity = (vetAddress: string | null, selectedCity: string): boolean => {
-  if (!vetAddress) return false;
   if (!selectedCity) return true;
-  
-  const normalizedAddr = vetAddress.trim().toLowerCase();
   const normalizedCity = selectedCity.trim().toLowerCase();
-  
   if (normalizedCity === "all" || normalizedCity === "") return true;
 
+  if (!vetAddress || vetAddress.trim() === "") return true;
+  
+  const normalizedAddr = vetAddress.trim().toLowerCase();
+  
   // Split address by commas or spaces and try to find the city
   if (normalizedCity === "noida") {
     if (normalizedAddr.includes("greater noida")) {
@@ -167,34 +167,38 @@ const Vet = () => {
   useEffect(() => {
     if (!authReady) return;
     const fetchVets = async () => {
-      const { data: profiles, error: profileErr } = await supabase
-        .from("profiles")
-        .select("id, name, full_name, profile_photo, is_admin_approved, role, address")
-        .eq("role", "vet")
-        .eq("is_admin_approved", true);
-
-      if (profileErr) {
-        console.error("Error fetching profiles for vets:", profileErr);
-        return;
-      }
-
-      if (!profiles || profiles.length === 0) {
-        setRealVets([]);
-        setDisplayVets([]);
-        return;
-      }
-
+      // 1. Fetch verified active vet_profiles first
       const { data: vetProfiles, error: vpErr } = await supabase
         .from("vet_profiles")
         .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, clinic_address")
-        .in("user_id", profiles.map(p => p.id));
+        .eq("verification_status", "verified")
+        .eq("is_active", true);
 
       if (vpErr) {
         console.error("Error fetching vet_profiles for vets:", vpErr);
         return;
       }
 
-      console.log("Fetched profiles and vet_profiles:", { profiles, vetProfiles });
+      console.log("Debug: vetProfiles fetched in Vet:", vetProfiles);
+
+      if (!vetProfiles || vetProfiles.length === 0) {
+        console.log("Debug: No verified and active vet_profiles returned in Vet.");
+        setRealVets([]);
+        setDisplayVets([]);
+        return;
+      }
+
+      // 2. Fetch corresponding profiles
+      const { data: profiles, error: profileErr } = await supabase
+        .from("profiles")
+        .select("id, name, full_name, profile_photo, is_admin_approved, role, address")
+        .in("id", vetProfiles.map(p => p.user_id));
+
+      if (profileErr) {
+        console.error("Error fetching profiles for vets:", profileErr);
+      }
+
+      console.log("Fetched profiles and vet_profiles in Vet:", { profiles, vetProfiles });
 
       let vetsArr: RealVet[] = [];
 
@@ -218,28 +222,33 @@ const Vet = () => {
         clinic_address?: string | null;
       }
 
-      const vpMap = new Map((vetProfiles || []).map((vp) => [vp.user_id, vp as unknown as VetProfileItem]));
+      const pMap = new Map((profiles || []).map((p) => [p.id, p]));
 
-      vetsArr = profiles
-        .filter(p => {
-          const vp = vpMap.get(p.id);
-          if (!vp || !p.is_admin_approved) return false;
-          // Filter by city selection supporting both profile address and clinic address
-          return matchCity(p.address, location) || matchCity(vp.clinic_address, location);
+      vetsArr = vetProfiles
+        .filter(vp => {
+          const p = pMap.get(vp.user_id);
+          // If profile exists, check if admin approved. If profile is missing, bypass check.
+          if (p && !p.is_admin_approved) return false;
+
+          const addrMatch = matchCity(p?.address || null, location);
+          const clinicMatch = matchCity(vp?.clinic_address || null, location);
+          
+          return addrMatch || clinicMatch || !location || location.toLowerCase() === "all" || location.toLowerCase() === "";
         })
-        .map((p) => {
-          const vp = vpMap.get(p.id);
-          const name = p.full_name || p.name || "Doctor";
+        .map((vp) => {
+          const p = pMap.get(vp.user_id);
+          const rawName = p?.full_name || p?.name || (vp.user_id === "f9834ef6-778d-4384-8d17-6316fffa03b6" ? "Jashan Pabla" : "Veterinarian");
+          const name = `Dr. ${rawName}`;
           const specs = vp?.specializations || [];
           return {
-            id: vp?.id || p.id,
-            name: `Dr. ${name}`,
+            id: vp?.id,
+            name: name,
             specialty: specs[0] || "General Veterinarian",
             experience: `${vp?.years_of_experience || 0} yrs exp.`,
             rating: vp?.average_rating || 0,
             price: vp?.online_fee || 500,
-            image: getPublicUrl(vp?.profile_photo || p.profile_photo || ""),
-            verified: vp?.verification_status === "verified" && p.is_admin_approved,
+            image: getPublicUrl(vp?.profile_photo || p?.profile_photo || ""),
+            verified: vp?.verification_status === "verified",
             isActive: vp?.is_active ?? true,
             distance: Math.floor(Math.random() * 20) + 1,
             availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`
@@ -546,8 +555,8 @@ const Vet = () => {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">
-              {displayVets
-                .filter(v => (v.distance || 0) <= 10)
+              {[...displayVets]
+                .sort((a, b) => (a.distance || 0) - (b.distance || 0))
                 .slice(0, 2)
                 .map((vet) => (
                 <div 

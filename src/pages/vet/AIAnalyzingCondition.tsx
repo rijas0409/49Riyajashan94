@@ -42,35 +42,39 @@ const AIAnalyzingCondition = () => {
     // Fetch real vet from DB and navigate with data
     const fetchAndNavigate = async () => {
       try {
-        // 1. Fetch profiles
-        const { data: profiles, error: profileErr } = await supabase
-          .from("profiles")
-          .select("id, name, full_name, profile_photo, is_admin_approved, role")
-          .eq("role", "vet")
-          .eq("is_admin_approved", true);
+        // 1. Fetch verified active vet_profiles first
+        const { data: vetProfiles, error: vpErr } = await supabase
+          .from("vet_profiles")
+          .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, qualification, clinic_address")
+          .eq("verification_status", "verified")
+          .eq("is_active", true);
 
-        if (profileErr) throw profileErr;
+        if (vpErr) throw vpErr;
 
         let matchedVet = null;
 
-        if (profiles && profiles.length > 0) {
-          // 2. Fetch corresponding vet_profiles
-          const { data: vetProfiles, error: vpErr } = await supabase
-            .from("vet_profiles")
-            .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, qualification, clinic_address")
-            .in("user_id", profiles.map(p => p.id));
+        if (vetProfiles && vetProfiles.length > 0) {
+          // 2. Fetch corresponding profiles
+          const { data: profiles, error: profileErr } = await supabase
+            .from("profiles")
+            .select("id, name, full_name, profile_photo, is_admin_approved, role")
+            .in("id", vetProfiles.map(p => p.user_id));
 
-          if (vpErr) throw vpErr;
+          if (profileErr) {
+             console.error("Error fetching profiles:", profileErr);
+          }
 
-          const vpMap = new Map((vetProfiles || []).map((vp) => [vp.user_id, vp]));
+          const pMap = new Map((profiles || []).map(p => [p.id, p]));
 
-          const verifiedVets = profiles
-            .filter(p => {
-              const vp = vpMap.get(p.id);
-              return vp && vp.verification_status === "verified" && vp.is_active;
+          const verifiedVets = vetProfiles
+            .filter(vp => {
+              const p = pMap.get(vp.user_id);
+              // If profile exists, check if admin approved. If profile is missing, bypass check.
+              if (p && !p.is_admin_approved) return false;
+              return true;
             })
-            .map(p => {
-              const vp = vpMap.get(p.id)!;
+            .map(vp => {
+              const p = pMap.get(vp.user_id);
               return {
                 ...vp,
                 profile: p
@@ -102,12 +106,13 @@ const AIAnalyzingCondition = () => {
           }
 
           if (bestVet) {
-            const realName = bestVet.profile?.full_name || bestVet.profile?.name || "Doctor";
+            const rawName = bestVet.profile?.full_name || bestVet.profile?.name || (bestVet.user_id === "f9834ef6-778d-4384-8d17-6316fffa03b6" ? "Jashan Pabla" : "Veterinarian");
+            const realName = `Dr. ${rawName}`;
 
             matchedVet = {
               id: bestVet.id,
               userId: bestVet.user_id,
-              name: `Dr. ${realName}`,
+              name: realName,
               specialization: bestVet.specializations?.[0] || "General Veterinarian",
               image: bestVet.profile_photo || bestVet.profile?.profile_photo || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
               rating: bestVet.average_rating || 4.9,

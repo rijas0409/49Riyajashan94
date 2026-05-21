@@ -255,7 +255,7 @@ const AdminDashboard = () => {
       console.log("Starting approval for vet:", id);
       const { data: pUpdate, error: r1 } = await supabase
         .from("profiles")
-        .update({ is_admin_approved: true, is_onboarding_complete: true, approved_at: new Date().toISOString() })
+        .update({ is_admin_approved: true, is_onboarding_complete: true })
         .eq("id", id)
         .select();
       
@@ -276,7 +276,6 @@ const AdminDashboard = () => {
         verification_status: "verified",
         rejection_reason: null,
         is_active: true,
-        reviewed_at: new Date().toISOString(),
         reviewed_by: user?.id
       };
       
@@ -315,7 +314,6 @@ const AdminDashboard = () => {
       let payload: any = { 
         verification_status: "failed",
         rejection_reason: reason || "Your application was not approved.",
-        reviewed_at: new Date().toISOString(),
         reviewed_by: user?.id
       };
       

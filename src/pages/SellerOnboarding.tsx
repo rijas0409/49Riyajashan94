@@ -95,7 +95,8 @@ const SellerOnboarding = () => {
 
       const { error } = await supabase
         .from("profiles")
-        .update({
+        .upsert({
+          id: userId,
           full_name: formData.fullName,
           phone: formData.phone,
           address: formData.address,
@@ -107,8 +108,7 @@ const SellerOnboarding = () => {
           business_name: formData.businessName || null,
           is_onboarding_complete: true,
           is_admin_approved: false,
-        } as any)
-        .eq("id", userId);
+        } as any);
 
       if (error) throw error;
 

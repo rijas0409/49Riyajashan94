@@ -1,9 +1,8 @@
 import fs from 'fs';
 import { createClient } from "@supabase/supabase-js";
 
-const envStr = fs.readFileSync('.env', 'utf-8');
-const VITE_SUPABASE_URL = envStr.match(/VITE_SUPABASE_URL=(.*)/)?.[1] || '';
-const VITE_SUPABASE_ANON_KEY = envStr.match(/VITE_SUPABASE_ANON_KEY=(.*)/)?.[1] || '';
+const VITE_SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co";
+const VITE_SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2eW5zbHhvdGdscmFjZmdhY2duIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1NDMwNjUsImV4cCI6MjA4MDExOTA2NX0.i9-bXgL2891ji3AK-mS4wLp6HDl4DIStrcJeONNEKP0";
 
 const supabase = createClient(VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY);
 
