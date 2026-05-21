@@ -124,7 +124,18 @@ const AllSpecializedVets = () => {
           const addrMatch = matchCity(p?.address || null, city);
           const clinicMatch = matchCity(vp?.clinic_address || null, city);
           
-          return addrMatch || clinicMatch || !city || city.toLowerCase() === "all" || city.toLowerCase() === "";
+          const isMatch = addrMatch || clinicMatch || !city || city.toLowerCase() === "all" || city.toLowerCase() === "";
+          
+          if (!isMatch) {
+            console.log(`Debug: Vet ${p?.full_name || vp.user_id} NOT matching city: ${city}`, {
+              address: p?.address,
+              clinic_address: vp?.clinic_address
+            });
+          } else {
+            console.log(`Debug: Vet ${p?.full_name || vp.user_id} MATCHING city: ${city}`);
+          }
+          
+          return isMatch;
         })
         .map((vp) => {
           const p = pMap.get(vp.user_id);
