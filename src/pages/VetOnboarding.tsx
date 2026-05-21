@@ -558,7 +558,7 @@ const VetOnboarding = () => {
                           <SelectValue placeholder="Select State" />
                         </SelectTrigger>
                         <SelectContent className="max-h-[300px]">
-                          {ALLOWED_VET_STATES.map(s => (
+                          {["Delhi", "Haryana", "Madhya Pradesh", "Punjab"].map(s => (
                             <SelectItem key={s} value={s}>{s}</SelectItem>
                           ))}
                         </SelectContent>

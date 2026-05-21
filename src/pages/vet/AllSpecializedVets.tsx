@@ -33,12 +33,12 @@ const matchCity = (vetAddress: string | null, selectedCity: string): boolean => 
   
   // Mappings for common Indian city name variations
   const cityMap: Record<string, string[]> = {
-    "gurgaon": ["gurgaon", "gurugram"],
-    "gurugram": ["gurgaon", "gurugram"],
-    "gurugram (gurgaon)": ["gurgaon", "gurugram"],
-    "bangalore": ["bangalore", "bengaluru"],
-    "bengaluru": ["bangalore", "bengaluru"],
-    "bengaluru (bangalore)": ["bangalore", "bengaluru"],
+    "gurgaon": ["gurgaon", "gurugram", "haryana"],
+    "gurugram": ["gurgaon", "gurugram", "haryana"],
+    "gurugram (gurgaon)": ["gurgaon", "gurugram", "haryana"],
+    "bangalore": ["bangalore", "bengaluru", "karnataka"],
+    "bengaluru": ["bangalore", "bengaluru", "karnataka"],
+    "bengaluru (bangalore)": ["bangalore", "bengaluru", "karnataka"],
     "delhi": ["delhi", "new delhi", "ncr"],
     "new delhi": ["delhi", "new delhi", "ncr"],
     "noida": ["noida", "greater noida"],
@@ -51,12 +51,13 @@ const matchCity = (vetAddress: string | null, selectedCity: string): boolean => 
   const directMatch = cityNicknames.some(nick => normalizedAddr.includes(nick));
   if (directMatch) return true;
 
-  // Handle cases like "Gurugram (Gurgaon)" being in the address but not matching "gurugram" directly due to parentheses
-  // We split by non-alphanumeric characters and check intersections
+  // Broad check: if the selected city name (even partial) is anywhere in the vet address
+  const citySearchTerms = normalizedCity.split(/[^a-z0-9]/).filter(w => w.length > 2);
+  if (citySearchTerms.some(term => normalizedAddr.includes(term))) return true;
+
+  // Addr words check
   const addrWords = normalizedAddr.split(/[^a-z0-9]/).filter(w => w.length > 2);
-  const cityWords = normalizedCity.split(/[^a-z0-9]/).filter(w => w.length > 2);
-  
-  return cityWords.some(cw => addrWords.includes(cw));
+  return citySearchTerms.some(cw => addrWords.includes(cw));
 };
 
 const AllSpecializedVets = () => {
@@ -252,14 +253,23 @@ const AllSpecializedVets = () => {
             <p className="text-sm text-muted-foreground mt-1 max-w-[250px]">
               We couldn't find any verified specialists in {city} matching your search.
             </p>
-            {(city && city.toLowerCase() !== "all") && (
-               <button 
-                onClick={() => navigate("/vet")}
-                className="mt-6 text-primary font-bold text-sm underline"
-               >
-                 Change Location
-               </button>
-            )}
+            <div className="flex flex-col gap-3 mt-6">
+              <button 
+                onClick={() => window.location.reload()}
+                className="bg-primary text-white px-8 py-3 rounded-2xl font-bold text-sm shadow-md active:scale-95 transition-all"
+              >
+                Refresh List
+              </button>
+              
+              {(city && city.toLowerCase() !== "all") && (
+                <button 
+                  onClick={() => navigate("/vet")}
+                  className="text-muted-foreground font-medium text-sm underline"
+                >
+                  Change Location
+                </button>
+              )}
+            </div>
           </div>
         ) : filteredVets.map((doctor) => (
           <div 
