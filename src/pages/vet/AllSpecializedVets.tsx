@@ -1,290 +1,228 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  ArrowLeft, MapPin, Star, Stethoscope, BadgeCheck, Search, Filter, MessageCircle, Video
-} from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLocation } from "@/contexts/LocationContext";
-import { SafeImage } from "@/components/SafeImage";
-import { toast } from "sonner";
+import { useLocation, useNavigate } from "react-router-dom";
+import { MapPin, Star, GraduationCap, ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-interface RealVet {
+type VetRecord = {
   id: string;
   name: string;
   specialty: string;
-  experience: string;
+  experience: number;
   rating: number;
-  price: number;
+  onlineFee: number;
   image: string;
-  verified: boolean;
-  isActive: boolean;
-  distance?: number;
-  availability?: string;
-}
+  city: string; // Combined from clinic_address and profile address
+  verification_status: string;
+  user_id: string;
+};
 
-const AllSpecializedVets = () => {
-  const navigate = useNavigate();
+export default function AllSpecializedVets() {
   const { authReady } = useAuth();
-  const { city } = useLocation();
-  const [allVets, setAllVets] = useState<RealVet[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const location = useLocation();
+  const navigate = useNavigate();
+  // city might be passed via route state or just "LocationContext"
+  // If not in state, default to ""
+  const selectedCity = (location.state?.city as string) || (location.state as any)?.location || "";
+
+  const [vets, setVets] = useState<VetRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchVets = async () => {
+    try {
+      console.log("Fetching approved vets...");
+      const { data, error } = await supabase
+        .from("vet_profiles")
+        .select(`
+          id,
+          user_id,
+          specializations,
+          years_of_experience,
+          average_rating,
+          online_fee,
+          clinic_address,
+          profile_photo,
+          verification_status,
+          profiles!vet_profiles_user_id_fkey (
+            id,
+            name,
+            full_name,
+            address,
+            profile_photo
+          )
+        `)
+        .in("verification_status", ["verified", "approved"]);
+
+      if (error) {
+        console.error("Error fetching vets:", error);
+        return;
+      }
+
+      if (data) {
+        const parsedVets: VetRecord[] = data.map((vp: any) => {
+          const profile = Array.isArray(vp.profiles) ? vp.profiles[0] : vp.profiles;
+          
+          let photo = vp.profile_photo || profile?.profile_photo;
+          if (photo && !photo.startsWith("http")) {
+            photo = supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
+          }
+
+          const rawName = profile?.full_name || profile?.name || "Veterinarian";
+          const specs = vp.specializations || [];
+          
+          // Combine both address fields to represent the vet's "city" string for filtering
+          const addressStr = `${vp.clinic_address || ""} ${profile?.address || ""}`.trim();
+
+          return {
+            id: vp.id,
+            user_id: vp.user_id,
+            name: `Dr. ${rawName}`,
+            specialty: specs.length > 0 ? specs[0] : "General Veterinarian",
+            experience: vp.years_of_experience || 0,
+            rating: vp.average_rating || 0,
+            onlineFee: vp.online_fee || 0,
+            image: photo || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=800&h=1200&fit=crop",
+            city: addressStr,
+            verification_status: vp.verification_status,
+          };
+        });
+
+        setVets(parsedVets);
+      }
+    } catch (err) {
+      console.error("Unexpected error fetching vets:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!authReady) return;
 
-    let isMounted = true;
-
-    const fetchVets = async () => {
-      try {
-        console.log("Debug: Fetching verified active vet_profiles...");
-        // Fetch vet profiles along with their joined profile data
-        const { data: vetProfiles, error: vpErr } = await supabase
-          .from("vet_profiles")
-          .select(`
-            id, user_id, specializations, years_of_experience, online_fee, average_rating, 
-            verification_status, is_active, profile_photo, offline_fee, clinic_address,
-            profiles!vet_profiles_user_id_fkey(id, name, full_name, profile_photo, is_admin_approved, address)
-          `)
-          .eq("verification_status", "verified")
-          .eq("is_active", true);
-
-        if (vpErr) {
-          console.error("Error fetching vet_profiles:", vpErr);
-          return;
-        }
-
-        if (!vetProfiles || vetProfiles.length === 0) {
-          console.log("Debug: No verified and active vet_profiles returned.");
-          if (isMounted) setAllVets([]);
-          return;
-        }
-
-        const getPublicUrl = (photo: string | null | undefined) => {
-          if (!photo) return "";
-          if (photo.startsWith("http")) return photo;
-          return supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
-        };
-
-        const vets: RealVet[] = vetProfiles
-          .filter((vp: any) => {
-            const profile = Array.isArray(vp.profiles) ? vp.profiles[0] : vp.profiles;
-            // Admin must have approved the overarching profile as well
-            if (profile && !profile.is_admin_approved) return false;
-
-            // Location Normalization (Case-insensitive matching + Trim)
-            const normalizedCity = (city || "").trim().toLowerCase();
-            const pAddr = (profile?.address || "").trim().toLowerCase();
-            const cAddr = (vp.clinic_address || "").trim().toLowerCase();
-
-            // Always show all if city is unselected or "all"
-            if (!normalizedCity || normalizedCity === "all" || normalizedCity === "any") return true;
-
-            const cityMap: Record<string, string[]> = {
-              "gurgaon": ["gurgaon", "gurugram", "haryana"],
-              "gurugram": ["gurgaon", "gurugram", "haryana"],
-              "bangalore": ["bangalore", "bengaluru", "karnataka"],
-              "bengaluru": ["bangalore", "bengaluru", "karnataka"],
-              "delhi": ["delhi", "new delhi", "ncr"],
-              "noida": ["noida", "greater noida"]
-            };
-
-            const searchTerms = cityMap[normalizedCity] || [normalizedCity];
-            
-            // Check cross-match exactly matching any term
-            return searchTerms.some(term => pAddr.includes(term) || cAddr.includes(term));
-          })
-          .map((vp: any) => {
-            const profile = Array.isArray(vp.profiles) ? vp.profiles[0] : vp.profiles;
-            const rawName = profile?.full_name || profile?.name || "Veterinarian";
-            
-            return {
-              id: vp.id,
-              name: `Dr. ${rawName}`,
-              specialty: (vp.specializations && vp.specializations[0]) ? vp.specializations[0] : "General Veterinarian",
-              experience: `${vp.years_of_experience || 0} yrs exp.`,
-              rating: vp.average_rating || 0,
-              price: vp.online_fee || 500,
-              image: getPublicUrl(vp.profile_photo || profile?.profile_photo),
-              verified: vp.verification_status === "verified",
-              isActive: vp.is_active ?? true,
-              distance: Math.floor(Math.random() * 25) + 1,
-              availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`
-            };
-          });
-
-        if (isMounted) {
-          setAllVets(vets);
-        }
-      } catch (err) {
-        console.error("Unexpected error fetching vets:", err);
-      }
-    };
-
-    // Initial fetch
     fetchVets();
 
-    // Setup Realtime Subscription
-    // Listens to ALL postgres changes on vet_profiles and profiles to auto-refresh natively.
     const channel = supabase
-      .channel("vet_profiles_realtime_sync")
+      .channel("realtime-vet-profiles")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "vet_profiles" },
-        () => {
-          console.log("Real-time vet_profiles update received!");
+        (payload) => {
+          console.log("Realtime event on vet_profiles:", payload);
           fetchVets();
         }
       )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "profiles" },
-        () => {
-          console.log("Real-time profiles update received!");
-          fetchVets();
-        }
-      )
-      .subscribe((status) => {
-        console.log("Supabase Realtime channel status:", status);
-      });
+      .subscribe();
 
     return () => {
-      isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, [authReady, city]);
+  }, [authReady]);
 
-  const filteredVets = allVets.filter(vet => 
-    vet.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    vet.specialty.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Fuzzy filter
+  const filteredVets = vets.filter((vet) => {
+    const sCity = selectedCity.trim().toLowerCase();
+    if (!sCity || sCity === "all" || sCity === "any") return true;
+
+    const vCity = (vet.city || "").trim().toLowerCase();
+
+    // Check if the database city includes the selected city, OR vice versa
+    return vCity.includes(sCity) || sCity.includes(vCity);
+  });
 
   return (
-    <div className="min-h-screen bg-[#FDF8FA] pb-10">
+    <div className="min-h-screen bg-neutral-50 pb-20">
       {/* Header */}
-      <div className="bg-white px-4 py-6 sticky top-0 z-50 shadow-sm">
-        <div className="flex items-center gap-4 mb-6">
+      <div className="bg-white px-4 pt-12 pb-4 shadow-sm sticky top-0 z-10">
+        <div className="flex items-center gap-3">
           <button 
             onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-full bg-[#F1F1F1] flex items-center justify-center"
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors"
           >
-            <ArrowLeft className="w-5 h-5 text-[#151B32]" />
+            <ChevronLeft className="w-6 h-6 text-neutral-700" />
           </button>
-          <div>
-            <h1 className="text-xl font-black text-[#151B32]">All Specialized Vets</h1>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-              <MapPin className="w-3 h-3" />
-              <span>Searching in {city}</span>
-            </div>
+          <div className="flex-1">
+            <h1 className="text-xl font-bold text-neutral-900">Specialized Vets</h1>
+            {selectedCity && selectedCity.toLowerCase() !== "all" && (
+              <p className="text-sm text-neutral-500 font-medium capitalize flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5" />
+                {selectedCity}
+              </p>
+            )}
           </div>
-        </div>
-
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input 
-              type="text"
-              placeholder="Search specialists"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-[#F1F5F9] rounded-2xl text-sm focus:outline-none border-none"
-            />
-          </div>
-          <button className="w-12 h-12 bg-[#F1F5F9] rounded-2xl flex items-center justify-center">
-            <Filter className="w-4 h-4 text-[#151B32]" />
-          </button>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="px-4 py-6 space-y-6">
-        {filteredVets.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-4">
-              <Stethoscope className="w-10 h-10 text-muted-foreground" />
+      <div className="p-4 max-w-3xl mx-auto space-y-4">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
+            <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
+            <p className="font-medium animate-pulse">Loading verified specialists...</p>
+          </div>
+        ) : filteredVets.length === 0 ? (
+          <div className="flex flex-col items-center justify-center text-center p-8 bg-white rounded-3xl border border-neutral-100 shadow-sm mt-10">
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+              <MapPin className="w-8 h-8 text-primary" />
             </div>
-            <h3 className="text-lg font-bold text-[#151B32]">No Veterinarians Found</h3>
-            <p className="text-sm text-muted-foreground mt-1 max-w-[250px]">
-              We couldn't find any verified specialists in {city} matching your search.
+            <h3 className="text-xl font-bold text-neutral-900 mb-2">No Specialists Found</h3>
+            <p className="text-neutral-500 max-w-sm">
+              We couldn't find any specialized vets in <span className="font-semibold capitalize text-neutral-700">{selectedCity}</span> right now.
             </p>
-            <div className="flex flex-col gap-3 mt-6">
-              <button 
-                onClick={() => window.location.reload()}
-                className="bg-primary text-white px-8 py-3 rounded-2xl font-bold text-sm shadow-md active:scale-95 transition-all"
-              >
-                Refresh List
-              </button>
-              
-              {(city && city.toLowerCase() !== "all") && (
-                <button 
-                  onClick={() => navigate("/vet")}
-                  className="text-muted-foreground font-medium text-sm underline"
-                >
-                  Change Location
-                </button>
-              )}
-            </div>
+            <Button 
+              onClick={() => navigate("/vet")}
+              variant="outline"
+              className="mt-6 rounded-full font-bold px-6"
+            >
+              Change Location
+            </Button>
           </div>
-        ) : filteredVets.map((doctor) => (
-          <div 
-            key={doctor.id} 
-            onClick={() => navigate(`/vet/doctor/${doctor.id}`)} 
-            className="bg-white rounded-[32px] p-5 shadow-sm border border-[#F1F1F1] cursor-pointer mb-5 hover:shadow-lg transition-all active:scale-[0.99] group"
-          >
-            <div className="flex items-start gap-4">
-              <div className="relative">
-                <div className="w-[100px] h-[100px] rounded-[24px] overflow-hidden bg-muted shadow-inner group-hover:scale-105 transition-transform">
-                  {doctor.image ? (
-                    <SafeImage src={doctor.image} alt={doctor.name} className="w-full h-full" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                      <Stethoscope className="w-10 h-10" />
-                    </div>
-                  )}
+        ) : (
+          <div className="grid gap-4">
+            {filteredVets.map((vet) => (
+              <div 
+                key={vet.id}
+                onClick={() => navigate(`/vet/${vet.id}`)}
+                className="bg-white rounded-2xl p-4 shadow-sm border border-neutral-100 flex gap-4 cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99]"
+              >
+                <div className="w-24 h-24 rounded-2xl overflow-hidden bg-neutral-100 shrink-0">
+                  <img 
+                    src={vet.image} 
+                    alt={vet.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-                {doctor.verified && (
-                  <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#4F86FF] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                    <BadgeCheck className="w-4 h-4 text-white" />
+                <div className="flex-1 flex flex-col justify-center min-w-0">
+                  <div className="flex justify-between items-start gap-2">
+                    <h3 className="font-bold text-neutral-900 truncate">{vet.name}</h3>
+                    {vet.rating > 0 && (
+                      <div className="flex items-center gap-1 bg-amber-50 px-1.5 py-0.5 rounded-full shrink-0">
+                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                        <span className="text-xs font-bold text-amber-700">{vet.rating.toFixed(1)}</span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-extrabold text-[#151B32] text-[17px] truncate">{doctor.name}</h3>
-                  {doctor.rating > 0 && (
-                    <div className="flex items-center gap-1 bg-[#ECFDF5] px-2 py-0.5 rounded-full border border-[#D1FAE5]">
-                      <Star className="w-3 h-3 fill-[#10B981] text-[#10B981]" />
-                      <span className="text-[12px] font-bold text-[#10B981]">{doctor.rating}</span>
-                    </div>
-                  )}
-                </div>
-                <p className="text-[14px] text-[#D674A3] font-bold mt-0.5 leading-tight">{doctor.specialty}</p>
-                <div className="flex items-center justify-between mt-3">
-                   <span className="text-[13px] font-medium text-muted-foreground">{doctor.experience}</span>
-                   <div className="flex items-baseline gap-0.5">
-                      <span className="text-[18px] font-black text-[#D674A3]">₹{doctor.price}</span>
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase">/session</span>
-                   </div>
+                  
+                  <div className="flex items-center gap-1.5 text-primary mt-1">
+                    <GraduationCap className="w-4 h-4 shrink-0" />
+                    <span className="text-sm font-semibold truncate">{vet.specialty}</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 text-xs text-neutral-500 font-medium mt-2">
+                    <span className="flex items-center gap-1">
+                      <Award className="w-3.5 h-3.5" />
+                      {vet.experience} Yrs Exp.
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      {vet.city ? vet.city.substring(0, 15) + (vet.city.length > 15 ? "..." : "") : "Available"}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3 mt-5">
-              <button className="flex-1 bg-gradient-to-r from-[#D674A3] to-[#FF4D6D] text-white py-4 rounded-2xl font-bold text-[14px] shadow-sm hover:opacity-90 transition-all flex items-center justify-center gap-2">
-                Book Now
-              </button>
-              <button 
-                onClick={(e) => { e.stopPropagation(); toast.info("Chat coming soon"); }}
-                className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center border border-[#F1F1F1] hover:bg-muted/30 transition-colors"
-              >
-                <MessageCircle className="w-6 h-6 text-[#D674A3]" />
-              </button>
-            </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
-};
-
-export default AllSpecializedVets;
+}
