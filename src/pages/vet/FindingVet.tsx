@@ -29,7 +29,7 @@ const FindingVet = () => {
           const { data: vetProfiles, error: vpErr } = await supabase
             .from("vet_profiles")
             .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee")
-            .eq("verification_status", "verified")
+            .in("verification_status", ["verified", "approved"])
             .eq("is_active", true);
 
           if (vpErr) throw vpErr;

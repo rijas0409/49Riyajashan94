@@ -171,7 +171,7 @@ const Vet = () => {
       const { data: vetProfiles, error: vpErr } = await supabase
         .from("vet_profiles")
         .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, clinic_address")
-        .eq("verification_status", "verified")
+        .in("verification_status", ["verified", "approved"])
         .eq("is_active", true);
 
       if (vpErr) {
@@ -179,10 +179,10 @@ const Vet = () => {
         return;
       }
 
-      console.log("Debug: vetProfiles fetched in Vet:", vetProfiles);
+      console.log(`[Vet.tsx] Fetched ${vetProfiles?.length || 0} active & verified vet_profiles:`, vetProfiles);
 
       if (!vetProfiles || vetProfiles.length === 0) {
-        console.log("Debug: No verified and active vet_profiles returned in Vet.");
+        console.warn("[Vet.tsx] No verified and active vet_profiles returned. RLS or empty table?");
         setRealVets([]);
         setDisplayVets([]);
         return;
@@ -195,10 +195,10 @@ const Vet = () => {
         .in("id", vetProfiles.map(p => p.user_id));
 
       if (profileErr) {
-        console.error("Error fetching profiles for vets:", profileErr);
+        console.error("[Vet.tsx] Error fetching profiles for vets (RLS likely blocking buyers):", profileErr);
+      } else {
+        console.log(`[Vet.tsx] Fetched ${profiles?.length || 0} associated profiles:`, profiles);
       }
-
-      console.log("Fetched profiles and vet_profiles in Vet:", { profiles, vetProfiles });
 
       let vetsArr: RealVet[] = [];
 

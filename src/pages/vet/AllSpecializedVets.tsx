@@ -54,12 +54,19 @@ export default function AllSpecializedVets() {
       }
 
       if (vetData && vetData.length > 0) {
+        console.log(`[AllSpecializedVets] Fetched ${vetData.length} raw vet_profiles from Supabase.`, vetData);
         // Find corresponding user profiles (JS Join fallback for missing FK)
         const userIds = vetData.map((v) => v.user_id).filter(Boolean);
-        const { data: profilesData } = await supabase
+        const { data: profilesData, error: profErr } = await supabase
           .from("profiles")
           .select("id, name, full_name, address, city, profile_photo")
           .in("id", userIds);
+
+        if (profErr) {
+          console.error("[AllSpecializedVets] Profiles Fetch Error (Possible RLS restriction):", profErr);
+        } else {
+          console.log(`[AllSpecializedVets] Fetched ${profilesData?.length || 0} associated profiles.`, profilesData);
+        }
 
         const profilesMap = new Map();
         if (profilesData) {
@@ -94,8 +101,10 @@ export default function AllSpecializedVets() {
           };
         });
 
+        console.log("[AllSpecializedVets] Parsed Vets (Before location filter):", parsedVets);
         setVets(parsedVets);
       } else {
+        console.warn("[AllSpecializedVets] No vet_profiles returned. vetData is empty.");
         setVets([]);
       }
     } catch (err) {
