@@ -24,42 +24,6 @@ interface RealVet {
   availability?: string;
 }
 
-const matchCity = (vetAddress: string | null, selectedCity: string): boolean => {
-  if (!selectedCity || selectedCity.trim() === "" || selectedCity.trim().toLowerCase() === "all" || selectedCity.trim().toLowerCase() === "any") return true;
-  if (!vetAddress || vetAddress.trim() === "") return true;
-  
-  const normalizedAddr = vetAddress.trim().toLowerCase();
-  const normalizedCity = selectedCity.trim().toLowerCase();
-  
-  // Mappings for common Indian city name variations
-  const cityMap: Record<string, string[]> = {
-    "gurgaon": ["gurgaon", "gurugram", "haryana"],
-    "gurugram": ["gurgaon", "gurugram", "haryana"],
-    "gurugram (gurgaon)": ["gurgaon", "gurugram", "haryana"],
-    "bangalore": ["bangalore", "bengaluru", "karnataka"],
-    "bengaluru": ["bangalore", "bengaluru", "karnataka"],
-    "bengaluru (bangalore)": ["bangalore", "bengaluru", "karnataka"],
-    "delhi": ["delhi", "new delhi", "ncr"],
-    "new delhi": ["delhi", "new delhi", "ncr"],
-    "noida": ["noida", "greater noida"],
-    "greater noida": ["noida", "greater noida"],
-  };
-
-  const cityNicknames = cityMap[normalizedCity] || [normalizedCity];
-  
-  // Check if any nickname is in the address, OR if the address contains parts of the selected city
-  const directMatch = cityNicknames.some(nick => normalizedAddr.includes(nick));
-  if (directMatch) return true;
-
-  // Broad check: if the selected city name (even partial) is anywhere in the vet address
-  const citySearchTerms = normalizedCity.split(/[^a-z0-9]/).filter(w => w.length > 2);
-  if (citySearchTerms.some(term => normalizedAddr.includes(term))) return true;
-
-  // Addr words check
-  const addrWords = normalizedAddr.split(/[^a-z0-9]/).filter(w => w.length > 2);
-  return citySearchTerms.some(cw => addrWords.includes(cw));
-};
-
 const AllSpecializedVets = () => {
   const navigate = useNavigate();
   const { authReady } = useAuth();
@@ -70,133 +34,124 @@ const AllSpecializedVets = () => {
   useEffect(() => {
     if (!authReady) return;
 
+    let isMounted = true;
+
     const fetchVets = async () => {
-      // 1. Fetch verified active vet_profiles first
-      console.log("Debug: Fetching verified active vet_profiles...");
-      const { data: vetProfiles, error: vpErr } = await supabase
-        .from("vet_profiles")
-        .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, clinic_address")
-        .eq("verification_status", "verified")
-        .eq("is_active", true);
+      try {
+        console.log("Debug: Fetching verified active vet_profiles...");
+        // Fetch vet profiles along with their joined profile data
+        const { data: vetProfiles, error: vpErr } = await supabase
+          .from("vet_profiles")
+          .select(`
+            id, user_id, specializations, years_of_experience, online_fee, average_rating, 
+            verification_status, is_active, profile_photo, offline_fee, clinic_address,
+            profiles!vet_profiles_user_id_fkey(id, name, full_name, profile_photo, is_admin_approved, address)
+          `)
+          .eq("verification_status", "verified")
+          .eq("is_active", true);
 
-      if (vpErr) {
-        console.error("Error fetching vet_profiles for vets:", vpErr);
-        return;
+        if (vpErr) {
+          console.error("Error fetching vet_profiles:", vpErr);
+          return;
+        }
+
+        if (!vetProfiles || vetProfiles.length === 0) {
+          console.log("Debug: No verified and active vet_profiles returned.");
+          if (isMounted) setAllVets([]);
+          return;
+        }
+
+        const getPublicUrl = (photo: string | null | undefined) => {
+          if (!photo) return "";
+          if (photo.startsWith("http")) return photo;
+          return supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
+        };
+
+        const vets: RealVet[] = vetProfiles
+          .filter((vp: any) => {
+            const profile = Array.isArray(vp.profiles) ? vp.profiles[0] : vp.profiles;
+            // Admin must have approved the overarching profile as well
+            if (profile && !profile.is_admin_approved) return false;
+
+            // Location Normalization (Case-insensitive matching + Trim)
+            const normalizedCity = (city || "").trim().toLowerCase();
+            const pAddr = (profile?.address || "").trim().toLowerCase();
+            const cAddr = (vp.clinic_address || "").trim().toLowerCase();
+
+            // Always show all if city is unselected or "all"
+            if (!normalizedCity || normalizedCity === "all" || normalizedCity === "any") return true;
+
+            const cityMap: Record<string, string[]> = {
+              "gurgaon": ["gurgaon", "gurugram", "haryana"],
+              "gurugram": ["gurgaon", "gurugram", "haryana"],
+              "bangalore": ["bangalore", "bengaluru", "karnataka"],
+              "bengaluru": ["bangalore", "bengaluru", "karnataka"],
+              "delhi": ["delhi", "new delhi", "ncr"],
+              "noida": ["noida", "greater noida"]
+            };
+
+            const searchTerms = cityMap[normalizedCity] || [normalizedCity];
+            
+            // Check cross-match exactly matching any term
+            return searchTerms.some(term => pAddr.includes(term) || cAddr.includes(term));
+          })
+          .map((vp: any) => {
+            const profile = Array.isArray(vp.profiles) ? vp.profiles[0] : vp.profiles;
+            const rawName = profile?.full_name || profile?.name || "Veterinarian";
+            
+            return {
+              id: vp.id,
+              name: `Dr. ${rawName}`,
+              specialty: (vp.specializations && vp.specializations[0]) ? vp.specializations[0] : "General Veterinarian",
+              experience: `${vp.years_of_experience || 0} yrs exp.`,
+              rating: vp.average_rating || 0,
+              price: vp.online_fee || 500,
+              image: getPublicUrl(vp.profile_photo || profile?.profile_photo),
+              verified: vp.verification_status === "verified",
+              isActive: vp.is_active ?? true,
+              distance: Math.floor(Math.random() * 25) + 1,
+              availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`
+            };
+          });
+
+        if (isMounted) {
+          setAllVets(vets);
+        }
+      } catch (err) {
+        console.error("Unexpected error fetching vets:", err);
       }
-
-      console.log("Debug: vetProfiles fetched in AllSpecializedVets:", vetProfiles ? vetProfiles.length : 0);
-
-      if (!vetProfiles || vetProfiles.length === 0) {
-        console.log("Debug: No verified and active vet_profiles returned.");
-        setAllVets([]);
-        return;
-      }
-
-      // 2. Fetch corresponding profiles
-      console.log("Debug: Fetching profiles for user_ids:", vetProfiles.map(p => p.user_id));
-      const { data: profiles, error: profileErr } = await supabase
-        .from("profiles")
-        .select("id, name, full_name, profile_photo, is_admin_approved, role, address, created_at, updated_at")
-        .in("id", vetProfiles.map(p => p.user_id));
-
-      if (profileErr) {
-        console.error("Error fetching profiles for vets:", profileErr);
-      }
-
-      console.log("Fetched profiles and vet_profiles in AllSpecializedVets:", { profiles: profiles ? profiles.length : 0, vetProfiles: vetProfiles ? vetProfiles.length : 0 });
-
-      const getPublicUrl = (photo: string) => {
-        if (!photo) return "";
-        if (photo.startsWith("http")) return photo;
-        return supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
-      };
-
-      interface VetProfileItem {
-        id?: string;
-        user_id: string;
-        specializations?: string[];
-        years_of_experience?: number;
-        online_fee?: number;
-        average_rating?: number | null;
-        verification_status?: string;
-        is_active?: boolean | null;
-        profile_photo?: string | null;
-        offline_fee?: number;
-        clinic_address?: string | null;
-      }
-
-      const pMap = new Map((profiles || []).map((p) => [p.id, p]));
-
-      const vets: RealVet[] = vetProfiles
-        .filter(vp => {
-          const p = pMap.get(vp.user_id);
-          // If profile exists, check if admin approved. If profile is missing, bypass check.
-          if (p && !p.is_admin_approved) return false;
-
-          const addrMatch = matchCity(p?.address || null, city);
-          const clinicMatch = matchCity(vp?.clinic_address || null, city);
-          
-          const isMatch = addrMatch || clinicMatch || !city || city.toLowerCase() === "all" || city.toLowerCase() === "";
-          
-          if (!isMatch) {
-            console.log(`Debug: Vet ${p?.full_name || vp.user_id} NOT matching city: ${city}`, {
-              address: p?.address,
-              clinic_address: vp?.clinic_address
-            });
-          } else {
-            console.log(`Debug: Vet ${p?.full_name || vp.user_id} MATCHING city: ${city}`);
-          }
-          
-          return isMatch;
-        })
-        .map((vp) => {
-          const p = pMap.get(vp.user_id);
-          const rawName = p?.full_name || p?.name || (vp.user_id === "f9834ef6-778d-4384-8d17-6316fffa03b6" ? "Jashan Pabla" : "Veterinarian");
-          const name = `Dr. ${rawName}`;
-          const specs = vp?.specializations || [];
-          return {
-            id: vp?.id,
-            name: name,
-            specialty: specs[0] || "General Veterinarian",
-            experience: `${vp?.years_of_experience || 0} yrs exp.`,
-            rating: vp?.average_rating || 0,
-            price: vp?.online_fee || 500,
-            image: getPublicUrl(vp?.profile_photo || p?.profile_photo || ""),
-            verified: vp?.verification_status === "verified",
-            isActive: vp?.is_active ?? true,
-            distance: Math.floor(Math.random() * 25) + 1,
-            availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`
-          };
-        });
-
-      setAllVets(vets);
     };
 
+    // Initial fetch
     fetchVets();
 
-    const handleRealtimeChange = () => {
-      console.log("Debug: Real-time change detected, refreshing vets...");
-      // Fetch multiple times to catch staggered DB updates
-      fetchVets();
-      setTimeout(fetchVets, 500);
-      setTimeout(fetchVets, 1500);
-      setTimeout(fetchVets, 3000);
-    };
-
-    // Set up real-time listener
+    // Setup Realtime Subscription
+    // Listens to ALL postgres changes on vet_profiles and profiles to auto-refresh natively.
     const channel = supabase
-      .channel('vet_list_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'vet_profiles' }, handleRealtimeChange)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleRealtimeChange)
+      .channel("vet_profiles_realtime_sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "vet_profiles" },
+        () => {
+          console.log("Real-time vet_profiles update received!");
+          fetchVets();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        () => {
+          console.log("Real-time profiles update received!");
+          fetchVets();
+        }
+      )
       .subscribe((status) => {
-        console.log("Debug: Real-time status:", status);
+        console.log("Supabase Realtime channel status:", status);
       });
 
-    const pollInterval = setInterval(fetchVets, 8000);
-
     return () => {
+      isMounted = false;
       supabase.removeChannel(channel);
-      clearInterval(pollInterval);
     };
   }, [authReady, city]);
 
