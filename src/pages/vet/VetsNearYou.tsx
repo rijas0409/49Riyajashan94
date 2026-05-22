@@ -138,7 +138,7 @@ export default function VetsNearYou() {
     
     if (sCity && sCity !== "all" && sCity !== "any") {
       const vCity = (vet.city || "").trim().toLowerCase();
-      matchesCity = vCity.includes(sCity) || sCity.includes(vCity);
+      matchesCity = !vCity ? true : (vCity.includes(sCity) || sCity.includes(vCity));
     }
 
     // 2. Filter by search query

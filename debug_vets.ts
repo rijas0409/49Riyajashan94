@@ -11,23 +11,28 @@ const supabase = createClient(urlMatch?.[1] || "", keyMatch?.[1] || "");
 async function check() {
   console.log("Fetching Vets (Anon)...");
   
-  // Try without the hint
   const { data, error } = await supabase
     .from("vet_profiles")
-    .select(`
-      id,
-      user_id,
-      profiles (
-        id,
-        name
-      )
-    `)
+    .select("*")
+    .in("verification_status", ["verified", "approved"])
+    .eq("is_active", true)
     .limit(1);
     
   console.log("Error (No hint):", error);
-  console.log("Data snippet:", JSON.stringify(data?.slice(0, 2), null, 2));
+  console.log("Data snippet:", JSON.stringify(data?.[0], null, 2));
 
-  // Also describe the columns of vet_profiles to see if user_id is a foreign key
-  // No easy way to query pg_class through rest, maybe we can run SQL? We don't have sql.
+  console.log("Fetching profiles for Vets (Anon)...");
+  
+  const userIds = data?.map(v => v.user_id) || [];
+  if (userIds.length > 0) {
+    const { data: profiles, error: pError } = await supabase
+      .from("profiles")
+      .select("id, name, email")
+      .in("id", userIds);
+      
+    console.log("Profiles Error:", pError);
+    console.log("Profiles Data length:", profiles?.length);
+    console.log("Profiles Data:", profiles);
+  }
 }
 check();

@@ -232,8 +232,9 @@ const Vet = () => {
 
           const addrMatch = matchCity(p?.address || null, location);
           const clinicMatch = matchCity(vp?.clinic_address || null, location);
+          const noLocationKnown = !p?.address && !vp?.clinic_address;
           
-          return addrMatch || clinicMatch || !location || location.toLowerCase() === "all" || location.toLowerCase() === "";
+          return addrMatch || clinicMatch || noLocationKnown || !location || location.toLowerCase() === "all" || location.toLowerCase() === "";
         })
         .map((vp) => {
           const p = pMap.get(vp.user_id);

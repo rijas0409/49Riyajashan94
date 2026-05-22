@@ -133,6 +133,9 @@ export default function AllSpecializedVets() {
     if (!sCity || sCity === "all" || sCity === "any") return true;
 
     const vCity = (vet.city || "").trim().toLowerCase();
+    
+    // If city is completely empty/unknown, decide if we want to show it. For now, let's show it so they aren't hidden by default
+    if (!vCity) return true;
 
     // The core requested fuzzy matching capability
     return vCity.includes(sCity) || sCity.includes(vCity);
