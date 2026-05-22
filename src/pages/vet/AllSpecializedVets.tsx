@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
-import { MapPin, Star, GraduationCap, ChevronLeft } from "lucide-react";
+import { MapPin, Star, GraduationCap, ChevronLeft, Award, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type VetRecord = {
@@ -22,8 +22,7 @@ export default function AllSpecializedVets() {
   const { authReady } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  // city might be passed via route state or just "LocationContext"
-  // If not in state, default to ""
+  // Safe extraction
   const selectedCity = (location.state?.city as string) || (location.state as any)?.location || "";
 
   const [vets, setVets] = useState<VetRecord[]>([]);
@@ -41,6 +40,7 @@ export default function AllSpecializedVets() {
           years_of_experience,
           average_rating,
           online_fee,
+          offline_fee,
           clinic_address,
           profile_photo,
           verification_status,
@@ -49,10 +49,12 @@ export default function AllSpecializedVets() {
             name,
             full_name,
             address,
+            city,
             profile_photo
           )
         `)
-        .in("verification_status", ["verified", "approved"]);
+        .in("verification_status", ["verified", "approved"])
+        .eq("is_active", true);
 
       if (error) {
         console.error("Error fetching vets:", error);
@@ -71,8 +73,8 @@ export default function AllSpecializedVets() {
           const rawName = profile?.full_name || profile?.name || "Veterinarian";
           const specs = vp.specializations || [];
           
-          // Combine both address fields to represent the vet's "city" string for filtering
-          const addressStr = `${vp.clinic_address || ""} ${profile?.address || ""}`.trim();
+          // Combine address fields string to ensure fuzzy match across everything
+          const addressStr = `${vp.clinic_address || ""} ${profile?.address || ""} ${profile?.city || ""}`.trim();
 
           return {
             id: vp.id,
@@ -103,12 +105,12 @@ export default function AllSpecializedVets() {
     fetchVets();
 
     const channel = supabase
-      .channel("realtime-vet-profiles")
+      .channel("realtime-vet-profiles-vats_specialized")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "vet_profiles" },
         (payload) => {
-          console.log("Realtime event on vet_profiles:", payload);
+          console.log("Realtime event on vet_profiles (AllSpecs):", payload);
           fetchVets();
         }
       )
@@ -119,14 +121,14 @@ export default function AllSpecializedVets() {
     };
   }, [authReady]);
 
-  // Fuzzy filter
+  // Robust Fuzzy Location Filter matching substrings both ways
   const filteredVets = vets.filter((vet) => {
     const sCity = selectedCity.trim().toLowerCase();
     if (!sCity || sCity === "all" || sCity === "any") return true;
 
     const vCity = (vet.city || "").trim().toLowerCase();
 
-    // Check if the database city includes the selected city, OR vice versa
+    // The core requested fuzzy matching capability
     return vCity.includes(sCity) || sCity.includes(vCity);
   });
 
@@ -144,7 +146,7 @@ export default function AllSpecializedVets() {
           <div className="flex-1">
             <h1 className="text-xl font-bold text-neutral-900">Specialized Vets</h1>
             {selectedCity && selectedCity.toLowerCase() !== "all" && (
-              <p className="text-sm text-neutral-500 font-medium capitalize flex items-center gap-1">
+              <p className="text-sm text-neutral-500 font-medium capitalize flex items-center gap-1 mt-1">
                 <MapPin className="w-3.5 h-3.5" />
                 {selectedCity}
               </p>
@@ -207,14 +209,14 @@ export default function AllSpecializedVets() {
                     <span className="text-sm font-semibold truncate">{vet.specialty}</span>
                   </div>
                   
-                  <div className="flex items-center gap-3 text-xs text-neutral-500 font-medium mt-2">
-                    <span className="flex items-center gap-1">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500 font-medium mt-2">
+                    <span className="flex items-center gap-1 shrink-0">
                       <Award className="w-3.5 h-3.5" />
                       {vet.experience} Yrs Exp.
                     </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      {vet.city ? vet.city.substring(0, 15) + (vet.city.length > 15 ? "..." : "") : "Available"}
+                    <span className="flex items-center gap-1 truncate max-w-[120px]">
+                      <MapPin className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{vet.city || "Available"}</span>
                     </span>
                   </div>
                 </div>
