@@ -1,19 +1,33 @@
-import fs from 'fs';
 import { createClient } from "@supabase/supabase-js";
+import fs from "fs";
 
-const VITE_SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co";
-const VITE_SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2eW5zbHhvdGdscmFjZmdhY2duIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1NDMwNjUsImV4cCI6MjA4MDExOTA2NX0.i9-bXgL2891ji3AK-mS4wLp6HDl4DIStrcJeONNEKP0";
+// Read from client.ts to get the url and key in case of missing .env
+const code = fs.readFileSync("./src/integrations/supabase/client.ts", "utf-8");
+const urlMatch = code.match(/rawUrl = VITE_SUPABASE_URL \|\| "(.*?)"/);
+const keyMatch = code.match(/rawKey = VITE_SUPABASE_PUBLISHABLE_KEY \|\| "(.*?)"/);
 
-const supabase = createClient(VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY);
+const supabase = createClient(urlMatch?.[1] || "", keyMatch?.[1] || "");
 
-async function debugVets() {
-  const { data: p } = await supabase.from("profiles").select("*").eq("role", "vet");
-  console.log("=== PROFILES ===");
-  console.log(JSON.stringify(p, null, 2));
+async function check() {
+  console.log("Fetching Vets (Anon)...");
+  
+  // Try without the hint
+  const { data, error } = await supabase
+    .from("vet_profiles")
+    .select(`
+      id,
+      user_id,
+      profiles (
+        id,
+        name
+      )
+    `)
+    .limit(1);
+    
+  console.log("Error (No hint):", error);
+  console.log("Data snippet:", JSON.stringify(data?.slice(0, 2), null, 2));
 
-  const { data: v } = await supabase.from("vet_profiles").select("*");
-  console.log("=== VET_PROFILES ===");
-  console.log(JSON.stringify(v, null, 2));
+  // Also describe the columns of vet_profiles to see if user_id is a foreign key
+  // No easy way to query pg_class through rest, maybe we can run SQL? We don't have sql.
 }
-
-debugVets();
+check();

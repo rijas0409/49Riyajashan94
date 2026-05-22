@@ -87,7 +87,7 @@ const AdminDashboard = () => {
     else setRefreshing(true);
     
     try {
-      const [requestsRes, partnersRes, sellersRes, petsRes, allPetsRes, productsRes, allUsersRes, allVetsRes, allProductsRes, ordersRes, sellerEarnRes, vetEarnRes, appointmentsRes] = await Promise.all([
+      const [requestsRes, partnersRes, sellersRes, petsRes, allPetsRes, productsRes, allUsersRes, allVetsBaseRes, allProductsRes, ordersRes, sellerEarnRes, vetEarnRes, appointmentsRes] = await Promise.all([
         supabase.from("transport_requests").select("*, pet:pets(name, breed, images), seller:profiles!transport_requests_seller_id_fkey(name, phone), buyer:profiles!transport_requests_buyer_id_fkey(name, phone), partner:profiles!transport_requests_assigned_partner_id_fkey(name, phone)").order("created_at", { ascending: false }),
         supabase.from("profiles").select("id, name, phone, email").eq("role", "delivery_partner"),
         supabase.from("profiles").select("*").in("role", ["seller", "product_seller"]).eq("is_onboarding_complete", true).eq("is_admin_approved", false).order("priority_fee_paid", { ascending: false }).order("created_at", { ascending: false }),
@@ -95,7 +95,7 @@ const AdminDashboard = () => {
         supabase.from("pets").select("*, owner:profiles!pets_owner_id_fkey(name, phone)").order("priority_fee_paid", { ascending: false }).order("created_at", { ascending: false }),
         supabase.from("shop_products").select("*, seller:profiles!shop_products_seller_id_fkey(name, phone)").eq("verification_status", "pending").order("priority_fee_paid", { ascending: false }).order("created_at", { ascending: false }),
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-        supabase.from("vet_profiles").select("*, profile:profiles!vet_profiles_user_id_fkey(*)").order("created_at", { ascending: false }),
+        supabase.from("vet_profiles").select("*").order("created_at", { ascending: false }), // JS Join Step 1
         supabase.from("shop_products").select("*, seller:profiles!shop_products_seller_id_fkey(name, phone)").order("created_at", { ascending: false }),
         supabase.from("orders").select("*, pet:pets(name), buyer:profiles!orders_buyer_id_fkey(name), seller:profiles!orders_seller_id_fkey(name)").order("created_at", { ascending: false }),
         supabase.from("seller_earnings").select("*").order("created_at", { ascending: false }),
@@ -103,10 +103,23 @@ const AdminDashboard = () => {
         supabase.from("vet_appointments").select("*, vet:profiles!vet_appointments_vet_id_fkey(name, email, phone), user:profiles!vet_appointments_user_id_fkey(name, email, phone)").order("created_at", { ascending: false }),
       ]);
       const allUsersData = allUsersRes.data || [];
-      const allVetsWithProfile = (allVetsRes.data || []).map(v => ({
-        ...v,
-        profile: Array.isArray(v.profile) ? v.profile[0] : v.profile
-      }));
+      
+      // JS Join for Vets
+      const vetBaseData = allVetsBaseRes.data || [];
+      const userIdsLookup = vetBaseData.map((v) => v.user_id).filter(Boolean);
+      let vetsProfilesData: any[] = [];
+      if (userIdsLookup.length > 0) {
+        const { data: vpData } = await supabase.from("profiles").select("*").in("id", userIdsLookup);
+        vetsProfilesData = vpData || [];
+      }
+      
+      const allVetsWithProfile = vetBaseData.map(v => {
+        const p = vetsProfilesData.find(prof => prof.id === v.user_id);
+        return {
+          ...v,
+          profile: p || null
+        };
+      });
 
       const pendingVetsData = allVetsWithProfile.filter((v) => {
         const isPending = v.verification_status === "pending";

@@ -34,7 +34,7 @@ export default function VetsNearYou() {
   const fetchVets = async () => {
     try {
       console.log("Fetching approved vets (Near You)...");
-      const { data, error } = await supabase
+      const { data: vetData, error: vetError } = await supabase
         .from("vet_profiles")
         .select(`
           id,
@@ -46,27 +46,31 @@ export default function VetsNearYou() {
           offline_fee,
           clinic_address,
           profile_photo,
-          verification_status,
-          profiles!vet_profiles_user_id_fkey (
-            id,
-            name,
-            full_name,
-            address,
-            city,
-            profile_photo
-          )
+          verification_status
         `)
         .in("verification_status", ["verified", "approved"])
         .eq("is_active", true); // explicitly check for active
 
-      if (error) {
-        console.error("Error fetching vets:", error);
+      if (vetError) {
+        console.error("Error fetching vets:", vetError);
         return;
       }
 
-      if (data) {
-        const parsedVets: VetRecord[] = data.map((vp: any) => {
-          const profile = Array.isArray(vp.profiles) ? vp.profiles[0] : vp.profiles;
+      if (vetData && vetData.length > 0) {
+        // Find corresponding user profiles (JS Join fallback for missing FK)
+        const userIds = vetData.map((v) => v.user_id).filter(Boolean);
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, name, full_name, address, city, profile_photo")
+          .in("id", userIds);
+
+        const profilesMap = new Map();
+        if (profilesData) {
+          profilesData.forEach((p) => profilesMap.set(p.id, p));
+        }
+
+        const parsedVets: VetRecord[] = vetData.map((vp: any) => {
+          const profile = profilesMap.get(vp.user_id);
           
           let photo = vp.profile_photo || profile?.profile_photo;
           if (photo && !photo.startsWith("http")) {
@@ -94,6 +98,8 @@ export default function VetsNearYou() {
         });
 
         setVets(parsedVets);
+      } else {
+        setVets([]);
       }
     } catch (err) {
       console.error("Unexpected error fetching vets:", err);
