@@ -43,11 +43,14 @@ const VetOnboarding = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const uid = session.user.id;
-        const { data: p } = await supabase.from('profiles').select('is_onboarding_complete, is_admin_approved, full_name, phone, email, city, state, address').eq('id', uid).single();
+        const { data: p } = await supabase.from('profiles').select('is_onboarding_complete, is_admin_approved, name, phone, email, city, state, address, birth_date, gender').eq('id', uid).maybeSingle();
         
         // Fetch existing vet profile data to pre-fill
         const { data: vp } = await supabase.from('vet_profiles').select('*').eq('user_id', uid).maybeSingle();
         
+        const defaultName = p?.name || session.user.user_metadata?.name || "";
+        const defaultEmail = p?.email || session.user.email || "";
+
         if (vp) {
           // Check if they should be seeing the pending screen
           // If they are rejected, we let them STAY here to edit
@@ -62,8 +65,8 @@ const VetOnboarding = () => {
           // Pre-fill form
           setFormData(prev => ({
             ...prev,
-            fullName: p?.full_name || "",
-            email: p?.email || "",
+            fullName: p?.name || vp.fullName || defaultName,
+            email: defaultEmail,
             phone: p?.phone || "",
             qualification: vp.qualification || "BVSc",
             registrationNumber: vp.registration_number || "",
@@ -80,13 +83,15 @@ const VetOnboarding = () => {
             bankName: vp.bank_name || "",
             bankAccountNumber: vp.bank_account_number || "",
             bankIfsc: vp.bank_ifsc || "",
-            preferred_language: vp.preferred_language || "English",
+            preferredLanguage: vp.preferred_language || "English",
             clinicAddress: vp.clinic_address || "",
             vendorAgreement: vp.vendor_agreement_accepted || false,
             telemedicineConsent: vp.telemedicine_consent_accepted || false,
-            city: vp.city || (p as any)?.city || "",
-            state: vp.state || (p as any)?.state || "",
-            address: (p as any)?.address || "",
+            city: vp.city || p?.city || "",
+            state: vp.state || p?.state || "",
+            address: p?.address || "",
+            dob: p?.birth_date || "",
+            gender: p?.gender || "",
           }));
           
           // Pre-fill file previews for existing documents
@@ -130,6 +135,18 @@ const VetOnboarding = () => {
             }));
           }
         } else {
+          // Pre-fill even if no vet profile exists yet!
+          setFormData(prev => ({
+            ...prev,
+            fullName: defaultName,
+            email: defaultEmail,
+            phone: p?.phone || "",
+            city: p?.city || "",
+            state: p?.state || "",
+            address: p?.address || "",
+            dob: p?.birth_date || "",
+            gender: p?.gender || "",
+          }));
           if (p?.is_onboarding_complete) {
              navigate("/vet-pending-approval", { replace: true });
           }
@@ -416,7 +433,15 @@ const VetOnboarding = () => {
       case 1: return formData.fullName && formData.email && formData.phone && formData.preferredLanguage && formData.dob && formData.gender && formData.city && formData.state && formData.address;
       case 2: return formData.govtIdFile && formData.panCardFile && formData.passportPhotoFile;
       case 3: return formData.vetDegreeFile && formData.registrationNumber;
-      case 4: return true;
+      case 4: {
+        if (!formData.isIndependentPractice) return true;
+        const hasClinicReg = formData.clinicRegistrationFile !== null || !!filePreviews.clinicRegistrationFile;
+        const hasShopLicense = formData.clinicShopLicenseFile !== null || !!filePreviews.clinicShopLicenseFile;
+        const hasGst = formData.gstCertificateFile !== null || !!filePreviews.gstCertificateFile;
+        const hasAddressProof = formData.clinicAddressProofFile !== null || !!filePreviews.clinicAddressProofFile;
+        const hasAddress = !!formData.clinicAddress && formData.clinicAddress.trim() !== "";
+        return hasClinicReg && hasShopLicense && hasGst && hasAddressProof && hasAddress;
+      }
       case 5: return true;
       case 6: return (
         formData.availableDays.length > 0 && 
@@ -481,22 +506,30 @@ const VetOnboarding = () => {
 
       <main className="container mx-auto px-4 py-6 max-w-2xl">
         {/* Progress bar */}
-        <div className="flex items-center justify-center mb-6 overflow-x-auto pb-2">
-          {visibleSteps.map((step, i) => (
-            <div key={step.n} className="flex items-center">
-              <div className={`flex flex-col items-center ${currentStep >= step.n ? "text-primary" : "text-muted-foreground"}`}>
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center mb-1 transition-all ${
-                  currentStep >= step.n ? "bg-gradient-primary text-white shadow-float" : "bg-muted"
-                }`}>
-                  <step.icon className="w-4 h-4" />
+        <div className="flex items-center justify-between md:justify-center gap-1 md:gap-3 mb-6 bg-card p-3 rounded-2xl border border-border/60 shadow-sm overflow-x-auto scrollbar-none">
+          {visibleSteps.map((step, i) => {
+            const isCompleted = currentStep > step.n;
+            const isActive = currentStep === step.n;
+            return (
+              <div key={step.n} className="flex items-center flex-1 last:flex-none">
+                <div className="flex flex-col items-center flex-1">
+                  <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all ${
+                    isCompleted || isActive 
+                      ? "bg-gradient-primary text-white shadow-float" 
+                      : "bg-muted text-muted-foreground"
+                  }`}>
+                    <step.icon className="w-4 h-4" />
+                  </div>
+                  <span className="hidden sm:block text-[9px] font-semibold mt-1 whitespace-nowrap">{step.title}</span>
                 </div>
-                <span className="text-[9px] font-medium whitespace-nowrap">{step.title}</span>
+                {i < visibleSteps.length - 1 && (
+                  <div className={`h-0.5 flex-1 min-w-[8px] sm:min-w-[16px] md:min-w-[24px] rounded-full mx-1 transition-all ${
+                    isCompleted ? "bg-primary" : "bg-muted"
+                  }`} />
+                )}
               </div>
-              {i < visibleSteps.length - 1 && (
-                <div className={`w-5 h-0.5 mx-0.5 mb-4 rounded-full transition-all ${currentStep > visibleSteps[i].n ? "bg-primary" : "bg-muted"}`} />
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <Card className="border-0 shadow-card animate-fade-in">
@@ -511,17 +544,22 @@ const VetOnboarding = () => {
               {currentStep === 1 && (
                 <div className="space-y-4 animate-fade-in">
                   <div className="space-y-2">
-                    <Label>Full Name *</Label>
+                    <Label className="flex items-center gap-1.5">Full Name *</Label>
                     <Input value={formData.fullName} onChange={e => setFormData({ ...formData, fullName: e.target.value })} placeholder="Dr. Ananya Iyer" className="rounded-2xl" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Email *</Label>
-                    <Input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="doctor@example.com" className="rounded-2xl" />
+                    <div className="flex items-center justify-between">
+                      <Label className="text-muted-foreground flex items-center gap-1.5">
+                        <span>Email *</span>
+                        <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-mono">Verified & Locked</span>
+                      </Label>
+                    </div>
+                    <Input type="email" value={formData.email} disabled className="rounded-2xl bg-muted/70 border-muted text-muted-foreground cursor-not-allowed font-medium shadow-none" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label>Date of Birth *</Label>
-                      <Input type="date" value={formData.dob} onChange={e => setFormData({ ...formData, dob: e.target.value })} className="rounded-2xl" />
+                      <Label className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-primary" /> Date of Birth *</Label>
+                      <Input type="date" value={formData.dob} onChange={e => setFormData({ ...formData, dob: e.target.value })} className="rounded-2xl border border-input focus:border-primary w-full transition-all" />
                     </div>
                     <div className="space-y-2">
                       <Label>Gender *</Label>
@@ -722,17 +760,19 @@ const VetOnboarding = () => {
               {/* ══════ STEP 4 – Clinic / Business Verification ══════ */}
               {currentStep === 4 && (
                 <div className="space-y-4 animate-fade-in">
-                  <div className="bg-accent/50 rounded-2xl p-3 mb-2">
-                    <p className="text-xs text-accent-foreground font-medium">🏥 Clinic & business verification documents</p>
+                  <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-3.5 mb-2">
+                    <p className="text-xs text-destructive font-semibold flex items-center gap-1.5">
+                      ⚠️ Independent practices must complete all verification fields (All fields are mandatory).
+                    </p>
                   </div>
-                  <FileUploadBox field="clinicRegistrationFile" label="Clinic Registration Certificate" icon={Building2} />
-                  <FileUploadBox field="clinicShopLicenseFile" label="Shop & Establishment License" icon={FileText} />
-                  <FileUploadBox field="gstCertificateFile" label="GST Registration Certificate" icon={FileText} />
+                  <FileUploadBox field="clinicRegistrationFile" label="Clinic Registration Certificate *" icon={Building2} />
+                  <FileUploadBox field="clinicShopLicenseFile" label="Shop & Establishment License *" icon={FileText} />
+                  <FileUploadBox field="gstCertificateFile" label="GST Registration Certificate *" icon={FileText} />
                   <div className="space-y-2">
-                    <Label>Clinic Address</Label>
+                    <Label className="font-semibold text-foreground">Clinic Address *</Label>
                     <Input value={formData.clinicAddress} onChange={e => setFormData({ ...formData, clinicAddress: e.target.value })} placeholder="123, Vet Street, Mumbai" className="rounded-2xl" />
                   </div>
-                  <FileUploadBox field="clinicAddressProofFile" label="Clinic Address Proof" icon={Shield} />
+                  <FileUploadBox field="clinicAddressProofFile" label="Clinic Address Proof *" icon={Shield} />
 
                   {/* Clinic Photos (Optional) */}
                   <div className="space-y-2">
