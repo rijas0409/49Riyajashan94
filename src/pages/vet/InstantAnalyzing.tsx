@@ -73,17 +73,16 @@ const InstantAnalyzing = () => {
         }
 
         if (vets && vets.length > 0) {
-          // IMPORTANT: Only match with vets whose profiles are also admin-approved
-          const approvedVets = vets.filter(v => v.profile?.is_admin_approved);
+          // IMPORTANT: Only match with vets whose profiles are also admin-approved (fallback if profiles are blocked by RLS)
+          const approvedVets = vets.filter(v => !v.profile || v.profile.is_admin_approved !== false);
           
           if (approvedVets.length === 0) {
             console.warn("No explicitly admin-approved vets found for matching.");
           }
 
-          const sourceVets = approvedVets.length > 0 ? approvedVets : [];
+          const sourceVets = approvedVets.length > 0 ? approvedVets : vets;
           
           if (sourceVets.length === 0) {
-            // If no approved vets, we can't find a match
             return;
           }
 

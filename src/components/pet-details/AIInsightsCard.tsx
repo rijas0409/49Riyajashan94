@@ -37,69 +37,24 @@ const AIInsightsCard = ({ breed, category, ageMonths, gender = "unknown", petId,
     const fetchInsights = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase.functions.invoke("pet-ai-insights", {
-          body: { breed, category, ageMonths, gender },
+        const response = await fetch("/api/pet-ai-insights", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ breed, category, ageMonths, gender }),
         });
-        
-        if (error) throw error;
+        if (!response.ok) throw new Error("Local API server error");
+        const data = await response.json();
         setInsights(data);
       } catch (e) {
-        console.warn("Failed to fetch AI insights from Edge Function, trying fallback:", e);
-        
+        console.warn("Direct pet-ai-insights API failed, trying Edge function fallback:", e);
         try {
-          // Fallback to direct Gemini API call
-          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-          const prompt = `Generate pet care insights for a ${ageMonths} month old ${gender} ${breed} (${category}). 
-          Provide data for two categories: Quick Facts and Deep Dive.
-          Quick Facts should cover nutrition, activity, and lifespan.
-          Deep Dive should cover health, training, and grooming.
-          Keep descriptions concise (max 2 sentences).`;
-
-          const response = await ai.models.generateContent({
-            model: "gemini-3-flash-preview",
-            contents: prompt,
-            config: {
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                  quick: {
-                    type: Type.OBJECT,
-                    properties: {
-                      nutrition: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
-                      activity: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
-                      lifespan: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
-                    },
-                    required: ["nutrition", "activity", "lifespan"]
-                  },
-                  deep: {
-                    type: Type.OBJECT,
-                    properties: {
-                      health: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
-                      training: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
-                      grooming: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
-                    },
-                    required: ["health", "training", "grooming"]
-                  }
-                },
-                required: ["quick", "deep"]
-              }
-            }
+          const { data, error } = await supabase.functions.invoke("pet-ai-insights", {
+            body: { breed, category, ageMonths, gender },
           });
-
-          if (response.text) {
-            let jsonString = response.text.trim();
-            // Handle cases where Gemini might wrap JSON in backticks despite responseMimeType
-            if (jsonString.startsWith("```json")) {
-              jsonString = jsonString.replace(/^```json/, "").replace(/```$/, "").trim();
-            } else if (jsonString.startsWith("```")) {
-              jsonString = jsonString.replace(/^```/, "").replace(/```$/, "").trim();
-            }
-            const parsedData = JSON.parse(jsonString);
-            setInsights(parsedData);
-          }
-        } catch (fallbackError) {
-          console.error("Gemini fallback also failed:", fallbackError);
+          if (error) throw error;
+          setInsights(data);
+        } catch (err) {
+          console.error("All pet insights generation attempts failed:", err);
         }
       } finally {
         setLoading(false);

@@ -43,7 +43,7 @@ const VetOnboarding = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const uid = session.user.id;
-        const { data: p } = await supabase.from('profiles').select('is_onboarding_complete, is_admin_approved, full_name, phone, email, city, state').eq('id', uid).single();
+        const { data: p } = await supabase.from('profiles').select('is_onboarding_complete, is_admin_approved, full_name, phone, email, city, state, address').eq('id', uid).single();
         
         // Fetch existing vet profile data to pre-fill
         const { data: vp } = await supabase.from('vet_profiles').select('*').eq('user_id', uid).maybeSingle();
@@ -86,6 +86,7 @@ const VetOnboarding = () => {
             telemedicineConsent: vp.telemedicine_consent_accepted || false,
             city: vp.city || (p as any)?.city || "",
             state: vp.state || (p as any)?.state || "",
+            address: (p as any)?.address || "",
           }));
           
           // Pre-fill file previews for existing documents
@@ -141,7 +142,7 @@ const VetOnboarding = () => {
   /* ─── form state ─── */
   const [formData, setFormData] = useState({
     // Step 1 – Personal
-    fullName: "", email: "", phone: "", city: "", state: "", preferredLanguage: "English",
+    fullName: "", email: "", phone: "", city: "", state: "", address: "", preferredLanguage: "English",
     dob: "", gender: "",
     isIndependentPractice: false,
     // Step 2 – Identity
@@ -375,7 +376,7 @@ const VetOnboarding = () => {
         email: formData.email,
         gender: formData.gender,
         birth_date: formData.dob || null,
-        address: `${formData.city}, ${formData.state}`,
+        address: formData.address || `${formData.city}, ${formData.state}`,
         city: formData.city,
         state: formData.state,
         is_onboarding_complete: true,
@@ -412,7 +413,7 @@ const VetOnboarding = () => {
 
   const canProceed = (step: number) => {
     switch (step) {
-      case 1: return formData.fullName && formData.email && formData.phone && formData.preferredLanguage && formData.dob && formData.gender && formData.city && formData.state;
+      case 1: return formData.fullName && formData.email && formData.phone && formData.preferredLanguage && formData.dob && formData.gender && formData.city && formData.state && formData.address;
       case 2: return formData.govtIdFile && formData.panCardFile && formData.passportPhotoFile;
       case 3: return formData.vetDegreeFile && formData.registrationNumber;
       case 4: return true;
@@ -546,6 +547,15 @@ const VetOnboarding = () => {
                         <SelectContent>{languages.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Full Address *</Label>
+                    <Input 
+                      value={formData.address} 
+                      onChange={e => setFormData({ ...formData, address: e.target.value })} 
+                      placeholder="Enter house/flat number, road, landmark, area" 
+                      className="rounded-2xl" 
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
@@ -870,6 +880,7 @@ const VetOnboarding = () => {
                       <span className="text-muted-foreground">DOB:</span><span className="font-medium">{formData.dob}</span>
                       <span className="text-muted-foreground">Phone:</span><span className="font-medium">{formData.phone}</span>
                       <span className="text-muted-foreground">City:</span><span className="font-medium">{formData.city}, {formData.state}</span>
+                      <span className="text-muted-foreground">Address:</span><span className="font-medium break-all">{formData.address || "N/A"}</span>
                       <span className="text-muted-foreground">Qualification:</span><span className="font-medium">{formData.qualification}</span>
                       <span className="text-muted-foreground">Experience:</span><span className="font-medium">{formData.yearsOfExperience} yrs</span>
                       <span className="text-muted-foreground">Specializations:</span><span className="font-medium">{formData.specializations.join(", ")}</span>

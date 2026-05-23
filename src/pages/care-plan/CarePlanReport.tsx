@@ -37,53 +37,24 @@ const CarePlanReport = () => {
 
   const generateReport = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("care-plan-generate", {
-        body: { petData, formData, flowType },
+      const response = await fetch("/api/care-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ petData, formData, flowType }),
       });
-      if (error) throw error;
+      if (!response.ok) throw new Error("Local API server error");
+      const data = await response.json();
       setReport(data);
     } catch (e) {
-      console.warn("Care plan edge function failed, using Gemini fallback", e);
-      
+      console.warn("Direct care plan API failed, trying Edge function fallback:", e);
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const prompt = `Generate a pet care report for a ${petData.breed} (${petData.category}).
-        User context from form: ${JSON.stringify(formData)}
-        Flow type: ${flowType} (quick facts or deep dive)
-        
-        Provide compatibility score (0-100), a catchy tagline, and specific advice for feeding, exercise, grooming, and monthly cost in INR.
-        ${flowType === "deep" ? "Also include a note on monthly costs, health considerations, and beginner tips." : ""}
-        Keep all descriptions concise.`;
-
-        const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                compatibilityScore: { type: Type.NUMBER },
-                tagline: { type: Type.STRING },
-                feeding: { type: Type.STRING },
-                exercise: { type: Type.STRING },
-                grooming: { type: Type.STRING },
-                monthlyCost: { type: Type.STRING },
-                verdict: { type: Type.STRING },
-                monthlyCostNote: { type: Type.STRING },
-                healthConsiderations: { type: Type.STRING },
-                beginnerTips: { type: Type.STRING },
-              },
-              required: ["compatibilityScore", "tagline", "feeding", "exercise", "grooming", "monthlyCost", "verdict"]
-            }
-          }
+        const { data, error } = await supabase.functions.invoke("care-plan-generate", {
+          body: { petData, formData, flowType },
         });
-
-        if (response.text) {
-          setReport(JSON.parse(response.text));
-        }
+        if (error) throw error;
+        setReport(data);
       } catch (err) {
-        console.error("Gemini fallback failed for care plan", err);
+        console.error("All care plan generation attempts failed:", err);
         toast.error("Failed to generate care plan. Please try again.");
         navigate(-1);
       }

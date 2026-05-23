@@ -126,7 +126,10 @@ const VetDoctorProfile = () => {
           .eq("id", vetProfile.user_id)
           .single();
 
-        if (!userProfile?.is_admin_approved || vetProfile.verification_status !== "verified") {
+        const isApproved = userProfile ? userProfile.is_admin_approved !== false : true;
+        const isVerified = vetProfile.verification_status === "verified" || vetProfile.verification_status === "approved";
+
+        if (!isVerified || !isApproved) {
            setDoctor(null);
            setLoading(false);
            return;

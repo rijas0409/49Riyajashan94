@@ -469,82 +469,41 @@ const ProductProfile = () => {
   const fetchAiInsights = async (prod: Product) => {
     setAiLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("pet-ai-insights", {
-        body: {
-          breed: prod.brand,
-          category: prod.pet_type,
-          ageMonths: 12,
-          gender: "unknown",
-          isProduct: true,
-          productName: prod.name,
-          productCategory: prod.category,
-          productIngredients: prod.ingredients,
-          productHighlights: prod.highlights,
-        },
+      const response = await fetch("/api/product-insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: prod.name,
+          brand: prod.brand,
+          pet_type: prod.pet_type,
+          category: prod.category,
+          ingredients: prod.ingredients,
+          highlights: prod.highlights,
+        }),
       });
-      if (!error) {
-        setAiInsights(data);
-      } else {
-        throw error;
-      }
+      if (!response.ok) throw new Error("Local API server error");
+      const data = await response.json();
+      setAiInsights(data);
     } catch (e) { 
-      console.warn("Product insights Edge Function failed, using Gemini fallback", e);
+      console.warn("Direct product insights API failed, trying Edge Function fallback:", e);
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const prompt = `Provide nutrition and wellness insights for a pet product:
-        Name: ${prod.name}
-        Brand: ${prod.brand}
-        Type: ${prod.pet_type}
-        Category: ${prod.category}
-        Ingredients: ${prod.ingredients?.join(", ") || "N/A"}
-        Highlights: ${prod.highlights?.join(", ") || "N/A"}
-        
-        Keep descriptions concise (max 2 sentences).`;
-
-        const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                quick: {
-                  type: Type.OBJECT,
-                  properties: {
-                    nutrition: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
-                    activity: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
-                    lifespan: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
-                  },
-                  required: ["nutrition", "activity", "lifespan"]
-                },
-                deep: {
-                  type: Type.OBJECT,
-                  properties: {
-                    health: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
-                    training: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
-                    grooming: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, text: { type: Type.STRING } }, required: ["title", "text"] },
-                  },
-                  required: ["health", "training", "grooming"]
-                }
-              },
-              required: ["quick", "deep"]
-            }
-          }
+        const { data, error } = await supabase.functions.invoke("pet-ai-insights", {
+          body: {
+            breed: prod.brand,
+            category: prod.pet_type,
+            ageMonths: 12,
+            gender: "unknown",
+            isProduct: true,
+            productName: prod.name,
+            productCategory: prod.category,
+            productIngredients: prod.ingredients,
+            productHighlights: prod.highlights,
+          },
         });
-
-        if (response.text) {
-          let jsonString = response.text.trim();
-          // Handle cases where Gemini might wrap JSON in backticks despite responseMimeType
-          if (jsonString.startsWith("```json")) {
-            jsonString = jsonString.replace(/^```json/, "").replace(/```$/, "").trim();
-          } else if (jsonString.startsWith("```")) {
-            jsonString = jsonString.replace(/^```/, "").replace(/```$/, "").trim();
-          }
-          setAiInsights(JSON.parse(jsonString));
-        }
+        if (error) throw error;
+        setAiInsights(data);
       } catch (err) {
-        console.error("Gemini fallback failed for product insights", err);
+        console.error("All product insights generation attempts failed:", err);
       }
     } finally { setAiLoading(false); }
   };
