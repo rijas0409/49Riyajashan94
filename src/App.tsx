@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LocationProvider } from "./contexts/LocationContext";
+import { VetProtectionWrapper } from "./components/VetProtectionWrapper";
 import { CartProvider } from "./contexts/CartContext";
 
 // Pages
@@ -188,10 +189,18 @@ const App = () => (
                 <Route path="/vet/consultation-detail" element={<ConsultationDetail />} />
                 <Route path="/vet/home-visit-details" element={<HomeVisitDetails />} />
                 <Route path="/vet/clinic-visit-details" element={<ClinicVisitDetails />} />
-                <Route path="/vet-earnings" element={<Navigate to="/vet/earnings" replace />} />
+                 <Route path="/vet-earnings" element={<Navigate to="/vet/earnings" replace />} />
                 <Route path="/vet-schedule" element={<Navigate to="/vet/schedule" replace />} />
-                <Route path="/vet-onboarding" element={<VetOnboarding />} />
-                <Route path="/vet-pending-approval" element={<VetPendingApproval />} />
+                <Route path="/vet-onboarding" element={
+                  <VetProtectionWrapper requiredStatus="onboarding">
+                    <VetOnboarding />
+                  </VetProtectionWrapper>
+                } />
+                <Route path="/vet-pending-approval" element={
+                  <VetProtectionWrapper requiredStatus="pending">
+                    <VetPendingApproval />
+                  </VetProtectionWrapper>
+                } />
                 <Route path="/wallet" element={<WalletPage />} />
                 <Route path="/wishlist" element={<Wishlist />} />
 

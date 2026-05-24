@@ -44,6 +44,11 @@ const Index = () => {
             return;
           }
 
+          if (profile.is_onboarding_complete === false) {
+            navigate("/vet-onboarding", { replace: true });
+            return;
+          }
+
           if (profile.vetStatus !== 'verified' && profile.vetStatus !== 'approved' && profile.email !== 'gucci@123.com' && profile.email !== 'rijas@lv.com') {
             navigate("/vet-pending-approval", { replace: true });
             return;

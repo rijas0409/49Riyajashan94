@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import {
   Loader2, Upload, FileText, CheckCircle, Shield, Stethoscope,
   Calendar, Banknote, User, Building2, ScrollText, Camera,
-  CreditCard, GraduationCap, Plus, Trash2
+  CreditCard, GraduationCap, Plus, Trash2, ChevronLeft, ChevronRight, LogOut, MapPin
 } from "lucide-react";
 import { AccountReviewScreen } from "@/components/AccountReviewScreen";
 import { INDIA_STATES, INDIA_STATES_AND_CITIES } from "@/constants/indiaLocations";
@@ -37,129 +37,10 @@ const VetOnboarding = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  useEffect(() => {
-    // Check if the user already has completed DB onboarding but was redirected here
-    const checkStatus = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const uid = session.user.id;
-        const { data: p } = await supabase.from('profiles').select('is_onboarding_complete, is_admin_approved, name, phone, email, city, state, address, birth_date, gender').eq('id', uid).maybeSingle();
-        
-        // Fetch existing vet profile data to pre-fill
-        const { data: vp } = await supabase.from('vet_profiles').select('*').eq('user_id', uid).maybeSingle();
-        
-        const defaultName = p?.name || session.user.user_metadata?.name || "";
-        const defaultEmail = p?.email || session.user.email || "";
-
-        if (vp) {
-          // Check if they should be seeing the pending screen
-          // If they are rejected, we let them STAY here to edit
-          if (p?.is_onboarding_complete && p?.is_admin_approved) {
-            navigate("/vet/home", { replace: true });
-            return;
-          } else if (p?.is_onboarding_complete && !p?.is_admin_approved && vp.verification_status !== 'failed') {
-            navigate("/vet-pending-approval", { replace: true });
-            return;
-          }
-
-          // Pre-fill form
-          setFormData(prev => ({
-            ...prev,
-            fullName: p?.name || vp.fullName || defaultName,
-            email: defaultEmail,
-            phone: p?.phone || "",
-            qualification: vp.qualification || "BVSc",
-            registrationNumber: vp.registration_number || "",
-            isIndependentPractice: vp.self_practice || false,
-            yearsOfExperience: vp.years_of_experience?.toString() || "",
-            specializations: vp.specializations || [],
-            consultationTypes: vp.consultation_type?.split(", ") || [],
-            availableDays: vp.available_days || [],
-            morningSlots: vp.morning_slots || false,
-            eveningSlots: vp.evening_slots || false,
-            onlineFee: vp.online_fee?.toString() || "500",
-            offlineFee: vp.offline_fee?.toString() || "800",
-            bankAccountName: vp.bank_account_name || "",
-            bankName: vp.bank_name || "",
-            bankAccountNumber: vp.bank_account_number || "",
-            bankIfsc: vp.bank_ifsc || "",
-            preferredLanguage: vp.preferred_language || "English",
-            clinicAddress: vp.clinic_address || "",
-            vendorAgreement: vp.vendor_agreement_accepted || false,
-            telemedicineConsent: vp.telemedicine_consent_accepted || false,
-            city: vp.city || p?.city || "",
-            state: vp.state || p?.state || "",
-            address: p?.address || "",
-            dob: p?.birth_date || "",
-            gender: p?.gender || "",
-          }));
-          
-          // Pre-fill file previews for existing documents
-          const getUrl = (path: string | null) => {
-            if (!path) return null;
-            if (path.startsWith("http")) return path;
-            return supabase.storage.from("vet-documents").getPublicUrl(path).data.publicUrl;
-          };
-
-          setFilePreviews({
-            govtIdFile: getUrl(vp.govt_id_file) || "",
-            panCardFile: getUrl(vp.pan_card_file) || "",
-            passportPhotoFile: getUrl(vp.passport_photo_file) || "",
-            vetDegreeFile: getUrl(vp.vet_degree_file) || "",
-            clinicRegistrationFile: getUrl(vp.clinic_registration_file) || "",
-            clinicShopLicenseFile: getUrl(vp.clinic_shop_license_file) || "",
-            gstCertificateFile: getUrl(vp.gst_certificate_file) || "",
-            clinicAddressProofFile: getUrl(vp.clinic_address_proof_file) || "",
-            cancelledChequeFile: getUrl(vp.cancelled_cheque_file) || "",
-            profilePhoto: getUrl(vp.profile_photo) || "",
-          });
-
-          // Handle special cases like education rows
-          if (vp.education_details && Array.isArray(vp.education_details)) {
-            setFormData(prev => ({
-              ...prev,
-              educationRows: vp.education_details.map((edu: any, idx: number) => {
-                if (edu.certificate_url) {
-                  setFilePreviews(prevPrevs => ({
-                    ...prevPrevs,
-                    [`edu_${idx}`]: getUrl(edu.certificate_url) || ""
-                  }));
-                }
-                return {
-                  qualification: edu.qualification,
-                  institution: edu.institution,
-                  year: edu.year,
-                  certificateFile: null
-                };
-              })
-            }));
-          }
-        } else {
-          // Pre-fill even if no vet profile exists yet!
-          setFormData(prev => ({
-            ...prev,
-            fullName: defaultName,
-            email: defaultEmail,
-            phone: p?.phone || "",
-            city: p?.city || "",
-            state: p?.state || "",
-            address: p?.address || "",
-            dob: p?.birth_date || "",
-            gender: p?.gender || "",
-          }));
-          if (p?.is_onboarding_complete) {
-             navigate("/vet-pending-approval", { replace: true });
-          }
-        }
-      }
-    };
-    checkStatus();
-  }, [navigate, profile]);
-
   /* ─── form state ─── */
   const [formData, setFormData] = useState({
     // Step 1 – Personal
-    fullName: "", email: "", phone: "", city: "", state: "", address: "", preferredLanguage: "English",
+    fullName: "", email: "", phone: "", city: "", state: "", address: "", preferredLanguage: "",
     dob: "", gender: "",
     isIndependentPractice: false,
     // Step 2 – Identity
@@ -170,6 +51,10 @@ const VetOnboarding = () => {
     // Step 4 – Clinic
     clinicRegistrationFile: null as File | null, clinicShopLicenseFile: null as File | null,
     gstCertificateFile: null as File | null, clinicAddress: "", clinicAddressProofFile: null as File | null,
+    // Step 4 – Clinic/Hospital Expansion
+    practiceType: [] as string[],
+    clinicName: "", clinicPincode: "",
+    hospitalName: "", hospitalRole: "", hospitalAddress: "", hospitalPincode: "", hospitalJoiningProofFile: null as File | null,
     // Step 5 – Bank
     bankAccountName: "", bankName: "", bankAccountNumber: "", bankIfsc: "",
     cancelledChequeFile: null as File | null,
@@ -184,18 +69,292 @@ const VetOnboarding = () => {
   });
 
   const [filePreviews, setFilePreviews] = useState<Record<string, string>>({});
+  
+  // Auto-save draft effect
+  useEffect(() => {
+    const saveFormData = () => {
+      const { 
+        govtIdFile, panCardFile, passportPhotoFile, vetDegreeFile, 
+        clinicRegistrationFile, clinicShopLicenseFile, gstCertificateFile, 
+        clinicAddressProofFile, cancelledChequeFile, profilePhoto, educationRows, ...rest 
+      } = formData;
+      localStorage.setItem(`vet-onboarding-draft-${profile?.id}`, JSON.stringify(rest));
+    };
+    
+    // Simple debounce to avoid too many writes
+    const timer = setTimeout(saveFormData, 1000);
+    return () => clearTimeout(timer);
+  }, [formData, profile?.id]);
+
+  // Load draft effect
+  useEffect(() => {
+    if (profile?.id) {
+      const draft = localStorage.getItem(`vet-onboarding-draft-${profile.id}`);
+      if (draft) {
+        try {
+          const parsedDraft = JSON.parse(draft);
+          setFormData(prev => ({ ...prev, ...parsedDraft }));
+        } catch (e) {
+          console.error("Failed to load draft:", e);
+        }
+      }
+    }
+  }, [profile?.id]);
 
   const specializations = ["Dog", "Cat", "Bird", "Fish", "Exotic", "All"];
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const qualifications = ["BVSc", "MVSc", "PhD", "Other"];
   const languages = ["English", "Hindi", "Tamil", "Telugu", "Kannada", "Malayalam", "Bengali", "Marathi", "Gujarati"];
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 80 }, (_, i) => (currentYear - i).toString());
 
   const consultationOptions = ["Video consultation", "Home visits", "Clinic visit"];
+
+  const [showDobCalendar, setShowDobCalendar] = useState(false);
+  const today = new Date();
+  const [workingMonth, setWorkingMonth] = useState(today.getMonth());
+  const [workingYear, setWorkingYear] = useState(today.getFullYear() - 25);
+
+  const openDobCalendar = () => {
+    if (formData.dob) {
+      const parts = formData.dob.split("-");
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        if (!isNaN(y) && !isNaN(m)) {
+          setWorkingYear(y);
+          setWorkingMonth(m);
+        }
+      }
+    } else {
+      setWorkingYear(new Date().getFullYear());
+      setWorkingMonth(new Date().getMonth());
+    }
+    setShowDobCalendar(true);
+  };
+
+  const formatDisplayDate = (dateStr: string) => {
+    if (!dateStr) return "Select Date of Birth";
+    const parts = dateStr.split("-");
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      const months = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      ];
+      if (months[m]) {
+        return `${d} ${months[m]} ${y}`;
+      }
+    }
+    return dateStr;
+  };
+
+  const getDisplayPhone = (rawPhone: string) => {
+    if (!rawPhone) return "";
+    let clean = rawPhone.trim();
+    if (clean.startsWith("+91")) {
+      clean = clean.slice(3).trim();
+    } else if (clean.startsWith("91") && clean.length > 10) {
+      clean = clean.slice(2).trim();
+    }
+    return clean;
+  };
+
+  const handlePhoneChange = (val: string) => {
+    const clean = val.replace(/[^\d]/g, "").slice(0, 10);
+    setFormData(prev => ({
+      ...prev,
+      phone: clean
+    }));
+  };
+
+  useEffect(() => {
+    // Check if the user already has completed DB onboarding but was redirected here
+    const checkStatus = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const uid = session.user.id;
+          const { data: p } = await supabase.from('profiles').select('is_onboarding_complete, is_admin_approved, name, phone, email, city, state, address, birth_date, gender').eq('id', uid).maybeSingle();
+          
+          // Fetch existing vet profile data to pre-fill
+          const { data: vp } = await supabase.from('vet_profiles').select('*').eq('user_id', uid).maybeSingle();
+          
+          const defaultName = p?.name || session.user.user_metadata?.name || "";
+          const defaultEmail = p?.email || session.user.email || "";
+
+          if (vp) {
+            // Check if they should be seeing the pending screen
+            // If they are rejected, we let them STAY here to edit
+            if (p?.is_onboarding_complete && p?.is_admin_approved) {
+              navigate("/vet/home", { replace: true });
+              return;
+            } else if (p?.is_onboarding_complete && !p?.is_admin_approved && vp.verification_status !== 'failed') {
+              navigate("/vet-pending-approval", { replace: true });
+              return;
+            }
+
+            // Pre-fill form
+            setFormData(prev => ({
+              ...prev,
+              fullName: p?.name || vp.fullName || defaultName,
+              email: defaultEmail,
+              phone: p?.phone || "",
+              qualification: vp.qualification || "BVSc",
+              registrationNumber: vp.registration_number || "",
+              isIndependentPractice: vp.self_practice || false,
+              yearsOfExperience: vp.years_of_experience?.toString() || "",
+              specializations: vp.specializations || [],
+              consultationTypes: vp.consultation_type?.split(", ") || [],
+              availableDays: vp.available_days || [],
+              morningSlots: vp.morning_slots || false,
+              eveningSlots: vp.evening_slots || false,
+              onlineFee: vp.online_fee?.toString() || "500",
+              offlineFee: vp.offline_fee?.toString() || "800",
+              bankAccountName: vp.bank_account_name || "",
+              bankName: vp.bank_name || "",
+              bankAccountNumber: vp.bank_account_number || "",
+              bankIfsc: vp.bank_ifsc || "",
+              preferredLanguage: vp.preferred_language || "",
+              clinicAddress: vp.clinic_address || "",
+              vendorAgreement: vp.vendor_agreement_accepted || false,
+              telemedicineConsent: vp.telemedicine_consent_accepted || false,
+              city: vp.city || p?.city || "",
+              state: vp.state || p?.state || "",
+              address: p?.address || "",
+              dob: p?.birth_date || "",
+              gender: p?.gender || "",
+            }));
+            
+            // Pre-fill file previews for existing documents
+            const getUrl = (path: string | null) => {
+              if (!path) return null;
+              if (path.startsWith("http")) return path;
+              return supabase.storage.from("vet-documents").getPublicUrl(path).data.publicUrl;
+            };
+
+            setFilePreviews({
+              govtIdFile: getUrl(vp.govt_id_file) || "",
+              panCardFile: getUrl(vp.pan_card_file) || "",
+              passportPhotoFile: getUrl(vp.passport_photo_file) || "",
+              vetDegreeFile: getUrl(vp.vet_degree_file) || "",
+              clinicRegistrationFile: getUrl(vp.clinic_registration_file) || "",
+              clinicShopLicenseFile: getUrl(vp.clinic_shop_license_file) || "",
+              gstCertificateFile: getUrl(vp.gst_certificate_file) || "",
+              clinicAddressProofFile: getUrl(vp.clinic_address_proof_file) || "",
+              cancelledChequeFile: getUrl(vp.cancelled_cheque_file) || "",
+              profilePhoto: getUrl(vp.profile_photo) || "",
+            });
+
+            // Handle special cases like education rows
+            if (vp.education_details && Array.isArray(vp.education_details)) {
+              setFormData(prev => ({
+                ...prev,
+                educationRows: vp.education_details.map((edu: any, idx: number) => {
+                  if (edu.certificate_url) {
+                    setFilePreviews(prevPrevs => ({
+                      ...prevPrevs,
+                      [`edu_${idx}`]: getUrl(edu.certificate_url) || ""
+                    }));
+                  }
+                  return {
+                    qualification: edu.qualification,
+                    institution: edu.institution,
+                    year: edu.year,
+                    certificateFile: null
+                  };
+                })
+              }));
+            }
+          } else {
+            // Pre-fill even if no vet profile exists yet!
+            setFormData(prev => ({
+              ...prev,
+              fullName: defaultName,
+              email: defaultEmail,
+              phone: p?.phone || "",
+              city: p?.city || "",
+              state: p?.state || "",
+              address: p?.address || "",
+              dob: p?.birth_date || "",
+              gender: p?.gender || "",
+            }));
+            if (p?.is_onboarding_complete) {
+               navigate("/vet-pending-approval", { replace: true });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Status check failed:", err);
+      }
+    };
+    checkStatus();
+  }, [navigate, profile]);
+
+  // Sync the first row of education automatic feed as requested
+  useEffect(() => {
+    setFormData(prev => {
+      if (prev.educationRows.length > 0) {
+        const firstRow = prev.educationRows[0];
+        if (
+          firstRow.qualification !== prev.qualification ||
+          firstRow.certificateFile !== prev.vetDegreeFile
+        ) {
+          const updatedRows = [...prev.educationRows];
+          updatedRows[0] = {
+            ...updatedRows[0],
+            qualification: prev.qualification,
+            certificateFile: prev.vetDegreeFile
+          };
+          return { ...prev, educationRows: updatedRows };
+        }
+      }
+      return prev;
+    });
+  }, [formData.qualification, formData.vetDegreeFile]);
+
+  useEffect(() => {
+    if (filePreviews.vetDegreeFile) {
+      setFilePreviews(prev => {
+        if (prev.edu_0 !== prev.vetDegreeFile) {
+          return { ...prev, edu_0: prev.vetDegreeFile };
+        }
+        return prev;
+      });
+    } else {
+      setFilePreviews(prev => {
+        if (prev.edu_0) {
+          const { edu_0, ...rest } = prev;
+          return rest;
+        }
+        return prev;
+      });
+    }
+  }, [filePreviews.vetDegreeFile]);
+
+  /* State and constant lists moved to the top of component to prevent Temporal Dead Zone (TDZ) reference errors */
 
   /* ─── helpers ─── */
   const handleFileChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Check identity step fields
+    const isIdentityField = ["govtIdFile", "panCardFile", "passportPhotoFile"].includes(field);
+    if (isIdentityField) {
+      const fileNameLower = file.name.toLowerCase();
+      const validExtensions = [".png", ".jpg", ".jpeg"];
+      const hasValidExt = validExtensions.some(ext => fileNameLower.endsWith(ext));
+      const hasValidMime = file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/jpg" || file.type.startsWith("image/");
+      
+      if (!hasValidExt && !hasValidMime) {
+        toast.error("Please upload images only (supported formats: PNG, JPG, JPEG).");
+        return;
+      }
+    }
+
     if (file.size > 5 * 1024 * 1024) { toast.error("File must be < 5 MB"); return; }
     setFormData(prev => ({ ...prev, [field]: file }));
     const reader = new FileReader();
@@ -288,12 +447,14 @@ const VetOnboarding = () => {
       for (let i = 0; i < formData.educationRows.length; i++) {
         const row = formData.educationRows[i];
         let certUrl = null;
-        if (row.certificateFile) {
+        if (i === 0) {
+          certUrl = vetDegreeUrl;
+        } else if (row.certificateFile) {
           certUrl = await uploadFile(row.certificateFile, uid, `edu_cert_${i}`);
         } else if (oldEdu[i]?.certificate_url) {
           certUrl = oldEdu[i].certificate_url;
         }
-        eduDetails.push({ qualification: row.qualification, institution: row.institution, year: row.year, certificate_url: certUrl });
+        eduDetails.push({ qualification: row.qualification || formData.qualification, institution: row.institution, year: row.year, certificate_url: certUrl });
       }
 
       // Upload clinic photos
@@ -405,6 +566,7 @@ const VetOnboarding = () => {
 
       // 4. Success feedback and routing
       toast.success("Professional profile submitted successfully!");
+      localStorage.removeItem(`vet-onboarding-draft-${uid}`);
       navigate("/vet-pending-approval", { replace: true });
     } catch (error: any) {
       console.error("Submission error:", error);
@@ -419,7 +581,7 @@ const VetOnboarding = () => {
     { n: 1, title: "Personal Info", icon: User },
     { n: 2, title: "Identity", icon: Shield },
     { n: 3, title: "Professional", icon: GraduationCap },
-    { n: 4, title: "Clinic", icon: Building2, hidden: !formData.isIndependentPractice },
+    { n: 4, title: "Professional Practice", icon: Building2, hidden: !formData.isIndependentPractice },
     { n: 5, title: "Bank", icon: Banknote },
     { n: 6, title: "Availability", icon: Calendar },
     { n: 7, title: "Compliance", icon: ScrollText },
@@ -430,9 +592,22 @@ const VetOnboarding = () => {
 
   const canProceed = (step: number) => {
     switch (step) {
-      case 1: return formData.fullName && formData.email && formData.phone && formData.preferredLanguage && formData.dob && formData.gender && formData.city && formData.state && formData.address;
-      case 2: return formData.govtIdFile && formData.panCardFile && formData.passportPhotoFile;
-      case 3: return formData.vetDegreeFile && formData.registrationNumber;
+      case 1: {
+        const hasProfilePhoto = formData.profilePhoto !== null || !!filePreviews.profilePhoto;
+        return formData.fullName && formData.email && formData.phone && formData.preferredLanguage && formData.dob && formData.gender && formData.city && formData.state && formData.address && hasProfilePhoto;
+      }
+      case 2: {
+        const hasGovt = formData.govtIdFile !== null || !!filePreviews.govtIdFile;
+        const hasPan = formData.panCardFile !== null || !!filePreviews.panCardFile;
+        const hasPassport = formData.passportPhotoFile !== null || !!filePreviews.passportPhotoFile;
+        return hasGovt && hasPan && hasPassport;
+      }
+      case 3: {
+        const hasVetDegree = formData.vetDegreeFile !== null || !!filePreviews.vetDegreeFile;
+        const edu1 = formData.educationRows[0];
+        const isEdu1Valid = edu1.institution && edu1.year;
+        return hasVetDegree && formData.registrationNumber && isEdu1Valid;
+      }
       case 4: {
         if (!formData.isIndependentPractice) return true;
         const hasClinicReg = formData.clinicRegistrationFile !== null || !!filePreviews.clinicRegistrationFile;
@@ -451,7 +626,7 @@ const VetOnboarding = () => {
         (formData.morningSlots || formData.eveningSlots) && 
         formData.onlineFee !== "" && 
         formData.offlineFee !== "" && 
-        formData.profilePhoto !== null
+        (formData.profilePhoto !== null || !!filePreviews.profilePhoto)
       );
       default: return true;
     }
@@ -492,21 +667,29 @@ const VetOnboarding = () => {
 
   return (
     <div className="min-h-screen bg-gradient-soft">
-      <header className="bg-card/80 backdrop-blur-lg border-b border-border">
+      <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-1">
-            <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
-            <div>
-              <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">Sruvo</span>
-              <p className="text-xs text-muted-foreground">Vet Doctor Verification</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
+              <div>
+                <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">Sruvo</span>
+                <p className="text-xs text-muted-foreground">Vet Doctor Verification</p>
+              </div>
             </div>
+            <Button variant="ghost" size="icon" onClick={async () => {
+                 await supabase.auth.signOut();
+                 navigate("/auth-vet");
+               }}>
+              <LogOut className="w-5 h-5" />
+            </Button>
           </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-2xl">
         {/* Progress bar */}
-        <div className="flex items-center justify-between md:justify-center gap-1 md:gap-3 mb-6 bg-card p-3 rounded-2xl border border-border/60 shadow-sm overflow-x-auto scrollbar-none">
+        <div className="sticky top-[88px] z-40 flex items-center justify-between md:justify-center gap-1 md:gap-3 mb-6 bg-card p-3 rounded-2xl border border-border/60 shadow-sm overflow-x-auto scrollbar-none">
           {visibleSteps.map((step, i) => {
             const isCompleted = currentStep > step.n;
             const isActive = currentStep === step.n;
@@ -533,103 +716,402 @@ const VetOnboarding = () => {
         </div>
 
         <Card className="border-0 shadow-card animate-fade-in">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-xl">{steps.find(s => s.n === currentStep)?.title}</CardTitle>
-            <CardDescription>Step {currentVisibleStepIndex + 1} of {visibleSteps.length}</CardDescription>
-          </CardHeader>
+          {currentStep !== 1 && (
+            <CardHeader className="text-center pb-4">
+              <CardTitle className="text-xl">{steps.find(s => s.n === currentStep)?.title}</CardTitle>
+              <CardDescription>Step {currentVisibleStepIndex + 1} of {visibleSteps.length}</CardDescription>
+            </CardHeader>
+          )}
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
 
               {/* ══════ STEP 1 – Personal Info ══════ */}
               {currentStep === 1 && (
                 <div className="space-y-4 animate-fade-in">
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-1.5">Full Name *</Label>
-                    <Input value={formData.fullName} onChange={e => setFormData({ ...formData, fullName: e.target.value })} placeholder="Dr. Ananya Iyer" className="rounded-2xl" />
+                  <div className="flex flex-row justify-between items-start gap-4 pb-6 pt-2 border-b border-slate-100/80">
+                    <div className="space-y-1">
+                      <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
+                        <span>Personal Identity</span>
+                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <svg className="w-3.5 h-3.5 text-[#EC4899]" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM10 12.5l-2-2 1.4-1.4 1.6 1.6 4.3-4.3 1.4 1.4-5.7 5.7z"/>
+                          </svg>
+                        </div>
+                      </h2>
+                      <p className="text-slate-500 text-xs sm:text-sm font-medium">Let's start with your basic information</p>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-muted-foreground flex items-center gap-1.5">
-                        <span>Email *</span>
-                        <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-mono">Verified & Locked</span>
+                                    <div className="flex flex-row w-full gap-[9px] pt-[94px] md:pt-[98px] mb-4">
+                    {/* Full Name */}
+                    <div className="w-[64%] md:w-[80%] space-y-1.5">
+                      <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                        <User className="w-4 h-4 text-primary shrink-0" />
+                        Full Name
                       </Label>
+                      <Input 
+                        value={formData.fullName} 
+                        onChange={e => setFormData({ ...formData, fullName: e.target.value })} 
+                        placeholder="RJ" 
+                        className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
+                      />
                     </div>
-                    <Input type="email" value={formData.email} disabled className="rounded-2xl bg-muted/70 border-muted text-muted-foreground cursor-not-allowed font-medium shadow-none" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-primary" /> Date of Birth *</Label>
-                      <Input type="date" value={formData.dob} onChange={e => setFormData({ ...formData, dob: e.target.value })} className="rounded-2xl border border-input focus:border-primary w-full transition-all" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Gender *</Label>
-                      <Select value={formData.gender} onValueChange={v => setFormData({ ...formData, gender: v })}>
-                        <SelectTrigger className="rounded-2xl"><SelectValue placeholder="Select Gender" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label>Phone *</Label>
-                      <Input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} placeholder="+91 98765 43210" className="rounded-2xl" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Language *</Label>
-                      <Select value={formData.preferredLanguage} onValueChange={v => setFormData({ ...formData, preferredLanguage: v })}>
-                        <SelectTrigger className="rounded-2xl"><SelectValue /></SelectTrigger>
-                        <SelectContent>{languages.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Full Address *</Label>
-                    <Input 
-                      value={formData.address} 
-                      onChange={e => setFormData({ ...formData, address: e.target.value })} 
-                      placeholder="Enter house/flat number, road, landmark, area" 
-                      className="rounded-2xl" 
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label>State *</Label>
-                      <Select 
-                        value={formData.state} 
-                        onValueChange={v => setFormData({ ...formData, state: v, city: "" })}
-                      >
-                        <SelectTrigger className="rounded-2xl">
-                          <SelectValue placeholder="Select State" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-[300px]">
-                          {["Delhi", "Haryana", "Madhya Pradesh", "Punjab"].map(s => (
-                            <SelectItem key={s} value={s}>{s}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>City *</Label>
-                      <Select 
-                        value={formData.city} 
-                        onValueChange={v => setFormData({ ...formData, city: v })}
-                        disabled={!formData.state}
-                      >
-                        <SelectTrigger className="rounded-2xl">
-                          <SelectValue placeholder={formData.state ? "Select City" : "Select State first"} />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-[300px]">
-                          {formData.state && (INDIA_STATES_AND_CITIES[formData.state] || []).map(c => (
-                            <SelectItem key={c} value={c}>{c}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+
+                    {/* Photo Upload Card */}
+                    <div className="w-[29%] md:w-[20%] flex flex-col items-center justify-center shrink-0 -mt-[82px] md:-mt-[86px] ml-auto md:ml-0">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleFileChange("profilePhoto")} 
+                        className="hidden" 
+                        id="file-profilePhoto" 
+                      />
+                      <label htmlFor="file-profilePhoto" className="cursor-pointer group flex flex-col items-center">
+                        <div className="relative w-[109px] h-[109px] rounded-full bg-pink-50 hover:bg-pink-100/60 border-2 border-dotted border-pink-300 flex items-center justify-center transition-all shadow-inner overflow-hidden">
+                          {filePreviews.profilePhoto ? (
+                            <img 
+                              src={filePreviews.profilePhoto} 
+                              alt="Profile Preview" 
+                              className="w-full h-full object-cover animate-fade-in" 
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <svg className="w-7 h-7 text-[#475569] group-hover:scale-105 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                              <circle cx="12" cy="13" r="4" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className="text-xs sm:text-sm font-semibold text-[#1E293B] mt-2 group-hover:text-primary transition-colors text-center">Upload Photo</span>
+                        <span className="text-[10px] text-slate-400 font-medium tracking-tight text-center">JPG, PNG (Max 2MB)</span>
+                      </label>
                     </div>
                   </div>
+
+                    {/* Email */}
+                    <div className="space-y-1.5">
+                      <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                        <svg className="w-4 h-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                          <polyline points="22,6 12,13 2,6" />
+                        </svg>
+                        Email Address
+                      </Label>
+                      <div className="relative">
+                        <Input 
+                          type="email" 
+                          value={formData.email} 
+                          disabled 
+                          className="w-full rounded-xl bg-white border border-[#E2E8F0] pr-28 text-[#1E293B] font-medium h-11 text-xs sm:text-sm shadow-none" 
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full select-none">
+                          <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-500 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          Verified
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* DOB & Gender Grid */}
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Date of Birth */}
+                      <div className="space-y-1.5 relative">
+                        <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                          <Calendar className="w-4 h-4 text-primary shrink-0" />
+                          Date of Birth
+                        </Label>
+                        <button
+                          type="button"
+                          onClick={openDobCalendar}
+                          className="w-full text-left flex items-center justify-between rounded-xl border border-[#E2E8F0] px-3.5 py-2 text-xs sm:text-sm bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-[#1E293B] font-medium h-11 shadow-none"
+                        >
+                          <span className={formData.dob ? "text-[#1E293B] font-medium" : "text-slate-400"}>
+                            {formatDisplayDate(formData.dob)}
+                          </span>
+                          <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+                        </button>
+
+                        {showDobCalendar && (
+                          <>
+                            <div 
+                              className="fixed inset-0 bg-black/20 backdrop-blur-xs z-[100] md:fixed md:inset-0 md:bg-black/10 md:backdrop-blur-none"
+                              onClick={() => setShowDobCalendar(false)}
+                            />
+                            <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 md:absolute md:top-full md:left-0 md:transform-none z-[101] md:z-50 mt-2 p-4 bg-card border border-border/85 rounded-2xl shadow-xl w-[300px] animate-in fade-in zoom-in-95 duration-100">
+                              <div className="flex items-center justify-between mb-3 gap-1.5 font-sans">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (workingMonth === 0) {
+                                      setWorkingMonth(11);
+                                      setWorkingYear(prev => Math.max(1940, prev - 1));
+                                    } else {
+                                      setWorkingMonth(prev => prev - 1);
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
+                                >
+                                  <ChevronLeft className="w-4 h-4" />
+                                </button>
+
+                                <div className="flex items-center gap-1 flex-1 justify-center">
+                                  <select
+                                    value={workingMonth}
+                                    onChange={(e) => {
+                                      const m = parseInt(e.target.value, 10);
+                                      const now = new Date();
+                                      if (workingYear === now.getFullYear() && m > now.getMonth()) {
+                                        return;
+                                      }
+                                      setWorkingMonth(m);
+                                    }}
+                                    className="text-xs font-semibold bg-muted hover:bg-muted/80 text-foreground rounded-lg px-2 py-1 outline-none border-none cursor-pointer duration-100"
+                                  >
+                                    {[
+                                      "January", "February", "March", "April", "May", "June",
+                                      "July", "August", "September", "October", "November", "December"
+                                    ].map((m, i) => {
+                                      const now = new Date();
+                                      const disabled = workingYear === now.getFullYear() && i > now.getMonth();
+                                      return (
+                                        <option key={m} value={i} disabled={disabled}>
+                                          {m}
+                                        </option>
+                                      );
+                                    })}
+                                  </select>
+
+                                  <select
+                                    value={workingYear}
+                                    onChange={(e) => {
+                                      const y = parseInt(e.target.value, 10);
+                                      const now = new Date();
+                                      setWorkingYear(y);
+                                      if (y === now.getFullYear() && workingMonth > now.getMonth()) {
+                                        setWorkingMonth(now.getMonth());
+                                      }
+                                    }}
+                                    className="text-xs font-semibold bg-muted hover:bg-muted/80 text-foreground rounded-lg px-2 py-1 outline-none border-none cursor-pointer duration-100"
+                                  >
+                                    {Array.from({ length: new Date().getFullYear() - 1940 + 1 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                                      <option key={y} value={y}>
+                                        {y}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const now = new Date();
+                                    if (workingYear === now.getFullYear() && workingMonth === now.getMonth()) {
+                                      return;
+                                    }
+                                    if (workingMonth === 11) {
+                                      setWorkingMonth(0);
+                                      setWorkingYear(prev => Math.min(now.getFullYear(), prev + 1));
+                                    } else {
+                                      setWorkingMonth(prev => prev + 1);
+                                    }
+                                  }}
+                                  disabled={workingYear === today.getFullYear() && workingMonth === today.getMonth()}
+                                  className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                  <ChevronRight className="w-4 h-4" />
+                                </button>
+                              </div>
+
+                              <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-muted-foreground mb-1.5 uppercase tracking-wider font-mono">
+                                {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(d => (
+                                  <div key={d} className="py-0.5">{d}</div>
+                                ))}
+                              </div>
+
+                              <div className="grid grid-cols-7 gap-1">
+                                {(() => {
+                                  const daysInMonth = new Date(workingYear, workingMonth + 1, 0).getDate();
+                                  const firstDayIndex = new Date(workingYear, workingMonth, 1).getDay();
+                                  const blanks = Array(firstDayIndex).fill(null);
+                                  const dayNumbers = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+                                  const allCells = [...blanks, ...dayNumbers];
+
+                                  return allCells.map((cell, idx) => {
+                                    if (cell === null) {
+                                      return <div key={`blank-${idx}`} className="h-8 w-8" />;
+                                    }
+
+                                    const isDayFuture = workingYear === today.getFullYear() && workingMonth === today.getMonth() && cell > today.getDate();
+                                    const isOverallFuture = workingYear > today.getFullYear() || (workingYear === today.getFullYear() && workingMonth > today.getMonth());
+                                    const disabled = isDayFuture || isOverallFuture;
+
+                                    const pad = (n: number) => String(n).padStart(2, '0');
+                                    const cellDateStr = `${workingYear}-${pad(workingMonth + 1)}-${pad(cell)}`;
+                                    const isSelected = formData.dob === cellDateStr;
+                                    const isToday = today.getFullYear() === workingYear && today.getMonth() === workingMonth && today.getDate() === cell;
+
+                                    return (
+                                      <button
+                                        key={`day-${cell}`}
+                                        type="button"
+                                        disabled={disabled}
+                                        onClick={() => {
+                                          const dobValue = `${workingYear}-${pad(workingMonth + 1)}-${pad(cell)}`;
+                                          setFormData(prev => ({ ...prev, dob: dobValue }));
+                                          setShowDobCalendar(false);
+                                        }}
+                                        className={`h-8 w-8 text-xs rounded-full flex items-center justify-center transition-all ${
+                                          isSelected
+                                            ? "bg-primary text-primary-foreground font-semibold shadow"
+                                            : disabled
+                                              ? "text-muted-foreground/30 cursor-not-allowed"
+                                              : isToday
+                                                ? "border border-primary text-primary font-semibold hover:bg-primary/10"
+                                                : "text-foreground hover:bg-muted font-medium font-mono"
+                                        }`}
+                                      >
+                                        {cell}
+                                      </button>
+                                    );
+                                  });
+                                })()}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Gender */}
+                      <div className="space-y-1.5">
+                        <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                          <svg className="w-4 h-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="9" cy="15" r="4" stroke="currentColor" strokeWidth="2"/>
+                            <line x1="9" y1="19" x2="9" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                            <line x1="7" y1="21" x2="11" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                            <circle cx="15" cy="9" r="4" stroke="currentColor" strokeWidth="2"/>
+                            <path d="M19 5H23V9M19 9L23 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          Gender
+                        </Label>
+                        <Select value={formData.gender} onValueChange={v => setFormData({ ...formData, gender: v })}>
+                          <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0]">
+                            <SelectValue placeholder={<span className="text-slate-400">Gender</span>} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Phone & Language Grid */}
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Phone Number */}
+                      <div className="space-y-1.5">
+                        <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                        <svg className="w-4 h-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                          </svg>
+                          <span className="truncate">Phone Number</span>
+                        </Label>
+                        <div className="flex items-center rounded-xl border border-[#E2E8F0] overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 bg-white h-11">
+                          <div className="bg-[#F8FAFC] border-r border-[#E2E8F0] text-[#475569] font-medium text-[11px] sm:text-sm px-2 sm:px-4 h-full flex items-center justify-center select-none shrink-0 min-w-[44px] sm:min-w-[56px]">
+                            +91
+                          </div>
+                          <input
+                            type="tel"
+                            value={getDisplayPhone(formData.phone)}
+                            onChange={e => handlePhoneChange(e.target.value)}
+                            placeholder="98765 43210"
+                            className="w-full px-3.5 text-[#1E293B] font-medium text-xs sm:text-sm bg-transparent border-none outline-none focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Language */}
+                      <div className="space-y-1.5">
+                        <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                          <svg className="w-4 h-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="2" y1="12" x2="22" y2="12" />
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                          </svg>
+                          Language
+                        </Label>
+                        <Select value={formData.preferredLanguage} onValueChange={v => setFormData({ ...formData, preferredLanguage: v })}>
+                          <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0]">
+                            <SelectValue placeholder={<span className="text-slate-400">Language</span>} />
+                          </SelectTrigger>
+                          <SelectContent>{languages.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Address Section Title with partition line */}
+                    <div className="space-y-4 pt-2">
+                    {/* Full Address */}
+                    <div className="space-y-1.5">
+                      <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                        <svg className="w-4 h-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                          <circle cx="12" cy="10" r="3" />
+                        </svg>
+                        Full Address
+                      </Label>
+                      <Input 
+                        value={formData.address} 
+                        onChange={e => setFormData({ ...formData, address: e.target.value })} 
+                        placeholder="123, Green Park, Near City Hospital, Andheri West" 
+                        className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
+                      />
+                    </div>
+
+                        {/* State & City Grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* State */}
+                          <div className="space-y-1.5">
+                            <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                              State
+                            </Label>
+                            <Select 
+                              value={formData.state} 
+                              onValueChange={v => setFormData({ ...formData, state: v, city: "" })}
+                            >
+                              <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0]">
+                                <SelectValue placeholder={<span className="text-slate-400">Select State</span>} />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-[300px]">
+                                {["Delhi", "Haryana", "Madhya Pradesh", "Punjab"].map(s => (
+                                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* City */}
+                          <div className="space-y-1.5">
+                            <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                              City
+                            </Label>
+                            <Select 
+                              value={formData.city} 
+                              onValueChange={v => setFormData({ ...formData, city: v })}
+                              disabled={!formData.state}
+                            >
+                              <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] disabled:opacity-50">
+                                <SelectValue placeholder={<span className="text-slate-400">{formData.state ? "Select City" : "Select State first"}</span>} />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-[300px]">
+                                {formData.state && (INDIA_STATES_AND_CITIES[formData.state] || []).map(c => (
+                                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
 
                   <div className="p-4 bg-muted/30 rounded-2xl border border-border/50 space-y-3">
                     <div className="flex items-start gap-3">
@@ -659,12 +1141,12 @@ const VetOnboarding = () => {
                   <div className="bg-accent/50 rounded-2xl p-3 mb-2">
                     <p className="text-xs text-accent-foreground font-medium">🪪 Upload clear scans/photos of your identity documents</p>
                   </div>
-                  <FileUploadBox field="govtIdFile" label="Government ID (Aadhaar / Passport) *" icon={Shield} />
-                  <FileUploadBox field="panCardFile" label="PAN Card *" icon={CreditCard} />
+                  <FileUploadBox field="govtIdFile" label="Government ID (Aadhaar / Passport) *" icon={Shield} accept="image/png, image/jpeg, image/jpg" />
+                  <FileUploadBox field="panCardFile" label="PAN Card *" icon={CreditCard} accept="image/png, image/jpeg, image/jpg" />
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2"><Camera className="w-4 h-4 text-primary" />Passport-size Photograph *</Label>
                     <div className="border-2 border-dashed border-border rounded-2xl p-4 text-center hover:border-primary/50 transition-colors">
-                      <input type="file" accept="image/*" capture="user" onChange={handleFileChange("passportPhotoFile")} className="hidden" id="file-passportPhotoFile" />
+                      <input type="file" accept="image/png, image/jpeg, image/jpg" capture="user" onChange={handleFileChange("passportPhotoFile")} className="hidden" id="file-passportPhotoFile" />
                       <label htmlFor="file-passportPhotoFile" className="cursor-pointer">
                         {filePreviews.passportPhotoFile ? (
                           <div className="space-y-2">
@@ -696,26 +1178,31 @@ const VetOnboarding = () => {
                     <p className="text-xs text-accent-foreground font-medium">🎓 Professional credentials & educational background</p>
                   </div>
 
-                  <FileUploadBox field="vetDegreeFile" label="Veterinary Degree Certificate (BVSc/MVSc) *" icon={GraduationCap} />
-
-                  <div className="space-y-2">
-                    <Label>Veterinary Council Registration Number *</Label>
-                    <Input value={formData.registrationNumber} onChange={e => setFormData({ ...formData, registrationNumber: e.target.value })} placeholder="VET/MH/2024/1234" className="rounded-2xl" />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* Ordering as requested: Highest Qualification & Vet License Number on the same line */}
+                  <div className="grid grid-cols-2 gap-3 items-end">
                     <div className="space-y-2">
-                      <Label>Highest Qualification *</Label>
+                      <Label className="flex items-center gap-1.5 h-5 text-xs sm:text-sm font-semibold">Highest Qualification *</Label>
                       <Select value={formData.qualification} onValueChange={v => setFormData({ ...formData, qualification: v })}>
-                        <SelectTrigger className="rounded-2xl"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="rounded-2xl h-10 text-xs sm:text-sm shadow-sm font-medium">
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent>{qualifications.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Vet License Number</Label>
-                      <Input value={formData.registrationNumber} disabled className="rounded-2xl bg-muted" />
+                      <Label className="flex items-center gap-1.5 h-5 text-xs sm:text-sm font-semibold">Vet License Number</Label>
+                      <Input value={formData.registrationNumber} disabled className="rounded-2xl bg-muted h-10 text-xs sm:text-sm shadow-none" placeholder="License Number" />
                     </div>
                   </div>
+
+                  {/* Below it: Veterinary Council Registration Number * */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5 h-5 text-xs sm:text-sm font-semibold">Veterinary Council Registration Number *</Label>
+                    <Input value={formData.registrationNumber} onChange={e => setFormData({ ...formData, registrationNumber: e.target.value })} placeholder="VET/MH/2024/1234" className="rounded-2xl h-10 text-xs sm:text-sm" />
+                  </div>
+
+                  {/* Below it: Veterinary Degree Certificate dynamically named BVSc/MVSc based on Highest Qualification selected */}
+                  <FileUploadBox field="vetDegreeFile" label={`Veterinary Degree Certificate (${formData.qualification}) *`} icon={GraduationCap} />
 
                   {/* Education Table */}
                   <div className="space-y-3">
@@ -726,25 +1213,113 @@ const VetOnboarding = () => {
                       </Button>
                     </div>
 
-                    <div className="border border-border rounded-2xl overflow-hidden">
-                      {/* Table header */}
-                      <div className="grid grid-cols-[1fr_1fr_70px_70px_40px] gap-2 px-3 py-2 bg-muted/60 text-[10px] font-semibold text-muted-foreground uppercase">
+                    <div className="border border-border rounded-2xl overflow-hidden bg-background shadow-xs">
+                      {/* Desktop View Column Header */}
+                      <div className="hidden md:grid grid-cols-[1fr_1.2fr_80px_80px_45px] gap-2 px-3 py-2 bg-muted/60 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                         <span>Qualification</span><span>Institution</span><span>Year</span><span>Certificate</span><span></span>
                       </div>
                       {formData.educationRows.map((row, idx) => (
-                        <div key={idx} className="grid grid-cols-[1fr_1fr_70px_70px_40px] gap-2 px-3 py-2 border-t border-border items-center">
-                          <Input value={row.qualification} onChange={e => updateEduRow(idx, 'qualification', e.target.value)} placeholder="BVSc" className="h-8 rounded-xl text-xs" />
-                          <Input value={row.institution} onChange={e => updateEduRow(idx, 'institution', e.target.value)} placeholder="University" className="h-8 rounded-xl text-xs" />
-                          <Input value={row.year} onChange={e => updateEduRow(idx, 'year', e.target.value)} placeholder="2020" className="h-8 rounded-xl text-xs" />
-                          <div>
-                            <input type="file" accept="image/*,.pdf" onChange={handleEduFileChange(idx)} className="hidden" id={`edu-file-${idx}`} />
-                            <label htmlFor={`edu-file-${idx}`} className={`cursor-pointer flex items-center justify-center w-full h-8 rounded-xl border text-[10px] ${filePreviews[`edu_${idx}`] ? 'border-primary text-primary bg-accent/30' : 'border-dashed border-border text-muted-foreground hover:border-primary/50'}`}>
-                              {filePreviews[`edu_${idx}`] ? '✓' : <Upload className="w-3 h-3" />}
-                            </label>
+                        <div key={idx} className="border-t border-border first:border-t-0">
+                          {/* Desktop Layout: shown only on md and larger */}
+                          <div className="hidden md:grid grid-cols-[1fr_1.2fr_80px_80px_45px] gap-2 px-3 py-2 items-center font-sans">
+                            {idx === 0 ? (
+                              <Input value={row.qualification || formData.qualification} disabled className="h-8 rounded-xl text-xs bg-muted/70 text-muted-foreground cursor-not-allowed font-medium border-muted shadow-none" />
+                            ) : (
+                              <Input value={row.qualification} onChange={e => updateEduRow(idx, 'qualification', e.target.value)} placeholder="BVSc" className="h-8 rounded-xl text-xs" />
+                            )}
+
+                            <Input value={row.institution} onChange={e => updateEduRow(idx, 'institution', e.target.value)} placeholder="University" className="h-8 rounded-xl text-xs" />
+                            <Select value={row.year} onValueChange={v => updateEduRow(idx, 'year', v)}>
+                              <SelectTrigger className="h-8 rounded-xl text-xs px-2 shadow-sm">
+                                <SelectValue placeholder="Year" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Array.from({length: 50}, (_, i) => new Date().getFullYear() - i).map(y => (
+                                  <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            
+                            <div>
+                              {idx === 0 ? (
+                                filePreviews.edu_0 ? (
+                                  <div className="text-[10px] font-semibold text-primary flex items-center justify-center h-8 bg-primary/10 rounded-xl border border-primary/20">Synced ✓</div>
+                                ) : (
+                                  <div className="text-[9px] text-muted-foreground flex items-center justify-center h-8 bg-muted/40 rounded-xl border border-dashed border-border leading-tight text-center">Required above</div>
+                                )
+                              ) : (
+                                <>
+                                  <input type="file" accept="image/*,.pdf" onChange={handleEduFileChange(idx)} className="hidden" id={`edu-file-${idx}`} />
+                                  <label htmlFor={`edu-file-${idx}`} className={`cursor-pointer flex items-center justify-center w-full h-8 rounded-xl border text-[10px] ${filePreviews[`edu_${idx}`] ? 'border-primary text-primary bg-accent/30' : 'border-dashed border-border text-muted-foreground hover:border-primary/50'}`}>
+                                    {filePreviews[`edu_${idx}`] ? '✓' : <Upload className="w-3 h-3" />}
+                                  </label>
+                                </>
+                              )}
+                            </div>
+
+                            <button type="button" onClick={() => removeEduRow(idx)} className="text-muted-foreground hover:text-destructive transition-colors flex justify-center" disabled={idx === 0}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
-                          <button type="button" onClick={() => removeEduRow(idx)} className="text-muted-foreground hover:text-destructive transition-colors" disabled={formData.educationRows.length <= 1}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+
+                          {/* Mobile Layout: shown on smaller screens */}
+                          <div className="block md:hidden p-4 space-y-3 bg-muted/10 font-sans">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-muted-foreground">Row #{idx + 1} {idx === 0 && <span className="text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-normal">(Synced from above)</span>}</span>
+                              {idx > 0 && (
+                                <button type="button" onClick={() => removeEduRow(idx)} className="text-muted-foreground hover:text-destructive flex items-center gap-1 text-xs">
+                                  <Trash2 className="w-3 h-3 text-destructive" /> <span className="text-destructive font-medium">Delete</span>
+                                </button>
+                              )}
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-semibold text-muted-foreground">Qualification</span>
+                                {idx === 0 ? (
+                                  <Input value={row.qualification || formData.qualification} disabled className="h-8 rounded-xl text-xs bg-muted/70 text-muted-foreground cursor-not-allowed border-muted shadow-none font-medium" />
+                                ) : (
+                                  <Input value={row.qualification} onChange={e => updateEduRow(idx, 'qualification', e.target.value)} placeholder="BVSc/MVSc" className="h-8 rounded-xl text-xs" />
+                                )}
+                              </div>
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-semibold text-muted-foreground">Year</span>
+                                <Select value={row.year} onValueChange={v => updateEduRow(idx, 'year', v)}>
+                                  <SelectTrigger className="h-8 rounded-xl text-xs px-2 shadow-sm">
+                                    <SelectValue placeholder="Year" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {Array.from({length: 50}, (_, i) => new Date().getFullYear() - i).map(y => (
+                                      <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-semibold text-muted-foreground">Institution</span>
+                              <Input value={row.institution} onChange={e => updateEduRow(idx, 'institution', e.target.value)} placeholder="e.g. Veterinary College" className="h-8 rounded-xl text-xs" />
+                            </div>
+
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-semibold text-muted-foreground">Certificate File</span>
+                              {idx === 0 ? (
+                                filePreviews.edu_0 ? (
+                                  <div className="text-[10px] font-semibold text-primary flex items-center justify-center h-8 bg-primary/15 rounded-xl border border-primary/20 w-full text-center py-1">Synced with Degree Upload Above ✓</div>
+                                ) : (
+                                  <div className="text-[10px] text-muted-foreground flex items-center justify-center h-8 bg-muted/40 rounded-xl border border-dashed border-border w-full text-center py-1">Please upload degree above to auto-sync</div>
+                                )
+                              ) : (
+                                <>
+                                  <input type="file" accept="image/*,.pdf" onChange={handleEduFileChange(idx)} className="hidden" id={`edu-file-mobile-${idx}`} />
+                                  <label htmlFor={`edu-file-mobile-${idx}`} className={`cursor-pointer flex items-center justify-center w-full h-8 rounded-xl border text-[11px] font-medium gap-1.5 ${filePreviews[`edu_${idx}`] ? 'border-primary text-primary bg-accent/30' : 'border-dashed border-border text-muted-foreground hover:border-primary/50'}`}>
+                                    <Upload className="w-3.5 h-3.5" /> {filePreviews[`edu_${idx}`] ? 'Uploaded ✓ (Tap to replace)' : 'Choose Certificate'}
+                                  </label>
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -757,46 +1332,160 @@ const VetOnboarding = () => {
                 </div>
               )}
 
-              {/* ══════ STEP 4 – Clinic / Business Verification ══════ */}
+              {/* ══════ STEP 4 – Professional Practice ══════ */}
               {currentStep === 4 && (
-                <div className="space-y-4 animate-fade-in">
-                  <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-3.5 mb-2">
-                    <p className="text-xs text-destructive font-semibold flex items-center gap-1.5">
-                      ⚠️ Independent practices must complete all verification fields (All fields are mandatory).
-                    </p>
+                <div className="space-y-6 animate-fade-in">
+                  <div className="space-y-1">
+                    <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight">Professional Practice</h2>
+                    <p className="text-slate-500 text-xs sm:text-sm font-medium">Tell us where and how you practice veterinary medicine.</p>
                   </div>
-                  <FileUploadBox field="clinicRegistrationFile" label="Clinic Registration Certificate *" icon={Building2} />
-                  <FileUploadBox field="clinicShopLicenseFile" label="Shop & Establishment License *" icon={FileText} />
-                  <FileUploadBox field="gstCertificateFile" label="GST Registration Certificate *" icon={FileText} />
-                  <div className="space-y-2">
-                    <Label className="font-semibold text-foreground">Clinic Address *</Label>
-                    <Input value={formData.clinicAddress} onChange={e => setFormData({ ...formData, clinicAddress: e.target.value })} placeholder="123, Vet Street, Mumbai" className="rounded-2xl" />
-                  </div>
-                  <FileUploadBox field="clinicAddressProofFile" label="Clinic Address Proof *" icon={Shield} />
 
-                  {/* Clinic Photos (Optional) */}
+                  <div className="bg-pink-50 border border-pink-100 rounded-2xl p-4 flex gap-3 text-pink-700">
+                    <div className="bg-pink-100 rounded-full w-8 h-8 flex items-center justify-center shrink-0">
+                      <svg className="w-5 h-5 text-pink-600" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.57 12.11 7 10.61 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.61-.57 3.11-2.15 4.1zM11 18h2v2h-2z" />
+                      </svg>
+                    </div>
+                    <p className="text-sm font-medium">Select all that apply. You can add details for your clinic, hospital or <span className="font-bold">both</span>.</p>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label className="flex items-center gap-2"><Camera className="w-4 h-4 text-primary" />Clinic Photos (Optional)</Label>
-                    <div className="border-2 border-dashed border-border rounded-2xl p-4 text-center hover:border-primary/50 transition-colors">
-                      <input type="file" accept="image/*" multiple onChange={(e) => {
-                        const files = Array.from(e.target.files || []).filter(f => f.size <= 5 * 1024 * 1024);
-                        setFormData(prev => ({ ...prev, clinicPhotos: [...prev.clinicPhotos, ...files] }));
-                      }} className="hidden" id="clinic-photos" />
-                      <label htmlFor="clinic-photos" className="cursor-pointer">
-                        {formData.clinicPhotos.length > 0 ? (
-                          <div className="flex items-center justify-center gap-2 text-primary">
-                            <CheckCircle className="w-5 h-5" />
-                            <span className="text-sm">{formData.clinicPhotos.length} photo(s) selected</span>
+                    <Label className="text-sm font-semibold text-[#0F172A]">Where do you practice? <span className="text-slate-400 font-normal">(Select all that apply)</span></Label>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                      {['Hospital / Organization', 'Independent Clinic / Practice'].map((type) => (
+                        <div key={type} className={`border-2 rounded-2xl p-4 cursor-pointer relative transition-all ${formData.practiceType.includes(type) ? 'border-pink-500 bg-pink-50/30' : 'border-slate-200 hover:border-slate-300'}`} onClick={() => {
+                          setFormData(prev => ({ ...prev, practiceType: prev.practiceType.includes(type) ? prev.practiceType.filter(t => t !== type) : [...prev.practiceType, type] }));
+                        }}>
+                          <div className={`absolute top-4 left-4 w-5 h-5 rounded border flex items-center justify-center ${formData.practiceType.includes(type) ? 'bg-pink-500 border-pink-500' : 'border-slate-300'}`}>
+                            {formData.practiceType.includes(type) && <CheckCircle className="w-3.5 h-3.5 text-white" />}
                           </div>
-                        ) : (
-                          <div className="flex flex-col items-center gap-1">
-                            <Camera className="w-5 h-5 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground">Upload clinic photos</span>
+                          <div className="pt-8 text-center space-y-2">
+                            <div className="bg-pink-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-2">
+                              {type.includes('Independent') ? <Building2 className="w-6 h-6 text-pink-600" /> : <Stethoscope className="w-6 h-6 text-pink-600" />}
+                            </div>
+                            <h3 className="font-semibold text-[#0F172A]">{type}</h3>
+                            <p className="text-xs text-slate-500">{type.includes('Independent') ? 'I run my own clinic or provide independent veterinary consultations.' : 'I work with a veterinary hospital, organization or any institution.'}</p>
                           </div>
-                        )}
-                      </label>
+                        </div>
+                      ))}
                     </div>
                   </div>
+                  
+                  {/* Expanded Sections */}
+                  {formData.practiceType.includes('Independent Clinic / Practice') && (
+                    <div className="border border-slate-200 rounded-2xl p-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="font-bold text-[#0F172A] flex items-center gap-2"><Building2 className="w-5 h-5 text-pink-600" /> Independent Clinic Details</Label>
+                        <Button variant="ghost" size="sm" className="text-pink-600 text-xs font-semibold">Collapse</Button>
+                      </div>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-700">Clinic / Practice Name</Label>
+                          <Input value={formData.clinicName} onChange={e => setFormData({...formData, clinicName: e.target.value})} placeholder="Enter clinic name" className="rounded-xl"/>
+                        </div>
+                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-700">Clinic Address</Label>
+                          <Input value={formData.clinicAddress} onChange={e => setFormData({...formData, clinicAddress: e.target.value})} placeholder="Enter complete clinic address" className="rounded-xl"/>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">State</Label>
+                          <Select 
+                            value={formData.state} 
+                            onValueChange={v => setFormData({ ...formData, state: v, city: "" })}
+                          >
+                            <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0]">
+                              <SelectValue placeholder={<span className="text-slate-400">Select State</span>} />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-[300px]">
+                              {["Delhi", "Haryana", "Madhya Pradesh", "Punjab"].map(s => (
+                                <SelectItem key={s} value={s}>{s}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">City</Label>
+                          <Select 
+                            value={formData.city} 
+                            onValueChange={v => setFormData({ ...formData, city: v })}
+                            disabled={!formData.state}
+                          >
+                            <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] disabled:opacity-50">
+                              <SelectValue placeholder={<span className="text-slate-400">{formData.state ? "Select City" : "Select State first"}</span>} />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-[300px]">
+                              {formData.state && (INDIA_STATES_AND_CITIES[formData.state as keyof typeof INDIA_STATES_AND_CITIES] || []).map(c => (
+                                <SelectItem key={c} value={c}>{c}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-700">Pincode</Label>
+                          <Input value={formData.clinicPincode} onChange={e => setFormData({...formData, clinicPincode: e.target.value})} placeholder="Enter pincode" className="rounded-xl"/>
+                        </div>
+                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-700">GST Number (Optional)</Label>
+                          <Input placeholder="Enter GST number (if applicable)" className="rounded-xl"/>
+                        </div>
+                      </div>
+                      {/* File uploads would go here - for brevity, applying basic structure */}
+                      <FileUploadBox field="clinicShopLicenseFile" label="Shop & Establishment License (Optional)" icon={FileText} />
+                    </div>
+                  )}
+
+                  {formData.practiceType.includes('Hospital / Organization') && (
+                    <div className="border border-slate-200 rounded-2xl p-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="font-bold text-[#0F172A] flex items-center gap-2"><Stethoscope className="w-5 h-5 text-pink-600" /> Hospital / Organization Details</Label>
+                        <Button variant="ghost" size="sm" className="text-pink-600 text-xs font-semibold">Collapse</Button>
+                      </div>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-700">Hospital / Organization Name</Label>
+                          <Input value={formData.hospitalName} onChange={e => setFormData({...formData, hospitalName: e.target.value})} placeholder="Enter hospital name" className="rounded-xl"/>
+                        </div>
+                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-700">Your Role / Designation</Label>
+                          <Input value={formData.hospitalRole} onChange={e => setFormData({...formData, hospitalRole: e.target.value})} placeholder="e.g. Veterinarian, Consultant, Surgeon" className="rounded-xl"/>
+                        </div>
+                        <div className="md:col-span-2 space-y-1.5"><Label className="text-xs font-semibold text-slate-700">Hospital Address</Label>
+                          <Input value={formData.hospitalAddress} onChange={e => setFormData({...formData, hospitalAddress: e.target.value})} placeholder="Enter hospital address" className="rounded-xl"/>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">State</Label>
+                          <Select 
+                            value={formData.state} 
+                            onValueChange={v => setFormData({ ...formData, state: v, city: "" })}
+                          >
+                            <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0]">
+                              <SelectValue placeholder={<span className="text-slate-400">Select State</span>} />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-[300px]">
+                              {["Delhi", "Haryana", "Madhya Pradesh", "Punjab"].map(s => (
+                                <SelectItem key={s} value={s}>{s}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">City</Label>
+                          <Select 
+                            value={formData.city} 
+                            onValueChange={v => setFormData({ ...formData, city: v })}
+                            disabled={!formData.state}
+                          >
+                            <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] disabled:opacity-50">
+                              <SelectValue placeholder={<span className="text-slate-400">{formData.state ? "Select City" : "Select State first"}</span>} />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-[300px]">
+                              {formData.state && (INDIA_STATES_AND_CITIES[formData.state as keyof typeof INDIA_STATES_AND_CITIES] || []).map(c => (
+                                <SelectItem key={c} value={c}>{c}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-700">Pincode</Label>
+                          <Input value={formData.hospitalPincode} onChange={e => setFormData({...formData, hospitalPincode: e.target.value})} placeholder="Enter pincode" className="rounded-xl"/>
+                        </div>
+                      </div>
+                      <FileUploadBox field="hospitalJoiningProofFile" label="Joining Proof / ID (Optional)" icon={FileText} />
+                    </div>
+                  )}
 
                   <div className="flex gap-3">
                     <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(3)}>Back</Button>

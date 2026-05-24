@@ -4,7 +4,7 @@ const CITIES = [
   { id: "greater-noida", name: "Greater Noida", state: "Uttar Pradesh" },
   { id: "noida", name: "Noida", state: "Uttar Pradesh" },
   { id: "delhi", name: "Delhi", state: "Delhi" },
-  { id: "gurgaon", name: "Gurugram (Gurgaon)", state: "Haryana" },
+  { id: "gurgaon", name: "Gurugram", state: "Haryana" },
   { id: "mumbai", name: "Mumbai", state: "Maharashtra" },
   { id: "bangalore", name: "Bengaluru (Bangalore)", state: "Karnataka" },
   { id: "hyderabad", name: "Hyderabad", state: "Telangana" },
@@ -13,7 +13,7 @@ const CITIES = [
   { id: "kolkata", name: "Kolkata", state: "West Bengal" },
 ] as const;
 
-const DEFAULT_CITY = "Gurugram (Gurgaon)";
+const DEFAULT_CITY = "Gurugram";
 const STORAGE_KEY = "petlink:selected-city";
 
 interface LocationContextType {

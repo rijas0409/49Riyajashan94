@@ -104,6 +104,17 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
           currentPath: window.location.pathname
         });
 
+        if (currentProfile?.role === "vet" && currentProfile.is_onboarding_complete === false) {
+           if (window.location.pathname !== "/vet-onboarding") {
+             console.log("useRoleGuard: Onboarding incomplete for vet - navigating to onboarding");
+             navigate("/vet-onboarding", { replace: true });
+             setIsLoading(false);
+             return;
+           }
+           setIsLoading(false);
+           return;
+        }
+
         if (requireAdminApproval && !isActuallyApproved) {
            // Skip redirect if we are already on the pending approval page to avoid loops
            if (window.location.pathname === "/vet-pending-approval") {

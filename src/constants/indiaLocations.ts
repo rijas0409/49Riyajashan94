@@ -126,7 +126,7 @@ export const INDIA_STATES_AND_CITIES: Record<string, string[]> = {
     "Porbandar"
   ],
   "Haryana": [
-    "Gurugram (Gurgaon)",
+    "Gurugram",
     "Faridabad",
     "Sonipat",
     "Panipat",
