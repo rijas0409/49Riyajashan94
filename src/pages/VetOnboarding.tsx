@@ -630,25 +630,25 @@ const VetOnboarding = () => {
     const isFileUploaded = (formData as any)[field] !== null || filePreviews[field];
 
     return (
-      <div className="space-y-2">
-        <Label className="flex items-center gap-2"><Icon className="w-4 h-4 text-primary" />{label}</Label>
-        <div className="border-2 border-dashed border-border rounded-2xl p-4 text-center hover:border-primary/50 transition-colors">
+      <div className="space-y-1.5">
+        <Label className="flex items-center gap-1 sm:gap-2 text-[10px] xs:text-xs sm:text-sm font-semibold text-[#334155]"><Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0" />{label}</Label>
+        <div className="border-2 border-dashed border-border rounded-xl sm:rounded-2xl p-2.5 sm:p-4 text-center hover:border-primary/50 transition-colors">
           <input type="file" accept={accept} onChange={handleFileChange(field)} className="hidden" id={`file-${field}`} />
-          <label htmlFor={`file-${field}`} className="cursor-pointer">
+          <label htmlFor={`file-${field}`} className="cursor-pointer select-none">
             {isFileUploaded ? (
-              <div className="flex flex-col items-center gap-2">
-                <div className="flex items-center justify-center gap-2 text-primary">
-                  <CheckCircle className="w-5 h-5" />
-                  <span className="text-sm font-medium">{hasExistingFile ? "Existing File Kept ✓" : "Uploaded ✓"}</span>
+              <div className="flex flex-col items-center gap-1 sm:gap-2">
+                <div className="flex items-center justify-center gap-1.5 text-primary">
+                  <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-[11px] sm:text-sm font-semibold">{hasExistingFile ? "Existing ✓" : "Uploaded ✓"}</span>
                 </div>
                 {filePreviews[field] && filePreviews[field].startsWith("http") && (
-                   <span className="text-[10px] text-muted-foreground underline">View Current</span>
+                   <span className="text-[9px] sm:text-[10px] text-muted-foreground underline truncate max-w-full">View Current</span>
                 )}
               </div>
             ) : (
               <div className="flex flex-col items-center gap-1">
-                <Upload className="w-5 h-5 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Upload (max 5MB)</span>
+                <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
+                <span className="text-[10px] sm:text-xs text-muted-foreground">Upload (max 5MB)</span>
               </div>
             )}
           </label>
@@ -810,7 +810,7 @@ const VetOnboarding = () => {
                     {/* DOB & Gender Grid */}
                     <div className="grid grid-cols-2 gap-4">
                       {/* Date of Birth */}
-                      <div className="space-y-1.5 relative">
+                      <div className="space-y-1.5 relative md:z-[20]">
                         <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
                           <Calendar className="w-4 h-4 text-primary shrink-0" />
                           Date of Birth
@@ -829,10 +829,10 @@ const VetOnboarding = () => {
                         {showDobCalendar && (
                           <>
                             <div 
-                              className="fixed inset-0 bg-black/20 backdrop-blur-xs z-[100] md:fixed md:inset-0 md:bg-black/10 md:backdrop-blur-none"
+                              className="fixed inset-0 bg-black/20 backdrop-blur-xs z-[100] md:fixed md:inset-0 md:bg-transparent md:z-[10] md:backdrop-blur-none"
                               onClick={() => setShowDobCalendar(false)}
                             />
-                            <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 md:absolute md:top-full md:left-0 md:transform-none z-[101] md:z-50 mt-2 p-4 bg-card border border-border/85 rounded-2xl shadow-xl w-[300px] animate-in fade-in zoom-in-95 duration-100">
+                            <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 md:absolute md:top-full md:left-0 md:transform-none z-[101] md:z-[30] mt-2 p-4 bg-card border border-border/85 rounded-2xl shadow-xl w-[300px] animate-in fade-in zoom-in-95 duration-100">
                               <div className="flex items-center justify-between mb-3 gap-1.5 font-sans">
                                 <button
                                   type="button"
@@ -1134,7 +1134,7 @@ const VetOnboarding = () => {
                     <p className="text-sm font-medium">Please upload clear scanned copies or photographs of your Aadhaar card (both front and back sides) and a live photo.</p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <FileUploadBox field="govtIdFile" label="Aadhaar Card (Front) *" icon={Shield} accept="image/png, image/jpeg, image/jpg" />
                     <FileUploadBox field="panCardFile" label="Aadhaar Card (Back) *" icon={Shield} accept="image/png, image/jpeg, image/jpg" />
                   </div>
