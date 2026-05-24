@@ -55,14 +55,14 @@ const VetOnboarding = () => {
     practiceType: ["Hospital / Organization"] as string[],
     clinicName: "", clinicPincode: "",
     hospitalName: "", hospitalRole: "", hospitalAddress: "", hospitalPincode: "", hospitalJoiningProofFile: null as File | null,
-    // Step 5 – Bank
+    // Bank info (Optional/Internal)
     bankAccountName: "", bankName: "", bankAccountNumber: "", bankIfsc: "",
     cancelledChequeFile: null as File | null,
-    // Step 6 – Availability
+    // Step 5 – Availability
     specializations: [] as string[], consultationTypes: [] as string[],
     availableDays: [] as string[], morningSlots: false, eveningSlots: false,
     onlineFee: "", offlineFee: "", yearsOfExperience: "",
-    // Step 7 – Compliance
+    // Step 6 – Compliance
     vendorAgreement: false, termsAccepted: false, telemedicineConsent: false,
     // Mandatory Profile Photo
     profilePhoto: null as File | null, clinicPhotos: [] as File[],
@@ -582,9 +582,8 @@ const VetOnboarding = () => {
     { n: 2, title: "Identity", icon: Shield },
     { n: 3, title: "Professional", icon: GraduationCap },
     { n: 4, title: "Professional Practice", icon: Building2 },
-    { n: 5, title: "Bank", icon: Banknote },
-    { n: 6, title: "Availability", icon: Calendar },
-    { n: 7, title: "Compliance", icon: ScrollText },
+    { n: 5, title: "Availability", icon: Calendar },
+    { n: 6, title: "Compliance", icon: ScrollText },
   ];
 
   const visibleSteps = steps.filter(s => !s.hidden);
@@ -611,8 +610,7 @@ const VetOnboarding = () => {
       case 4: {
         return true;
       }
-      case 5: return true;
-      case 6: return (
+      case 5: return (
         formData.availableDays.length > 0 && 
         formData.specializations.length > 0 && 
         formData.consultationTypes.length > 0 && 
@@ -735,7 +733,7 @@ const VetOnboarding = () => {
                       <p className="text-slate-500 text-xs sm:text-sm font-medium">Let's start with your basic information</p>
                     </div>
                     <div className="bg-pink-50/80 border border-pink-200/60 text-pink-600 px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-normal shrink-0 inline-flex items-center justify-center">
-                      Step 1 of 7
+                      Step 1 of 6
                     </div>
                   </div>
                                     <div className="flex flex-row w-full gap-[9px] pt-[94px] md:pt-[98px] mb-4">
@@ -1116,14 +1114,33 @@ const VetOnboarding = () => {
 
               {/* ══════ STEP 2 – Identity Verification ══════ */}
               {currentStep === 2 && (
-                <div className="space-y-4 animate-fade-in">
-                  <div className="bg-accent/50 rounded-2xl p-3 mb-2">
-                    <p className="text-xs text-accent-foreground font-medium">🪪 Upload clear scans/photos of your identity documents</p>
+                <div className="space-y-6 animate-fade-in">
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
+                    <div className="space-y-1">
+                      <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
+                        <span>Identity Verification</span>
+                      </h2>
+                      <p className="text-slate-500 text-xs sm:text-sm font-medium">Upload your identity proof documents</p>
+                    </div>
+                    <div className="bg-pink-50/80 border border-pink-200/60 text-pink-600 px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-normal shrink-0 inline-flex items-center justify-center">
+                      Step 2 of 6
+                    </div>
                   </div>
-                  <FileUploadBox field="govtIdFile" label="Government ID (Aadhaar / Passport) *" icon={Shield} accept="image/png, image/jpeg, image/jpg" />
-                  <FileUploadBox field="panCardFile" label="PAN Card *" icon={CreditCard} accept="image/png, image/jpeg, image/jpg" />
+
+                  <div className="bg-pink-50 border border-pink-100 rounded-2xl p-4 flex gap-3 text-pink-700">
+                    <div className="bg-pink-100 rounded-full w-8 h-8 flex items-center justify-center shrink-0">
+                      <Shield className="w-4 h-4 text-pink-600" />
+                    </div>
+                    <p className="text-sm font-medium">Please upload clear scanned copies or photographs of your Aadhaar card (both front and back sides) and a live photo.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FileUploadBox field="govtIdFile" label="Aadhaar Card (Front) *" icon={Shield} accept="image/png, image/jpeg, image/jpg" />
+                    <FileUploadBox field="panCardFile" label="Aadhaar Card (Back) *" icon={Shield} accept="image/png, image/jpeg, image/jpg" />
+                  </div>
+
                   <div className="space-y-2">
-                    <Label className="flex items-center gap-2"><Camera className="w-4 h-4 text-primary" />Passport-size Photograph *</Label>
+                    <Label className="flex items-center gap-2"><Camera className="w-4 h-4 text-primary" />Live Photo *</Label>
                     <div className="border-2 border-dashed border-border rounded-2xl p-4 text-center hover:border-primary/50 transition-colors">
                       <input type="file" accept="image/png, image/jpeg, image/jpg" capture="user" onChange={handleFileChange("passportPhotoFile")} className="hidden" id="file-passportPhotoFile" />
                       <label htmlFor="file-passportPhotoFile" className="cursor-pointer">
@@ -1314,16 +1331,6 @@ const VetOnboarding = () => {
               {/* ══════ STEP 4 – Professional Practice ══════ */}
               {currentStep === 4 && (
                 <div className="space-y-6 animate-fade-in">
-                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
-                    <div className="space-y-1">
-                      <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight">Professional Practice</h2>
-                      <p className="text-slate-500 text-xs sm:text-sm font-medium">Tell us where and how you practice veterinary medicine.</p>
-                    </div>
-                    <div className="bg-pink-50/80 border border-pink-200/60 text-pink-600 px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-normal shrink-0 inline-flex items-center justify-center">
-                      Step 4 of 7
-                    </div>
-                  </div>
-
                   <div className="bg-pink-50 border border-pink-100 rounded-2xl p-4 flex gap-3 text-pink-700">
                     <div className="bg-pink-100 rounded-full w-8 h-8 flex items-center justify-center shrink-0">
                       <svg className="w-5 h-5 text-pink-600" viewBox="0 0 24 24" fill="currentColor">
@@ -1335,11 +1342,11 @@ const VetOnboarding = () => {
 
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold text-[#0F172A]">Where do you practice? <span className="text-slate-400 font-normal">(Select all that apply)</span></Label>
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       {['Hospital / Organization', 'Independent Clinic / Practice'].map((type) => (
                         <div 
                           key={type} 
-                          className={`border shadow-sm rounded-2xl p-3 sm:p-4 cursor-pointer relative flex flex-col sm:flex-row items-center sm:items-start gap-2.5 sm:gap-3 transition-all h-full ${
+                          className={`border shadow-sm rounded-2xl p-4 cursor-pointer relative flex flex-row items-center gap-3.5 transition-all w-full min-h-[76px] ${
                             formData.practiceType.includes(type) 
                               ? 'border-pink-500 bg-pink-50/40 ring-1 ring-pink-500' 
                               : 'border-slate-200 bg-white hover:border-slate-300'
@@ -1357,23 +1364,23 @@ const VetOnboarding = () => {
                             });
                           }}
                         >
-                          <div className={`absolute top-2 right-2 sm:top-3 sm:right-3 w-4 h-4 sm:w-5 sm:h-5 rounded-full border flex items-center justify-center transition-all ${
-                            formData.practiceType.includes(type) ? 'bg-pink-500 border-pink-500' : 'border-slate-300'
-                          }`}>
-                            {formData.practiceType.includes(type) && <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />}
-                          </div>
-                          
-                          <div className="bg-pink-100 rounded-xl sm:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center shrink-0">
+                          <div className={`shrink-0 bg-pink-100 rounded-xl sm:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center`}>
                             {type.includes('Independent') ? <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-pink-600" /> : <Stethoscope className="w-5 h-5 sm:w-6 sm:h-6 text-pink-600" />}
                           </div>
                           
-                          <div className="text-center sm:text-left flex-1 min-w-0 pr-0 sm:pr-4">
-                            <h3 className="font-bold text-[#0F172A] text-[11px] sm:text-sm leading-tight">{type}</h3>
-                            <p className="text-[10px] text-slate-500 mt-1 leading-normal hidden md:block">
+                          <div className="text-left flex-1 min-w-0 pr-8">
+                            <h3 className="font-bold text-[#0F172A] text-xs sm:text-sm leading-tight">{type}</h3>
+                            <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 leading-normal">
                               {type.includes('Independent') 
                                 ? 'Private clinic/practice' 
                                 : 'Hospital/institution work'}
                             </p>
+                          </div>
+
+                          <div className={`absolute top-1/2 -translate-y-1/2 right-3 sm:right-4 w-4 h-4 sm:w-5 sm:h-5 rounded-full border flex items-center justify-center transition-all ${
+                            formData.practiceType.includes(type) ? 'bg-pink-500 border-pink-500' : 'border-slate-300'
+                          }`}>
+                            {formData.practiceType.includes(type) && <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />}
                           </div>
                         </div>
                       ))}
@@ -1382,7 +1389,7 @@ const VetOnboarding = () => {
                   
                   {/* Expanded Sections */}
                   {formData.practiceType.includes('Independent Clinic / Practice') && (
-                    <div className="border border-pink-100 bg-pink-50/30 rounded-2xl p-6 space-y-4 shadow-sm animate-fade-in">
+                    <div className="border border-pink-100 bg-pink-50/30 rounded-2xl p-4 sm:p-6 space-y-4 shadow-sm animate-fade-in">
                       <div className="flex items-center justify-between">
                         <Label className="font-bold text-[#0F172A] flex items-center gap-2"><Building2 className="w-5 h-5 text-pink-600" /> Independent Clinic Details</Label>
                         <Button variant="ghost" size="sm" className="text-pink-600 text-xs font-semibold">Collapse</Button>
@@ -1440,7 +1447,7 @@ const VetOnboarding = () => {
                   )}
 
                   {formData.practiceType.includes('Hospital / Organization') && (
-                    <div className="border border-pink-100 bg-pink-50/30 rounded-2xl p-6 space-y-4 shadow-sm animate-fade-in">
+                    <div className="border border-pink-100 bg-pink-50/30 rounded-2xl p-4 sm:p-6 space-y-4 shadow-sm animate-fade-in">
                       <div className="flex items-center justify-between">
                         <Label className="font-bold text-[#0F172A] flex items-center gap-2"><Stethoscope className="w-5 h-5 text-pink-600" /> Hospital / Organization Details</Label>
                         <Button variant="ghost" size="sm" className="text-pink-600 text-xs font-semibold">Collapse</Button>
@@ -1503,40 +1510,8 @@ const VetOnboarding = () => {
                 </div>
               )}
 
-              {/* ══════ STEP 5 – Bank & Payment ══════ */}
+              {/* ══════ STEP 5 – Availability & Fees ══════ */}
               {currentStep === 5 && (
-                <div className="space-y-4 animate-fade-in">
-                  <div className="bg-accent/50 rounded-2xl p-3 mb-2">
-                    <p className="text-xs text-accent-foreground font-medium">🏦 Bank details for payouts</p>
-                  </div>
-                  <FileUploadBox field="cancelledChequeFile" label="Cancelled Cheque / Bank Passbook" icon={Banknote} />
-                  <div className="space-y-2">
-                    <Label>Account Holder Name</Label>
-                    <Input value={formData.bankAccountName} onChange={e => setFormData({ ...formData, bankAccountName: e.target.value })} placeholder="Dr. Ananya Iyer" className="rounded-2xl" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Bank Name</Label>
-                    <Input value={formData.bankName} onChange={e => setFormData({ ...formData, bankName: e.target.value })} placeholder="State Bank of India" className="rounded-2xl" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label>Account Number</Label>
-                      <Input value={formData.bankAccountNumber} onChange={e => setFormData({ ...formData, bankAccountNumber: e.target.value })} placeholder="1234567890" className="rounded-2xl" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>IFSC Code</Label>
-                      <Input value={formData.bankIfsc} onChange={e => setFormData({ ...formData, bankIfsc: e.target.value })} placeholder="SBIN0001234" className="rounded-2xl" />
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(4)}>Back</Button>
-                    <Button type="button" className="flex-1 rounded-2xl bg-gradient-primary" onClick={() => setCurrentStep(6)}>Continue</Button>
-                  </div>
-                </div>
-              )}
-
-              {/* ══════ STEP 6 – Availability & Fees ══════ */}
-              {currentStep === 6 && (
                 <div className="space-y-4 animate-fade-in">
                   <div className="space-y-2">
                     <Label>Specializations *</Label>
@@ -1595,14 +1570,14 @@ const VetOnboarding = () => {
                   <FileUploadBox field="profilePhoto" label="Vet Profile Photo *" accept="image/*" icon={Camera} />
 
                   <div className="flex gap-3">
-                    <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(5)}>Back</Button>
-                    <Button type="button" className="flex-1 rounded-2xl bg-gradient-primary" onClick={() => setCurrentStep(7)} disabled={!canProceed(6)}>Continue</Button>
+                    <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(4)}>Back</Button>
+                    <Button type="button" className="flex-1 rounded-2xl bg-gradient-primary" onClick={() => setCurrentStep(6)} disabled={!canProceed(5)}>Continue</Button>
                   </div>
                 </div>
               )}
 
-              {/* ══════ STEP 7 – Platform Compliance & Submit ══════ */}
-              {currentStep === 7 && (
+              {/* ══════ STEP 6 – Platform Compliance & Submit ══════ */}
+              {currentStep === 6 && (
                 <div className="space-y-4 animate-fade-in">
                   <div className="bg-accent/50 rounded-2xl p-3 mb-2">
                     <p className="text-xs text-accent-foreground font-medium">📋 Review agreements and submit</p>
@@ -1646,7 +1621,7 @@ const VetOnboarding = () => {
                   </div>
 
                   <div className="flex gap-3">
-                    <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(6)}>Back</Button>
+                    <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(5)}>Back</Button>
                     <Button type="submit" className="flex-1 rounded-2xl bg-gradient-primary" disabled={isLoading || !formData.termsAccepted || !formData.vendorAgreement}>
                       {isLoading ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Submitting...</>) : "Submit for Verification"}
                     </Button>
