@@ -52,7 +52,7 @@ const VetOnboarding = () => {
     clinicRegistrationFile: null as File | null, clinicShopLicenseFile: null as File | null,
     gstCertificateFile: null as File | null, clinicAddress: "", clinicAddressProofFile: null as File | null,
     // Step 4 – Clinic/Hospital Expansion
-    practiceType: [] as string[],
+    practiceType: ["Hospital / Organization"] as string[],
     clinicName: "", clinicPincode: "",
     hospitalName: "", hospitalRole: "", hospitalAddress: "", hospitalPincode: "", hospitalJoiningProofFile: null as File | null,
     // Step 5 – Bank
@@ -581,7 +581,7 @@ const VetOnboarding = () => {
     { n: 1, title: "Personal Info", icon: User },
     { n: 2, title: "Identity", icon: Shield },
     { n: 3, title: "Professional", icon: GraduationCap },
-    { n: 4, title: "Professional Practice", icon: Building2, hidden: !formData.isIndependentPractice },
+    { n: 4, title: "Professional Practice", icon: Building2 },
     { n: 5, title: "Bank", icon: Banknote },
     { n: 6, title: "Availability", icon: Calendar },
     { n: 7, title: "Compliance", icon: ScrollText },
@@ -609,13 +609,7 @@ const VetOnboarding = () => {
         return hasVetDegree && formData.registrationNumber && isEdu1Valid;
       }
       case 4: {
-        if (!formData.isIndependentPractice) return true;
-        const hasClinicReg = formData.clinicRegistrationFile !== null || !!filePreviews.clinicRegistrationFile;
-        const hasShopLicense = formData.clinicShopLicenseFile !== null || !!filePreviews.clinicShopLicenseFile;
-        const hasGst = formData.gstCertificateFile !== null || !!filePreviews.gstCertificateFile;
-        const hasAddressProof = formData.clinicAddressProofFile !== null || !!filePreviews.clinicAddressProofFile;
-        const hasAddress = !!formData.clinicAddress && formData.clinicAddress.trim() !== "";
-        return hasClinicReg && hasShopLicense && hasGst && hasAddressProof && hasAddress;
+        return true;
       }
       case 5: return true;
       case 6: return (
@@ -728,7 +722,7 @@ const VetOnboarding = () => {
               {/* ══════ STEP 1 – Personal Info ══════ */}
               {currentStep === 1 && (
                 <div className="space-y-4 animate-fade-in">
-                  <div className="flex flex-row justify-between items-start gap-4 pb-6 pt-2 border-b border-slate-100/80">
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <span>Personal Identity</span>
@@ -739,6 +733,9 @@ const VetOnboarding = () => {
                         </div>
                       </h2>
                       <p className="text-slate-500 text-xs sm:text-sm font-medium">Let's start with your basic information</p>
+                    </div>
+                    <div className="bg-pink-50/80 border border-pink-200/60 text-pink-600 px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-normal shrink-0 inline-flex items-center justify-center">
+                      Step 1 of 7
                     </div>
                   </div>
                                     <div className="flex flex-row w-full gap-[9px] pt-[94px] md:pt-[98px] mb-4">
@@ -1113,24 +1110,6 @@ const VetOnboarding = () => {
                         </div>
                       </div>
 
-                  <div className="p-4 bg-muted/30 rounded-2xl border border-border/50 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <Checkbox 
-                        id="independent-practice" 
-                        checked={formData.isIndependentPractice} 
-                        onCheckedChange={c => setFormData({ ...formData, isIndependentPractice: c as boolean })} 
-                      />
-                      <div className="space-y-1">
-                        <Label htmlFor="independent-practice" className="text-sm font-medium leading-none cursor-pointer">
-                          I run an independent veterinary practice
-                        </Label>
-                        <p className="text-xs text-muted-foreground leading-tight">
-                          Enable this if you personally operate a clinic or offer independent veterinary consultations.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
                   <Button type="button" className="w-full rounded-2xl bg-gradient-primary" onClick={() => setCurrentStep(2)} disabled={!canProceed(1)}>Continue</Button>
                 </div>
               )}
@@ -1327,7 +1306,7 @@ const VetOnboarding = () => {
 
                   <div className="flex gap-3">
                     <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(2)}>Back</Button>
-                    <Button type="button" className="flex-1 rounded-2xl bg-gradient-primary" onClick={() => setCurrentStep(formData.isIndependentPractice ? 4 : 5)} disabled={!canProceed(3)}>Continue</Button>
+                    <Button type="button" className="flex-1 rounded-2xl bg-gradient-primary" onClick={() => setCurrentStep(4)} disabled={!canProceed(3)}>Continue</Button>
                   </div>
                 </div>
               )}
@@ -1335,9 +1314,14 @@ const VetOnboarding = () => {
               {/* ══════ STEP 4 – Professional Practice ══════ */}
               {currentStep === 4 && (
                 <div className="space-y-6 animate-fade-in">
-                  <div className="space-y-1">
-                    <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight">Professional Practice</h2>
-                    <p className="text-slate-500 text-xs sm:text-sm font-medium">Tell us where and how you practice veterinary medicine.</p>
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
+                    <div className="space-y-1">
+                      <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight">Professional Practice</h2>
+                      <p className="text-slate-500 text-xs sm:text-sm font-medium">Tell us where and how you practice veterinary medicine.</p>
+                    </div>
+                    <div className="bg-pink-50/80 border border-pink-200/60 text-pink-600 px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-normal shrink-0 inline-flex items-center justify-center">
+                      Step 4 of 7
+                    </div>
                   </div>
 
                   <div className="bg-pink-50 border border-pink-100 rounded-2xl p-4 flex gap-3 text-pink-700">
@@ -1353,18 +1337,43 @@ const VetOnboarding = () => {
                     <Label className="text-sm font-semibold text-[#0F172A]">Where do you practice? <span className="text-slate-400 font-normal">(Select all that apply)</span></Label>
                     <div className="grid grid-cols-2 gap-3 sm:gap-4">
                       {['Hospital / Organization', 'Independent Clinic / Practice'].map((type) => (
-                        <div key={type} className={`border-2 rounded-2xl p-4 cursor-pointer relative transition-all ${formData.practiceType.includes(type) ? 'border-pink-500 bg-pink-50/30' : 'border-slate-200 hover:border-slate-300'}`} onClick={() => {
-                          setFormData(prev => ({ ...prev, practiceType: prev.practiceType.includes(type) ? prev.practiceType.filter(t => t !== type) : [...prev.practiceType, type] }));
-                        }}>
-                          <div className={`absolute top-4 left-4 w-5 h-5 rounded border flex items-center justify-center ${formData.practiceType.includes(type) ? 'bg-pink-500 border-pink-500' : 'border-slate-300'}`}>
-                            {formData.practiceType.includes(type) && <CheckCircle className="w-3.5 h-3.5 text-white" />}
+                        <div 
+                          key={type} 
+                          className={`border shadow-sm rounded-2xl p-3 sm:p-4 cursor-pointer relative flex flex-col sm:flex-row items-center sm:items-start gap-2.5 sm:gap-3 transition-all h-full ${
+                            formData.practiceType.includes(type) 
+                              ? 'border-pink-500 bg-pink-50/40 ring-1 ring-pink-500' 
+                              : 'border-slate-200 bg-white hover:border-slate-300'
+                          }`} 
+                          onClick={() => {
+                            setFormData(prev => {
+                              const newPracticeType = prev.practiceType.includes(type)
+                                ? prev.practiceType.filter(t => t !== type)
+                                : [...prev.practiceType, type];
+                              return {
+                                ...prev,
+                                practiceType: newPracticeType,
+                                isIndependentPractice: newPracticeType.includes('Independent Clinic / Practice')
+                              };
+                            });
+                          }}
+                        >
+                          <div className={`absolute top-2 right-2 sm:top-3 sm:right-3 w-4 h-4 sm:w-5 sm:h-5 rounded-full border flex items-center justify-center transition-all ${
+                            formData.practiceType.includes(type) ? 'bg-pink-500 border-pink-500' : 'border-slate-300'
+                          }`}>
+                            {formData.practiceType.includes(type) && <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />}
                           </div>
-                          <div className="pt-8 text-center space-y-2">
-                            <div className="bg-pink-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-2">
-                              {type.includes('Independent') ? <Building2 className="w-6 h-6 text-pink-600" /> : <Stethoscope className="w-6 h-6 text-pink-600" />}
-                            </div>
-                            <h3 className="font-semibold text-[#0F172A]">{type}</h3>
-                            <p className="text-xs text-slate-500">{type.includes('Independent') ? 'I run my own clinic or provide independent veterinary consultations.' : 'I work with a veterinary hospital, organization or any institution.'}</p>
+                          
+                          <div className="bg-pink-100 rounded-xl sm:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center shrink-0">
+                            {type.includes('Independent') ? <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-pink-600" /> : <Stethoscope className="w-5 h-5 sm:w-6 sm:h-6 text-pink-600" />}
+                          </div>
+                          
+                          <div className="text-center sm:text-left flex-1 min-w-0 pr-0 sm:pr-4">
+                            <h3 className="font-bold text-[#0F172A] text-[11px] sm:text-sm leading-tight">{type}</h3>
+                            <p className="text-[10px] text-slate-500 mt-1 leading-normal hidden md:block">
+                              {type.includes('Independent') 
+                                ? 'Private clinic/practice' 
+                                : 'Hospital/institution work'}
+                            </p>
                           </div>
                         </div>
                       ))}
@@ -1373,7 +1382,7 @@ const VetOnboarding = () => {
                   
                   {/* Expanded Sections */}
                   {formData.practiceType.includes('Independent Clinic / Practice') && (
-                    <div className="border border-slate-200 rounded-2xl p-6 space-y-4">
+                    <div className="border border-pink-100 bg-pink-50/30 rounded-2xl p-6 space-y-4 shadow-sm animate-fade-in">
                       <div className="flex items-center justify-between">
                         <Label className="font-bold text-[#0F172A] flex items-center gap-2"><Building2 className="w-5 h-5 text-pink-600" /> Independent Clinic Details</Label>
                         <Button variant="ghost" size="sm" className="text-pink-600 text-xs font-semibold">Collapse</Button>
@@ -1431,7 +1440,7 @@ const VetOnboarding = () => {
                   )}
 
                   {formData.practiceType.includes('Hospital / Organization') && (
-                    <div className="border border-slate-200 rounded-2xl p-6 space-y-4">
+                    <div className="border border-pink-100 bg-pink-50/30 rounded-2xl p-6 space-y-4 shadow-sm animate-fade-in">
                       <div className="flex items-center justify-between">
                         <Label className="font-bold text-[#0F172A] flex items-center gap-2"><Stethoscope className="w-5 h-5 text-pink-600" /> Hospital / Organization Details</Label>
                         <Button variant="ghost" size="sm" className="text-pink-600 text-xs font-semibold">Collapse</Button>
@@ -1520,7 +1529,7 @@ const VetOnboarding = () => {
                     </div>
                   </div>
                   <div className="flex gap-3">
-                    <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(formData.isIndependentPractice ? 4 : 3)}>Back</Button>
+                    <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(4)}>Back</Button>
                     <Button type="button" className="flex-1 rounded-2xl bg-gradient-primary" onClick={() => setCurrentStep(6)}>Continue</Button>
                   </div>
                 </div>
