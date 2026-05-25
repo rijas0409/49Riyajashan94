@@ -1813,17 +1813,24 @@ const VetOnboarding = () => {
                     </div>
                   </div>
 
+                  {/* Elegant Info Banner like Step 2/3 */}
                   <div className="bg-pink-50 border border-pink-100 rounded-2xl p-4 flex gap-3 text-pink-700">
                     <div className="bg-pink-100 rounded-full w-8 h-8 flex items-center justify-center shrink-0">
-                      <svg className="w-5 h-5 text-pink-600" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.57 12.11 7 10.61 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.61-.57 3.11-2.15 4.1zM11 18h2v2h-2z" />
-                      </svg>
+                      <Briefcase className="w-4 h-4 text-pink-600" />
                     </div>
-                    <p className="text-sm font-medium">Select all that apply. You can add details for your clinic, hospital or <span className="font-bold">both</span>.</p>
+                    <div>
+                      <p className="text-sm font-bold text-[#1E293B]">Practice Details</p>
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                        Select all that apply. You can add details for your clinic, hospital or <span className="font-bold">both</span>.
+                      </p>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-[#0F172A]">Where do you practice? <span className="text-slate-400 font-normal">(Select all that apply)</span></Label>
+                    <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                      <Building2 className="w-4 h-4 text-primary shrink-0" />
+                      Where do you practice? <span className="text-slate-400 font-normal text-[11px] sm:text-xs">(Select all that apply)</span>
+                    </Label>
                     <div className="grid grid-cols-2 gap-2 sm:gap-4">
                       {['Hospital / Organization', 'Independent Clinic / Practice'].map((type) => (
                         <div 
@@ -1871,25 +1878,56 @@ const VetOnboarding = () => {
                   
                   {/* Expanded Sections */}
                   {formData.practiceType.includes('Independent Clinic / Practice') && (
-                    <div className="border border-pink-100 bg-pink-50/30 rounded-2xl p-4 sm:p-6 space-y-4 shadow-sm animate-fade-in">
-                      <div className="flex items-center justify-between">
-                        <Label className="font-bold text-[#0F172A] flex items-center gap-2"><Building2 className="w-5 h-5 text-pink-600" /> Independent Clinic Details</Label>
-                        <Button variant="ghost" size="sm" className="text-pink-600 text-xs font-semibold">Collapse</Button>
+                    <div className="bg-white border border-[#F1F5F9] p-5 sm:p-6 rounded-3xl shadow-sm/50 space-y-4 animate-fade-in">
+                      <div className="flex items-center justify-between border-b border-slate-50 pb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
+                            <Building2 className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
+                          </div>
+                          <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Independent Clinic Details</span>
+                        </div>
                       </div>
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-700">Clinic / Practice Name</Label>
-                          <Input value={formData.clinicName} onChange={e => setFormData({...formData, clinicName: e.target.value})} placeholder="Enter clinic name" className="rounded-xl"/>
-                        </div>
-                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-700">Clinic Address</Label>
-                          <Input value={formData.clinicAddress} onChange={e => setFormData({...formData, clinicAddress: e.target.value})} placeholder="Enter complete clinic address" className="rounded-xl"/>
-                        </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                        {/* Clinic / Practice Name */}
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold text-slate-700">State</Label>
+                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                            <Building2 className="w-4 h-4 text-primary shrink-0" />
+                            Clinic / Practice Name *
+                          </Label>
+                          <Input 
+                            value={formData.clinicName} 
+                            onChange={e => setFormData({ ...formData, clinicName: e.target.value })} 
+                            placeholder="Enter clinic name" 
+                            className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
+                          />
+                        </div>
+
+                        {/* Clinic Address */}
+                        <div className="space-y-1.5">
+                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                            <MapPin className="w-4 h-4 text-primary shrink-0" />
+                            Clinic Address *
+                          </Label>
+                          <Input 
+                            value={formData.clinicAddress} 
+                            onChange={e => setFormData({ ...formData, clinicAddress: e.target.value })} 
+                            placeholder="Enter complete clinic address" 
+                            className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
+                          />
+                        </div>
+
+                        {/* State */}
+                        <div className="space-y-1.5">
+                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                            <MapPin className="w-4 h-4 text-primary shrink-0" />
+                            State *
+                          </Label>
                           <Select 
                             value={formData.state} 
                             onValueChange={v => setFormData({ ...formData, state: v, city: "" })}
                           >
-                            <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0]">
+                            <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] bg-white focus:ring-2 focus:ring-primary/20">
                               <SelectValue placeholder={<span className="text-slate-400">Select State</span>} />
                             </SelectTrigger>
                             <SelectContent className="max-h-[300px]">
@@ -1899,14 +1937,19 @@ const VetOnboarding = () => {
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {/* City */}
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold text-slate-700">City</Label>
+                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                            <MapPin className="w-4 h-4 text-primary shrink-0" />
+                            City *
+                          </Label>
                           <Select 
                             value={formData.city} 
                             onValueChange={v => setFormData({ ...formData, city: v })}
                             disabled={!formData.state}
                           >
-                            <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] disabled:opacity-50">
+                            <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] disabled:opacity-50 bg-white focus:ring-2 focus:ring-primary/20">
                               <SelectValue placeholder={<span className="text-slate-400">{formData.state ? "Select City" : "Select State first"}</span>} />
                             </SelectTrigger>
                             <SelectContent className="max-h-[300px]">
@@ -1916,41 +1959,104 @@ const VetOnboarding = () => {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-700">Pincode</Label>
-                          <Input value={formData.clinicPincode} onChange={e => setFormData({...formData, clinicPincode: e.target.value})} placeholder="Enter pincode" className="rounded-xl"/>
+
+                        {/* Pincode */}
+                        <div className="space-y-1.5">
+                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                            <MapPin className="w-4 h-4 text-primary shrink-0" />
+                            Pincode *
+                          </Label>
+                          <Input 
+                            value={formData.clinicPincode} 
+                            onChange={e => setFormData({ ...formData, clinicPincode: e.target.value })} 
+                            placeholder="Enter pincode" 
+                            className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
+                          />
                         </div>
-                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-700">GST Number (Optional)</Label>
-                          <Input placeholder="Enter GST number (if applicable)" className="rounded-xl"/>
+
+                        {/* GST Number (Optional) */}
+                        <div className="space-y-1.5">
+                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                            <FileText className="w-4 h-4 text-primary shrink-0" />
+                            GST Number (Optional)
+                          </Label>
+                          <Input 
+                            placeholder="Enter GST number (if applicable)" 
+                            className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
+                          />
                         </div>
                       </div>
-                      {/* File uploads would go here - for brevity, applying basic structure */}
+                      
+                      {/* File uploads */}
                       <FileUploadBox field="clinicShopLicenseFile" label="Shop & Establishment License (Optional)" icon={FileText} />
                     </div>
                   )}
 
                   {formData.practiceType.includes('Hospital / Organization') && (
-                    <div className="border border-pink-100 bg-pink-50/30 rounded-2xl p-4 sm:p-6 space-y-4 shadow-sm animate-fade-in">
-                      <div className="flex items-center justify-between">
-                        <Label className="font-bold text-[#0F172A] flex items-center gap-2"><Stethoscope className="w-5 h-5 text-pink-600" /> Hospital / Organization Details</Label>
-                        <Button variant="ghost" size="sm" className="text-pink-600 text-xs font-semibold">Collapse</Button>
+                    <div className="bg-white border border-[#F1F5F9] p-5 sm:p-6 rounded-3xl shadow-sm/50 space-y-4 animate-fade-in">
+                      <div className="flex items-center justify-between border-b border-slate-50 pb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
+                            <Stethoscope className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
+                          </div>
+                          <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Hospital / Organization Details</span>
+                        </div>
                       </div>
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-700">Hospital / Organization Name</Label>
-                          <Input value={formData.hospitalName} onChange={e => setFormData({...formData, hospitalName: e.target.value})} placeholder="Enter hospital name" className="rounded-xl"/>
-                        </div>
-                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-700">Your Role / Designation</Label>
-                          <Input value={formData.hospitalRole} onChange={e => setFormData({...formData, hospitalRole: e.target.value})} placeholder="e.g. Veterinarian, Consultant, Surgeon" className="rounded-xl"/>
-                        </div>
-                        <div className="md:col-span-2 space-y-1.5"><Label className="text-xs font-semibold text-slate-700">Hospital Address</Label>
-                          <Input value={formData.hospitalAddress} onChange={e => setFormData({...formData, hospitalAddress: e.target.value})} placeholder="Enter hospital address" className="rounded-xl"/>
-                        </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                        {/* Hospital / Organization Name */}
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold text-slate-700">State</Label>
+                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                            <Building2 className="w-4 h-4 text-primary shrink-0" />
+                            Hospital / Organization Name *
+                          </Label>
+                          <Input 
+                            value={formData.hospitalName} 
+                            onChange={e => setFormData({ ...formData, hospitalName: e.target.value })} 
+                            placeholder="Enter hospital name" 
+                            className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
+                          />
+                        </div>
+
+                        {/* Your Role / Designation */}
+                        <div className="space-y-1.5">
+                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                            <User className="w-4 h-4 text-primary shrink-0" />
+                            Your Role / Designation *
+                          </Label>
+                          <Input 
+                            value={formData.hospitalRole} 
+                            onChange={e => setFormData({ ...formData, hospitalRole: e.target.value })} 
+                            placeholder="e.g. Veterinarian, Consultant, Surgeon" 
+                            className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
+                          />
+                        </div>
+
+                        {/* Hospital Address */}
+                        <div className="md:col-span-2 space-y-1.5">
+                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                            <MapPin className="w-4 h-4 text-primary shrink-0" />
+                            Hospital Address *
+                          </Label>
+                          <Input 
+                            value={formData.hospitalAddress} 
+                            onChange={e => setFormData({ ...formData, hospitalAddress: e.target.value })} 
+                            placeholder="Enter hospital address" 
+                            className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
+                          />
+                        </div>
+
+                        {/* State */}
+                        <div className="space-y-1.5">
+                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                            <MapPin className="w-4 h-4 text-primary shrink-0" />
+                            State *
+                          </Label>
                           <Select 
                             value={formData.state} 
                             onValueChange={v => setFormData({ ...formData, state: v, city: "" })}
                           >
-                            <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0]">
+                            <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] bg-white focus:ring-2 focus:ring-primary/20">
                               <SelectValue placeholder={<span className="text-slate-400">Select State</span>} />
                             </SelectTrigger>
                             <SelectContent className="max-h-[300px]">
@@ -1960,14 +2066,19 @@ const VetOnboarding = () => {
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {/* City */}
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold text-slate-700">City</Label>
+                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                            <MapPin className="w-4 h-4 text-primary shrink-0" />
+                            City *
+                          </Label>
                           <Select 
                             value={formData.city} 
                             onValueChange={v => setFormData({ ...formData, city: v })}
                             disabled={!formData.state}
                           >
-                            <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] disabled:opacity-50">
+                            <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] disabled:opacity-50 bg-white focus:ring-2 focus:ring-primary/20">
                               <SelectValue placeholder={<span className="text-slate-400">{formData.state ? "Select City" : "Select State first"}</span>} />
                             </SelectTrigger>
                             <SelectContent className="max-h-[300px]">
@@ -1977,17 +2088,30 @@ const VetOnboarding = () => {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-700">Pincode</Label>
-                          <Input value={formData.hospitalPincode} onChange={e => setFormData({...formData, hospitalPincode: e.target.value})} placeholder="Enter pincode" className="rounded-xl"/>
+
+                        {/* Pincode */}
+                        <div className="md:col-span-2 space-y-1.5">
+                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                            <MapPin className="w-4 h-4 text-primary shrink-0" />
+                            Pincode *
+                          </Label>
+                          <Input 
+                            value={formData.hospitalPincode} 
+                            onChange={e => setFormData({ ...formData, hospitalPincode: e.target.value })} 
+                            placeholder="Enter pincode" 
+                            className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
+                          />
                         </div>
                       </div>
+                      
                       <FileUploadBox field="hospitalJoiningProofFile" label="Joining Proof / ID (Optional)" icon={FileText} />
                     </div>
                   )}
 
-                  <div className="flex gap-3">
-                    <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(3)}>Back</Button>
-                    <Button type="button" className="flex-1 rounded-2xl bg-gradient-primary" onClick={() => setCurrentStep(5)}>Continue</Button>
+                  {/* Navigation Buttons exactly matching Steps 1, 2, 3, 5, 6 */}
+                  <div className="flex gap-3 pt-2">
+                    <Button type="button" variant="outline" className="flex-1 rounded-2xl h-11 font-bold text-slate-600 border-slate-200" onClick={() => setCurrentStep(3)}>Back</Button>
+                    <Button type="button" className="flex-1 rounded-2xl h-11 bg-gradient-primary font-bold text-white shadow-sm" onClick={() => setCurrentStep(5)} disabled={!canProceed(4)}>Continue</Button>
                   </div>
                 </div>
               )}
