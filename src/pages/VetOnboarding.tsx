@@ -11,9 +11,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  Loader2, Upload, FileText, CheckCircle, Shield, Stethoscope,
-  Calendar, Banknote, User, Building2, ScrollText, Camera,
-  CreditCard, GraduationCap, Plus, Trash2, ChevronLeft, ChevronRight, LogOut, MapPin
+  Loader2, Upload, FileText, CheckCircle, Shield, ShieldCheck, Stethoscope,
+  Calendar, Banknote, User, Building2, ScrollText, Camera, Home, Video, Briefcase,
+  CreditCard, GraduationCap, Plus, Trash2, ChevronLeft, ChevronRight, LogOut, MapPin,
+  Dog, Cat, Bird, Sparkles, Sunrise, Sun, Moon, Copy, Check, X, Clock, CheckSquare, Info,
+  ChevronDown, ChevronUp, ExternalLink
 } from "lucide-react";
 import { AccountReviewScreen } from "@/components/AccountReviewScreen";
 import { INDIA_STATES, INDIA_STATES_AND_CITIES } from "@/constants/indiaLocations";
@@ -28,7 +30,45 @@ interface EducationRow {
   certificateFile: File | null;
 }
 
+interface AvailabilityPeriod {
+  enabled: boolean;
+  slots: string[];
+}
+
+interface DayAvailability {
+  morning: AvailabilityPeriod;
+  afternoon: AvailabilityPeriod;
+  evening: AvailabilityPeriod;
+  night: AvailabilityPeriod;
+}
+
 const EMPTY_EDU: EducationRow = { qualification: "", institution: "", year: "", certificateFile: null };
+
+const HamsterIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    {/* Body/Head outline */}
+    <rect x="5" y="8" width="14" height="12" rx="6" />
+    {/* Ears */}
+    <path d="M7 8V5a2 2 0 1 1 4 0v3" />
+    <path d="M13 8V5a2 2 0 1 1 4 0v3" />
+    {/* Eyes */}
+    <circle cx="9.5" cy="13.5" r="1.2" fill="currentColor" />
+    <circle cx="14.5" cy="13.5" r="1.2" fill="currentColor" />
+    {/* Nose and mouth detail */}
+    <path d="M12 15.5 M11.5 15.5h1" />
+    {/* Little Whiskers */}
+    <path d="M3 13.5h2" />
+    <path d="M21 13.5h-2" />
+  </svg>
+);
 
 const VetOnboarding = () => {
   const navigate = useNavigate();
@@ -36,6 +76,23 @@ const VetOnboarding = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  /* ─── review toggle state ─── */
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    personal: false,
+    identity: false,
+    professional: false,
+    practice: false,
+    availability: false,
+    fees: false,
+  });
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
 
   /* ─── form state ─── */
   const [formData, setFormData] = useState({
@@ -61,7 +118,10 @@ const VetOnboarding = () => {
     // Step 5 – Availability
     specializations: [] as string[], consultationTypes: [] as string[],
     availableDays: [] as string[], morningSlots: false, eveningSlots: false,
-    onlineFee: "", offlineFee: "", yearsOfExperience: "",
+    onlineFee: "500", offlineFee: "800", yearsOfExperience: "",
+    emergencyAvailable: true,
+    support24x7: "yes",
+    weekendAvailability: "yes",
     // Step 6 – Compliance
     vendorAgreement: false, termsAccepted: false, telemedicineConsent: false,
     // Mandatory Profile Photo
@@ -101,7 +161,142 @@ const VetOnboarding = () => {
     }
   }, [profile?.id]);
 
-  const specializations = ["Dog", "Cat", "Bird", "Fish", "Exotic", "All"];
+  const [selectedDay, setSelectedDay] = useState<string>("Mon");
+  const [weeklyAvailability, setWeeklyAvailability] = useState<Record<string, DayAvailability>>({
+    Mon: {
+      morning: { enabled: true, slots: ["09:00 AM – 11:00 AM", "11:30 AM – 01:00 PM"] },
+      afternoon: { enabled: true, slots: ["01:30 PM – 03:30 PM"] },
+      evening: { enabled: true, slots: ["04:30 PM – 06:30 PM", "07:00 PM – 08:00 PM"] },
+      night: { enabled: false, slots: [] }
+    },
+    Tue: {
+      morning: { enabled: true, slots: ["09:00 AM – 11:00 AM"] },
+      afternoon: { enabled: true, slots: ["01:30 PM – 03:30 PM"] },
+      evening: { enabled: true, slots: ["04:30 PM – 06:30 PM"] },
+      night: { enabled: false, slots: [] }
+    },
+    Wed: {
+      morning: { enabled: true, slots: ["09:00 AM – 11:00 AM"] },
+      afternoon: { enabled: true, slots: ["01:30 PM – 03:30 PM"] },
+      evening: { enabled: true, slots: ["04:30 PM – 06:30 PM"] },
+      night: { enabled: false, slots: [] }
+    },
+    Thu: {
+      morning: { enabled: true, slots: ["09:00 AM – 11:00 AM"] },
+      afternoon: { enabled: true, slots: ["01:30 PM – 03:30 PM"] },
+      evening: { enabled: true, slots: ["04:30 PM – 06:30 PM"] },
+      night: { enabled: false, slots: [] }
+    },
+    Fri: {
+      morning: { enabled: true, slots: ["09:00 AM – 11:00 AM"] },
+      afternoon: { enabled: true, slots: ["01:30 PM – 03:30 PM"] },
+      evening: { enabled: true, slots: ["04:30 PM – 06:30 PM"] },
+      night: { enabled: false, slots: [] }
+    },
+    Sat: {
+      morning: { enabled: false, slots: [] },
+      afternoon: { enabled: false, slots: [] },
+      evening: { enabled: false, slots: [] },
+      night: { enabled: false, slots: [] }
+    },
+    Sun: {
+      morning: { enabled: false, slots: [] },
+      afternoon: { enabled: false, slots: [] },
+      evening: { enabled: false, slots: [] },
+      night: { enabled: false, slots: [] }
+    }
+  });
+
+  // Load draft parser for weekly availability
+  useEffect(() => {
+    if (profile?.id) {
+      const draft = localStorage.getItem(`vet-onboarding-draft-${profile.id}`);
+      if (draft) {
+        try {
+          const parsed = JSON.parse(draft);
+          if (parsed.weeklyAvailability) {
+            setWeeklyAvailability(parsed.weeklyAvailability);
+          }
+        } catch (e) {
+          console.error("Failed to parse draft weeklyAvailability:", e);
+        }
+      }
+    }
+  }, [profile?.id]);
+
+  // Sync draft or preloaded weeklyAvailability structure into standard fields
+  useEffect(() => {
+    const activeDays = Object.keys(weeklyAvailability).filter(day => {
+      const d = weeklyAvailability[day];
+      return d.morning.enabled || d.afternoon.enabled || d.evening.enabled || d.night.enabled;
+    });
+
+    const hasMorning = Object.values(weeklyAvailability).some(d => d.morning.enabled && d.morning.slots.length > 0);
+    const hasEvening = Object.values(weeklyAvailability).some(d => d.evening.enabled && d.evening.slots.length > 0);
+
+    setFormData(prev => ({
+      ...prev,
+      availableDays: activeDays,
+      morningSlots: hasMorning,
+      eveningSlots: hasEvening,
+      // Store full weekly availability securely
+      weeklyAvailability: weeklyAvailability as unknown
+    }));
+  }, [weeklyAvailability]);
+
+  // Adjust selectedDay so it always points to a valid selected day
+  useEffect(() => {
+    if (formData.availableDays && formData.availableDays.length > 0) {
+      if (!formData.availableDays.includes(selectedDay)) {
+        setSelectedDay(formData.availableDays[0]);
+      }
+    } else {
+      setSelectedDay("");
+    }
+  }, [formData.availableDays, selectedDay]);
+
+  const [specializationOptions, setSpecializationOptions] = useState<string[]>(["Dog", "Cat", "Bird", "Hamster"]);
+  const [isAddingCustom, setIsAddingCustom] = useState(false);
+  const [customSpecName, setCustomSpecName] = useState("");
+
+  // Sync draft or preloaded values with custom options list
+  useEffect(() => {
+    if (formData.specializations && formData.specializations.length > 0) {
+      setSpecializationOptions(prev => {
+        const next = [...prev];
+        let changed = false;
+        formData.specializations.forEach(s => {
+          if (!next.includes(s)) {
+            next.push(s);
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }
+  }, [formData.specializations]);
+
+  const saveCustomSpec = () => {
+    const trimmed = customSpecName.trim();
+    if (trimmed) {
+      const formatted = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+      if (!specializationOptions.includes(formatted)) {
+        setSpecializationOptions(prev => [...prev, formatted]);
+      }
+      if (!formData.specializations.includes(formatted)) {
+        setFormData(prev => ({
+          ...prev,
+          specializations: [...prev.specializations, formatted]
+        }));
+      }
+      setCustomSpecName("");
+      setIsAddingCustom(false);
+      toast.success(`"${formatted}" added as specialization`);
+    } else {
+      setIsAddingCustom(false);
+    }
+  };
+
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const qualifications = ["BVSc", "MVSc", "PhD", "Other"];
   const languages = ["English", "Hindi", "Tamil", "Telugu", "Kannada", "Malayalam", "Bengali", "Marathi", "Gujarati"];
@@ -396,9 +591,163 @@ const VetOnboarding = () => {
   const toggleConsultation = (t: string) => setFormData(prev => ({
     ...prev, consultationTypes: prev.consultationTypes.includes(t) ? prev.consultationTypes.filter(x => x !== t) : [...prev.consultationTypes, t],
   }));
-  const toggleDay = (d: string) => setFormData(prev => ({
-    ...prev, availableDays: prev.availableDays.includes(d) ? prev.availableDays.filter(x => x !== d) : [...prev.availableDays, d],
-  }));
+  const toggleDay = (day: string) => {
+    setWeeklyAvailability(prev => {
+      const currentDayData = prev[day];
+      const isCurrentlyEnabled = currentDayData && (currentDayData.morning.enabled || currentDayData.afternoon.enabled || currentDayData.evening.enabled || currentDayData.night.enabled);
+
+      const next = { ...prev };
+      if (isCurrentlyEnabled) {
+        // Disable everything for this day
+        next[day] = {
+          morning: { enabled: false, slots: [] },
+          afternoon: { enabled: false, slots: [] },
+          evening: { enabled: false, slots: [] },
+          night: { enabled: false, slots: [] }
+        };
+      } else {
+        // Enable with sensible defaults so it is not blank
+        next[day] = {
+          morning: { enabled: true, slots: ["09:00 AM – 11:00 AM", "11:30 AM – 01:00 PM"] },
+          afternoon: { enabled: true, slots: ["01:30 PM – 03:30 PM"] },
+          evening: { enabled: true, slots: ["04:30 PM – 06:30 PM", "07:00 PM – 08:00 PM"] },
+          night: { enabled: false, slots: [] }
+        };
+      }
+      return next;
+    });
+
+    toast.success(`Updated ${day}'s availability status!`);
+  };
+
+  const [addingSlotRow, setAddingSlotRow] = useState<string | null>(null);
+  const [newSlotStart, setNewSlotStart] = useState<string>("09:00");
+  const [newSlotEnd, setNewSlotEnd] = useState<string>("11:00");
+
+  const convertTimeTo12Hr = (time24: string): string => {
+    if (!time24) return "";
+    const [hourStr, minStr] = time24.split(":");
+    let hour = parseInt(hourStr, 10);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    hour = hour % 12;
+    hour = hour ? hour : 12;
+    const hrStr = hour < 10 ? `0${hour}` : `${hour}`;
+    return `${hrStr}:${minStr} ${ampm}`;
+  };
+
+  const handleOpenAddSlot = (period: "morning" | "afternoon" | "evening" | "night") => {
+    setAddingSlotRow(period);
+    if (period === "morning") {
+      setNewSlotStart("09:00");
+      setNewSlotEnd("11:00");
+    } else if (period === "afternoon") {
+      setNewSlotStart("13:30");
+      setNewSlotEnd("15:30");
+    } else if (period === "evening") {
+      setNewSlotStart("16:30");
+      setNewSlotEnd("18:30");
+    } else {
+      setNewSlotStart("20:00");
+      setNewSlotEnd("22:00");
+    }
+  };
+
+  const handleSaveSlot = (period: "morning" | "afternoon" | "evening" | "night") => {
+    if (!newSlotStart || !newSlotEnd) {
+      toast.error("Please select a valid start and end time");
+      return;
+    }
+    const formattedStart = convertTimeTo12Hr(newSlotStart);
+    const formattedEnd = convertTimeTo12Hr(newSlotEnd);
+    const newSlotStr = `${formattedStart} – ${formattedEnd}`;
+
+    setWeeklyAvailability(prev => {
+      const currentDayData = prev[selectedDay];
+      const periodData = currentDayData[period];
+      
+      if (periodData.slots.includes(newSlotStr)) {
+        toast.error("Time slot already exists");
+        return prev;
+      }
+
+      const updatedSlots = [...periodData.slots, newSlotStr];
+      updatedSlots.sort();
+
+      return {
+        ...prev,
+        [selectedDay]: {
+          ...currentDayData,
+          [period]: {
+            ...periodData,
+            enabled: true,
+            slots: updatedSlots
+          }
+        }
+      };
+    });
+
+    setAddingSlotRow(null);
+    toast.success("Time slot added");
+  };
+
+  const handleRemoveSlot = (period: "morning" | "afternoon" | "evening" | "night", index: number) => {
+    setWeeklyAvailability(prev => {
+      const currentDayData = prev[selectedDay];
+      const periodData = currentDayData[period];
+      const updatedSlots = periodData.slots.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        [selectedDay]: {
+          ...currentDayData,
+          [period]: {
+            ...periodData,
+            slots: updatedSlots
+          }
+        }
+      };
+    });
+    toast.success("Time slot removed");
+  };
+
+  const handleTogglePeriod = (period: "morning" | "afternoon" | "evening" | "night") => {
+    setWeeklyAvailability(prev => {
+      const currentDayData = prev[selectedDay];
+      const periodData = currentDayData[period];
+      const nextEnabled = !periodData.enabled;
+      
+      let nextSlots = [...periodData.slots];
+      if (nextEnabled && nextSlots.length === 0) {
+        if (period === "morning") nextSlots = ["09:00 AM – 11:00 AM"];
+        if (period === "afternoon") nextSlots = ["01:30 PM – 03:30 PM"];
+        if (period === "evening") nextSlots = ["04:30 PM – 06:30 PM"];
+        if (period === "night") nextSlots = ["08:00 PM – 10:00 PM"];
+      }
+
+      return {
+        ...prev,
+        [selectedDay]: {
+          ...currentDayData,
+          [period]: {
+            ...periodData,
+            enabled: nextEnabled,
+            slots: nextSlots
+          }
+        }
+      };
+    });
+  };
+
+  const handleCopyToAll = () => {
+    const currentDayData = weeklyAvailability[selectedDay];
+    setWeeklyAvailability(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(day => {
+        updated[day] = JSON.parse(JSON.stringify(currentDayData));
+      });
+      return updated;
+    });
+    toast.success(`Copied ${selectedDay}'s schedule to all other days!`);
+  };
 
   const uploadFile = async (file: File, userId: string, type: string) => {
     const ext = file.name.split('.').pop();
@@ -615,10 +964,8 @@ const VetOnboarding = () => {
         formData.specializations.length > 0 && 
         formData.consultationTypes.length > 0 && 
         formData.yearsOfExperience !== "" && 
-        (formData.morningSlots || formData.eveningSlots) && 
         formData.onlineFee !== "" && 
-        formData.offlineFee !== "" && 
-        (formData.profilePhoto !== null || !!filePreviews.profilePhoto)
+        formData.offlineFee !== ""
       );
       default: return true;
     }
@@ -708,7 +1055,7 @@ const VetOnboarding = () => {
         </div>
 
         <Card className="border-0 shadow-card animate-fade-in">
-          {currentStep !== 1 && (
+          {currentStep !== 1 && currentStep !== 2 && currentStep !== 3 && currentStep !== 4 && currentStep !== 5 && currentStep !== 6 && (
             <CardHeader className="text-center pb-4">
               <CardTitle className="text-xl">{steps.find(s => s.n === currentStep)?.title}</CardTitle>
               <CardDescription>Step {currentVisibleStepIndex + 1} of {visibleSteps.length}</CardDescription>
@@ -723,7 +1070,7 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <span>Personal Identity</span>
+                        <span>Personal Info</span>
                         <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
                           <svg className="w-3.5 h-3.5 text-[#EC4899]" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM10 12.5l-2-2 1.4-1.4 1.6 1.6 4.3-4.3 1.4 1.4-5.7 5.7z"/>
@@ -1169,9 +1516,23 @@ const VetOnboarding = () => {
 
               {/* ══════ STEP 3 – Professional Qualification ══════ */}
               {currentStep === 3 && (
-                <div className="space-y-4 animate-fade-in">
-                  <div className="bg-accent/50 rounded-2xl p-3 mb-2">
-                    <p className="text-xs text-accent-foreground font-medium">🎓 Professional credentials & educational background</p>
+                <div className="space-y-6 animate-fade-in">
+                  {/* Step Header exactly matching Step 1 */}
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 mb-4">
+                    <div className="space-y-1">
+                      <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
+                        <span>Professional Qualification</span>
+                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <svg className="w-3.5 h-3.5 text-[#EC4899]" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM10 12.5l-2-2 1.4-1.4 1.6 1.6 4.3-4.3 1.4 1.4-5.7 5.7z"/>
+                          </svg>
+                        </div>
+                      </h2>
+                      <p className="text-slate-500 text-xs sm:text-sm font-medium">Professional credentials & educational background</p>
+                    </div>
+                    <div className="bg-pink-50/80 border border-pink-200/60 text-pink-600 px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-normal shrink-0 inline-flex items-center justify-center">
+                      Step 3 of 6
+                    </div>
                   </div>
 
                   {/* Ordering as requested: Highest Qualification & Vet License Number on the same line */}
@@ -1331,6 +1692,18 @@ const VetOnboarding = () => {
               {/* ══════ STEP 4 – Professional Practice ══════ */}
               {currentStep === 4 && (
                 <div className="space-y-6 animate-fade-in">
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
+                    <div className="space-y-1">
+                      <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
+                        <span>Professional Practice</span>
+                      </h2>
+                      <p className="text-slate-500 text-xs sm:text-sm font-medium">Select your practice type and details</p>
+                    </div>
+                    <div className="bg-pink-50/80 border border-pink-200/60 text-pink-600 px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-normal shrink-0 inline-flex items-center justify-center">
+                      Step 4 of 6
+                    </div>
+                  </div>
+
                   <div className="bg-pink-50 border border-pink-100 rounded-2xl p-4 flex gap-3 text-pink-700">
                     <div className="bg-pink-100 rounded-full w-8 h-8 flex items-center justify-center shrink-0">
                       <svg className="w-5 h-5 text-pink-600" viewBox="0 0 24 24" fill="currentColor">
@@ -1342,11 +1715,11 @@ const VetOnboarding = () => {
 
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold text-[#0F172A]">Where do you practice? <span className="text-slate-400 font-normal">(Select all that apply)</span></Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="grid grid-cols-2 gap-2 sm:gap-4">
                       {['Hospital / Organization', 'Independent Clinic / Practice'].map((type) => (
                         <div 
                           key={type} 
-                          className={`border shadow-sm rounded-2xl p-4 cursor-pointer relative flex flex-row items-center gap-3.5 transition-all w-full min-h-[76px] ${
+                          className={`border shadow-sm rounded-2xl p-2.5 sm:p-4 cursor-pointer relative flex flex-col sm:flex-row items-center gap-2 sm:gap-3.5 transition-all w-full min-h-[110px] sm:min-h-[76px] ${
                             formData.practiceType.includes(type) 
                               ? 'border-pink-500 bg-pink-50/40 ring-1 ring-pink-500' 
                               : 'border-slate-200 bg-white hover:border-slate-300'
@@ -1364,20 +1737,20 @@ const VetOnboarding = () => {
                             });
                           }}
                         >
-                          <div className={`shrink-0 bg-pink-100 rounded-xl sm:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center`}>
-                            {type.includes('Independent') ? <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-pink-600" /> : <Stethoscope className="w-5 h-5 sm:w-6 sm:h-6 text-pink-600" />}
+                          <div className={`shrink-0 bg-pink-100 rounded-xl sm:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center`}>
+                            {type.includes('Independent') ? <Building2 className="w-4 h-4 sm:w-6 sm:h-6 text-pink-600" /> : <Stethoscope className="w-4 h-4 sm:w-6 sm:h-6 text-pink-600" />}
                           </div>
                           
-                          <div className="text-left flex-1 min-w-0 pr-8">
-                            <h3 className="font-bold text-[#0F172A] text-xs sm:text-sm leading-tight">{type}</h3>
-                            <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 leading-normal">
+                          <div className="text-center sm:text-left flex-1 min-w-0 sm:pr-8">
+                            <h3 className="font-bold text-[#0F172A] text-[10px] xs:text-xs sm:text-sm leading-tight">{type}</h3>
+                            <p className="text-[9px] sm:text-xs text-slate-500 mt-0.5 leading-normal">
                               {type.includes('Independent') 
-                                ? 'Private clinic/practice' 
-                                : 'Hospital/institution work'}
+                                ? 'Private clinic' 
+                                : 'Hospital/work'}
                             </p>
                           </div>
 
-                          <div className={`absolute top-1/2 -translate-y-1/2 right-3 sm:right-4 w-4 h-4 sm:w-5 sm:h-5 rounded-full border flex items-center justify-center transition-all ${
+                          <div className={`absolute top-2 right-2 sm:top-1/2 sm:-translate-y-1/2 sm:right-4 w-4 h-4 sm:w-5 sm:h-5 rounded-full border flex items-center justify-center transition-all ${
                             formData.practiceType.includes(type) ? 'bg-pink-500 border-pink-500' : 'border-slate-300'
                           }`}>
                             {formData.practiceType.includes(type) && <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />}
@@ -1513,61 +1886,643 @@ const VetOnboarding = () => {
               {/* ══════ STEP 5 – Availability & Fees ══════ */}
               {currentStep === 5 && (
                 <div className="space-y-4 animate-fade-in">
-                  <div className="space-y-2">
-                    <Label>Specializations *</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {specializations.map(s => (
-                        <button key={s} type="button" onClick={() => toggleSpec(s)}
-                          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${formData.specializations.includes(s) ? "bg-gradient-primary text-white shadow-md" : "bg-muted text-muted-foreground"}`}>{s}</button>
-                      ))}
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
+                    <div className="space-y-1">
+                      <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
+                        <span>Availability & Fees</span>
+                      </h2>
+                      <p className="text-slate-500 text-xs sm:text-sm font-medium">Set your availability times and consultation fees</p>
+                    </div>
+                    <div className="bg-pink-50/80 border border-pink-200/60 text-pink-600 px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-normal shrink-0 inline-flex items-center justify-center">
+                      Step 5 of 6
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Consultation Type *</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {consultationOptions.map(t => (
-                        <button key={t} type="button" onClick={() => toggleConsultation(t)}
-                          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${formData.consultationTypes.includes(t) ? "bg-gradient-primary text-white shadow-md" : "bg-muted text-muted-foreground"}`}>{t}</button>
-                      ))}
+                  {/* Specializations visual card layout matching screenshot styling */}
+                  <div className="space-y-4 bg-white border border-[#F1F5F9] p-5 rounded-3xl shadow-sm/50">
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
+                          <svg className="w-4 h-4 text-[#EC4899]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.907c.961 0 1.36 1.253.588 1.832l-3.97 2.883a1 1 0 00-.364 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.971-2.883a1 1 0 00-1.18 0l-3.97 2.883c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.364-1.118L2.49 10.123c-.773-.58-.372-1.832.589-1.832h4.907a1 1 0 00.95-.69L11.05 2.927z" />
+                          </svg>
+                        </div>
+                        <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Specializations</span>
+                      </div>
+                      <p className="text-slate-400 text-xs sm:text-sm font-medium ml-1">Select all that apply</p>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-1">Select one or more types of consultations you provide</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Experience (years) *</Label>
-                    <Input type="number" value={formData.yearsOfExperience} onChange={e => setFormData({ ...formData, yearsOfExperience: e.target.value })} placeholder="e.g. 5" className="rounded-2xl" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Available Days *</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {days.map(d => (
-                        <button key={d} type="button" onClick={() => toggleDay(d)}
-                          className={`w-12 h-12 rounded-xl text-sm font-medium transition-all ${formData.availableDays.includes(d) ? "bg-gradient-primary text-white shadow-md" : "bg-muted text-muted-foreground"}`}>{d}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <Label>Time Slots *</Label>
-                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-2xl">
-                      <Checkbox id="slot-morning" checked={formData.morningSlots} onCheckedChange={c => setFormData({ ...formData, morningSlots: c as boolean })} />
-                      <Label htmlFor="slot-morning" className="text-sm cursor-pointer">Morning (9 AM - 1 PM)</Label>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-2xl">
-                      <Checkbox id="slot-evening" checked={formData.eveningSlots} onCheckedChange={c => setFormData({ ...formData, eveningSlots: c as boolean })} />
-                      <Label htmlFor="slot-evening" className="text-sm cursor-pointer">Evening (4 PM - 8 PM)</Label>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label>Clinic visit fee (₹) *</Label>
-                      <Input type="number" value={formData.onlineFee} onChange={e => setFormData({ ...formData, onlineFee: e.target.value })} placeholder="500" className="rounded-2xl" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Home visit fee (₹) *</Label>
-                      <Input type="number" value={formData.offlineFee} onChange={e => setFormData({ ...formData, offlineFee: e.target.value })} placeholder="800" className="rounded-2xl" />
-                    </div>
-                  </div>
 
-                  <FileUploadBox field="profilePhoto" label="Vet Profile Photo *" accept="image/*" icon={Camera} />
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 pt-2">
+                      {specializationOptions.map(s => {
+                        const isSelected = formData.specializations.includes(s);
+                        const getSpecIcon = (name: string) => {
+                          const iconClass = `w-5 h-5 shrink-0 transition-colors ${
+                            isSelected ? "text-[#EC4899]" : "text-slate-400 group-hover:text-slate-500"
+                          }`;
+                          switch (name.toLowerCase()) {
+                            case "dog": return <Dog className={iconClass} strokeWidth={2.2} />;
+                            case "cat": return <Cat className={iconClass} strokeWidth={2.2} />;
+                            case "bird": return <Bird className={iconClass} strokeWidth={2.2} />;
+                            case "hamster": return <HamsterIcon className={iconClass} strokeWidth={2.2} />;
+                            default: return <Sparkles className={iconClass} strokeWidth={2.2} />;
+                          }
+                        };
+                        return (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => toggleSpec(s)}
+                            className={`flex items-center justify-center gap-1.5 sm:gap-2.5 rounded-2xl py-2.5 px-3 border text-xs sm:text-sm font-bold transition-all relative group select-none whitespace-nowrap min-w-0 ${
+                              isSelected 
+                                ? "border-[#EC4899] bg-[#FFF5F7] text-[#EC4899] font-extrabold shadow-sm" 
+                                : "border-slate-200 bg-white text-[#1E293B] hover:shadow-xs hover:border-slate-350"
+                            }`}
+                          >
+                            {getSpecIcon(s)}
+                            <span className="truncate">{s}</span>
+                            {isSelected && (
+                              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#EC4899] text-white flex items-center justify-center border-2 border-white shadow-sm shrink-0">
+                                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {/* Two Column Grid for Consultation Types and Years of Practice */}
+                  <div className="grid grid-cols-1 md:grid-cols-10 gap-4 sm:gap-6 pt-2">
+                    {/* Left Panel: Consultation Types (70% on Desktop) */}
+                    <div className="md:col-span-7 space-y-4 bg-white border border-[#F1F5F9] p-5 rounded-3xl shadow-sm/50 flex flex-col justify-between">
+                      <div className="space-y-4">
+                        <div className="flex flex-col gap-1.5 border-b border-slate-50 pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
+                              <Stethoscope className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
+                            </div>
+                            <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Consultation Types</span>
+                            <span className="text-pink-500 font-sans font-bold">*</span>
+                            <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 cursor-help" />
+                          </div>
+                          <p className="text-slate-400 text-xs sm:text-sm font-medium ml-1">Select one or more types of consultations you provide</p>
+                        </div>
+                        
+                        {/* 3 Grid Cards Layout */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                          {[
+                            {
+                              id: "Clinic visit",
+                              label: "In-clinic Visit",
+                              desc: "At your clinic",
+                              icon: <Briefcase className="w-5 h-5" strokeWidth={2.2} />,
+                              color: "indigo"
+                            },
+                            {
+                              id: "Home visits",
+                              label: "Home Visit",
+                              desc: "At pet parent's home",
+                              icon: <Home className="w-5 h-5" strokeWidth={2.2} />,
+                              color: "pink"
+                            },
+                            {
+                              id: "Video consultation",
+                              label: "Video Consultation",
+                              desc: "Online consultation",
+                              icon: <Video className="w-5 h-5" strokeWidth={2.2} />,
+                              color: "indigo"
+                            }
+                          ].map(opt => {
+                            const isSelected = formData.consultationTypes.includes(opt.id);
+                            return (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => toggleConsultation(opt.id)}
+                                className={`flex flex-col items-center justify-center text-center p-3 sm:p-4 rounded-2xl border transition-all relative group select-none cursor-pointer w-full min-w-0 ${
+                                  isSelected
+                                    ? "border-[#EC4899] bg-[#FFF5F7] text-[#EC4899] font-extrabold shadow-sm ring-1 ring-[#EC4899]"
+                                    : "border-slate-100 bg-white text-[#1E293B] hover:shadow-xs hover:border-slate-300"
+                                }`}
+                              >
+                                {/* Rounded Icon Container with soft background */}
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 mb-2.5 transition-colors ${
+                                  isSelected
+                                    ? "bg-pink-100/60 text-[#EC4899]"
+                                    : opt.color === "pink"
+                                      ? "bg-pink-50/50 text-pink-500 group-hover:bg-pink-50"
+                                      : "bg-indigo-50/50 text-indigo-500 group-hover:bg-indigo-50"
+                                }`}>
+                                  {opt.icon}
+                                </div>
+                                
+                                <span className="font-extrabold font-sans text-xs sm:text-sm text-[#333333] tracking-tight block w-full truncate">
+                                  {opt.label}
+                                </span>
+                                <span className="text-slate-400 text-[10px] sm:text-xs block mt-1 w-full truncate">
+                                  {opt.desc}
+                                </span>
+
+                                {/* Absolute check at top-right if selected */}
+                                {isSelected && (
+                                  <span className="absolute top-2 right-2 w-4.5 h-4.5 rounded-full bg-[#EC4899] text-white flex items-center justify-center shadow-xs shrink-0">
+                                    <Check className="w-3 h-3 stroke-[3]" />
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Panel: Years of Practice (30% on Desktop) */}
+                    <div className="md:col-span-3 space-y-4 bg-white border border-[#F1F5F9] p-5 rounded-3xl shadow-sm/50 flex flex-col justify-between">
+                      <div className="space-y-4">
+                        <div className="flex flex-col gap-1.5 border-b border-slate-50 pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
+                              <GraduationCap className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
+                            </div>
+                            <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Years of Practice</span>
+                            <span className="text-pink-500 font-sans font-bold">*</span>
+                            <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 cursor-help" />
+                          </div>
+                          <p className="text-slate-400 text-xs sm:text-sm font-medium ml-1">Your experience builds trust</p>
+                        </div>
+
+                        {/* Interactive Plus/Minus Counter Styled exactly like the image */}
+                        <div className="pt-2">
+                          <div className="flex items-center justify-center gap-3.5 py-4 px-3 border border-slate-100 rounded-2xl bg-[#FAFDFD]/30 w-full">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentVal = parseInt(formData.yearsOfExperience) || 0;
+                                if (currentVal > 0) {
+                                  setFormData({ ...formData, yearsOfExperience: (currentVal - 1).toString() });
+                                }
+                              }}
+                              className="w-10 h-10 rounded-full bg-[#FFF5F7] text-[#EC4899] hover:bg-pink-100/80 transition-all flex items-center justify-center font-bold text-xl border border-pink-100/35 select-none active:scale-90 cursor-pointer shadow-xs shrink-0"
+                            >
+                              <span className="leading-none select-none">&#8722;</span>
+                            </button>
+                            
+                            <div className="min-w-[32px] text-center">
+                              <span className="text-2xl sm:text-3xl font-extrabold text-[#1E293B] tracking-tight font-sans">
+                                {formData.yearsOfExperience || 0}
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentVal = parseInt(formData.yearsOfExperience) || 0;
+                                setFormData({ ...formData, yearsOfExperience: (currentVal + 1).toString() });
+                              }}
+                              className="w-10 h-10 rounded-full bg-[#FFF5F7] text-[#EC4899] hover:bg-pink-100/80 transition-all flex items-center justify-center font-bold text-xl border border-pink-100/35 select-none active:scale-90 cursor-pointer shadow-xs shrink-0"
+                            >
+                              <span className="leading-none select-none">&#43;</span>
+                            </button>
+
+                            <span className="text-slate-500 font-sans font-bold text-xs sm:text-sm selection:bg-transparent">
+                              years
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Trust badge with shield icon */}
+                      <div className="flex items-center gap-2 py-1 select-none">
+                        <div className="w-6.5 h-6.5 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" strokeWidth={2.5} />
+                        </div>
+                        <span className="text-slate-500 font-sans text-xs font-semibold">
+                          Your experience builds trust
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                   {/* Core Interactive Weekly Availability Planner */}
+                  <div className="space-y-6 bg-white border border-[#F1F5F9] p-4 sm:p-6 rounded-3xl shadow-sm">
+                    <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
+                          <Calendar className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
+                        </div>
+                        <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Availability</span>
+                        <span className="text-pink-500 font-sans font-bold">*</span>
+                      </div>
+
+                      {/* Discreet, highly elegant copy button */}
+                      {formData.availableDays.length > 0 && selectedDay && (
+                        <button
+                          type="button"
+                          onClick={handleCopyToAll}
+                          className="flex items-center gap-1.5 text-slate-400 hover:text-[#EC4899] text-xs font-bold transition-all py-1 px-2.5 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-100/60 active:scale-95 shrink-0"
+                        >
+                          <Copy className="w-3.5 h-3.5 shrink-0" />
+                          <span>Copy {selectedDay}'s slots to all days</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Highly-polished Available Days Toggle Selection */}
+                    <div className="space-y-3 bg-[#FAFDFD]/40 p-4 border border-[#FAF9FF] rounded-2xl">
+                      <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5 sm:gap-2.5">
+                        {days.map(d => {
+                          const dayData = weeklyAvailability[d];
+                          const isEnabled = dayData && (dayData.morning.enabled || dayData.afternoon.enabled || dayData.evening.enabled || dayData.night.enabled);
+                          
+                          return (
+                            <button
+                              key={d}
+                              type="button"
+                              onClick={() => toggleDay(d)}
+                              className={`flex items-center gap-1 sm:gap-1.5 px-1.5 py-2.5 sm:px-2.5 sm:py-3 rounded-xl border transition-all text-left relative active:scale-95 select-none min-w-0 w-full justify-center sm:justify-start ${
+                                isEnabled
+                                  ? "border-pink-300 bg-[#FFF5F7] text-pink-950 shadow-sm"
+                                  : "border-slate-100 bg-white text-slate-400 hover:bg-slate-50 hover:border-slate-200"
+                              }`}
+                              style={{ borderWidth: isEnabled ? '1.5px' : '1px' }}
+                            >
+                              {/* Left check icon/checkbox inside card */}
+                              <div className="shrink-0 flex items-center justify-center">
+                                {isEnabled ? (
+                                  <CheckSquare className="w-3.5 h-3.5 text-[#EC4899] fill-[#EC4899]/10" />
+                                ) : (
+                                  <div className="w-3.5 h-3.5 border border-slate-300 rounded bg-slate-50" />
+                                )}
+                              </div>
+                              
+                              <span className={`font-extrabold font-sans text-[11px] sm:text-xs xl:text-sm whitespace-nowrap ${isEnabled ? "text-[#333333]" : "text-slate-400"}`}>
+                                {d}
+                              </span>
+
+                              {/* Signature pink top-right badge if enabled */}
+                              {isEnabled && (
+                                <div className="bg-[#EC4899] text-white rounded-full p-0.5 w-4 h-4 flex items-center justify-center absolute -top-1.5 -right-1 shadow-sm transform scale-100 transition-transform">
+                                  <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Day selector tabs - dynamically filtered to only reflect the user-selected days */}
+                    {formData.availableDays.length > 0 ? (
+                      <div className="space-y-4 pt-1 animate-fade-in">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 font-sans">Select Day to Customize Slots</span>
+                        </div>
+                        <div className="border border-slate-100 bg-[#FAF9FF]/80 p-1 rounded-2xl flex flex-wrap gap-1.5">
+                          {days.filter(d => formData.availableDays.includes(d)).map(d => {
+                            const isChosen = selectedDay === d;
+                            const isSunday = d === "Sun";
+                            
+                            return (
+                              <button
+                                key={d}
+                                type="button"
+                                onClick={() => setSelectedDay(d)}
+                                className={`flex-1 min-w-[70px] py-2.5 rounded-xl font-bold text-xs sm:text-sm text-center transition-all flex flex-col items-center gap-0.5 relative ${
+                                  isChosen 
+                                    ? "bg-gradient-primary text-white shadow-sm" 
+                                    : isSunday
+                                      ? "text-rose-500 hover:bg-slate-100"
+                                      : "text-slate-500 hover:bg-slate-50"
+                                }`}
+                              >
+                                <span>{d}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-10 px-4 border border-dashed border-slate-200 rounded-3xl bg-slate-50/40">
+                        <p className="text-slate-400 font-bold text-sm sm:text-base font-sans">
+                          No days selected. Please select your available days from the cards above to configure times.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Periods lists */}
+                    <div className="space-y-4 pt-2">
+                      {(["morning", "afternoon", "evening", "night"] as const).map(periodKey => {
+                        const periodInfo = {
+                          morning: { label: "Morning", hours: "9 AM - 1 PM", bg: "bg-emerald-50/45 border-emerald-100 text-emerald-800", icon: <Sunrise className="w-4 h-4 text-emerald-600" strokeWidth={2.5} /> },
+                          afternoon: { label: "Afternoon", hours: "1 PM - 4 PM", bg: "bg-amber-50/45 border-amber-100 text-amber-850", icon: <Sun className="w-4 h-4 text-amber-600" strokeWidth={2.5} /> },
+                          evening: { label: "Evening", hours: "4 PM - 8 PM", bg: "bg-indigo-50/45 border-indigo-100 text-indigo-900", icon: <Moon className="w-4 h-4 text-indigo-600" strokeWidth={2.5} /> },
+                          night: { label: "Night", hours: "8 PM - 12 AM", bg: "bg-pink-50/45 border-pink-100 text-pink-900", icon: <Moon className="w-4 h-4 text-pink-600" strokeWidth={2.5} /> }
+                        }[periodKey];
+
+                        const dayData = weeklyAvailability[selectedDay];
+                        const periodAvailability = dayData ? dayData[periodKey] : { enabled: false, slots: [] };
+                        const isEnabled = periodAvailability.enabled;
+
+                        return (
+                          <div 
+                            key={periodKey} 
+                            className={`flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-3 border rounded-2xl transition-all ${
+                              isEnabled 
+                                ? "border-slate-100 bg-[#FAFAFC] shadow-sm/35" 
+                                : "border-slate-100 bg-slate-50/40 opacity-70"
+                            }`}
+                          >
+                            {/* Left Period Metadata visual card layout */}
+                            <div className={`flex items-center gap-2 py-1.5 px-3 rounded-xl border w-full md:w-[145px] shrink-0 ${periodInfo.bg}`}>
+                              <div className="shrink-0">
+                                {periodInfo.icon}
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-bold text-xs sm:text-sm tracking-tight truncate">{periodInfo.label}</span>
+                                <span className="text-[9px] sm:text-[11px] font-semibold opacity-75 whitespace-nowrap">{periodInfo.hours}</span>
+                              </div>
+                            </div>
+
+                            {/* Center Slots list with responsive overflow */}
+                            <div className="flex-1 flex flex-wrap items-center gap-2 min-w-0 px-1">
+                              {isEnabled && periodAvailability.slots.map((slot, sIdx) => (
+                                <div 
+                                  key={slot} 
+                                  className="flex items-center gap-1.5 bg-white border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-slate-700 shadow-xs transition hover:border-slate-300"
+                                >
+                                  <span>{slot}</span>
+                                  <button 
+                                    type="button" 
+                                    onClick={() => handleRemoveSlot(periodKey, sIdx)}
+                                    className="text-slate-400 hover:text-[#EC4899] transition-colors p-0.5 rounded-full hover:bg-slate-50 shrink-0"
+                                  >
+                                    <X className="w-3 h-3 stroke-[2.5]" />
+                                  </button>
+                                </div>
+                              ))}
+
+                              {/* Inline adder state representation */}
+                              {isEnabled && addingSlotRow === periodKey ? (
+                                <div className="flex items-center gap-1.5 p-1 px-1.5 border border-pink-200 rounded-xl bg-[#FFFDFE] shadow-sm animate-fade-in z-20 shrink-0">
+                                  <input 
+                                    type="time" 
+                                    value={newSlotStart} 
+                                    onChange={e => setNewSlotStart(e.target.value)} 
+                                    className="px-1 py-0.5 text-xs font-sans font-bold border border-slate-200 rounded-lg bg-white text-slate-700 w-[72px] h-7 focus:ring-1 focus:ring-[#EC4899] focus:outline-none"
+                                  />
+                                  <span className="text-slate-400 font-bold text-xs">–</span>
+                                  <input 
+                                    type="time" 
+                                    value={newSlotEnd} 
+                                    onChange={e => setNewSlotEnd(e.target.value)} 
+                                    className="px-1 py-0.5 text-xs font-sans font-bold border border-slate-200 rounded-lg bg-white text-slate-700 w-[72px] h-7 focus:ring-1 focus:ring-[#EC4899] focus:outline-none"
+                                  />
+                                  <div className="flex gap-1 pl-0.5 shrink-0">
+                                    <button 
+                                      type="button"
+                                      onClick={() => handleSaveSlot(periodKey)} 
+                                      className="bg-emerald-500 hover:bg-emerald-600 text-white rounded p-1 transition"
+                                    >
+                                      <Check className="w-3 h-3 stroke-[3]" />
+                                    </button>
+                                    <button 
+                                      type="button"
+                                      onClick={() => setAddingSlotRow(null)} 
+                                      className="bg-slate-100 hover:bg-slate-200 text-slate-500 rounded p-1 transition"
+                                    >
+                                      <X className="w-3 h-3 stroke-[2.5]" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : isEnabled ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenAddSlot(periodKey)}
+                                  className="flex items-center justify-center gap-1.5 py-1.5 px-3.5 rounded-xl border border-dashed border-pink-200 text-[#EC4899] bg-[#FFFDFE] hover:bg-[#FFF5F7] hover:border-pink-300 font-bold text-xs transition active:scale-[0.98] shrink-0"
+                                >
+                                  <Plus className="w-3.5 h-3.5 text-pink-500 stroke-[2.5]" />
+                                  <span>Add slot</span>
+                                </button>
+                              ) : (
+                                <span className="text-slate-400 font-medium text-xs py-1 italic">Disabled for {selectedDay}</span>
+                              )}
+                            </div>
+
+                            {/* Right toggle switch matching custom switcher representation */}
+                            <div className="flex items-center gap-2.5 shrink-0 self-end md:self-center">
+                              <span className="text-[10px] sm:text-xs font-semibold text-slate-400 hidden sm:inline">
+                                {isEnabled ? "Active" : "Inactive"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleTogglePeriod(periodKey)}
+                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                  isEnabled ? "bg-[#EC4899]" : "bg-slate-200"
+                                }`}
+                              >
+                                <span
+                                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                    isEnabled ? "translate-x-5" : "translate-x-0"
+                                  }`}
+                                />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Local timezone prompt */}
+                    <div className="flex items-center justify-center gap-1.5 pt-3 border-t border-slate-100 text-slate-400 text-xs sm:text-sm font-medium">
+                      <Clock className="w-4 h-4 shrink-0 text-slate-400 animate-pulse" />
+                      <span>Timings are shown to pet parents in your local time zone.</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-4">
+                    {/* Left Card: Consultation Fees */}
+                    <div className="bg-white border border-[#F1F5F9] p-5 sm:p-6 rounded-3xl shadow-sm/50 flex flex-col justify-between space-y-5">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 border-b border-slate-50 pb-2">
+                          <span className="text-[#1E293B] font-extrabold text-base sm:text-lg font-sans">Consultation Fees (₹)</span>
+                          <Info className="w-4 h-4 text-slate-400 shrink-0 cursor-help" />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* In-clinic Visit Section */}
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-[38px] h-[38px] rounded-xl bg-purple-50/70 border border-purple-100 flex items-center justify-center shrink-0 shadow-xs">
+                                <Briefcase className="w-5 h-5 text-purple-600" strokeWidth={2.2} />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="font-extrabold text-xs sm:text-sm text-[#1E293B] tracking-tight">In-clinic Visit</span>
+                                <span className="text-[10px] sm:text-xs text-slate-400 font-semibold opacity-90">At your clinic</span>
+                              </div>
+                            </div>
+                            <div className="relative flex items-center h-12.5 px-4 rounded-2xl bg-[#F5F3FF]/50 border border-[#E4E0FF] focus-within:border-[#EC4899] transition-all shadow-xs/5">
+                              <input 
+                                type="number" 
+                                value={formData.onlineFee} 
+                                onChange={e => setFormData({ ...formData, onlineFee: e.target.value })} 
+                                placeholder="500"
+                                className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-[#1E293B] font-extrabold text-lg sm:text-xl tracking-tight [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                              <span className="text-slate-400 font-bold text-lg select-none pl-2 pr-1">₹</span>
+                            </div>
+                          </div>
+
+                          {/* Home Visit Section */}
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-[38px] h-[38px] rounded-xl bg-pink-50/70 border border-pink-100 flex items-center justify-center shrink-0 shadow-xs">
+                                <Home className="w-5 h-5 text-[#EC4899]" strokeWidth={2.2} />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="font-extrabold text-xs sm:text-sm text-[#1E293B] tracking-tight">Home Visit</span>
+                                <span className="text-[10px] sm:text-xs text-slate-400 font-semibold opacity-90">At pet parent's home</span>
+                              </div>
+                            </div>
+                            <div className="relative flex items-center h-12.5 px-4 rounded-2xl bg-[#FFF3F7]/50 border border-[#FFE0ED] focus-within:border-[#EC4899] transition-all shadow-xs/5">
+                              <input 
+                                type="number" 
+                                value={formData.offlineFee} 
+                                onChange={e => setFormData({ ...formData, offlineFee: e.target.value })} 
+                                placeholder="800"
+                                className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-[#1E293B] font-extrabold text-lg sm:text-xl tracking-tight [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                              <span className="text-slate-400 font-bold text-lg select-none pl-2 pr-1">₹</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Card: Emergency Services */}
+                    <div className="bg-white border border-[#F1F5F9] p-5 sm:p-6 rounded-3xl shadow-sm/50 flex flex-col justify-between space-y-4">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b border-slate-50 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[#1E293B] font-extrabold text-base sm:text-lg font-sans">Emergency Services</span>
+                            <Info className="w-4 h-4 text-slate-400 shrink-0 cursor-help" />
+                          </div>
+                        </div>
+
+                        {/* Available Toggle */}
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, emergencyAvailable: !(formData.emergencyAvailable ?? true) })}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                              (formData.emergencyAvailable ?? true) ? "bg-[#8A1550]" : "bg-slate-200"
+                            }`}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                (formData.emergencyAvailable ?? true) ? "translate-x-5" : "translate-x-0"
+                              }`}
+                            />
+                          </button>
+                          <span className="text-sm font-bold text-slate-700">Available for emergency</span>
+                        </div>
+
+                        {/* Grid with 2 items inside */}
+                        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 transition-all duration-300 ${(formData.emergencyAvailable ?? true) ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                          {/* 24x7 Support Container */}
+                          <div className="p-3 border border-slate-100 rounded-2xl bg-[#FAFAFC]/65 space-y-3.5 shadow-xs">
+                            <div className="flex items-center gap-2">
+                              <div className="w-[34px] h-[34px] rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0">
+                                <Clock className="w-4 h-4 text-purple-600" />
+                              </div>
+                              <span className="font-extrabold text-xs sm:text-sm text-[#1E293B] tracking-tight">24x7 Support</span>
+                            </div>
+                            
+                            {/* Custom Circular Radio Selection */}
+                            <div className="flex items-center gap-4 pl-1">
+                              <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, support24x7: 'yes' })}
+                                className="flex items-center gap-2 cursor-pointer select-none group"
+                              >
+                                <span className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                                  (formData.support24x7 ?? 'yes') === 'yes'
+                                    ? "border-purple-600 bg-white"
+                                    : "border-slate-300 bg-white group-hover:border-purple-400"
+                                }`}>
+                                  {(formData.support24x7 ?? 'yes') === 'yes' && (
+                                    <span className="w-2 h-2 rounded-full bg-purple-600" />
+                                  )}
+                                </span>
+                                <span className="text-xs font-bold text-slate-700">Yes</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, support24x7: 'no' })}
+                                className="flex items-center gap-2 cursor-pointer select-none group"
+                              >
+                                <span className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                                  (formData.support24x7 ?? 'yes') === 'no'
+                                    ? "border-purple-600 bg-white"
+                                    : "border-slate-300 bg-white group-hover:border-purple-400"
+                                }`}>
+                                  {(formData.support24x7 ?? 'yes') === 'no' && (
+                                    <span className="w-2 h-2 rounded-full bg-purple-600" />
+                                  )}
+                                </span>
+                                <span className="text-xs font-bold text-slate-700">No</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Weekend Availability Container */}
+                          <div className="p-3 border border-slate-100 rounded-2xl bg-[#FAFAFC]/65 space-y-3.5 shadow-xs">
+                            <div className="flex items-center gap-2">
+                              <div className="w-[34px] h-[34px] rounded-xl bg-pink-50 border border-pink-100 flex items-center justify-center shrink-0">
+                                <Calendar className="w-4 h-4 text-[#EC4899]" />
+                              </div>
+                              <span className="font-extrabold text-xs sm:text-sm text-[#1E293B] tracking-tight">Weekend Availability</span>
+                            </div>
+                            
+                            {/* Custom Circular Radio Selection */}
+                            <div className="flex items-center gap-4 pl-1">
+                              <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, weekendAvailability: 'yes' })}
+                                className="flex items-center gap-2 cursor-pointer select-none group"
+                              >
+                                <span className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                                  (formData.weekendAvailability ?? 'yes') === 'yes'
+                                    ? "border-[#EC4899] bg-white"
+                                    : "border-slate-300 bg-white group-hover:border-pink-400"
+                                }`}>
+                                  {(formData.weekendAvailability ?? 'yes') === 'yes' && (
+                                    <span className="w-2 h-2 rounded-full bg-[#EC4899]" />
+                                  )}
+                                </span>
+                                <span className="text-xs font-bold text-slate-700">Yes</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, weekendAvailability: 'no' })}
+                                className="flex items-center gap-2 cursor-pointer select-none group"
+                              >
+                                <span className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                                  (formData.weekendAvailability ?? 'yes') === 'no'
+                                    ? "border-[#EC4899] bg-white"
+                                    : "border-slate-300 bg-white group-hover:border-pink-400"
+                                }`}>
+                                  {(formData.weekendAvailability ?? 'yes') === 'no' && (
+                                    <span className="w-2 h-2 rounded-full bg-[#EC4899]" />
+                                  )}
+                                </span>
+                                <span className="text-xs font-bold text-slate-700">No</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                   <div className="flex gap-3">
                     <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(4)}>Back</Button>
@@ -1578,52 +2533,616 @@ const VetOnboarding = () => {
 
               {/* ══════ STEP 6 – Platform Compliance & Submit ══════ */}
               {currentStep === 6 && (
-                <div className="space-y-4 animate-fade-in">
-                  <div className="bg-accent/50 rounded-2xl p-3 mb-2">
-                    <p className="text-xs text-accent-foreground font-medium">📋 Review agreements and submit</p>
-                  </div>
-
-                  {/* Summary */}
-                  <div className="bg-muted/40 rounded-2xl p-4 space-y-2">
-                    <h4 className="font-semibold text-sm">Profile Summary</h4>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <span className="text-muted-foreground">Name:</span><span className="font-medium">{formData.fullName}</span>
-                      <span className="text-muted-foreground">Practice:</span><span className="font-medium">{formData.isIndependentPractice ? "Independent Clinic" : "Regular Practice"}</span>
-                      <span className="text-muted-foreground">Gender:</span><span className="font-medium capitalize">{formData.gender}</span>
-                      <span className="text-muted-foreground">DOB:</span><span className="font-medium">{formData.dob}</span>
-                      <span className="text-muted-foreground">Phone:</span><span className="font-medium">{formData.phone}</span>
-                      <span className="text-muted-foreground">City:</span><span className="font-medium">{formData.city}, {formData.state}</span>
-                      <span className="text-muted-foreground">Address:</span><span className="font-medium break-all">{formData.address || "N/A"}</span>
-                      <span className="text-muted-foreground">Qualification:</span><span className="font-medium">{formData.qualification}</span>
-                      <span className="text-muted-foreground">Experience:</span><span className="font-medium">{formData.yearsOfExperience} yrs</span>
-                      <span className="text-muted-foreground">Specializations:</span><span className="font-medium">{formData.specializations.join(", ")}</span>
-                      <span className="text-muted-foreground">Consultation:</span><span className="font-medium">{formData.consultationTypes.join(", ")}</span>
-                      <span className="text-muted-foreground">Available:</span><span className="font-medium">{formData.availableDays.join(", ")}</span>
-                      <span className="text-muted-foreground">Clinic Fee:</span><span className="font-medium">₹{formData.onlineFee}</span>
-                      <span className="text-muted-foreground">Home Fee:</span><span className="font-medium">₹{formData.offlineFee}</span>
+                <div className="space-y-6 animate-fade-in">
+                  {/* Step Header exactly matching Step 1 */}
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
+                    <div className="space-y-1">
+                      <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
+                        <span>Review Profile</span>
+                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <svg className="w-3.5 h-3.5 text-[#EC4899]" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM10 12.5l-2-2 1.4-1.4 1.6 1.6 4.3-4.3 1.4 1.4-5.7 5.7z"/>
+                          </svg>
+                        </div>
+                      </h2>
+                      <p className="text-slate-500 text-xs sm:text-sm font-medium">Verify your details and accept agreements to submit</p>
+                    </div>
+                    <div className="bg-pink-50/80 border border-pink-200/60 text-pink-600 px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-normal shrink-0 inline-flex items-center justify-center">
+                      Step 6 of 6
                     </div>
                   </div>
 
-                  {/* Compliance checkboxes */}
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-2xl">
-                      <Checkbox checked={formData.vendorAgreement} onCheckedChange={c => setFormData({ ...formData, vendorAgreement: c as boolean })} className="mt-0.5" />
-                      <Label className="text-sm cursor-pointer">I accept the <span className="text-primary font-medium">Vendor / Service Agreement</span> *</Label>
+                  {/* Local review helper */}
+                  {(() => {
+                    const renderReviewFilePreview = (fieldName: string, label: string) => {
+                      const preview = filePreviews[fieldName];
+                      const file = (formData as Record<string, unknown>)[fieldName] as File | null;
+                      
+                      if (!preview && !file) {
+                        return (
+                          <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center text-xs text-slate-400 font-semibold">
+                            No {label} uploaded
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <div className="bg-slate-50/80 border border-slate-200/60 rounded-xl p-3 flex items-center justify-between gap-3 shadow-xs font-sans">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            {preview ? (
+                              <div className="w-12 h-12 rounded-lg border border-slate-200 overflow-hidden bg-white shrink-0">
+                                <img src={preview} alt={label} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              </div>
+                            ) : (
+                              <div className="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center shrink-0 border border-pink-200 text-[#EC4899]">
+                                <FileText className="w-6 h-6" />
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-slate-700 truncate">{label}</p>
+                              <p className="text-[10px] text-slate-400 font-medium font-mono truncate">
+                                {file ? `${(file.size / 1024).toFixed(0)} KB • ${file.name}` : "Uploaded document"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    };
+
+                    return (
+                      <div className="space-y-4">
+                        
+                        {/* CARD 1: Personal Information */}
+                        <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-all">
+                          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100/60">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-pink-50/80 border border-pink-100 flex items-center justify-center shrink-0">
+                                <User className="w-5 h-5 text-pink-600" />
+                              </div>
+                              <div>
+                                <h3 className="font-extrabold text-sm sm:text-base text-[#1E293B] tracking-tight">Personal Information</h3>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                type="button" 
+                                onClick={() => setCurrentStep(1)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-[#8A1550] transition-all shrink-0"
+                              >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z" />
+                                </svg>
+                                Edit
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={() => toggleSection("personal")}
+                                className="w-8 h-8 rounded-lg hover:bg-slate-50 border border-slate-100 text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center"
+                              >
+                                {expandedSections.personal ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Collapsed grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-xs sm:text-sm">
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Name</span>
+                              <p className="font-bold text-[#1E293B]">{formData.fullName || "N/A"}</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Phone</span>
+                              <p className="font-bold text-[#1E293B]">{formData.phone ? `+91 ${formData.phone}` : "N/A"}</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">City</span>
+                              <p className="font-bold text-[#1E293B]">{formData.city ? `${formData.city}, ${formData.state}` : "N/A"}</p>
+                            </div>
+                          </div>
+
+                          {/* Expanded views */}
+                          {expandedSections.personal && (
+                            <div className="mt-4 pt-4 border-t border-slate-100/50 space-y-4 animate-fade-in text-xs sm:text-sm">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-0.5">
+                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Email Address</span>
+                                  <p className="font-bold text-[#1E293B] break-all">{formData.email || "N/A"}</p>
+                                </div>
+                                <div className="space-y-0.5">
+                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Date of Birth</span>
+                                  <p className="font-bold text-[#1E293B]">{formData.dob ? formatDisplayDate(formData.dob) : "N/A"}</p>
+                                </div>
+                                <div className="space-y-0.5">
+                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Gender</span>
+                                  <p className="font-bold text-[#1E293B] capitalize">{formData.gender || "N/A"}</p>
+                                </div>
+                                <div className="space-y-0.5">
+                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Address</span>
+                                  <p className="font-bold text-[#1E293B] break-words">{formData.address || "N/A"}</p>
+                                </div>
+                                <div className="space-y-0.5">
+                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Preferred Language</span>
+                                  <p className="font-bold text-[#1E293B] capitalize">{formData.preferredLanguage || "N/A"}</p>
+                                </div>
+                              </div>
+                              {/* Profile photo layout */}
+                              <div className="space-y-1.5 pt-2">
+                                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Profile Photo</span>
+                                {renderReviewFilePreview("profilePhoto", "Profile Photograph")}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* CARD 2: Identity Verification */}
+                        <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-all">
+                          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100/60">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-purple-50/80 border border-purple-100 flex items-center justify-center shrink-0">
+                                <Shield className="w-5 h-5 text-purple-600" />
+                              </div>
+                              <div>
+                                <h3 className="font-extrabold text-sm sm:text-base text-[#1E293B] tracking-tight">Identity Verification</h3>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                type="button" 
+                                onClick={() => setCurrentStep(2)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-[#8A1550] transition-all shrink-0"
+                              >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z" />
+                                </svg>
+                                Edit
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={() => toggleSection("identity")}
+                                className="w-8 h-8 rounded-lg hover:bg-slate-50 border border-slate-100 text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center"
+                              >
+                                {expandedSections.identity ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Collapsed grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-xs sm:text-sm">
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Aadhar Card Verification</span>
+                              <p className="font-bold text-emerald-600 flex items-center gap-1.5">
+                                <Check className="w-4 h-4" /> Done
+                              </p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Live Photo</span>
+                              <p className={`font-bold ${formData.passportPhotoFile || filePreviews.passportPhotoFile ? "text-emerald-600" : "text-amber-500"}`}>
+                                {formData.passportPhotoFile || filePreviews.passportPhotoFile ? "✓ Uploaded" : "Pending Upload"}
+                              </p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">ID Verification Status</span>
+                              <p className="font-bold text-emerald-600">Pending Review</p>
+                            </div>
+                          </div>
+
+                          {/* Expanded views */}
+                          {expandedSections.identity && (
+                            <div className="mt-4 pt-4 border-t border-slate-100/50 space-y-4 animate-fade-in">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {renderReviewFilePreview("govtIdFile", "Aadhaar Card (Front)")}
+                                {renderReviewFilePreview("panCardFile", "Aadhaar Card (Back)")}
+                              </div>
+                              <div className="space-y-1.5">
+                                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Live Photo / Passport Photo</span>
+                                {renderReviewFilePreview("passportPhotoFile", "Live Photo / Passport Image")}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* CARD 3: Professional Details */}
+                        <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-all">
+                          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100/60">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-violet-50/80 border border-violet-100 flex items-center justify-center shrink-0">
+                                <GraduationCap className="w-5 h-5 text-violet-600" />
+                              </div>
+                              <div>
+                                <h3 className="font-extrabold text-sm sm:text-base text-[#1E293B] tracking-tight">Professional Details</h3>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                type="button" 
+                                onClick={() => setCurrentStep(3)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-[#8A1550] transition-all shrink-0"
+                              >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z" />
+                                </svg>
+                                Edit
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={() => toggleSection("professional")}
+                                className="w-8 h-8 rounded-lg hover:bg-slate-50 border border-slate-100 text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center"
+                              >
+                                {expandedSections.professional ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Collapsed grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-xs sm:text-sm">
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Qualification</span>
+                              <p className="font-bold text-[#1E293B]">{formData.qualification || "N/A"}</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Experience</span>
+                              <p className="font-bold text-[#1E293B]">{formData.yearsOfExperience ? `${formData.yearsOfExperience} Years` : "N/A"}</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Registration No.</span>
+                              <p className="font-bold text-[#1E293B]">{formData.registrationNumber || "N/A"}</p>
+                            </div>
+                          </div>
+
+                          {/* Expanded views */}
+                          {expandedSections.professional && (
+                            <div className="mt-4 pt-4 border-t border-slate-100/50 space-y-4 animate-fade-in text-xs sm:text-sm">
+                              <div className="space-y-1.5">
+                                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Veterinary Degree Certificate</span>
+                                {renderReviewFilePreview("vetDegreeFile", `Degree Certificate (${formData.qualification})`)}
+                              </div>
+                              
+                              {formData.educationRows && formData.educationRows.length > 0 && (
+                                <div className="space-y-2">
+                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Additional Credentials / Medical History</span>
+                                  <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/55 space-y-2.5">
+                                    {formData.educationRows.map((row, index) => (
+                                      <div key={index} className="flex justify-between items-center text-xs border-b border-dashed border-slate-200/50 pb-2 last:border-none last:pb-0">
+                                        <div>
+                                          <p className="font-bold text-[#1E293B]">{row.degree || "Degree Detail"}</p>
+                                          <p className="text-slate-400 font-medium text-[10px]">{row.college || "Veterinary College / University"}</p>
+                                        </div>
+                                        <span className="bg-slate-200/50 text-[#1E293B] font-bold px-2 py-0.5 rounded-lg text-[10px]">{row.year || "Year"}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* CARD 4: Clinic / Practice Details */}
+                        <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-all">
+                          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100/60">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-blue-50/80 border border-blue-100 flex items-center justify-center shrink-0">
+                                <Building2 className="w-5 h-5 text-blue-600" />
+                              </div>
+                              <div>
+                                <h3 className="font-extrabold text-sm sm:text-base text-[#1E293B] tracking-tight">Clinic / Practice Details</h3>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                type="button" 
+                                onClick={() => setCurrentStep(4)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-[#8A1550] transition-all shrink-0"
+                              >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z" />
+                                </svg>
+                                Edit
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={() => toggleSection("practice")}
+                                className="w-8 h-8 rounded-lg hover:bg-slate-50 border border-slate-100 text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center"
+                              >
+                                {expandedSections.practice ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Collapsed grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-xs sm:text-sm">
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Practice Type</span>
+                              <p className="font-bold text-[#1E293B]">
+                                {formData.isIndependentPractice ? "Independent Clinic" : "Hospital / Corporate Practice"}
+                              </p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Clinic Name</span>
+                              <p className="font-bold text-[#1E293B]">
+                                {formData.clinicName || formData.hospitalName || "N/A"}
+                              </p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">City</span>
+                              <p className="font-bold text-[#1E293B]">{formData.city || "N/A"}</p>
+                            </div>
+                          </div>
+
+                          {/* Expanded views */}
+                          {expandedSections.practice && (
+                            <div className="mt-4 pt-4 border-t border-slate-100/50 space-y-4 animate-fade-in text-xs sm:text-sm">
+                              {formData.isIndependentPractice ? (
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-0.5">
+                                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Clinic Name</span>
+                                    <p className="font-bold text-[#1E293B]">{formData.clinicName || "N/A"}</p>
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Clinic Address</span>
+                                    <p className="font-bold text-[#1E293B] tracking-tight">{formData.clinicAddress || "N/A"}</p>
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Clinic Pincode</span>
+                                    <p className="font-bold text-[#1E293B]">{formData.clinicPincode || "N/A"}</p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-0.5">
+                                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Hospital Name</span>
+                                    <p className="font-bold text-[#1E293B]">{formData.hospitalName || "N/A"}</p>
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Role / Designation</span>
+                                    <p className="font-bold text-[#1E293B]">{formData.hospitalRole || "N/A"}</p>
+                                  </div>
+                                  <div className="space-y-0.5 col-span-full">
+                                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Hospital Address</span>
+                                    <p className="font-bold text-[#1E293B]">{formData.hospitalAddress || "N/A"}</p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Documents in Expand */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                                {formData.isIndependentPractice ? (
+                                  <>
+                                    {renderReviewFilePreview("clinicRegistrationFile", "Clinic Practice Registration")}
+                                    {renderReviewFilePreview("clinicShopLicenseFile", "Shop & Establishment License")}
+                                  </>
+                                ) : (
+                                  renderReviewFilePreview("hospitalJoiningProofFile", "Hospital ID / Joining Proof Document")
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* CARD 5: Availability */}
+                        <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-all">
+                          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100/60">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-orange-50/80 border border-orange-100 flex items-center justify-center shrink-0">
+                                <Calendar className="w-5 h-5 text-orange-600" />
+                              </div>
+                              <div>
+                                <h3 className="font-extrabold text-sm sm:text-base text-[#1E293B] tracking-tight">Availability</h3>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                type="button" 
+                                onClick={() => setCurrentStep(5)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-[#8A1550] transition-all shrink-0"
+                              >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z" />
+                                </svg>
+                                Edit
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={() => toggleSection("availability")}
+                                className="w-8 h-8 rounded-lg hover:bg-slate-50 border border-slate-100 text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center"
+                              >
+                                {expandedSections.availability ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Collapsed grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-xs sm:text-sm">
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Available Days</span>
+                              <p className="font-bold text-[#1E293B] truncate">
+                                {formData.availableDays.length > 0 ? formData.availableDays.join(", ") : "None chosen"}
+                              </p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Time Sessions</span>
+                              <p className="font-bold text-[#1E293B]">
+                                {[
+                                  formData.morningSlots && "09:00 AM - 01:00 PM",
+                                  formData.eveningSlots && "04:00 PM - 08:00 PM"
+                                ].filter(Boolean).join(" & ") || "No Sessions Specified"}
+                              </p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Consultation Types</span>
+                              <p className="font-bold text-[#1E293B] truncate">
+                                {formData.consultationTypes.length > 0 ? formData.consultationTypes.join(", ") : "N/A"}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Expanded views */}
+                          {expandedSections.availability && (
+                            <div className="mt-4 pt-4 border-t border-slate-100/50 space-y-3 animate-fade-in text-xs sm:text-sm">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-0.5">
+                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Specializations</span>
+                                  <p className="font-bold text-[#1E293B]">{formData.specializations.join(", ") || "None selected"}</p>
+                                </div>
+                                <div className="space-y-0.5">
+                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Morning Shift (9am-1pm)</span>
+                                  <p className="font-bold text-[#1E293B]">{formData.morningSlots ? "Enabled ✓" : "Disabled ✗"}</p>
+                                </div>
+                                <div className="space-y-0.5">
+                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Evening Shift (4pm-8pm)</span>
+                                  <p className="font-bold text-[#1E293B]">{formData.eveningSlots ? "Enabled ✓" : "Disabled ✗"}</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* CARD 6: Consultation Fees */}
+                        <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-all">
+                          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100/60">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-pink-50/80 border border-pink-100 flex items-center justify-center shrink-0">
+                                <Banknote className="w-5 h-5 text-pink-600" />
+                              </div>
+                              <div>
+                                <h3 className="font-extrabold text-sm sm:text-base text-[#1E293B] tracking-tight">Consultation Fees</h3>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                type="button" 
+                                onClick={() => setCurrentStep(5)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-[#8A1550] transition-all shrink-0"
+                              >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z" />
+                                </svg>
+                                Edit
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={() => toggleSection("fees")}
+                                className="w-8 h-8 rounded-lg hover:bg-slate-50 border border-slate-100 text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center"
+                              >
+                                {expandedSections.fees ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Collapsed grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-xs sm:text-sm">
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">In-clinic Consultation</span>
+                              <p className="font-bold text-[#1E293B]">₹{formData.onlineFee || "None"}</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Home Consultation</span>
+                              <p className="font-bold text-[#1E293B]">₹{formData.offlineFee || "None"}</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Emergency Visit</span>
+                              <p className={`font-bold ${formData.emergencyAvailable ? "text-emerald-600" : "text-slate-400"}`}>
+                                {formData.emergencyAvailable ? "Available" : "Not Available"}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Expanded views */}
+                          {expandedSections.fees && (
+                            <div className="mt-4 pt-4 border-t border-slate-100/50 space-y-3 animate-fade-in text-xs sm:text-sm">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-0.5">
+                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">24x7 Support</span>
+                                  <p className="font-bold text-[#1E293B] uppercase">{formData.support24x7 || "Yes"}</p>
+                                </div>
+                                <div className="space-y-0.5">
+                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Weekend Availability</span>
+                                  <p className="font-bold text-[#1E293B] uppercase">{formData.weekendAvailability || "Yes"}</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                      </div>
+                    );
+                  })()}
+
+                  {/* Gorgeous Agreements & Consent card block */}
+                  <div className="space-y-4 pt-4 pb-2">
+                    <div>
+                      <h3 className="text-base sm:text-lg font-extrabold text-[#1E293B] font-sans">Agreements & Consent</h3>
+                      <p className="text-[11px] sm:text-xs text-slate-400 font-semibold">Please read and accept all agreements to continue</p>
                     </div>
-                    <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-2xl">
-                      <Checkbox checked={formData.termsAccepted} onCheckedChange={c => setFormData({ ...formData, termsAccepted: c as boolean })} className="mt-0.5" />
-                      <Label className="text-sm cursor-pointer">I accept the <span className="text-primary font-medium">Terms & Conditions</span> and confirm all information is accurate *</Label>
-                    </div>
-                    <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-2xl">
-                      <Checkbox checked={formData.telemedicineConsent} onCheckedChange={c => setFormData({ ...formData, telemedicineConsent: c as boolean })} className="mt-0.5" />
-                      <Label className="text-sm cursor-pointer">I consent to provide <span className="text-primary font-medium">Telemedicine Consultations</span> via this platform</Label>
+
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-3 p-4 bg-[#F8F9FC]/80 border border-slate-100 rounded-2xl shadow-xs transition-colors hover:border-[#E4E8F0]">
+                        <div className="flex items-start gap-3">
+                          <Checkbox 
+                            id="vendor-agreement"
+                            checked={formData.vendorAgreement} 
+                            onCheckedChange={c => setFormData({ ...formData, vendorAgreement: c as boolean })} 
+                            className="mt-1 border-slate-300 data-[state=checked]:bg-[#8a1550] data-[state=checked]:border-[#8a1550]" 
+                          />
+                          <Label htmlFor="vendor-agreement" className="text-xs sm:text-sm cursor-pointer text-[#1E293B] font-bold select-none leading-none pt-0.5">
+                            I accept the <span className="text-[#8A1550] underline">Vendor / Service Agreement</span> *
+                            <p className="text-[10px] text-slate-400 font-semibold mt-1 font-sans">Read the full service agreement below</p>
+                          </Label>
+                        </div>
+                        <a href="#" className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#8A1550] transition-colors shrink-0">
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
+
+                      <div className="flex items-start justify-between gap-3 p-4 bg-[#F8F9FC]/80 border border-slate-100 rounded-2xl shadow-xs transition-colors hover:border-[#E4E8F0]">
+                        <div className="flex items-start gap-3">
+                          <Checkbox 
+                            id="terms-conditions"
+                            checked={formData.termsAccepted} 
+                            onCheckedChange={c => setFormData({ ...formData, termsAccepted: c as boolean })} 
+                            className="mt-1 border-slate-300 data-[state=checked]:bg-[#8a1550] data-[state=checked]:border-[#8a1550]" 
+                          />
+                          <Label htmlFor="terms-conditions" className="text-xs sm:text-sm cursor-pointer text-[#1E293B] font-bold select-none leading-none pt-0.5">
+                            I accept the <span className="text-[#8A1550] underline">Terms & Conditions</span> and confirm all information is accurate *
+                            <p className="text-[10px] text-slate-400 font-semibold mt-1 font-sans">Read the terms & conditions of onboarding</p>
+                          </Label>
+                        </div>
+                        <a href="#" className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#8A1550] transition-colors shrink-0">
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
+
+                      <div className="flex items-start justify-between gap-3 p-4 bg-[#F8F9FC]/80 border border-slate-100 rounded-2xl shadow-xs transition-colors hover:border-[#E4E8F0]">
+                        <div className="flex items-start gap-3">
+                          <Checkbox 
+                            id="telemedicine-consent"
+                            checked={formData.telemedicineConsent} 
+                            onCheckedChange={c => setFormData({ ...formData, telemedicineConsent: c as boolean })} 
+                            className="mt-1 border-slate-300 data-[state=checked]:bg-[#8a1550] data-[state=checked]:border-[#8a1550]" 
+                          />
+                          <Label htmlFor="telemedicine-consent" className="text-xs sm:text-sm cursor-pointer text-[#1E293B] font-bold select-none leading-none pt-0.5">
+                            I consent to provide <span className="text-[#8A1550] underline">Telemedicine Consultations</span> via this platform
+                            <p className="text-[10px] text-slate-400 font-semibold mt-1 font-sans">Learn more about our telemedicine policies</p>
+                          </Label>
+                        </div>
+                        <a href="#" className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#8A1550] transition-colors shrink-0">
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex gap-3">
+                  {/* Submission and back buttons exactly formatted */}
+                  <div className="flex gap-3 pt-3">
                     <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(5)}>Back</Button>
                     <Button type="submit" className="flex-1 rounded-2xl bg-gradient-primary" disabled={isLoading || !formData.termsAccepted || !formData.vendorAgreement}>
-                      {isLoading ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Submitting...</>) : "Submit for Verification"}
+                      {isLoading ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" strokeWidth={2.5} />Submitting...</>) : "Submit for Verification"}
                     </Button>
                   </div>
                 </div>
