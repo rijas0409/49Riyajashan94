@@ -162,6 +162,7 @@ const VetOnboarding = () => {
   }, [profile?.id]);
 
   const [selectedDay, setSelectedDay] = useState<string>("Mon");
+  const [sameTimingAllDays, setSameTimingAllDays] = useState<boolean>(false);
   const [weeklyAvailability, setWeeklyAvailability] = useState<Record<string, DayAvailability>>({
     Mon: {
       morning: { enabled: true, slots: ["09:00 AM – 11:00 AM", "11:30 AM – 01:00 PM"] },
@@ -606,13 +607,18 @@ const VetOnboarding = () => {
           night: { enabled: false, slots: [] }
         };
       } else {
-        // Enable with sensible defaults so it is not blank
-        next[day] = {
-          morning: { enabled: true, slots: ["09:00 AM – 11:00 AM", "11:30 AM – 01:00 PM"] },
-          afternoon: { enabled: true, slots: ["01:30 PM – 03:30 PM"] },
-          evening: { enabled: true, slots: ["04:30 PM – 06:30 PM", "07:00 PM – 08:00 PM"] },
-          night: { enabled: false, slots: [] }
-        };
+        // If sameTimingAllDays is true, copy selectedDay's schedule
+        if (sameTimingAllDays && selectedDay && prev[selectedDay]) {
+          next[day] = JSON.parse(JSON.stringify(prev[selectedDay]));
+        } else {
+          // Enable with sensible defaults so it is not blank
+          next[day] = {
+            morning: { enabled: true, slots: ["09:00 AM – 11:00 AM", "11:30 AM – 01:00 PM"] },
+            afternoon: { enabled: true, slots: ["01:30 PM – 03:30 PM"] },
+            evening: { enabled: true, slots: ["04:30 PM – 06:30 PM", "07:00 PM – 08:00 PM"] },
+            night: { enabled: false, slots: [] }
+          };
+        }
       }
       return next;
     });
@@ -673,7 +679,7 @@ const VetOnboarding = () => {
       const updatedSlots = [...periodData.slots, newSlotStr];
       updatedSlots.sort();
 
-      return {
+      const next = {
         ...prev,
         [selectedDay]: {
           ...currentDayData,
@@ -684,6 +690,20 @@ const VetOnboarding = () => {
           }
         }
       };
+
+      if (sameTimingAllDays) {
+        const sourceDayData = next[selectedDay];
+        Object.keys(next).forEach(day => {
+          if (day !== selectedDay) {
+            const isDayActive = next[day] && (next[day].morning.enabled || next[day].afternoon.enabled || next[day].evening.enabled || next[day].night.enabled);
+            if (isDayActive) {
+              next[day] = JSON.parse(JSON.stringify(sourceDayData));
+            }
+          }
+        });
+      }
+
+      return next;
     });
 
     setAddingSlotRow(null);
@@ -695,7 +715,8 @@ const VetOnboarding = () => {
       const currentDayData = prev[selectedDay];
       const periodData = currentDayData[period];
       const updatedSlots = periodData.slots.filter((_, i) => i !== index);
-      return {
+      
+      const next = {
         ...prev,
         [selectedDay]: {
           ...currentDayData,
@@ -705,6 +726,20 @@ const VetOnboarding = () => {
           }
         }
       };
+
+      if (sameTimingAllDays) {
+        const sourceDayData = next[selectedDay];
+        Object.keys(next).forEach(day => {
+          if (day !== selectedDay) {
+            const isDayActive = next[day] && (next[day].morning.enabled || next[day].afternoon.enabled || next[day].evening.enabled || next[day].night.enabled);
+            if (isDayActive) {
+              next[day] = JSON.parse(JSON.stringify(sourceDayData));
+            }
+          }
+        });
+      }
+
+      return next;
     });
     toast.success("Time slot removed");
   };
@@ -723,7 +758,7 @@ const VetOnboarding = () => {
         if (period === "night") nextSlots = ["08:00 PM – 10:00 PM"];
       }
 
-      return {
+      const next = {
         ...prev,
         [selectedDay]: {
           ...currentDayData,
@@ -734,19 +769,41 @@ const VetOnboarding = () => {
           }
         }
       };
+
+      if (sameTimingAllDays) {
+        const sourceDayData = next[selectedDay];
+        Object.keys(next).forEach(day => {
+          if (day !== selectedDay) {
+            const isDayActive = next[day] && (next[day].morning.enabled || next[day].afternoon.enabled || next[day].evening.enabled || next[day].night.enabled);
+            if (isDayActive) {
+              next[day] = JSON.parse(JSON.stringify(sourceDayData));
+            }
+          }
+        });
+      }
+
+      return next;
     });
   };
 
-  const handleCopyToAll = () => {
-    const currentDayData = weeklyAvailability[selectedDay];
-    setWeeklyAvailability(prev => {
-      const updated = { ...prev };
-      Object.keys(updated).forEach(day => {
-        updated[day] = JSON.parse(JSON.stringify(currentDayData));
+  const handleToggleSameTiming = (checked: boolean) => {
+    setSameTimingAllDays(checked);
+    if (checked && selectedDay) {
+      setWeeklyAvailability(prev => {
+        const currentDayData = prev[selectedDay];
+        const updated = { ...prev };
+        Object.keys(updated).forEach(day => {
+          if (day !== selectedDay) {
+            const isDayActive = updated[day] && (updated[day].morning.enabled || updated[day].afternoon.enabled || updated[day].evening.enabled || updated[day].night.enabled);
+            if (isDayActive) {
+              updated[day] = JSON.parse(JSON.stringify(currentDayData));
+            }
+          }
+        });
+        return updated;
       });
-      return updated;
-    });
-    toast.success(`Copied ${selectedDay}'s schedule to all other days!`);
+      toast.success("Synchronized timing for all selected days!");
+    }
   };
 
   const uploadFile = async (file: File, userId: string, type: string) => {
@@ -1072,9 +1129,7 @@ const VetOnboarding = () => {
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <span>Personal Info</span>
                         <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
-                          <svg className="w-3.5 h-3.5 text-[#EC4899]" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM10 12.5l-2-2 1.4-1.4 1.6 1.6 4.3-4.3 1.4 1.4-5.7 5.7z"/>
-                          </svg>
+                          <User className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
                       </h2>
                       <p className="text-slate-500 text-xs sm:text-sm font-medium">Let's start with your basic information</p>
@@ -1466,6 +1521,9 @@ const VetOnboarding = () => {
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <span>Identity Verification</span>
+                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <ShieldCheck className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
+                        </div>
                       </h2>
                       <p className="text-slate-500 text-xs sm:text-sm font-medium">Upload your identity proof documents</p>
                     </div>
@@ -1518,162 +1576,209 @@ const VetOnboarding = () => {
               {currentStep === 3 && (
                 <div className="space-y-6 animate-fade-in">
                   {/* Step Header exactly matching Step 1 */}
-                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 mb-4">
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 mb-2">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <span>Professional Qualification</span>
                         <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
-                          <svg className="w-3.5 h-3.5 text-[#EC4899]" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM10 12.5l-2-2 1.4-1.4 1.6 1.6 4.3-4.3 1.4 1.4-5.7 5.7z"/>
-                          </svg>
+                          <GraduationCap className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
                       </h2>
-                      <p className="text-slate-500 text-xs sm:text-sm font-medium">Professional credentials & educational background</p>
+                      <p className="text-slate-500 text-xs sm:text-sm font-medium">Verify your professional credentials and educational background</p>
                     </div>
                     <div className="bg-pink-50/80 border border-pink-200/60 text-pink-600 px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-normal shrink-0 inline-flex items-center justify-center">
                       Step 3 of 6
                     </div>
                   </div>
 
+                  {/* Elegant Info Banner like Step 2 */}
+                  <div className="bg-pink-50 border border-pink-100 rounded-2xl p-4 flex gap-3 text-pink-700">
+                    <div className="bg-pink-100 rounded-full w-8 h-8 flex items-center justify-center shrink-0">
+                      <GraduationCap className="w-4 h-4 text-pink-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-[#1E293B]">Credentials & Qualifications</p>
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                        Please provide your highest qualification, council registration details, and veterinary certificates. Adding additional degrees helps establish credibility with pet parents.
+                      </p>
+                    </div>
+                  </div>
+
                   {/* Ordering as requested: Highest Qualification & Vet License Number on the same line */}
-                  <div className="grid grid-cols-2 gap-3 items-end">
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-1.5 h-5 text-xs sm:text-sm font-semibold">Highest Qualification *</Label>
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 items-end">
+                    <div className="space-y-1.5">
+                      <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                        <GraduationCap className="w-4 h-4 text-primary shrink-0" />
+                        Highest Qualification *
+                      </Label>
                       <Select value={formData.qualification} onValueChange={v => setFormData({ ...formData, qualification: v })}>
-                        <SelectTrigger className="rounded-2xl h-10 text-xs sm:text-sm shadow-sm font-medium">
+                        <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] bg-white focus:ring-2 focus:ring-primary/20">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>{qualifications.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}</SelectContent>
+                        <SelectContent>
+                          {qualifications.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                        </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-1.5 h-5 text-xs sm:text-sm font-semibold">Vet License Number</Label>
-                      <Input value={formData.registrationNumber} disabled className="rounded-2xl bg-muted h-10 text-xs sm:text-sm shadow-none" placeholder="License Number" />
+
+                    <div className="space-y-1.5">
+                      <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                        <Briefcase className="w-4 h-4 text-primary shrink-0" />
+                        Vet License Number
+                      </Label>
+                      <Input 
+                        value={formData.registrationNumber} 
+                        disabled 
+                        className="rounded-xl bg-[#F8FAFC] border-[#E2E8F0] h-11 text-xs sm:text-sm font-medium text-slate-400 cursor-not-allowed shadow-none" 
+                        placeholder="License Number" 
+                      />
                     </div>
                   </div>
 
                   {/* Below it: Veterinary Council Registration Number * */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-1.5 h-5 text-xs sm:text-sm font-semibold">Veterinary Council Registration Number *</Label>
-                    <Input value={formData.registrationNumber} onChange={e => setFormData({ ...formData, registrationNumber: e.target.value })} placeholder="VET/MH/2024/1234" className="rounded-2xl h-10 text-xs sm:text-sm" />
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                      <Shield className="w-4 h-4 text-primary shrink-0" />
+                      Veterinary Council Registration Number *
+                    </Label>
+                    <Input 
+                      value={formData.registrationNumber} 
+                      onChange={e => setFormData({ ...formData, registrationNumber: e.target.value })} 
+                      placeholder="e.g., VET/MH/2024/1234" 
+                      className="rounded-xl border-[#E2E8F0] h-11 text-xs sm:text-sm font-medium text-[#1E293B] bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
+                    />
                   </div>
 
                   {/* Below it: Veterinary Degree Certificate dynamically named BVSc/MVSc based on Highest Qualification selected */}
                   <FileUploadBox field="vetDegreeFile" label={`Veterinary Degree Certificate (${formData.qualification}) *`} icon={GraduationCap} />
 
-                  {/* Education Table */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-semibold">Education Details</Label>
-                      <Button type="button" variant="outline" size="sm" className="rounded-xl text-xs h-8" onClick={addEduRow}>
-                        <Plus className="w-3 h-3 mr-1" />Add Row
+                  {/* Education details list */}
+                  <div className="space-y-4 pt-2">
+                    <div className="flex items-center justify-between border-b border-dashed border-slate-100 pb-2">
+                      <Label className="flex items-center gap-2 text-sm font-bold text-[#1E293B]">
+                        <Briefcase className="w-4 h-4 text-primary shrink-0" />
+                        Education Details / Clinical History
+                      </Label>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        className="rounded-xl text-xs h-9 border-[#8A1550]/20 hover:bg-pink-50/50 text-[#8A1550] hover:text-[#8A1550] font-bold" 
+                        onClick={addEduRow}
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" /> Add Education Row
                       </Button>
                     </div>
 
-                    <div className="border border-border rounded-2xl overflow-hidden bg-background shadow-xs">
-                      {/* Desktop View Column Header */}
-                      <div className="hidden md:grid grid-cols-[1fr_1.2fr_80px_80px_45px] gap-2 px-3 py-2 bg-muted/60 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                        <span>Qualification</span><span>Institution</span><span>Year</span><span>Certificate</span><span></span>
-                      </div>
+                    <div className="space-y-4">
                       {formData.educationRows.map((row, idx) => (
-                        <div key={idx} className="border-t border-border first:border-t-0">
-                          {/* Desktop Layout: shown only on md and larger */}
-                          <div className="hidden md:grid grid-cols-[1fr_1.2fr_80px_80px_45px] gap-2 px-3 py-2 items-center font-sans">
-                            {idx === 0 ? (
-                              <Input value={row.qualification || formData.qualification} disabled className="h-8 rounded-xl text-xs bg-muted/70 text-muted-foreground cursor-not-allowed font-medium border-muted shadow-none" />
+                        <div key={idx} className="bg-slate-50/30 border border-slate-200/60 rounded-2xl p-4 sm:p-5 space-y-4 relative transition-all hover:bg-slate-50/60 shadow-xs font-sans">
+                          {/* Row Header */}
+                          <div className="flex items-center justify-between border-b border-slate-100/60 pb-3">
+                            <span className="text-xs font-bold text-[#334155] flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-full bg-[#8A1550]/10 text-[#8A1550] flex items-center justify-center text-[10px] font-extrabold">{idx + 1}</span>
+                              {idx === 0 ? "Primary Qualification (Auto-Synced)" : "Additional Degree / Qualification"}
+                            </span>
+                            {idx > 0 ? (
+                              <button 
+                                type="button" 
+                                onClick={() => removeEduRow(idx)} 
+                                className="text-slate-400 hover:text-red-500 transition-colors flex items-center gap-1 text-xs font-semibold"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
+                                <span className="hidden sm:inline">Delete Row</span>
+                              </button>
                             ) : (
-                              <Input value={row.qualification} onChange={e => updateEduRow(idx, 'qualification', e.target.value)} placeholder="BVSc" className="h-8 rounded-xl text-xs" />
+                              <span className="text-[10px] bg-emerald-50 text-emerald-600 border border-emerald-100/60 px-2 py-0.5 rounded-full font-bold">
+                                Synced with Top
+                              </span>
                             )}
-
-                            <Input value={row.institution} onChange={e => updateEduRow(idx, 'institution', e.target.value)} placeholder="University" className="h-8 rounded-xl text-xs" />
-                            <Select value={row.year} onValueChange={v => updateEduRow(idx, 'year', v)}>
-                              <SelectTrigger className="h-8 rounded-xl text-xs px-2 shadow-sm">
-                                <SelectValue placeholder="Year" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Array.from({length: 50}, (_, i) => new Date().getFullYear() - i).map(y => (
-                                  <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            
-                            <div>
-                              {idx === 0 ? (
-                                filePreviews.edu_0 ? (
-                                  <div className="text-[10px] font-semibold text-primary flex items-center justify-center h-8 bg-primary/10 rounded-xl border border-primary/20">Synced ✓</div>
-                                ) : (
-                                  <div className="text-[9px] text-muted-foreground flex items-center justify-center h-8 bg-muted/40 rounded-xl border border-dashed border-border leading-tight text-center">Required above</div>
-                                )
-                              ) : (
-                                <>
-                                  <input type="file" accept="image/*,.pdf" onChange={handleEduFileChange(idx)} className="hidden" id={`edu-file-${idx}`} />
-                                  <label htmlFor={`edu-file-${idx}`} className={`cursor-pointer flex items-center justify-center w-full h-8 rounded-xl border text-[10px] ${filePreviews[`edu_${idx}`] ? 'border-primary text-primary bg-accent/30' : 'border-dashed border-border text-muted-foreground hover:border-primary/50'}`}>
-                                    {filePreviews[`edu_${idx}`] ? '✓' : <Upload className="w-3 h-3" />}
-                                  </label>
-                                </>
-                              )}
-                            </div>
-
-                            <button type="button" onClick={() => removeEduRow(idx)} className="text-muted-foreground hover:text-destructive transition-colors flex justify-center" disabled={idx === 0}>
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
                           </div>
 
-                          {/* Mobile Layout: shown on smaller screens */}
-                          <div className="block md:hidden p-4 space-y-3 bg-muted/10 font-sans">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-muted-foreground">Row #{idx + 1} {idx === 0 && <span className="text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-normal">(Synced from above)</span>}</span>
-                              {idx > 0 && (
-                                <button type="button" onClick={() => removeEduRow(idx)} className="text-muted-foreground hover:text-destructive flex items-center gap-1 text-xs">
-                                  <Trash2 className="w-3 h-3 text-destructive" /> <span className="text-destructive font-medium">Delete</span>
-                                </button>
+                          {/* Fields inside custom row card */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Qualification input */}
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-bold text-slate-500">Qualification</Label>
+                              {idx === 0 ? (
+                                <Input 
+                                  value={row.qualification || formData.qualification} 
+                                  disabled 
+                                  className="h-11 rounded-xl text-xs sm:text-sm bg-[#F8FAFC] text-slate-400 cursor-not-allowed border-slate-200 shadow-none font-bold select-none" 
+                                />
+                              ) : (
+                                <Input 
+                                  value={row.qualification} 
+                                  onChange={e => updateEduRow(idx, 'qualification', e.target.value)} 
+                                  placeholder="e.g., MVSc, PhD" 
+                                  className="h-11 rounded-xl text-xs sm:text-sm bg-white border-[#E2E8F0] shadow-none text-[#1E293B] font-medium focus:ring-2 focus:ring-primary/20 focus:border-slate-300" 
+                                />
                               )}
                             </div>
-                            
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="space-y-1">
-                                <span className="text-[10px] font-semibold text-muted-foreground">Qualification</span>
-                                {idx === 0 ? (
-                                  <Input value={row.qualification || formData.qualification} disabled className="h-8 rounded-xl text-xs bg-muted/70 text-muted-foreground cursor-not-allowed border-muted shadow-none font-medium" />
-                                ) : (
-                                  <Input value={row.qualification} onChange={e => updateEduRow(idx, 'qualification', e.target.value)} placeholder="BVSc/MVSc" className="h-8 rounded-xl text-xs" />
-                                )}
-                              </div>
-                              <div className="space-y-1">
-                                <span className="text-[10px] font-semibold text-muted-foreground">Year</span>
-                                <Select value={row.year} onValueChange={v => updateEduRow(idx, 'year', v)}>
-                                  <SelectTrigger className="h-8 rounded-xl text-xs px-2 shadow-sm">
-                                    <SelectValue placeholder="Year" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {Array.from({length: 50}, (_, i) => new Date().getFullYear() - i).map(y => (
-                                      <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
+
+                            {/* Passing Year select */}
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-bold text-slate-500">Passing Year *</Label>
+                              <Select value={row.year} onValueChange={v => updateEduRow(idx, 'year', v)}>
+                                <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] bg-white focus:ring-2 focus:ring-primary/20">
+                                  <SelectValue placeholder="Select Year" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({length: 50}, (_, i) => new Date().getFullYear() - i).map(y => (
+                                    <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
 
-                            <div className="space-y-1">
-                              <span className="text-[10px] font-semibold text-muted-foreground">Institution</span>
-                              <Input value={row.institution} onChange={e => updateEduRow(idx, 'institution', e.target.value)} placeholder="e.g. Veterinary College" className="h-8 rounded-xl text-xs" />
+                            {/* Institution / University input */}
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-bold text-slate-500">Institution / University *</Label>
+                              <Input 
+                                value={row.institution} 
+                                onChange={e => updateEduRow(idx, 'institution', e.target.value)} 
+                                placeholder="e.g., Veterinary College, Mumbai" 
+                                className="h-11 rounded-xl text-xs sm:text-sm bg-white border-[#E2E8F0] shadow-none text-[#1E293B] font-medium focus:ring-2 focus:ring-primary/20 focus:border-slate-300" 
+                              />
                             </div>
 
-                            <div className="space-y-1">
-                              <span className="text-[10px] font-semibold text-muted-foreground">Certificate File</span>
+                            {/* Certificate File upload component inside Card */}
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-bold text-slate-500">Certificate File</Label>
                               {idx === 0 ? (
                                 filePreviews.edu_0 ? (
-                                  <div className="text-[10px] font-semibold text-primary flex items-center justify-center h-8 bg-primary/15 rounded-xl border border-primary/20 w-full text-center py-1">Synced with Degree Upload Above ✓</div>
+                                  <div className="flex items-center gap-2 h-11 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 text-[11px] font-bold text-emerald-600">
+                                    <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                                    <span>Synced with degree certificate above</span>
+                                  </div>
                                 ) : (
-                                  <div className="text-[10px] text-muted-foreground flex items-center justify-center h-8 bg-muted/40 rounded-xl border border-dashed border-border w-full text-center py-1">Please upload degree above to auto-sync</div>
+                                  <div className="flex items-center gap-2 h-11 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 text-[11px] font-bold text-slate-400">
+                                    <svg className="w-4 h-4 text-slate-300 animate-pulse shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    <span>Upload degree above to link</span>
+                                  </div>
                                 )
                               ) : (
-                                <>
-                                  <input type="file" accept="image/*,.pdf" onChange={handleEduFileChange(idx)} className="hidden" id={`edu-file-mobile-${idx}`} />
-                                  <label htmlFor={`edu-file-mobile-${idx}`} className={`cursor-pointer flex items-center justify-center w-full h-8 rounded-xl border text-[11px] font-medium gap-1.5 ${filePreviews[`edu_${idx}`] ? 'border-primary text-primary bg-accent/30' : 'border-dashed border-border text-muted-foreground hover:border-primary/50'}`}>
-                                    <Upload className="w-3.5 h-3.5" /> {filePreviews[`edu_${idx}`] ? 'Uploaded ✓ (Tap to replace)' : 'Choose Certificate'}
+                                <div>
+                                  <input type="file" accept="image/*,.pdf" onChange={handleEduFileChange(idx)} className="hidden" id={`edu-file-${idx}`} />
+                                  <label htmlFor={`edu-file-${idx}`} className={`cursor-pointer flex items-center justify-between w-full h-11 rounded-xl border px-3.5 text-xs font-bold transition-all ${filePreviews[`edu_${idx}`] ? 'border-primary/20 text-[#8a1550] bg-[#8a1550]/5' : 'border-[#E2E8F0] border-dashed text-slate-400 bg-white hover:border-primary/40'}`}>
+                                    <div className="flex items-center gap-2 overflow-hidden mr-1">
+                                      {filePreviews[`edu_${idx}`] ? (
+                                        <>
+                                          <CheckCircle className="w-4 h-4 text-[#8a1550] shrink-0" />
+                                          <span className="truncate">Uploaded ✓</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Upload className="w-4 h-4 text-slate-300 shrink-0" />
+                                          <span className="truncate">Upload document copy</span>
+                                        </>
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 font-medium shrink-0">PDF/IMG</span>
                                   </label>
-                                </>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -1682,9 +1787,10 @@ const VetOnboarding = () => {
                     </div>
                   </div>
 
-                  <div className="flex gap-3">
-                    <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(2)}>Back</Button>
-                    <Button type="button" className="flex-1 rounded-2xl bg-gradient-primary" onClick={() => setCurrentStep(4)} disabled={!canProceed(3)}>Continue</Button>
+                  {/* Navigation Buttons exactly matching Steps 1, 2, 4, 5, 6 */}
+                  <div className="flex gap-3 pt-2">
+                    <Button type="button" variant="outline" className="flex-1 rounded-2xl h-11 font-bold text-slate-600 border-slate-200" onClick={() => setCurrentStep(2)}>Back</Button>
+                    <Button type="button" className="flex-1 rounded-2xl h-11 bg-gradient-primary font-bold text-white shadow-sm" onClick={() => setCurrentStep(4)} disabled={!canProceed(3)}>Continue</Button>
                   </div>
                 </div>
               )}
@@ -1696,6 +1802,9 @@ const VetOnboarding = () => {
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <span>Professional Practice</span>
+                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <Briefcase className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
+                        </div>
                       </h2>
                       <p className="text-slate-500 text-xs sm:text-sm font-medium">Select your practice type and details</p>
                     </div>
@@ -1890,6 +1999,9 @@ const VetOnboarding = () => {
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <span>Availability & Fees</span>
+                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <Calendar className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
+                        </div>
                       </h2>
                       <p className="text-slate-500 text-xs sm:text-sm font-medium">Set your availability times and consultation fees</p>
                     </div>
@@ -1953,43 +2065,43 @@ const VetOnboarding = () => {
                   </div>
                   {/* Two Column Grid for Consultation Types and Years of Practice */}
                   <div className="grid grid-cols-1 md:grid-cols-10 gap-4 sm:gap-6 pt-2">
-                    {/* Left Panel: Consultation Types (70% on Desktop) */}
-                    <div className="md:col-span-7 space-y-4 bg-white border border-[#F1F5F9] p-5 rounded-3xl shadow-sm/50 flex flex-col justify-between">
+                    {/* Left Panel: Consultation Types (60% on Desktop) */}
+                    <div className="md:col-span-6 space-y-4 bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-sm/50 flex flex-col justify-between">
                       <div className="space-y-4">
-                        <div className="flex flex-col gap-1.5 border-b border-slate-50 pb-2.5">
-                          <div className="flex items-center gap-2">
-                            <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
-                              <Stethoscope className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
+                        <div className="flex flex-col gap-1 border-b border-slate-50 pb-2">
+                          <div className="flex items-center gap-1.5 matches-step">
+                            <div className="w-[28px] h-[28px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
+                              <Stethoscope className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
                             </div>
-                            <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Consultation Types</span>
+                            <span className="text-[#6366F1] font-bold text-sm sm:text-base font-sans">Consultation Types</span>
                             <span className="text-pink-500 font-sans font-bold">*</span>
                             <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 cursor-help" />
                           </div>
-                          <p className="text-slate-400 text-xs sm:text-sm font-medium ml-1">Select one or more types of consultations you provide</p>
+                          <p className="text-slate-450 text-[11px] sm:text-xs font-semibold leading-tight">Select the types of consultations you provide</p>
                         </div>
                         
-                        {/* 3 Grid Cards Layout */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                        {/* 3 Grid Cards Layout - styled compactly to fit perfectly in 60% width */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
                           {[
                             {
                               id: "Clinic visit",
                               label: "In-clinic Visit",
                               desc: "At your clinic",
-                              icon: <Briefcase className="w-5 h-5" strokeWidth={2.2} />,
+                              icon: <Briefcase className="w-4 h-4 sm:w-4.5 sm:h-4.5" strokeWidth={2.2} />,
                               color: "indigo"
                             },
                             {
                               id: "Home visits",
                               label: "Home Visit",
-                              desc: "At pet parent's home",
-                              icon: <Home className="w-5 h-5" strokeWidth={2.2} />,
+                              desc: "At pet's home",
+                              icon: <Home className="w-4 h-4 sm:w-4.5 sm:h-4.5" strokeWidth={2.2} />,
                               color: "pink"
                             },
                             {
                               id: "Video consultation",
                               label: "Video Consultation",
-                              desc: "Online consultation",
-                              icon: <Video className="w-5 h-5" strokeWidth={2.2} />,
+                              desc: "Online video",
+                              icon: <Video className="w-4 h-4 sm:w-4.5 sm:h-4.5" strokeWidth={2.2} />,
                               color: "indigo"
                             }
                           ].map(opt => {
@@ -1999,14 +2111,14 @@ const VetOnboarding = () => {
                                 key={opt.id}
                                 type="button"
                                 onClick={() => toggleConsultation(opt.id)}
-                                className={`flex flex-col items-center justify-center text-center p-3 sm:p-4 rounded-2xl border transition-all relative group select-none cursor-pointer w-full min-w-0 ${
+                                className={`flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-2xl border transition-all relative group select-none cursor-pointer w-full min-w-0 ${
                                   isSelected
                                     ? "border-[#EC4899] bg-[#FFF5F7] text-[#EC4899] font-extrabold shadow-sm ring-1 ring-[#EC4899]"
                                     : "border-slate-100 bg-white text-[#1E293B] hover:shadow-xs hover:border-slate-300"
                                 }`}
                               >
                                 {/* Rounded Icon Container with soft background */}
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 mb-2.5 transition-colors ${
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mb-1.5 transition-colors ${
                                   isSelected
                                     ? "bg-pink-100/60 text-[#EC4899]"
                                     : opt.color === "pink"
@@ -2016,17 +2128,17 @@ const VetOnboarding = () => {
                                   {opt.icon}
                                 </div>
                                 
-                                <span className="font-extrabold font-sans text-xs sm:text-sm text-[#333333] tracking-tight block w-full truncate">
+                                <span className="font-bold font-sans text-[11px] sm:text-xs text-[#333333] tracking-tight block w-full truncate">
                                   {opt.label}
                                 </span>
-                                <span className="text-slate-400 text-[10px] sm:text-xs block mt-1 w-full truncate">
+                                <span className="text-slate-400 text-[9px] sm:text-[10px] block mt-0.5 w-full truncate">
                                   {opt.desc}
                                 </span>
 
                                 {/* Absolute check at top-right if selected */}
                                 {isSelected && (
-                                  <span className="absolute top-2 right-2 w-4.5 h-4.5 rounded-full bg-[#EC4899] text-white flex items-center justify-center shadow-xs shrink-0">
-                                    <Check className="w-3 h-3 stroke-[3]" />
+                                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#EC4899] text-white flex items-center justify-center shadow-xs shrink-0">
+                                    <Check className="w-2.5 h-2.5 stroke-[3]" />
                                   </span>
                                 )}
                               </button>
@@ -2036,24 +2148,24 @@ const VetOnboarding = () => {
                       </div>
                     </div>
 
-                    {/* Right Panel: Years of Practice (30% on Desktop) */}
-                    <div className="md:col-span-3 space-y-4 bg-white border border-[#F1F5F9] p-5 rounded-3xl shadow-sm/50 flex flex-col justify-between">
+                    {/* Right Panel: Years of Practice (40% on Desktop) */}
+                    <div className="md:col-span-4 space-y-4 bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-sm/50 flex flex-col justify-between">
                       <div className="space-y-4">
-                        <div className="flex flex-col gap-1.5 border-b border-slate-50 pb-2.5">
-                          <div className="flex items-center gap-2">
-                            <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
-                              <GraduationCap className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
+                        <div className="flex flex-col gap-1 border-b border-slate-50 pb-2">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-[28px] h-[28px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
+                              <GraduationCap className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
                             </div>
-                            <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Years of Practice</span>
+                            <span className="text-[#6366F1] font-bold text-sm sm:text-base font-sans">Years of Practice</span>
                             <span className="text-pink-500 font-sans font-bold">*</span>
                             <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 cursor-help" />
                           </div>
-                          <p className="text-slate-400 text-xs sm:text-sm font-medium ml-1">Your experience builds trust</p>
+                          <p className="text-slate-450 text-[11px] sm:text-xs font-semibold leading-tight">Your practice experience builds patient trust</p>
                         </div>
 
-                        {/* Interactive Plus/Minus Counter Styled exactly like the image */}
-                        <div className="pt-2">
-                          <div className="flex items-center justify-center gap-3.5 py-4 px-3 border border-slate-100 rounded-2xl bg-[#FAFDFD]/30 w-full">
+                        {/* Interactive Plus/Minus Counter Styled exactly like the image - adjusted for beautiful 40% spacing */}
+                        <div className="pt-1">
+                          <div className="flex items-center justify-center gap-3 py-3 px-3 border border-slate-100 rounded-2xl bg-[#FAFDFD]/30 w-full">
                             <button
                               type="button"
                               onClick={() => {
@@ -2062,13 +2174,13 @@ const VetOnboarding = () => {
                                   setFormData({ ...formData, yearsOfExperience: (currentVal - 1).toString() });
                                 }
                               }}
-                              className="w-10 h-10 rounded-full bg-[#FFF5F7] text-[#EC4899] hover:bg-pink-100/80 transition-all flex items-center justify-center font-bold text-xl border border-pink-100/35 select-none active:scale-90 cursor-pointer shadow-xs shrink-0"
+                              className="w-9 h-9 rounded-full bg-[#FFF5F7] text-[#EC4899] hover:bg-pink-100/80 transition-all flex items-center justify-center font-bold text-lg border border-pink-100/35 select-none active:scale-90 cursor-pointer shadow-xs shrink-0"
                             >
                               <span className="leading-none select-none">&#8722;</span>
                             </button>
                             
-                            <div className="min-w-[32px] text-center">
-                              <span className="text-2xl sm:text-3xl font-extrabold text-[#1E293B] tracking-tight font-sans">
+                            <div className="min-w-[40px] text-center">
+                              <span className="text-xl sm:text-2xl font-extrabold text-[#1E293B] tracking-tight font-sans">
                                 {formData.yearsOfExperience || 0}
                               </span>
                             </div>
@@ -2079,7 +2191,7 @@ const VetOnboarding = () => {
                                 const currentVal = parseInt(formData.yearsOfExperience) || 0;
                                 setFormData({ ...formData, yearsOfExperience: (currentVal + 1).toString() });
                               }}
-                              className="w-10 h-10 rounded-full bg-[#FFF5F7] text-[#EC4899] hover:bg-pink-100/80 transition-all flex items-center justify-center font-bold text-xl border border-pink-100/35 select-none active:scale-90 cursor-pointer shadow-xs shrink-0"
+                              className="w-9 h-9 rounded-full bg-[#FFF5F7] text-[#EC4899] hover:bg-pink-100/80 transition-all flex items-center justify-center font-bold text-lg border border-pink-100/35 select-none active:scale-90 cursor-pointer shadow-xs shrink-0"
                             >
                               <span className="leading-none select-none">&#43;</span>
                             </button>
@@ -2092,11 +2204,11 @@ const VetOnboarding = () => {
                       </div>
 
                       {/* Trust badge with shield icon */}
-                      <div className="flex items-center gap-2 py-1 select-none">
-                        <div className="w-6.5 h-6.5 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                      <div className="flex items-center gap-1.5 py-0.5 select-none text-[11px] sm:text-xs font-semibold text-slate-500 leading-tight">
+                        <div className="w-6 h-6 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
                           <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" strokeWidth={2.5} />
                         </div>
-                        <span className="text-slate-500 font-sans text-xs font-semibold">
+                        <span className="truncate">
                           Your experience builds trust
                         </span>
                       </div>
@@ -2113,16 +2225,22 @@ const VetOnboarding = () => {
                         <span className="text-pink-500 font-sans font-bold">*</span>
                       </div>
 
-                      {/* Discreet, highly elegant copy button */}
+                      {/* Same timing for all selected days toggle */}
                       {formData.availableDays.length > 0 && selectedDay && (
-                        <button
-                          type="button"
-                          onClick={handleCopyToAll}
-                          className="flex items-center gap-1.5 text-slate-400 hover:text-[#EC4899] text-xs font-bold transition-all py-1 px-2.5 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-100/60 active:scale-95 shrink-0"
-                        >
-                          <Copy className="w-3.5 h-3.5 shrink-0" />
-                          <span>Copy {selectedDay}'s slots to all days</span>
-                        </button>
+                        <div className="flex items-center gap-2 select-none shrink-0 sm:gap-2.5">
+                          <span className="text-slate-500 font-sans font-semibold text-[11px] sm:text-xs md:text-sm tracking-tight">
+                            Same timing for all selected days
+                          </span>
+                          <label className="relative inline-flex items-center cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={sameTimingAllDays}
+                              onChange={(e) => handleToggleSameTiming(e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-9 h-5 bg-[#CBD5E1] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-[16px] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#EC4899] peer-checked:after:border-[#EC4899]"></div>
+                          </label>
+                        </div>
                       )}
                     </div>
 
@@ -2540,9 +2658,7 @@ const VetOnboarding = () => {
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <span>Review Profile</span>
                         <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
-                          <svg className="w-3.5 h-3.5 text-[#EC4899]" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM10 12.5l-2-2 1.4-1.4 1.6 1.6 4.3-4.3 1.4 1.4-5.7 5.7z"/>
-                          </svg>
+                          <ScrollText className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
                       </h2>
                       <p className="text-slate-500 text-xs sm:text-sm font-medium">Verify your details and accept agreements to submit</p>
