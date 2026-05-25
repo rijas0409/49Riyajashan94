@@ -15,7 +15,7 @@ import {
   Calendar, Banknote, User, Building2, ScrollText, Camera, Home, Video, Briefcase,
   CreditCard, GraduationCap, Plus, Trash2, ChevronLeft, ChevronRight, LogOut, MapPin,
   Dog, Cat, Bird, Sparkles, Sunrise, Sun, Moon, Copy, Check, X, Clock, CheckSquare, Info,
-  ChevronDown, ChevronUp, ExternalLink
+  ChevronDown, ChevronUp, ExternalLink, AlertCircle
 } from "lucide-react";
 import { AccountReviewScreen } from "@/components/AccountReviewScreen";
 import { INDIA_STATES, INDIA_STATES_AND_CITIES } from "@/constants/indiaLocations";
@@ -642,6 +642,14 @@ const VetOnboarding = () => {
   };
 
   const handleOpenAddSlot = (period: "morning" | "afternoon" | "evening" | "night") => {
+    if (period === "morning") {
+      const dayData = weeklyAvailability[selectedDay];
+      const periodAvailability = dayData ? dayData[period] : { enabled: false, slots: [] };
+      if (periodAvailability.slots.length >= 1) {
+        toast.error("Morning shift is limited to a maximum of 1 slot");
+        return;
+      }
+    }
     setAddingSlotRow(period);
     if (period === "morning") {
       setNewSlotStart("09:00");
@@ -662,6 +670,14 @@ const VetOnboarding = () => {
     if (!newSlotStart || !newSlotEnd) {
       toast.error("Please select a valid start and end time");
       return;
+    }
+    if (period === "morning") {
+      const dayData = weeklyAvailability[selectedDay];
+      const periodAvailability = dayData ? dayData[period] : { enabled: false, slots: [] };
+      if (periodAvailability.slots.length >= 1) {
+        toast.error("Morning shift is limited to a maximum of 1 slot");
+        return;
+      }
     }
     const formattedStart = convertTimeTo12Hr(newSlotStart);
     const formattedEnd = convertTimeTo12Hr(newSlotEnd);
@@ -2485,11 +2501,11 @@ const VetOnboarding = () => {
                             </div>
 
                             {/* Center Slots list with responsive overflow */}
-                            <div className="flex-1 flex flex-wrap items-center gap-2 min-w-0 px-1">
+                            <div className="flex-1 flex flex-row flex-nowrap items-center gap-2 min-w-0 px-1 overflow-x-auto scrollbar-none py-0.5">
                               {isEnabled && periodAvailability.slots.map((slot, sIdx) => (
                                 <div 
                                   key={slot} 
-                                  className="flex items-center gap-1.5 bg-white border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-slate-700 shadow-xs transition hover:border-slate-300"
+                                  className="flex items-center gap-1.5 bg-white border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-slate-700 shadow-xs transition hover:border-slate-300 shrink-0"
                                 >
                                   <span>{slot}</span>
                                   <button 
@@ -2536,14 +2552,20 @@ const VetOnboarding = () => {
                                   </div>
                                 </div>
                               ) : isEnabled ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenAddSlot(periodKey)}
-                                  className="flex items-center justify-center gap-1.5 py-1.5 px-3.5 rounded-xl border border-dashed border-pink-200 text-[#EC4899] bg-[#FFFDFE] hover:bg-[#FFF5F7] hover:border-pink-300 font-bold text-xs transition active:scale-[0.98] shrink-0"
-                                >
-                                  <Plus className="w-3.5 h-3.5 text-pink-500 stroke-[2.5]" />
-                                  <span>Add slot</span>
-                                </button>
+                                (periodKey === "morning" && periodAvailability.slots.length >= 1) ? (
+                                  <span className="text-slate-400 font-semibold text-xs py-1.5 px-3 bg-[#F1F5F9] border border-slate-200 rounded-xl select-none shrink-0">
+                                    Morning Limit (Max 1)
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenAddSlot(periodKey)}
+                                    className="flex items-center justify-center gap-1.5 py-1.5 px-3.5 rounded-xl border border-dashed border-pink-200 text-[#EC4899] bg-[#FFFDFE] hover:bg-[#FFF5F7] hover:border-pink-300 font-bold text-xs transition active:scale-[0.98] shrink-0"
+                                  >
+                                    <Plus className="w-3.5 h-3.5 text-pink-500 stroke-[2.5]" />
+                                    <span>Add slot</span>
+                                  </button>
+                                )
                               ) : (
                                 <span className="text-slate-400 font-medium text-xs py-1 italic">Disabled for {selectedDay}</span>
                               )}
@@ -2583,55 +2605,61 @@ const VetOnboarding = () => {
                     {/* Left Card: Consultation Fees */}
                     <div className="bg-white border border-[#F1F5F9] p-5 sm:p-6 rounded-3xl shadow-sm/50 flex flex-col justify-between space-y-5">
                       <div className="space-y-4">
-                        <div className="flex items-center gap-2 border-b border-slate-50 pb-2">
-                          <span className="text-[#1E293B] font-extrabold text-base sm:text-lg font-sans">Consultation Fees (₹)</span>
-                          <Info className="w-4 h-4 text-slate-400 shrink-0 cursor-help" />
+                        <div className="flex flex-col gap-1.5 border-b border-slate-100/80 pb-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
+                              <Banknote className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
+                            </div>
+                            <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Consultation Fees (₹)</span>
+                            <Info className="w-4 h-4 text-slate-400 shrink-0 cursor-help ml-auto" />
+                          </div>
+                          <p className="text-slate-400 text-xs font-medium ml-1">Specify fees for your consultation types</p>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4">
                           {/* In-clinic Visit Section */}
                           <div className="space-y-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-[38px] h-[38px] rounded-xl bg-purple-50/70 border border-purple-100 flex items-center justify-center shrink-0 shadow-xs">
-                                <Briefcase className="w-5 h-5 text-purple-600" strokeWidth={2.2} />
+                            <div className="flex items-center gap-1.5 sm:gap-2.5">
+                              <div className="w-8 h-8 sm:w-[38px] sm:h-[38px] rounded-xl bg-purple-50/70 border border-purple-100 flex items-center justify-center shrink-0 shadow-xs">
+                                <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" strokeWidth={2.2} />
                               </div>
-                              <div className="flex flex-col">
-                                <span className="font-extrabold text-xs sm:text-sm text-[#1E293B] tracking-tight">In-clinic Visit</span>
-                                <span className="text-[10px] sm:text-xs text-slate-400 font-semibold opacity-90">At your clinic</span>
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-extrabold text-[11px] sm:text-xs md:text-sm text-[#1E293B] tracking-tight truncate">In-clinic Visit</span>
+                                <span className="text-[9px] sm:text-[10px] md:text-xs text-slate-400 font-semibold opacity-90 truncate">At your clinic</span>
                               </div>
                             </div>
-                            <div className="relative flex items-center h-12.5 px-4 rounded-2xl bg-[#F5F3FF]/50 border border-[#E4E0FF] focus-within:border-[#EC4899] transition-all shadow-xs/5">
+                            <div className="relative flex items-center h-11 sm:h-12.5 px-3 sm:px-4 rounded-2xl bg-[#F5F3FF]/50 border border-[#E4E0FF] focus-within:border-[#EC4899] transition-all shadow-xs/5">
                               <input 
                                 type="number" 
                                 value={formData.onlineFee} 
                                 onChange={e => setFormData({ ...formData, onlineFee: e.target.value })} 
                                 placeholder="500"
-                                className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-[#1E293B] font-extrabold text-lg sm:text-xl tracking-tight [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-[#1E293B] font-extrabold text-base sm:text-xl tracking-tight [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
-                              <span className="text-slate-400 font-bold text-lg select-none pl-2 pr-1">₹</span>
+                              <span className="text-slate-400 font-bold text-base sm:text-lg select-none pl-1 sm:pl-2">₹</span>
                             </div>
                           </div>
 
                           {/* Home Visit Section */}
                           <div className="space-y-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-[38px] h-[38px] rounded-xl bg-pink-50/70 border border-pink-100 flex items-center justify-center shrink-0 shadow-xs">
-                                <Home className="w-5 h-5 text-[#EC4899]" strokeWidth={2.2} />
+                            <div className="flex items-center gap-1.5 sm:gap-2.5">
+                              <div className="w-8 h-8 sm:w-[38px] sm:h-[38px] rounded-xl bg-pink-50/70 border border-pink-100 flex items-center justify-center shrink-0 shadow-xs">
+                                <Home className="w-4 h-4 sm:w-5 sm:h-5 text-[#EC4899]" strokeWidth={2.2} />
                               </div>
-                              <div className="flex flex-col">
-                                <span className="font-extrabold text-xs sm:text-sm text-[#1E293B] tracking-tight">Home Visit</span>
-                                <span className="text-[10px] sm:text-xs text-slate-400 font-semibold opacity-90">At pet parent's home</span>
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-extrabold text-[11px] sm:text-xs md:text-sm text-[#1E293B] tracking-tight truncate">Home Visit</span>
+                                <span className="text-[9px] sm:text-[10px] md:text-xs text-slate-400 font-semibold opacity-90 truncate">At parent's home</span>
                               </div>
                             </div>
-                            <div className="relative flex items-center h-12.5 px-4 rounded-2xl bg-[#FFF3F7]/50 border border-[#FFE0ED] focus-within:border-[#EC4899] transition-all shadow-xs/5">
+                            <div className="relative flex items-center h-11 sm:h-12.5 px-3 sm:px-4 rounded-2xl bg-[#FFF3F7]/50 border border-[#FFE0ED] focus-within:border-[#EC4899] transition-all shadow-xs/5">
                               <input 
                                 type="number" 
                                 value={formData.offlineFee} 
                                 onChange={e => setFormData({ ...formData, offlineFee: e.target.value })} 
                                 placeholder="800"
-                                className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-[#1E293B] font-extrabold text-lg sm:text-xl tracking-tight [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-[#1E293B] font-extrabold text-base sm:text-xl tracking-tight [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
-                              <span className="text-slate-400 font-bold text-lg select-none pl-2 pr-1">₹</span>
+                              <span className="text-slate-400 font-bold text-base sm:text-lg select-none pl-1 sm:pl-2">₹</span>
                             </div>
                           </div>
                         </div>
@@ -2641,11 +2669,15 @@ const VetOnboarding = () => {
                     {/* Right Card: Emergency Services */}
                     <div className="bg-white border border-[#F1F5F9] p-5 sm:p-6 rounded-3xl shadow-sm/50 flex flex-col justify-between space-y-4">
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-50 pb-2">
+                        <div className="flex flex-col gap-1.5 border-b border-slate-100/80 pb-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-[#1E293B] font-extrabold text-base sm:text-lg font-sans">Emergency Services</span>
-                            <Info className="w-4 h-4 text-slate-400 shrink-0 cursor-help" />
+                            <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
+                              <AlertCircle className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
+                            </div>
+                            <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Emergency Availability</span>
+                            <Info className="w-4 h-4 text-slate-400 shrink-0 cursor-help ml-auto" />
                           </div>
+                          <p className="text-slate-400 text-xs font-medium ml-1">Configure your emergency readiness</p>
                         </div>
 
                         {/* Available Toggle */}
@@ -3098,66 +3130,85 @@ const VetOnboarding = () => {
                             <div className="space-y-0.5">
                               <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Practice Type</span>
                               <p className="font-bold text-[#1E293B]">
-                                {formData.isIndependentPractice ? "Independent Clinic" : "Hospital / Corporate Practice"}
+                                {formData.practiceType && formData.practiceType.length > 0 
+                                  ? formData.practiceType.map(pt => pt.replace(" / Practice", "").replace(" / Organization", "")).join(" & ")
+                                  : "None Specified"}
                               </p>
                             </div>
-                            <div className="space-y-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Clinic Name</span>
-                              <p className="font-bold text-[#1E293B]">
-                                {formData.clinicName || formData.hospitalName || "N/A"}
+                            <div className="space-y-0.5 col-span-2">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Practice Names / Entities</span>
+                              <p className="font-bold text-[#1E293B] truncate">
+                                {[
+                                  formData.practiceType.includes('Independent Clinic / Practice') && `Clinic: ${formData.clinicName || "N/A"}`,
+                                  formData.practiceType.includes('Hospital / Organization') && `Hospital: ${formData.hospitalName || "N/A"}`
+                                ].filter(Boolean).join(" & ") || "N/A"}
                               </p>
-                            </div>
-                            <div className="space-y-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">City</span>
-                              <p className="font-bold text-[#1E293B]">{formData.city || "N/A"}</p>
                             </div>
                           </div>
 
                           {/* Expanded views */}
                           {expandedSections.practice && (
                             <div className="mt-4 pt-4 border-t border-slate-100/50 space-y-4 animate-fade-in text-xs sm:text-sm">
-                              {formData.isIndependentPractice ? (
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div className="space-y-0.5">
-                                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Clinic Name</span>
-                                    <p className="font-bold text-[#1E293B]">{formData.clinicName || "N/A"}</p>
+                              {formData.practiceType.includes('Independent Clinic / Practice') && (
+                                <div className="space-y-3 bg-slate-50/40 p-3 sm:p-4 rounded-2xl border border-slate-100/70">
+                                  <div className="flex items-center gap-1.5 font-bold text-slate-700 pb-1.5 border-b border-slate-100">
+                                    <Building2 className="w-4 h-4 text-pink-500" />
+                                    <span>Independent Clinic Details</span>
                                   </div>
-                                  <div className="space-y-0.5">
-                                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Clinic Address</span>
-                                    <p className="font-bold text-[#1E293B] tracking-tight">{formData.clinicAddress || "N/A"}</p>
-                                  </div>
-                                  <div className="space-y-0.5">
-                                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Clinic Pincode</span>
-                                    <p className="font-bold text-[#1E293B]">{formData.clinicPincode || "N/A"}</p>
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-0.5">
+                                      <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Clinic Name</span>
+                                      <p className="font-bold text-[#1E293B]">{formData.clinicName || "N/A"}</p>
+                                    </div>
+                                    <div className="space-y-0.5">
+                                      <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Clinic Pincode</span>
+                                      <p className="font-bold text-[#1E293B]">{formData.clinicPincode || "N/A"}</p>
+                                    </div>
+                                    <div className="space-y-0.5 col-span-full">
+                                      <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Clinic Address</span>
+                                      <p className="font-bold text-[#1E293B] tracking-tight">{formData.clinicAddress || "N/A"}</p>
+                                    </div>
                                   </div>
                                 </div>
-                              ) : (
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div className="space-y-0.5">
-                                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Hospital Name</span>
-                                    <p className="font-bold text-[#1E293B]">{formData.hospitalName || "N/A"}</p>
+                              )}
+
+                              {formData.practiceType.includes('Hospital / Organization') && (
+                                <div className="space-y-3 bg-slate-50/40 p-3 sm:p-4 rounded-2xl border border-slate-100/70">
+                                  <div className="flex items-center gap-1.5 font-bold text-slate-700 pb-1.5 border-b border-slate-100">
+                                    <Stethoscope className="w-4 h-4 text-pink-500" />
+                                    <span>Hospital / Organization Details</span>
                                   </div>
-                                  <div className="space-y-0.5">
-                                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Role / Designation</span>
-                                    <p className="font-bold text-[#1E293B]">{formData.hospitalRole || "N/A"}</p>
-                                  </div>
-                                  <div className="space-y-0.5 col-span-full">
-                                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Hospital Address</span>
-                                    <p className="font-bold text-[#1E293B]">{formData.hospitalAddress || "N/A"}</p>
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-0.5">
+                                      <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Hospital Name</span>
+                                      <p className="font-bold text-[#1E293B]">{formData.hospitalName || "N/A"}</p>
+                                    </div>
+                                    <div className="space-y-0.5">
+                                      <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Role / Designation</span>
+                                      <p className="font-bold text-[#1E293B]">{formData.hospitalRole || "N/A"}</p>
+                                    </div>
+                                    <div className="space-y-0.5 col-span-full">
+                                      <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Hospital Address</span>
+                                      <p className="font-bold text-[#1E293B]">{formData.hospitalAddress || "N/A"}</p>
+                                    </div>
                                   </div>
                                 </div>
                               )}
 
                               {/* Documents in Expand */}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                                {formData.isIndependentPractice ? (
-                                  <>
-                                    {renderReviewFilePreview("clinicRegistrationFile", "Clinic Practice Registration")}
-                                    {renderReviewFilePreview("clinicShopLicenseFile", "Shop & Establishment License")}
-                                  </>
-                                ) : (
-                                  renderReviewFilePreview("hospitalJoiningProofFile", "Hospital ID / Joining Proof Document")
-                                )}
+                              <div className="space-y-1.5 pt-2">
+                                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Uploaded Credentials</span>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  {formData.practiceType.includes('Independent Clinic / Practice') && (
+                                    <>
+                                      {renderReviewFilePreview("clinicRegistrationFile", "Clinic Practice Registration")}
+                                      {renderReviewFilePreview("clinicShopLicenseFile", "Shop & Establishment License")}
+                                    </>
+                                  )}
+                                  {formData.practiceType.includes('Hospital / Organization') && (
+                                    renderReviewFilePreview("hospitalJoiningProofFile", "Hospital ID / Joining Proof Document")
+                                  )}
+                                </div>
                               </div>
                             </div>
                           )}
