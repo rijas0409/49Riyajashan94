@@ -1064,7 +1064,7 @@ const VetOnboarding = () => {
   return (
     <div className="min-h-screen bg-gradient-soft">
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-lg border-b border-border">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-4 py-4 max-w-3xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
@@ -1083,7 +1083,7 @@ const VetOnboarding = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 max-w-2xl">
+      <main className="container mx-auto px-4 py-6 max-w-3xl">
         {/* Progress bar */}
         <div className="sticky top-[88px] z-40 flex items-center justify-between md:justify-center gap-1 md:gap-3 mb-6 bg-card p-3 rounded-2xl border border-border/60 shadow-sm overflow-x-auto scrollbar-none">
           {visibleSteps.map((step, i) => {
