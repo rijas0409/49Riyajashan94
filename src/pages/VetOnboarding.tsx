@@ -143,12 +143,8 @@ const VetOnboarding = () => {
   const [filePreviews, setFilePreviews] = useState<Record<string, string>>({});
   const [clinicPhotoPreviews, setClinicPhotoPreviews] = useState<string[]>([]);
   
-  const [isDraftLoaded, setIsDraftLoaded] = useState(false);
-  
   // Auto-save draft effect
   useEffect(() => {
-    if (!isDraftLoaded || !profile?.id) return;
-    
     const saveFormData = () => {
       const { 
         govtIdFile, panCardFile, passportPhotoFile, vetDegreeFile, 
@@ -156,15 +152,15 @@ const VetOnboarding = () => {
         clinicAddressProofFile, cancelledChequeFile, profilePhoto, educationRows, 
         clinicPhotos, clinicVideos, hospitalJoiningProofFile, ...rest 
       } = formData;
-      localStorage.setItem(`vet-onboarding-draft-${profile.id}`, JSON.stringify(rest));
+      localStorage.setItem(`vet-onboarding-draft-${profile?.id}`, JSON.stringify(rest));
     };
     
     // Simple debounce to avoid too many writes
     const timer = setTimeout(saveFormData, 1000);
     return () => clearTimeout(timer);
-  }, [formData, profile?.id, isDraftLoaded]);
+  }, [formData, profile?.id]);
 
-  // Load draft effect once profile?.id is loaded
+  // Load draft effect
   useEffect(() => {
     if (profile?.id) {
       const draft = localStorage.getItem(`vet-onboarding-draft-${profile.id}`);
@@ -172,14 +168,10 @@ const VetOnboarding = () => {
         try {
           const parsedDraft = JSON.parse(draft);
           setFormData(prev => ({ ...prev, ...parsedDraft }));
-          if (parsedDraft.weeklyAvailability) {
-            setWeeklyAvailability(parsedDraft.weeklyAvailability);
-          }
         } catch (e) {
           console.error("Failed to load draft:", e);
         }
       }
-      setIsDraftLoaded(true);
     }
   }, [profile?.id]);
 
@@ -194,6 +186,23 @@ const VetOnboarding = () => {
     Sat: { morning: { enabled: false, slots: [] }, afternoon: { enabled: false, slots: [] }, evening: { enabled: false, slots: [] }, night: { enabled: false, slots: [] } },
     Sun: { morning: { enabled: false, slots: [] }, afternoon: { enabled: false, slots: [] }, evening: { enabled: false, slots: [] }, night: { enabled: false, slots: [] } }
   });
+
+  // Load draft parser for weekly availability
+  useEffect(() => {
+    if (profile?.id) {
+      const draft = localStorage.getItem(`vet-onboarding-draft-${profile.id}`);
+      if (draft) {
+        try {
+          const parsed = JSON.parse(draft);
+          if (parsed.weeklyAvailability) {
+            setWeeklyAvailability(parsed.weeklyAvailability);
+          }
+        } catch (e) {
+          console.error("Failed to parse draft weeklyAvailability:", e);
+        }
+      }
+    }
+  }, [profile?.id]);
 
   // Sync draft or preloaded weeklyAvailability structure into standard fields
   useEffect(() => {
@@ -399,8 +408,6 @@ const VetOnboarding = () => {
   };
 
   useEffect(() => {
-    if (!isDraftLoaded) return;
-    
     // Check if the user already has completed DB onboarding but was redirected here
     const checkStatus = async () => {
       try {
@@ -526,7 +533,7 @@ const VetOnboarding = () => {
       }
     };
     checkStatus();
-  }, [navigate, profile, isDraftLoaded]);
+  }, [navigate, profile]);
 
   // Sync the first row of education automatic feed as requested
   useEffect(() => {
@@ -1370,8 +1377,8 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0 border border-pink-200/50 shadow-xs">
-                          <User className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
+                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <User className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
                         <span>Personal Info</span>
                       </h2>
@@ -1817,8 +1824,8 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0 border border-pink-200/50 shadow-xs">
-                          <ShieldCheck className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
+                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <ShieldCheck className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
                         <span>Identity Verification</span>
                       </h2>
@@ -1876,8 +1883,8 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 mb-2">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0 border border-pink-200/50 shadow-xs">
-                          <GraduationCap className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
+                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <GraduationCap className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
                         <span>Professional Qualification</span>
                       </h2>
@@ -2094,8 +2101,8 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0 border border-pink-200/50 shadow-xs">
-                          <Briefcase className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
+                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <Briefcase className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
                         <span>Professional Practice</span>
                       </h2>
@@ -2503,8 +2510,8 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0 border border-pink-200/50 shadow-xs">
-                          <Calendar className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
+                        <div className="w-[22px] h-[22px] sm:w-7 sm:h-7 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
                         <span>Availability & Fees</span>
                       </h2>
@@ -3210,8 +3217,8 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0 border border-pink-200/50 shadow-xs">
-                          <ScrollText className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
+                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <ScrollText className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
                         <span>Review Profile</span>
                       </h2>
