@@ -28,6 +28,7 @@ import {
   ChevronDown, ChevronUp, ExternalLink, AlertCircle
 } from "lucide-react";
 import { AccountReviewScreen } from "@/components/AccountReviewScreen";
+import ClockPickerModal from "@/components/ClockPicker";
 import { INDIA_STATES, INDIA_STATES_AND_CITIES } from "@/constants/indiaLocations";
 import { cn } from "@/lib/utils";
 
@@ -234,16 +235,67 @@ const VetOnboarding = () => {
     }
   }, [formData.availableDays, selectedDay]);
 
+  const [isClockPickerOpen, setIsClockPickerOpen] = useState(false);
+  const [clockPickerPeriod, setClockPickerPeriod] = useState<"morning" | "afternoon" | "evening" | "night">("night");
+
   const parsedClinicFee = parseFloat(formData.onlineFee || "0") || 0;
   const parsedHomeFee = parseFloat(formData.offlineFee || "0") || 0;
   const isCityTier1 = ["mumbai", "delhi", "bangalore", "pune", "hyderabad", "chennai", "kolkata"].some(c => (formData.city || "").toLowerCase().includes(c));
-  const dynamicClinicSurchargePct = isCityTier1 ? 12 : 10;
-  const dynamicHomeSurchargePct = isCityTier1 ? 14 : 12;
+
+  // Premium, dynamic fluctuation calculation based on real-time simulated demand and supply constraints
+  // Scales organically between 9% and 14% based on active availability density and location
+  const getDemandSurchargePct = (type: 'clinic' | 'home') => {
+    const daysCount = formData.availableDays?.length || 1;
+    const activeNightSlots = Object.values(weeklyAvailability).reduce((acc, d) => acc + (d.night?.slots?.length || 0), 0);
+    
+    let pct = 9; // baseline 9%
+    
+    // Tight supply increases the rate
+    if (daysCount <= 2) {
+      pct += 3;
+    } else if (daysCount <= 4) {
+      pct += 1.5;
+    }
+    
+    // High activity / slot dense profile increases the surcharge rate slightly
+    if (activeNightSlots > 2) {
+      pct += 1;
+    }
+    
+    // Home visits have higher transport overhead / demand ratio during late hours
+    if (type === 'home') {
+      pct += 1.5;
+    }
+    
+    // High demand location surge
+    if (isCityTier1) {
+      pct += 1;
+    }
+    
+    // Clamp strictly within 9% to 14% range (and round cleanly)
+    return Math.min(14, Math.max(9, Math.round(pct)));
+  };
+
+  const dynamicClinicSurchargePct = getDemandSurchargePct('clinic');
+  const dynamicHomeSurchargePct = getDemandSurchargePct('home');
+
   const calculatedClinicSurchargeAmt = Math.round((parsedClinicFee * dynamicClinicSurchargePct) / 100);
   const calculatedHomeSurchargeAmt = Math.round((parsedHomeFee * dynamicHomeSurchargePct) / 100);
   const calculatedClinicTotal = parsedClinicFee + calculatedClinicSurchargeAmt;
   const calculatedHomeTotal = parsedHomeFee + calculatedHomeSurchargeAmt;
   const isNightSlotEnabled = Object.values(weeklyAvailability).some(d => d.night?.enabled);
+
+  const getNightSlotsText = () => {
+    const activeNightSlotsList = Object.values(weeklyAvailability)
+      .filter(d => d.night?.enabled && d.night?.slots?.length > 0)
+      .flatMap(d => d.night.slots);
+    
+    const uniqueNightSlots = Array.from(new Set(activeNightSlotsList));
+    if (uniqueNightSlots.length > 0) {
+      return ` (${uniqueNightSlots.join(", ")})`;
+    }
+    return " (8:00 PM – 12:00 AM)";
+  };
 
   const [specializationOptions, setSpecializationOptions] = useState<string[]>(["Dog", "Cat", "Bird", "Hamster"]);
   const [isAddingCustom, setIsAddingCustom] = useState(false);
@@ -685,20 +737,56 @@ const VetOnboarding = () => {
         return;
       }
     }
-    setAddingSlotRow(period);
-    if (period === "morning") {
-      setNewSlotStart("09:00");
-      setNewSlotEnd("11:00");
-    } else if (period === "afternoon") {
-      setNewSlotStart("13:30");
-      setNewSlotEnd("15:30");
-    } else if (period === "evening") {
-      setNewSlotStart("16:30");
-      setNewSlotEnd("18:30");
-    } else {
-      setNewSlotStart("20:00");
-      setNewSlotEnd("22:00");
-    }
+    setClockPickerPeriod(period);
+    setIsClockPickerOpen(true);
+  };
+
+  const handleSaveClockPickerSlot = (start24: string, end24: string) => {
+    const formattedStart = convertTimeTo12Hr(start24);
+    const formattedEnd = convertTimeTo12Hr(end24);
+    const newSlotStr = `${formattedStart} – ${formattedEnd}`;
+
+    setWeeklyAvailability(prev => {
+      const currentDayData = prev[selectedDay];
+      const periodData = currentDayData[clockPickerPeriod];
+      
+      if (periodData.slots.includes(newSlotStr)) {
+        toast.error("Time slot already exists");
+        return prev;
+      }
+
+      const updatedSlots = [...periodData.slots, newSlotStr];
+      updatedSlots.sort();
+
+      const next = {
+        ...prev,
+        [selectedDay]: {
+          ...currentDayData,
+          [clockPickerPeriod]: {
+            ...periodData,
+            enabled: true,
+            slots: updatedSlots
+          }
+        }
+      };
+
+      if (sameTimingAllDays) {
+        const sourceDayData = next[selectedDay];
+        Object.keys(next).forEach(day => {
+          if (day !== selectedDay) {
+            const isDayActive = next[day] && (next[day].morning.enabled || next[day].afternoon.enabled || next[day].evening.enabled || next[day].night.enabled);
+            if (isDayActive) {
+              next[day] = JSON.parse(JSON.stringify(sourceDayData));
+            }
+          }
+        });
+      }
+
+      return next;
+    });
+
+    setIsClockPickerOpen(false);
+    toast.success("Time slot added");
   };
 
   const handleSaveSlot = (period: "morning" | "afternoon" | "evening" | "night") => {
@@ -2800,62 +2888,7 @@ const VetOnboarding = () => {
                                   </button>
                                 </div>
                               ))}
-                              {/* Inline adder state representation */}
-                              {isEnabled && addingSlotRow === periodKey ? (
-                                <div className="flex items-center gap-1.5 p-1 px-1.5 border border-pink-200 rounded-xl bg-[#FFFDFE] shadow-sm animate-fade-in z-20 shrink-0">
-                                  <div className="flex items-center gap-1">
-                                    <select 
-                                      value={newSlotStart.split(':')[0]} 
-                                      onChange={e => setNewSlotStart(`${e.target.value}:${newSlotStart.split(':')[1]}`)}
-                                      className="px-1 py-0.5 text-[10px] font-sans font-bold border border-slate-200 rounded-lg bg-white text-slate-700 min-w-[40px] h-7 focus:ring-1 focus:ring-[#EC4899] focus:outline-none cursor-pointer"
-                                    >
-                                      {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
-                                    </select>
-                                    <span className="text-[10px]">:</span>
-                                    <select 
-                                      value={newSlotStart.split(':')[1]} 
-                                      onChange={e => setNewSlotStart(`${newSlotStart.split(':')[0]}:${e.target.value}`)}
-                                      className="px-1 py-0.5 text-[10px] font-sans font-bold border border-slate-200 rounded-lg bg-white text-slate-700 min-w-[40px] h-7 focus:ring-1 focus:ring-[#EC4899] focus:outline-none cursor-pointer"
-                                    >
-                                      {["00", "15", "30", "45"].map(m => <option key={m} value={m}>{m}</option>)}
-                                    </select>
-                                  </div>
-                                  <span className="text-slate-400 font-bold text-xs">–</span>
-                                  <div className="flex items-center gap-1">
-                                    <select 
-                                      value={newSlotEnd.split(':')[0]} 
-                                      onChange={e => setNewSlotEnd(`${e.target.value}:${newSlotEnd.split(':')[1]}`)}
-                                      className="px-1 py-0.5 text-[10px] font-sans font-bold border border-slate-200 rounded-lg bg-white text-slate-700 min-w-[40px] h-7 focus:ring-1 focus:ring-[#EC4899] focus:outline-none cursor-pointer"
-                                    >
-                                      {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
-                                    </select>
-                                    <span className="text-[10px]">:</span>
-                                    <select 
-                                      value={newSlotEnd.split(':')[1]} 
-                                      onChange={e => setNewSlotEnd(`${newSlotEnd.split(':')[0]}:${e.target.value}`)}
-                                      className="px-1 py-0.5 text-[10px] font-sans font-bold border border-slate-200 rounded-lg bg-white text-slate-700 min-w-[40px] h-7 focus:ring-1 focus:ring-[#EC4899] focus:outline-none cursor-pointer"
-                                    >
-                                      {["00", "15", "30", "45"].map(m => <option key={m} value={m}>{m}</option>)}
-                                    </select>
-                                  </div>
-                                  <div className="flex gap-1 pl-0.5 shrink-0">
-                                    <button 
-                                      type="button"
-                                      onClick={() => handleSaveSlot(periodKey)} 
-                                      className="bg-emerald-500 hover:bg-emerald-600 text-white rounded p-1 transition"
-                                    >
-                                      <Check className="w-3 h-3 stroke-[3]" />
-                                    </button>
-                                    <button 
-                                      type="button"
-                                      onClick={() => setAddingSlotRow(null)} 
-                                      className="bg-slate-100 hover:bg-slate-200 text-slate-500 rounded p-1 transition"
-                                    >
-                                      <X className="w-3 h-3 stroke-[2.5]" />
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : isEnabled ? (
+                              {isEnabled ? (
                                 (periodKey === "morning" && periodAvailability.slots.length >= 1) ? (
                                   <span className="text-slate-400 font-semibold text-xs py-1.5 px-3 bg-[#F1F5F9] border border-slate-200 rounded-xl select-none shrink-0">
                                     Morning Limit (Max 1)
@@ -2973,9 +3006,9 @@ const VetOnboarding = () => {
                             <div className="space-y-0.5">
                               <h4 className="text-xs sm:text-sm font-extrabold text-[#8A1550] flex items-center gap-1.5 font-sans">
                                 <Moon className="w-4 h-4 text-pink-500" />
-                                <span>Night Surcharge</span>
+                                <span>Night Surcharge{getNightSlotsText()}</span>
                               </h4>
-                              <p className="text-[10px] text-slate-400 font-medium">Auto-computed surcharge based on active late-hour demand & supply</p>
+                              <p className="text-[10px] text-slate-400 font-medium">Additional charges applied during selected late-hour availability</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
@@ -2984,7 +3017,6 @@ const VetOnboarding = () => {
                                 <span className="text-[9px] text-[#4F46E5] font-extrabold uppercase tracking-wider block">In-clinic Surcharge</span>
                                 <div className="flex justify-between items-baseline">
                                   <span className="font-extrabold text-sm sm:text-base text-[#1E293B]">₹{calculatedClinicSurchargeAmt}</span>
-                                  <span className="text-[10px] text-slate-400 font-bold">({dynamicClinicSurchargePct}%)</span>
                                 </div>
                               </div>
 
@@ -2993,22 +3025,44 @@ const VetOnboarding = () => {
                                 <span className="text-[9px] text-[#EC4899] font-extrabold uppercase tracking-wider block">Home Surcharge</span>
                                 <div className="flex justify-between items-baseline">
                                   <span className="font-extrabold text-sm sm:text-base text-[#1E293B]">₹{calculatedHomeSurchargeAmt}</span>
-                                  <span className="text-[10px] text-slate-400 font-bold">({dynamicHomeSurchargePct}%)</span>
                                 </div>
                               </div>
                             </div>
 
                             {/* Payment Summary */}
-                            <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100/80 space-y-2">
-                              <span className="text-[9px] font-extrabold text-[#8A1550] uppercase tracking-widest block">Payment Summary (Late-Hour)</span>
-                              <div className="space-y-1.5">
-                                <div className="flex justify-between items-center text-[11px] sm:text-xs">
-                                  <span className="text-slate-500 font-semibold text-[10px] sm:text-[11px]">In-clinic Total <span className="text-[9px] text-slate-400 font-normal">(Fee + Surcharge)</span></span>
-                                  <span className="font-extrabold text-slate-700 text-[11px] sm:text-xs">₹{parsedClinicFee} + ₹{calculatedClinicSurchargeAmt} = <span className="text-[#4F46E5]">₹{calculatedClinicTotal}</span></span>
+                            <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-100/80 space-y-3">
+                              <span className="text-[9px] font-extrabold text-[#8A1550] uppercase tracking-widest block border-b border-slate-200/60 pb-1">Payment Summary (Late-Hour)</span>
+                              <div className="space-y-3.5 divide-y divide-slate-100">
+                                <div className="space-y-1">
+                                  <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">In-Clinic Consultation</span>
+                                  <div className="flex justify-between text-[11px] sm:text-xs">
+                                    <span className="text-slate-500 font-semibold">Base Fee</span>
+                                    <span className="font-bold text-slate-700">₹{parsedClinicFee}</span>
+                                  </div>
+                                  <div className="flex justify-between text-[11px] sm:text-xs">
+                                    <span className="text-slate-500 font-semibold">Night Surcharge</span>
+                                    <span className="font-bold text-slate-700">+ ₹{calculatedClinicSurchargeAmt}</span>
+                                  </div>
+                                  <div className="flex justify-between text-[11px] sm:text-xs pt-1 border-t border-dashed border-slate-200/80 font-black text-[#4F46E5]">
+                                    <span>Total Price</span>
+                                    <span>₹{calculatedClinicTotal}</span>
+                                  </div>
                                 </div>
-                                <div className="flex justify-between items-center text-[11px] sm:text-xs">
-                                  <span className="text-slate-500 font-semibold text-[10px] sm:text-[11px]">Home Total <span className="text-[9px] text-slate-400 font-normal">(Fee + Surcharge)</span></span>
-                                  <span className="font-extrabold text-slate-700 text-[11px] sm:text-xs">₹{parsedHomeFee} + ₹{calculatedHomeSurchargeAmt} = <span className="text-[#EC4899]">₹{calculatedHomeTotal}</span></span>
+
+                                <div className="space-y-1 pt-3">
+                                  <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Home Visit Consultation</span>
+                                  <div className="flex justify-between text-[11px] sm:text-xs">
+                                    <span className="text-slate-500 font-semibold">Base Fee</span>
+                                    <span className="font-bold text-slate-700">₹{parsedHomeFee}</span>
+                                  </div>
+                                  <div className="flex justify-between text-[11px] sm:text-xs">
+                                    <span className="text-slate-500 font-semibold">Night Surcharge</span>
+                                    <span className="font-bold text-slate-700">+ ₹{calculatedHomeSurchargeAmt}</span>
+                                  </div>
+                                  <div className="flex justify-between text-[11px] sm:text-xs pt-1 border-t border-dashed border-slate-200/80 font-black text-[#EC4899]">
+                                    <span>Total Price</span>
+                                    <span>₹{calculatedHomeTotal}</span>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -3792,6 +3846,18 @@ const VetOnboarding = () => {
           </CardContent>
         </Card>
       </main>
+
+      <ClockPickerModal
+        isOpen={isClockPickerOpen}
+        onClose={() => setIsClockPickerOpen(false)}
+        onSave={handleSaveClockPickerSlot}
+        period={clockPickerPeriod}
+        periodLabel={
+          clockPickerPeriod === "morning" ? "Morning" :
+          clockPickerPeriod === "afternoon" ? "Afternoon" :
+          clockPickerPeriod === "evening" ? "Evening" : "Night"
+        }
+      />
     </div>
   );
 };
