@@ -1377,8 +1377,8 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
-                          <User className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <User className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
                         <span>Personal Info</span>
                       </h2>
@@ -1824,8 +1824,8 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
-                          <ShieldCheck className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <ShieldCheck className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
                         <span>Identity Verification</span>
                       </h2>
@@ -1883,8 +1883,8 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 mb-2">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
-                          <GraduationCap className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <GraduationCap className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
                         <span>Professional Qualification</span>
                       </h2>
@@ -2101,8 +2101,8 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
-                          <Briefcase className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <Briefcase className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
                         <span>Professional Practice</span>
                       </h2>
@@ -2510,8 +2510,8 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <div className="w-[22px] h-[22px] sm:w-7 sm:h-7 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
-                          <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-[#EC4899]" strokeWidth={2.5} />
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <Calendar className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
                         <span>Availability & Fees</span>
                       </h2>
@@ -3217,8 +3217,8 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
-                          <ScrollText className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <ScrollText className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
                         <span>Review Profile</span>
                       </h2>
