@@ -107,38 +107,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Listen for auth state changes - this is the PRIMARY mechanism
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, currentSession) => {
-        if (!mounted) return;
+        try {
+          if (!mounted) return;
 
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
 
-        if (currentSession?.user) {
-          const meta = currentSession.user.user_metadata as Record<string, any>;
-          const metaName = meta?.name || meta?.full_name || "";
-          const metaRole = meta?.role || null;
+          if (currentSession?.user) {
+            const meta = currentSession.user.user_metadata as Record<string, any>;
+            const metaName = meta?.name || meta?.full_name || "";
+            const metaRole = meta?.role || null;
 
-          // Set immediate profile from metadata to avoid "U" flash
-          setProfile(prev => ({
-            name: prev?.name || metaName || "User",
-            email: prev?.email || currentSession.user.email || "",
-            photo: prev?.photo || null,
-            role: prev?.role || metaRole,
-            vetStatus: prev?.vetStatus || null,
-            is_onboarding_complete: prev?.is_onboarding_complete,
-            is_admin_approved: prev?.is_admin_approved,
-          }));
+            // Set immediate profile from metadata to avoid "U" flash
+            setProfile(prev => ({
+              name: prev?.name || metaName || "User",
+              email: prev?.email || currentSession.user.email || "",
+              photo: prev?.photo || null,
+              role: prev?.role || metaRole,
+              vetStatus: prev?.vetStatus || null,
+              is_onboarding_complete: prev?.is_onboarding_complete,
+              is_admin_approved: prev?.is_admin_approved,
+            }));
 
-          // Then fetch full profile from DB (deferred to avoid deadlock with Supabase auth)
-          setTimeout(() => {
-            if (mounted) {
-              fetchProfile(currentSession.user.id, currentSession.user.email || "", metaName, metaRole);
-            }
-          }, 0);
-        } else {
-          setProfile(null);
-        }
+            // Then fetch full profile from DB (deferred to avoid deadlock with Supabase auth)
+            setTimeout(() => {
+              if (mounted) {
+                fetchProfile(currentSession.user.id, currentSession.user.email || "", metaName, metaRole).catch(e => console.error("Deferred profile fetch error:", e));
+              }
+            }, 0);
+          } else {
+            setProfile(null);
+          }
 
-        if (!authReady) {
+          if (!authReady) {
+            setAuthReady(true);
+          }
+        } catch (err) {
+          console.error("AuthContext: AuthStateChange handler error:", err);
           setAuthReady(true);
         }
       }
@@ -164,6 +169,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         setAuthReady(true);
       }
+    }).catch(err => {
+      console.error("AuthContext: Initial session check failed:", err);
+      setAuthReady(true);
     });
 
     return () => {
@@ -192,12 +200,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem("sruvo_user_role");
-    localStorage.removeItem("sruvo_admin_approved");
-    setSession(null);
-    setUser(null);
-    setProfile(null);
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("AuthContext: SignOut error:", err);
+    } finally {
+      localStorage.removeItem("sruvo_user_role");
+      localStorage.removeItem("sruvo_admin_approved");
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+    }
   };
 
   return (

@@ -9,6 +9,16 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   Loader2, Upload, FileText, CheckCircle, Shield, ShieldCheck, Stethoscope,
@@ -19,6 +29,7 @@ import {
 } from "lucide-react";
 import { AccountReviewScreen } from "@/components/AccountReviewScreen";
 import { INDIA_STATES, INDIA_STATES_AND_CITIES } from "@/constants/indiaLocations";
+import { cn } from "@/lib/utils";
 
 const ALLOWED_VET_STATES = ["Delhi", "Haryana", "Madhya Pradesh", "Punjab"];
 
@@ -97,7 +108,7 @@ const VetOnboarding = () => {
   /* ─── form state ─── */
   const [formData, setFormData] = useState({
     // Step 1 – Personal
-    fullName: "", email: "", phone: "", city: "", state: "", address: "", preferredLanguage: "",
+    fullName: "", email: "", phone: "", city: "", state: "", address: "", preferredLanguage: [] as string[],
     dob: "", gender: "",
     isIndependentPractice: false,
     // Step 2 – Identity
@@ -110,25 +121,26 @@ const VetOnboarding = () => {
     gstCertificateFile: null as File | null, clinicAddress: "", clinicAddressProofFile: null as File | null,
     // Step 4 – Clinic/Hospital Expansion
     practiceType: ["Hospital / Organization"] as string[],
-    clinicName: "", clinicPincode: "",
-    hospitalName: "", hospitalRole: "", hospitalAddress: "", hospitalPincode: "", hospitalJoiningProofFile: null as File | null,
+    clinicName: "", clinicPincode: "", clinicGst: "",
+    hospitalName: "", hospitalRole: "", hospitalAddress: "", hospitalPincode: "", hospitalEmployeeId: "", hospitalJoiningProofFile: null as File | null,
     // Bank info (Optional/Internal)
     bankAccountName: "", bankName: "", bankAccountNumber: "", bankIfsc: "",
     cancelledChequeFile: null as File | null,
     // Step 5 – Availability
     specializations: [] as string[], consultationTypes: [] as string[],
     availableDays: [] as string[], morningSlots: false, eveningSlots: false,
-    onlineFee: "500", offlineFee: "800", yearsOfExperience: "",
-    emergencyAvailable: true,
-    support24x7: "yes",
-    weekendAvailability: "yes",
+    onlineFee: "", offlineFee: "", yearsOfExperience: "",
+    emergencyAvailable: false,
+    support24x7: "no",
+    weekendAvailability: "no",
     // Step 6 – Compliance
     vendorAgreement: false, termsAccepted: false, telemedicineConsent: false,
     // Mandatory Profile Photo
-    profilePhoto: null as File | null, clinicPhotos: [] as File[],
+    profilePhoto: null as File | null, clinicPhotos: [] as File[], clinicVideos: [] as File[],
   });
 
   const [filePreviews, setFilePreviews] = useState<Record<string, string>>({});
+  const [clinicPhotoPreviews, setClinicPhotoPreviews] = useState<string[]>([]);
   
   // Auto-save draft effect
   useEffect(() => {
@@ -136,7 +148,8 @@ const VetOnboarding = () => {
       const { 
         govtIdFile, panCardFile, passportPhotoFile, vetDegreeFile, 
         clinicRegistrationFile, clinicShopLicenseFile, gstCertificateFile, 
-        clinicAddressProofFile, cancelledChequeFile, profilePhoto, educationRows, ...rest 
+        clinicAddressProofFile, cancelledChequeFile, profilePhoto, educationRows, 
+        clinicPhotos, clinicVideos, hospitalJoiningProofFile, ...rest 
       } = formData;
       localStorage.setItem(`vet-onboarding-draft-${profile?.id}`, JSON.stringify(rest));
     };
@@ -164,48 +177,13 @@ const VetOnboarding = () => {
   const [selectedDay, setSelectedDay] = useState<string>("Mon");
   const [sameTimingAllDays, setSameTimingAllDays] = useState<boolean>(false);
   const [weeklyAvailability, setWeeklyAvailability] = useState<Record<string, DayAvailability>>({
-    Mon: {
-      morning: { enabled: true, slots: ["09:00 AM – 11:00 AM", "11:30 AM – 01:00 PM"] },
-      afternoon: { enabled: true, slots: ["01:30 PM – 03:30 PM"] },
-      evening: { enabled: true, slots: ["04:30 PM – 06:30 PM", "07:00 PM – 08:00 PM"] },
-      night: { enabled: false, slots: [] }
-    },
-    Tue: {
-      morning: { enabled: true, slots: ["09:00 AM – 11:00 AM"] },
-      afternoon: { enabled: true, slots: ["01:30 PM – 03:30 PM"] },
-      evening: { enabled: true, slots: ["04:30 PM – 06:30 PM"] },
-      night: { enabled: false, slots: [] }
-    },
-    Wed: {
-      morning: { enabled: true, slots: ["09:00 AM – 11:00 AM"] },
-      afternoon: { enabled: true, slots: ["01:30 PM – 03:30 PM"] },
-      evening: { enabled: true, slots: ["04:30 PM – 06:30 PM"] },
-      night: { enabled: false, slots: [] }
-    },
-    Thu: {
-      morning: { enabled: true, slots: ["09:00 AM – 11:00 AM"] },
-      afternoon: { enabled: true, slots: ["01:30 PM – 03:30 PM"] },
-      evening: { enabled: true, slots: ["04:30 PM – 06:30 PM"] },
-      night: { enabled: false, slots: [] }
-    },
-    Fri: {
-      morning: { enabled: true, slots: ["09:00 AM – 11:00 AM"] },
-      afternoon: { enabled: true, slots: ["01:30 PM – 03:30 PM"] },
-      evening: { enabled: true, slots: ["04:30 PM – 06:30 PM"] },
-      night: { enabled: false, slots: [] }
-    },
-    Sat: {
-      morning: { enabled: false, slots: [] },
-      afternoon: { enabled: false, slots: [] },
-      evening: { enabled: false, slots: [] },
-      night: { enabled: false, slots: [] }
-    },
-    Sun: {
-      morning: { enabled: false, slots: [] },
-      afternoon: { enabled: false, slots: [] },
-      evening: { enabled: false, slots: [] },
-      night: { enabled: false, slots: [] }
-    }
+    Mon: { morning: { enabled: false, slots: [] }, afternoon: { enabled: false, slots: [] }, evening: { enabled: false, slots: [] }, night: { enabled: false, slots: [] } },
+    Tue: { morning: { enabled: false, slots: [] }, afternoon: { enabled: false, slots: [] }, evening: { enabled: false, slots: [] }, night: { enabled: false, slots: [] } },
+    Wed: { morning: { enabled: false, slots: [] }, afternoon: { enabled: false, slots: [] }, evening: { enabled: false, slots: [] }, night: { enabled: false, slots: [] } },
+    Thu: { morning: { enabled: false, slots: [] }, afternoon: { enabled: false, slots: [] }, evening: { enabled: false, slots: [] }, night: { enabled: false, slots: [] } },
+    Fri: { morning: { enabled: false, slots: [] }, afternoon: { enabled: false, slots: [] }, evening: { enabled: false, slots: [] }, night: { enabled: false, slots: [] } },
+    Sat: { morning: { enabled: false, slots: [] }, afternoon: { enabled: false, slots: [] }, evening: { enabled: false, slots: [] }, night: { enabled: false, slots: [] } },
+    Sun: { morning: { enabled: false, slots: [] }, afternoon: { enabled: false, slots: [] }, evening: { enabled: false, slots: [] }, night: { enabled: false, slots: [] } }
   });
 
   // Load draft parser for weekly availability
@@ -300,7 +278,7 @@ const VetOnboarding = () => {
 
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const qualifications = ["BVSc", "MVSc", "PhD", "Other"];
-  const languages = ["English", "Hindi", "Tamil", "Telugu", "Kannada", "Malayalam", "Bengali", "Marathi", "Gujarati"];
+  const languages = ["English", "Hindi", "Punjabi", "Haryanvi", "Tamil", "Telugu", "Kannada", "Malayalam", "Bengali", "Marathi", "Gujarati"];
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 80 }, (_, i) => (currentYear - i).toString());
 
@@ -413,7 +391,7 @@ const VetOnboarding = () => {
               bankName: vp.bank_name || "",
               bankAccountNumber: vp.bank_account_number || "",
               bankIfsc: vp.bank_ifsc || "",
-              preferredLanguage: vp.preferred_language || "",
+              preferredLanguage: vp.preferred_language ? vp.preferred_language.split(", ") : [],
               clinicAddress: vp.clinic_address || "",
               vendorAgreement: vp.vendor_agreement_accepted || false,
               telemedicineConsent: vp.telemedicine_consent_accepted || false,
@@ -448,21 +426,26 @@ const VetOnboarding = () => {
             if (vp.education_details && Array.isArray(vp.education_details)) {
               setFormData(prev => ({
                 ...prev,
-                educationRows: vp.education_details.map((edu: any, idx: number) => {
-                  if (edu.certificate_url) {
+                educationRows: vp.education_details.map((edu: any) => ({
+                  qualification: edu.qualification,
+                  institution: edu.institution,
+                  year: edu.year,
+                  certificateFile: null
+                }))
+              }));
+              
+              // Set previews separately to avoid side effects in setFormData
+              vp.education_details.forEach((edu: any, idx: number) => {
+                if (edu.certificate_url) {
+                  const url = getUrl(edu.certificate_url);
+                  if (url) {
                     setFilePreviews(prevPrevs => ({
                       ...prevPrevs,
-                      [`edu_${idx}`]: getUrl(edu.certificate_url) || ""
+                      [`edu_${idx}`]: url
                     }));
                   }
-                  return {
-                    qualification: edu.qualification,
-                    institution: edu.institution,
-                    year: edu.year,
-                    certificateFile: null
-                  };
-                })
-              }));
+                }
+              });
             }
           } else {
             // Pre-fill even if no vet profile exists yet!
@@ -531,6 +514,47 @@ const VetOnboarding = () => {
   }, [filePreviews.vetDegreeFile]);
 
   /* State and constant lists moved to the top of component to prevent Temporal Dead Zone (TDZ) reference errors */
+
+  const handleClinicMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const newPhotos = files.filter(f => f.type.startsWith('image/'));
+    const newVideos = files.filter(f => f.type.startsWith('video/'));
+
+    const currentTotal = formData.clinicPhotos.length + formData.clinicVideos.length;
+    if (currentTotal + files.length > 9) {
+      toast.error("Limit exceeded: Max 9 total files allowed (photos + videos)");
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      clinicPhotos: [...prev.clinicPhotos, ...newPhotos],
+      clinicVideos: [...prev.clinicVideos, ...newVideos]
+    }));
+
+    // Generate previews for photos
+    newPhotos.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setClinicPhotoPreviews(prev => [...prev, ev.target?.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeClinicMedia = (index: number, type: 'photo' | 'video') => {
+    setFormData(prev => {
+      if (type === 'photo') {
+        const nextPhotos = prev.clinicPhotos.filter((_, i) => i !== index);
+        setClinicPhotoPreviews(prevPrevs => prevPrevs.filter((_, i) => i !== index));
+        return { ...prev, clinicPhotos: nextPhotos };
+      } else {
+        return { ...prev, clinicVideos: prev.clinicVideos.filter((_, i) => i !== index) };
+      }
+    });
+  };
 
   /* ─── helpers ─── */
   const handleFileChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -611,12 +635,12 @@ const VetOnboarding = () => {
         if (sameTimingAllDays && selectedDay && prev[selectedDay]) {
           next[day] = JSON.parse(JSON.stringify(prev[selectedDay]));
         } else {
-          // Enable with sensible defaults so it is not blank
+          // Enable periods but with EMPTY slots so user can add their own
           next[day] = {
-            morning: { enabled: true, slots: ["09:00 AM – 11:00 AM", "11:30 AM – 01:00 PM"] },
-            afternoon: { enabled: true, slots: ["01:30 PM – 03:30 PM"] },
-            evening: { enabled: true, slots: ["04:30 PM – 06:30 PM", "07:00 PM – 08:00 PM"] },
-            night: { enabled: false, slots: [] }
+            morning: { enabled: true, slots: [] },
+            afternoon: { enabled: true, slots: [] },
+            evening: { enabled: true, slots: [] },
+            night: { enabled: true, slots: [] }
           };
         }
       }
@@ -766,13 +790,8 @@ const VetOnboarding = () => {
       const periodData = currentDayData[period];
       const nextEnabled = !periodData.enabled;
       
-      let nextSlots = [...periodData.slots];
-      if (nextEnabled && nextSlots.length === 0) {
-        if (period === "morning") nextSlots = ["09:00 AM – 11:00 AM"];
-        if (period === "afternoon") nextSlots = ["01:30 PM – 03:30 PM"];
-        if (period === "evening") nextSlots = ["04:30 PM – 06:30 PM"];
-        if (period === "night") nextSlots = ["08:00 PM – 10:00 PM"];
-      }
+      const nextSlots = [...periodData.slots];
+      // NO AUTO-FILLING SLOTS HERE
 
       const next = {
         ...prev,
@@ -889,6 +908,16 @@ const VetOnboarding = () => {
         clinicPhotoUrls = [...clinicPhotoUrls, ...newPhotos];
       }
 
+      // Upload clinic videos
+      let clinicVideoUrls: string[] = existingVp?.clinic_videos || [];
+      if (formData.clinicVideos.length > 0) {
+        const newVideos = [];
+        for (const video of formData.clinicVideos) {
+          newVideos.push(await uploadFile(video, uid, 'clinic_video'));
+        }
+        clinicVideoUrls = [...clinicVideoUrls, ...newVideos];
+      }
+
       // 2. Insert or Update Profile
       const existingVet = existingVp;
 
@@ -913,7 +942,7 @@ const VetOnboarding = () => {
         bank_name: formData.bankName,
         bank_account_number: formData.bankAccountNumber,
         bank_ifsc: formData.bankIfsc,
-        preferred_language: formData.preferredLanguage,
+        preferred_language: formData.preferredLanguage.join(", "),
         clinic_address: formData.clinicAddress,
         pan_card_file: panUrl,
         passport_photo_file: passportUrl,
@@ -924,6 +953,8 @@ const VetOnboarding = () => {
         vendor_agreement_accepted: formData.vendorAgreement,
         telemedicine_consent_accepted: formData.telemedicineConsent,
         clinic_photos: clinicPhotoUrls,
+        clinic_videos: clinicVideoUrls,
+        hospital_employee_id: formData.hospitalEmployeeId,
         education_details: eduDetails,
         verification_status: "pending", 
         rejection_reason: null as string | null, 
@@ -946,6 +977,8 @@ const VetOnboarding = () => {
            delete (fallbackData as any).self_practice;
            delete (fallbackData as any).city;
            delete (fallbackData as any).state;
+           delete (fallbackData as any).clinic_videos;
+           delete (fallbackData as any).hospital_employee_id;
            const fallback = await supabase.from("vet_profiles").update(fallbackData).eq("id", existingVet.id);
            vetError = fallback.error;
         }
@@ -961,6 +994,8 @@ const VetOnboarding = () => {
            delete (fallbackData as any).self_practice;
            delete (fallbackData as any).city;
            delete (fallbackData as any).state;
+           delete (fallbackData as any).clinic_videos;
+           delete (fallbackData as any).hospital_employee_id;
            const fallback = await supabase.from("vet_profiles").insert([fallbackData]);
            vetError = fallback.error;
         }
@@ -1011,11 +1046,64 @@ const VetOnboarding = () => {
   const visibleSteps = steps.filter(s => !s.hidden);
   const currentVisibleStepIndex = visibleSteps.findIndex(s => s.n === currentStep);
 
+  const DetailItem = ({ label, value }: { label: string; value: string }) => (
+    <div className="space-y-0.5">
+      <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider">{label}</p>
+      <p className="text-xs sm:text-sm font-extrabold text-[#1E293B] truncate">{value || "—"}</p>
+    </div>
+  );
+
+  const renderReviewFilePreview = (fieldName: string, label: string) => {
+    const preview = filePreviews[fieldName];
+    const file = (formData as Record<string, unknown>)[fieldName] as File | null;
+    
+    if (!preview && !file) {
+      return (
+        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center text-xs text-slate-400 font-semibold">
+          No {label} uploaded
+        </div>
+      );
+    }
+    
+    return (
+      <div className="bg-slate-50/80 border border-slate-200/60 rounded-xl p-3 flex items-center justify-between gap-3 shadow-xs font-sans">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          {preview ? (
+            <div className="w-12 h-12 rounded-lg border border-slate-200 overflow-hidden bg-white shrink-0">
+              <img src={preview} alt={label} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            </div>
+          ) : (
+            <div className="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center shrink-0 border border-pink-200 text-[#EC4899]">
+              <FileText className="w-6 h-6" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold text-slate-700 truncate">{label}</p>
+            <p className="text-[10px] text-slate-400 font-medium font-mono truncate">
+              {file ? `${(file.size / 1024).toFixed(0)} KB • ${file.name}` : "Uploaded document"}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const DocStatus = ({ label, uploaded }: { label: string; uploaded: boolean }) => (
+    <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+      <span className="text-[10px] sm:text-xs font-bold text-slate-600 truncate mr-2">{label}</span>
+      {uploaded ? (
+        <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+      ) : (
+        <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+      )}
+    </div>
+  );
+
   const canProceed = (step: number) => {
     switch (step) {
       case 1: {
         const hasProfilePhoto = formData.profilePhoto !== null || !!filePreviews.profilePhoto;
-        return formData.fullName && formData.email && formData.phone && formData.preferredLanguage && formData.dob && formData.gender && formData.city && formData.state && formData.address && hasProfilePhoto;
+        return formData.fullName && formData.email && formData.phone && formData.phone.length === 10 && formData.preferredLanguage.length > 0 && formData.dob && formData.gender && formData.city && formData.state && formData.address && hasProfilePhoto;
       }
       case 2: {
         const hasGovt = formData.govtIdFile !== null || !!filePreviews.govtIdFile;
@@ -1030,16 +1118,60 @@ const VetOnboarding = () => {
         return hasVetDegree && formData.registrationNumber && isEdu1Valid;
       }
       case 4: {
-        return true;
+        const hasHospital = formData.practiceType.includes("Hospital / Organization");
+        const hasClinic = formData.practiceType.includes("Independent Clinic / Practice");
+        
+        if (!hasHospital && !hasClinic) return false;
+
+        const hospitalValid = !hasHospital || (
+          formData.hospitalName && 
+          formData.hospitalRole && 
+          formData.hospitalAddress && 
+          formData.hospitalPincode && 
+          formData.hospitalEmployeeId &&
+          (formData.hospitalJoiningProofFile || !!filePreviews.hospitalJoiningProofFile)
+        );
+
+        const clinicValid = !hasClinic || (
+          formData.clinicName && 
+          formData.clinicAddress && 
+          formData.clinicPincode && 
+          formData.state &&
+          formData.city &&
+          formData.clinicPhotos.length >= 4 &&
+          formData.clinicVideos.length >= 1
+        );
+
+        return hospitalValid && clinicValid;
       }
-      case 5: return (
-        formData.availableDays.length > 0 && 
-        formData.specializations.length > 0 && 
-        formData.consultationTypes.length > 0 && 
-        formData.yearsOfExperience !== "" && 
-        formData.onlineFee !== "" && 
-        formData.offlineFee !== ""
-      );
+      case 5: {
+        const standardFieldsValid = (
+          formData.availableDays.length > 0 && 
+          formData.specializations.length > 0 && 
+          formData.consultationTypes.length > 0 && 
+          formData.yearsOfExperience !== "" && 
+          formData.onlineFee !== "" && 
+          formData.offlineFee !== ""
+        );
+        if (!standardFieldsValid) return false;
+
+        // Verify that for every selected day, there is at least one timezone enabled, and every toggled-on timezone has at least one slot created.
+        const allSelectedDaysValid = formData.availableDays.every(d => {
+          const dayData = weeklyAvailability[d];
+          if (!dayData) return false;
+          
+          const periods = ['morning', 'afternoon', 'evening', 'night'] as const;
+          const enabledPeriods = periods.filter(p => dayData[p]?.enabled);
+          
+          // Must have at least one enabled period on a selected day
+          if (enabledPeriods.length === 0) return false;
+          
+          // Every enabled period must have at least one slot created
+          return enabledPeriods.every(p => dayData[p].slots && dayData[p].slots.length > 0);
+        });
+
+        return allSelectedDaysValid;
+      }
       default: return true;
     }
   };
@@ -1090,8 +1222,13 @@ const VetOnboarding = () => {
               </div>
             </div>
             <Button variant="ghost" size="icon" onClick={async () => {
-                 await supabase.auth.signOut();
-                 navigate("/auth-vet");
+                 try {
+                   await supabase.auth.signOut();
+                   navigate("/auth-vet");
+                 } catch (err) {
+                   console.error("Logout error:", err);
+                   navigate("/auth-vet"); // Still navigate or handle as needed
+                 }
                }}>
               <LogOut className="w-5 h-5" />
             </Button>
@@ -1143,10 +1280,10 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <span>Personal Info</span>
                         <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
                           <User className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
+                        <span>Personal Info</span>
                       </h2>
                       <p className="text-slate-500 text-xs sm:text-sm font-medium">Let's start with your basic information</p>
                     </div>
@@ -1453,12 +1590,66 @@ const VetOnboarding = () => {
                           </svg>
                           Language
                         </Label>
-                        <Select value={formData.preferredLanguage} onValueChange={v => setFormData({ ...formData, preferredLanguage: v })}>
-                          <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0]">
-                            <SelectValue placeholder={<span className="text-slate-400">Language</span>} />
-                          </SelectTrigger>
-                          <SelectContent>{languages.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
-                        </Select>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className="w-full justify-between rounded-xl h-auto min-h-[44px] px-3.5 text-[#1E293B] font-medium text-xs sm:text-sm bg-white border-[#E2E8F0] hover:bg-white text-left focus:ring-2 focus:ring-primary/20 shadow-none overflow-hidden"
+                            >
+                              <div className="flex flex-wrap gap-1 py-1 max-w-[calc(100%-24px)]">
+                                {formData.preferredLanguage.length > 0 ? (
+                                  formData.preferredLanguage.map((lang) => (
+                                    <Badge key={lang} variant="secondary" className="rounded-lg font-bold text-[10px] bg-pink-50 text-pink-700 border-pink-100 px-1.5 py-0.5 h-auto">
+                                      {lang}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <span className="text-slate-400">Select (Max 4)</span>
+                                )}
+                              </div>
+                              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[200px] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Search language..." className="h-9" />
+                              <CommandList className="max-h-[300px]">
+                                <CommandEmpty>No language found.</CommandEmpty>
+                                <CommandGroup>
+                                  {languages.map((lang) => (
+                                    <CommandItem
+                                      key={lang}
+                                      value={lang}
+                                      onSelect={() => {
+                                        setFormData((prev) => {
+                                          const current = prev.preferredLanguage;
+                                          if (current.includes(lang)) {
+                                            return { ...prev, preferredLanguage: current.filter((l) => l !== lang) };
+                                          }
+                                          if (current.length >= 4) {
+                                            toast.error("Maximum 4 languages allowed");
+                                            return prev;
+                                          }
+                                          return { ...prev, preferredLanguage: [...current, lang] };
+                                        });
+                                      }}
+                                      className="text-xs sm:text-sm"
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4 text-primary",
+                                          formData.preferredLanguage.includes(lang) ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {lang}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     </div>
 
@@ -1536,10 +1727,10 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <span>Identity Verification</span>
                         <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
                           <ShieldCheck className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
+                        <span>Identity Verification</span>
                       </h2>
                       <p className="text-slate-500 text-xs sm:text-sm font-medium">Upload your identity proof documents</p>
                     </div>
@@ -1556,12 +1747,12 @@ const VetOnboarding = () => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <FileUploadBox field="govtIdFile" label="Aadhaar Card (Front) *" icon={Shield} accept="image/png, image/jpeg, image/jpg" />
-                    <FileUploadBox field="panCardFile" label="Aadhaar Card (Back) *" icon={Shield} accept="image/png, image/jpeg, image/jpg" />
+                    <FileUploadBox field="govtIdFile" label="Aadhaar Card (Front)" icon={Shield} accept="image/png, image/jpeg, image/jpg" />
+                    <FileUploadBox field="panCardFile" label="Aadhaar Card (Back)" icon={Shield} accept="image/png, image/jpeg, image/jpg" />
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="flex items-center gap-2"><Camera className="w-4 h-4 text-primary" />Live Photo *</Label>
+                    <Label className="flex items-center gap-2"><Camera className="w-4 h-4 text-primary" />Live Photo</Label>
                     <div className="border-2 border-dashed border-border rounded-2xl p-4 text-center hover:border-primary/50 transition-colors">
                       <input type="file" accept="image/png, image/jpeg, image/jpg" capture="user" onChange={handleFileChange("passportPhotoFile")} className="hidden" id="file-passportPhotoFile" />
                       <label htmlFor="file-passportPhotoFile" className="cursor-pointer">
@@ -1575,7 +1766,7 @@ const VetOnboarding = () => {
                         ) : (
                           <div className="flex flex-col items-center gap-1">
                             <Camera className="w-6 h-6 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground">Take / Upload Photo</span>
+                            <span className="text-xs text-muted-foreground">Take Photo</span>
                           </div>
                         )}
                       </label>
@@ -1595,10 +1786,10 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 mb-2">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <span>Professional Qualification</span>
                         <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
                           <GraduationCap className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
+                        <span>Professional Qualification</span>
                       </h2>
                       <p className="text-slate-500 text-xs sm:text-sm font-medium">Verify your professional credentials and educational background</p>
                     </div>
@@ -1625,7 +1816,7 @@ const VetOnboarding = () => {
                     <div className="space-y-1.5">
                       <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
                         <GraduationCap className="w-4 h-4 text-primary shrink-0" />
-                        Highest Qualification *
+                        Highest Qualification
                       </Label>
                       <Select value={formData.qualification} onValueChange={v => setFormData({ ...formData, qualification: v })}>
                         <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] bg-white focus:ring-2 focus:ring-primary/20">
@@ -1651,11 +1842,11 @@ const VetOnboarding = () => {
                     </div>
                   </div>
 
-                  {/* Below it: Veterinary Council Registration Number * */}
+                  {/* Below it: Veterinary Council Registration Number */}
                   <div className="space-y-1.5">
                     <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
                       <Shield className="w-4 h-4 text-primary shrink-0" />
-                      Veterinary Council Registration Number *
+                      Veterinary Council Registration Number
                     </Label>
                     <Input 
                       value={formData.registrationNumber} 
@@ -1666,14 +1857,14 @@ const VetOnboarding = () => {
                   </div>
 
                   {/* Below it: Veterinary Degree Certificate dynamically named BVSc/MVSc based on Highest Qualification selected */}
-                  <FileUploadBox field="vetDegreeFile" label={`Veterinary Degree Certificate (${formData.qualification}) *`} icon={GraduationCap} />
+                  <FileUploadBox field="vetDegreeFile" label={`Veterinary Degree Certificate (${formData.qualification})`} icon={GraduationCap} />
 
                   {/* Education details list */}
                   <div className="space-y-4 pt-2">
                     <div className="flex items-center justify-between border-b border-dashed border-slate-100 pb-2">
                       <Label className="flex items-center gap-2 text-sm font-bold text-[#1E293B]">
                         <Briefcase className="w-4 h-4 text-primary shrink-0" />
-                        Education Details / Clinical History
+                        Education Details
                       </Label>
                       <Button 
                         type="button" 
@@ -1693,9 +1884,9 @@ const VetOnboarding = () => {
                           <div className="flex items-center justify-between border-b border-slate-100/60 pb-3">
                             <span className="text-xs font-bold text-[#334155] flex items-center gap-2">
                               <span className="w-5 h-5 rounded-full bg-[#8A1550]/10 text-[#8A1550] flex items-center justify-center text-[10px] font-extrabold">{idx + 1}</span>
-                              {idx === 0 ? "Primary Qualification (Auto-Synced)" : "Additional Degree / Qualification"}
+                              {idx === 0 ? "Primary Qualification" : "Additional Degree / Qualification"}
                             </span>
-                            {idx > 0 ? (
+                            {idx > 0 && (
                               <button 
                                 type="button" 
                                 onClick={() => removeEduRow(idx)} 
@@ -1704,10 +1895,6 @@ const VetOnboarding = () => {
                                 <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
                                 <span className="hidden sm:inline">Delete Row</span>
                               </button>
-                            ) : (
-                              <span className="text-[10px] bg-emerald-50 text-emerald-600 border border-emerald-100/60 px-2 py-0.5 rounded-full font-bold">
-                                Synced with Top
-                              </span>
                             )}
                           </div>
 
@@ -1734,7 +1921,7 @@ const VetOnboarding = () => {
 
                             {/* Passing Year select */}
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-bold text-slate-500">Passing Year *</Label>
+                              <Label className="text-xs font-bold text-slate-500">Passing Year</Label>
                               <Select value={row.year} onValueChange={v => updateEduRow(idx, 'year', v)}>
                                 <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] bg-white focus:ring-2 focus:ring-primary/20">
                                   <SelectValue placeholder="Select Year" />
@@ -1749,7 +1936,7 @@ const VetOnboarding = () => {
 
                             {/* Institution / University input */}
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-bold text-slate-500">Institution / University *</Label>
+                              <Label className="text-xs font-bold text-slate-500">Institution / University</Label>
                               <Input 
                                 value={row.institution} 
                                 onChange={e => updateEduRow(idx, 'institution', e.target.value)} 
@@ -1765,14 +1952,14 @@ const VetOnboarding = () => {
                                 filePreviews.edu_0 ? (
                                   <div className="flex items-center gap-2 h-11 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 text-[11px] font-bold text-emerald-600">
                                     <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
-                                    <span>Synced with degree certificate above</span>
+                                    <span>Added from degree certificate</span>
                                   </div>
                                 ) : (
                                   <div className="flex items-center gap-2 h-11 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 text-[11px] font-bold text-slate-400">
                                     <svg className="w-4 h-4 text-slate-300 animate-pulse shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                     </svg>
-                                    <span>Upload degree above to link</span>
+                                    <span>Awaiting degree certificate upload</span>
                                   </div>
                                 )
                               ) : (
@@ -1817,10 +2004,10 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <span>Professional Practice</span>
                         <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
                           <Briefcase className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
+                        <span>Professional Practice</span>
                       </h2>
                       <p className="text-slate-500 text-xs sm:text-sm font-medium">Select your practice type and details</p>
                     </div>
@@ -1909,7 +2096,7 @@ const VetOnboarding = () => {
                         <div className="space-y-1.5">
                           <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
                             <Building2 className="w-4 h-4 text-primary shrink-0" />
-                            Clinic / Practice Name *
+                            Clinic / Practice Name
                           </Label>
                           <Input 
                             value={formData.clinicName} 
@@ -1923,7 +2110,7 @@ const VetOnboarding = () => {
                         <div className="space-y-1.5">
                           <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
                             <MapPin className="w-4 h-4 text-primary shrink-0" />
-                            Clinic Address *
+                            Clinic Address
                           </Label>
                           <Input 
                             value={formData.clinicAddress} 
@@ -1933,73 +2120,141 @@ const VetOnboarding = () => {
                           />
                         </div>
 
-                        {/* State */}
-                        <div className="space-y-1.5">
-                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
-                            <MapPin className="w-4 h-4 text-primary shrink-0" />
-                            State *
-                          </Label>
-                          <Select 
-                            value={formData.state} 
-                            onValueChange={v => setFormData({ ...formData, state: v, city: "" })}
-                          >
-                            <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] bg-white focus:ring-2 focus:ring-primary/20">
-                              <SelectValue placeholder={<span className="text-slate-400">Select State</span>} />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-[300px]">
-                              {["Delhi", "Haryana", "Madhya Pradesh", "Punjab"].map(s => (
-                                <SelectItem key={s} value={s}>{s}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        {/* State & City together in 50:50 for both mobile and desktop */}
+                        <div className="grid grid-cols-2 gap-4 md:col-span-2">
+                          {/* State */}
+                          <div className="space-y-1.5">
+                            <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                              <MapPin className="w-4 h-4 text-primary shrink-0" />
+                              State
+                            </Label>
+                            <Select 
+                              value={formData.state} 
+                              onValueChange={v => setFormData({ ...formData, state: v, city: "" })}
+                            >
+                              <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] bg-white focus:ring-2 focus:ring-primary/20">
+                                <SelectValue placeholder={<span className="text-slate-400">Select State</span>} />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-[300px]">
+                                {["Delhi", "Haryana", "Madhya Pradesh", "Punjab"].map(s => (
+                                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* City */}
+                          <div className="space-y-1.5">
+                            <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                              <MapPin className="w-4 h-4 text-primary shrink-0" />
+                              City
+                            </Label>
+                            <Select 
+                              value={formData.city} 
+                              onValueChange={v => setFormData({ ...formData, city: v })}
+                              disabled={!formData.state}
+                            >
+                              <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] disabled:opacity-50 bg-white focus:ring-2 focus:ring-primary/20">
+                                <SelectValue placeholder={<span className="text-slate-400">{formData.state ? "Select City" : "Select State first"}</span>} />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-[300px]">
+                                {formData.state && (INDIA_STATES_AND_CITIES[formData.state as keyof typeof INDIA_STATES_AND_CITIES] || []).map(c => (
+                                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
 
-                        {/* City */}
-                        <div className="space-y-1.5">
-                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
-                            <MapPin className="w-4 h-4 text-primary shrink-0" />
-                            City *
-                          </Label>
-                          <Select 
-                            value={formData.city} 
-                            onValueChange={v => setFormData({ ...formData, city: v })}
-                            disabled={!formData.state}
-                          >
-                            <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] disabled:opacity-50 bg-white focus:ring-2 focus:ring-primary/20">
-                              <SelectValue placeholder={<span className="text-slate-400">{formData.state ? "Select City" : "Select State first"}</span>} />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-[300px]">
-                              {formData.state && (INDIA_STATES_AND_CITIES[formData.state as keyof typeof INDIA_STATES_AND_CITIES] || []).map(c => (
-                                <SelectItem key={c} value={c}>{c}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        {/* Pincode & GST Number (Optional) Shifted & Grouped 50:50 */}
+                        <div className="grid grid-cols-2 gap-4 md:col-span-2">
+                          {/* Pincode */}
+                          <div className="space-y-1.5 w-full">
+                            <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                              <MapPin className="w-4 h-4 text-primary shrink-0" />
+                              Pincode
+                            </Label>
+                            <Input 
+                              value={formData.clinicPincode} 
+                              onChange={e => setFormData({ ...formData, clinicPincode: e.target.value.replace(/\D/g, '') })} 
+                              placeholder="Enter pincode" 
+                              className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
+                            />
+                          </div>
+
+                          {/* GST Number (Optional) */}
+                          <div className="space-y-1.5 w-full">
+                            <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                              <FileText className="w-4 h-4 text-primary shrink-0" />
+                              GST Number (Optional)
+                            </Label>
+                            <Input 
+                              value={formData.clinicGst}
+                              onChange={e => setFormData({ ...formData, clinicGst: e.target.value })}
+                              placeholder="Enter GST number" 
+                              className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
+                            />
+                          </div>
                         </div>
 
-                        {/* Pincode */}
-                        <div className="space-y-1.5">
-                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
-                            <MapPin className="w-4 h-4 text-primary shrink-0" />
-                            Pincode *
+                        {/* Clinic Media */}
+                        <div className="md:col-span-2 space-y-3">
+                          <Label className="flex items-center justify-between text-[#334155] font-bold text-xs sm:text-sm">
+                            <div className="flex items-center gap-2">
+                              <Camera className="w-4 h-4 text-primary shrink-0" />
+                              Clinic Photos & Videos
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-medium">Min 4 Photos, 1 Video • Max 9 total</span>
                           </Label>
-                          <Input 
-                            value={formData.clinicPincode} 
-                            onChange={e => setFormData({ ...formData, clinicPincode: e.target.value })} 
-                            placeholder="Enter pincode" 
-                            className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
-                          />
-                        </div>
+                          
+                          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3">
+                            {/* Photo list */}
+                            {clinicPhotoPreviews.map((preview, idx) => (
+                              <div key={`photo-${idx}`} className="relative aspect-square rounded-xl border border-slate-200 overflow-hidden bg-slate-50 group">
+                                <img 
+                                  src={preview} 
+                                  alt={`Clinic photo ${idx + 1}`} 
+                                  className="w-full h-full object-cover"
+                                />
+                                <button 
+                                  type="button"
+                                  onClick={() => removeClinicMedia(idx, 'photo')}
+                                  className="absolute top-1 right-1 w-5 h-5 bg-white/90 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                                >
+                                  <X className="w-3 h-3 text-red-500" />
+                                </button>
+                              </div>
+                            ))}
+                            
+                            {/* Video count indicator (since no preview) */}
+                            {formData.clinicVideos.map((file, idx) => (
+                              <div key={`video-${idx}`} className="relative aspect-square rounded-xl border border-slate-200 bg-emerald-50 flex flex-col items-center justify-center group overflow-hidden">
+                                <Video className="w-5 h-5 text-emerald-500 mb-1" />
+                                <span className="text-[8px] font-bold text-emerald-600 px-1 truncate w-full text-center">{file.name}</span>
+                                <button 
+                                  onClick={() => removeClinicMedia(idx, 'video')}
+                                  className="absolute top-1 right-1 w-5 h-5 bg-white/90 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                                >
+                                  <X className="w-3 h-3 text-red-500" />
+                                </button>
+                              </div>
+                            ))}
 
-                        {/* GST Number (Optional) */}
-                        <div className="space-y-1.5">
-                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
-                            <FileText className="w-4 h-4 text-primary shrink-0" />
-                            GST Number (Optional)
-                          </Label>
-                          <Input 
-                            placeholder="Enter GST number (if applicable)" 
-                            className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
-                          />
+                            {/* Upload button */}
+                            {(formData.clinicPhotos.length + formData.clinicVideos.length) < 9 && (
+                              <label className="aspect-square rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 hover:bg-slate-50/50 transition-all">
+                                <Plus className="w-5 h-5 text-slate-300" />
+                                <span className="text-[9px] font-bold text-slate-400 mt-1 text-center">Add Photo/Vid</span>
+                                <input 
+                                  type="file" 
+                                  multiple 
+                                  accept="image/*,video/*" 
+                                  onChange={handleClinicMediaChange} 
+                                  className="hidden" 
+                                />
+                              </label>
+                            )}
+                          </div>
                         </div>
                       </div>
                       
@@ -2024,7 +2279,7 @@ const VetOnboarding = () => {
                         <div className="space-y-1.5">
                           <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
                             <Building2 className="w-4 h-4 text-primary shrink-0" />
-                            Hospital / Organization Name *
+                            Hospital / Organization Name
                           </Label>
                           <Input 
                             value={formData.hospitalName} 
@@ -2038,7 +2293,7 @@ const VetOnboarding = () => {
                         <div className="space-y-1.5">
                           <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
                             <User className="w-4 h-4 text-primary shrink-0" />
-                            Your Role / Designation *
+                            Your Role / Designation
                           </Label>
                           <Input 
                             value={formData.hospitalRole} 
@@ -2052,7 +2307,7 @@ const VetOnboarding = () => {
                         <div className="md:col-span-2 space-y-1.5">
                           <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
                             <MapPin className="w-4 h-4 text-primary shrink-0" />
-                            Hospital Address *
+                            Hospital Address
                           </Label>
                           <Input 
                             value={formData.hospitalAddress} 
@@ -2062,65 +2317,85 @@ const VetOnboarding = () => {
                           />
                         </div>
 
-                        {/* State */}
-                        <div className="space-y-1.5">
-                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
-                            <MapPin className="w-4 h-4 text-primary shrink-0" />
-                            State *
-                          </Label>
-                          <Select 
-                            value={formData.state} 
-                            onValueChange={v => setFormData({ ...formData, state: v, city: "" })}
-                          >
-                            <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] bg-white focus:ring-2 focus:ring-primary/20">
-                              <SelectValue placeholder={<span className="text-slate-400">Select State</span>} />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-[300px]">
-                              {["Delhi", "Haryana", "Madhya Pradesh", "Punjab"].map(s => (
-                                <SelectItem key={s} value={s}>{s}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        {/* State & City together in 50:50 for both mobile and desktop */}
+                        <div className="grid grid-cols-2 gap-4 md:col-span-2">
+                          {/* State */}
+                          <div className="space-y-1.5">
+                            <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                              <MapPin className="w-4 h-4 text-primary shrink-0" />
+                              State
+                            </Label>
+                            <Select 
+                              value={formData.state} 
+                              onValueChange={v => setFormData({ ...formData, state: v, city: "" })}
+                            >
+                              <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] bg-white focus:ring-2 focus:ring-primary/20">
+                                <SelectValue placeholder={<span className="text-slate-400">Select State</span>} />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-[300px]">
+                                {["Delhi", "Haryana", "Madhya Pradesh", "Punjab"].map(s => (
+                                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* City */}
+                          <div className="space-y-1.5">
+                            <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                              <MapPin className="w-4 h-4 text-primary shrink-0" />
+                              City
+                            </Label>
+                            <Select 
+                              value={formData.city} 
+                              onValueChange={v => setFormData({ ...formData, city: v })}
+                              disabled={!formData.state}
+                            >
+                              <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] disabled:opacity-50 bg-white focus:ring-2 focus:ring-primary/20">
+                                <SelectValue placeholder={<span className="text-slate-400">{formData.state ? "Select City" : "Select State first"}</span>} />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-[300px]">
+                                {formData.state && (INDIA_STATES_AND_CITIES[formData.state as keyof typeof INDIA_STATES_AND_CITIES] || []).map(c => (
+                                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
 
-                        {/* City */}
-                        <div className="space-y-1.5">
-                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
-                            <MapPin className="w-4 h-4 text-primary shrink-0" />
-                            City *
-                          </Label>
-                          <Select 
-                            value={formData.city} 
-                            onValueChange={v => setFormData({ ...formData, city: v })}
-                            disabled={!formData.state}
-                          >
-                            <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] disabled:opacity-50 bg-white focus:ring-2 focus:ring-primary/20">
-                              <SelectValue placeholder={<span className="text-slate-400">{formData.state ? "Select City" : "Select State first"}</span>} />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-[300px]">
-                              {formData.state && (INDIA_STATES_AND_CITIES[formData.state as keyof typeof INDIA_STATES_AND_CITIES] || []).map(c => (
-                                <SelectItem key={c} value={c}>{c}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        {/* Pincode & Employee ID side-by-side (50:50) */}
+                        <div className="grid grid-cols-2 gap-4 md:col-span-2">
+                          {/* Pincode */}
+                          <div className="space-y-1.5 w-full">
+                            <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                              <MapPin className="w-4 h-4 text-primary shrink-0" />
+                              Pincode
+                            </Label>
+                            <Input 
+                              value={formData.hospitalPincode} 
+                              onChange={e => setFormData({ ...formData, hospitalPincode: e.target.value.replace(/\D/g, '') })} 
+                              placeholder="Enter pincode" 
+                              className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
+                            />
+                          </div>
 
-                        {/* Pincode */}
-                        <div className="md:col-span-2 space-y-1.5">
-                          <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
-                            <MapPin className="w-4 h-4 text-primary shrink-0" />
-                            Pincode *
-                          </Label>
-                          <Input 
-                            value={formData.hospitalPincode} 
-                            onChange={e => setFormData({ ...formData, hospitalPincode: e.target.value })} 
-                            placeholder="Enter pincode" 
-                            className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
-                          />
+                          {/* Employee ID */}
+                          <div className="space-y-1.5 w-full">
+                            <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                              <User className="w-4 h-4 text-primary shrink-0" />
+                              Employee ID
+                            </Label>
+                            <Input 
+                              value={formData.hospitalEmployeeId} 
+                              onChange={e => setFormData({ ...formData, hospitalEmployeeId: e.target.value })} 
+                              placeholder="Enter employee ID" 
+                              className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
+                            />
+                          </div>
                         </div>
                       </div>
                       
-                      <FileUploadBox field="hospitalJoiningProofFile" label="Joining Proof / ID (Optional)" icon={FileText} />
+                      <FileUploadBox field="hospitalJoiningProofFile" label="Joining Proof / ID" icon={FileText} />
                     </div>
                   )}
 
@@ -2138,10 +2413,10 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <span>Availability & Fees</span>
-                        <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
-                          <Calendar className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
+                        <div className="w-[22px] h-[22px] sm:w-7 sm:h-7 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                          <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
+                        <span>Availability & Fees</span>
                       </h2>
                       <p className="text-slate-500 text-xs sm:text-sm font-medium">Set your availability times and consultation fees</p>
                     </div>
@@ -2214,7 +2489,6 @@ const VetOnboarding = () => {
                               <Stethoscope className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
                             </div>
                             <span className="text-[#6366F1] font-bold text-sm sm:text-base font-sans">Consultation Types</span>
-                            <span className="text-pink-500 font-sans font-bold">*</span>
                             <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 cursor-help" />
                           </div>
                           <p className="text-slate-450 text-[11px] sm:text-xs font-semibold leading-tight">Select the types of consultations you provide</p>
@@ -2297,7 +2571,6 @@ const VetOnboarding = () => {
                               <GraduationCap className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
                             </div>
                             <span className="text-[#6366F1] font-bold text-sm sm:text-base font-sans">Years of Practice</span>
-                            <span className="text-pink-500 font-sans font-bold">*</span>
                             <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 cursor-help" />
                           </div>
                           <p className="text-slate-450 text-[11px] sm:text-xs font-semibold leading-tight">Your practice experience builds patient trust</p>
@@ -2362,7 +2635,6 @@ const VetOnboarding = () => {
                           <Calendar className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
                         <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Availability</span>
-                        <span className="text-pink-500 font-sans font-bold">*</span>
                       </div>
 
                       {/* Same timing for all selected days toggle */}
@@ -2496,7 +2768,9 @@ const VetOnboarding = () => {
                               </div>
                               <div className="flex flex-col min-w-0">
                                 <span className="font-bold text-xs sm:text-sm tracking-tight truncate">{periodInfo.label}</span>
-                                <span className="text-[9px] sm:text-[11px] font-semibold opacity-75 whitespace-nowrap">{periodInfo.hours}</span>
+                                <span className="text-[9px] sm:text-[11px] font-semibold opacity-75 whitespace-nowrap">
+                                  {periodAvailability.slots.length > 0 ? periodAvailability.slots[0] : periodInfo.hours}
+                                </span>
                               </div>
                             </div>
 
@@ -2517,23 +2791,44 @@ const VetOnboarding = () => {
                                   </button>
                                 </div>
                               ))}
-
                               {/* Inline adder state representation */}
                               {isEnabled && addingSlotRow === periodKey ? (
                                 <div className="flex items-center gap-1.5 p-1 px-1.5 border border-pink-200 rounded-xl bg-[#FFFDFE] shadow-sm animate-fade-in z-20 shrink-0">
-                                  <input 
-                                    type="time" 
-                                    value={newSlotStart} 
-                                    onChange={e => setNewSlotStart(e.target.value)} 
-                                    className="px-1 py-0.5 text-xs font-sans font-bold border border-slate-200 rounded-lg bg-white text-slate-700 w-[72px] h-7 focus:ring-1 focus:ring-[#EC4899] focus:outline-none"
-                                  />
+                                  <div className="flex items-center gap-1">
+                                    <select 
+                                      value={newSlotStart.split(':')[0]} 
+                                      onChange={e => setNewSlotStart(`${e.target.value}:${newSlotStart.split(':')[1]}`)}
+                                      className="px-1 py-0.5 text-[10px] font-sans font-bold border border-slate-200 rounded-lg bg-white text-slate-700 min-w-[40px] h-7 focus:ring-1 focus:ring-[#EC4899] focus:outline-none cursor-pointer"
+                                    >
+                                      {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                                    </select>
+                                    <span className="text-[10px]">:</span>
+                                    <select 
+                                      value={newSlotStart.split(':')[1]} 
+                                      onChange={e => setNewSlotStart(`${newSlotStart.split(':')[0]}:${e.target.value}`)}
+                                      className="px-1 py-0.5 text-[10px] font-sans font-bold border border-slate-200 rounded-lg bg-white text-slate-700 min-w-[40px] h-7 focus:ring-1 focus:ring-[#EC4899] focus:outline-none cursor-pointer"
+                                    >
+                                      {["00", "15", "30", "45"].map(m => <option key={m} value={m}>{m}</option>)}
+                                    </select>
+                                  </div>
                                   <span className="text-slate-400 font-bold text-xs">–</span>
-                                  <input 
-                                    type="time" 
-                                    value={newSlotEnd} 
-                                    onChange={e => setNewSlotEnd(e.target.value)} 
-                                    className="px-1 py-0.5 text-xs font-sans font-bold border border-slate-200 rounded-lg bg-white text-slate-700 w-[72px] h-7 focus:ring-1 focus:ring-[#EC4899] focus:outline-none"
-                                  />
+                                  <div className="flex items-center gap-1">
+                                    <select 
+                                      value={newSlotEnd.split(':')[0]} 
+                                      onChange={e => setNewSlotEnd(`${e.target.value}:${newSlotEnd.split(':')[1]}`)}
+                                      className="px-1 py-0.5 text-[10px] font-sans font-bold border border-slate-200 rounded-lg bg-white text-slate-700 min-w-[40px] h-7 focus:ring-1 focus:ring-[#EC4899] focus:outline-none cursor-pointer"
+                                    >
+                                      {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                                    </select>
+                                    <span className="text-[10px]">:</span>
+                                    <select 
+                                      value={newSlotEnd.split(':')[1]} 
+                                      onChange={e => setNewSlotEnd(`${newSlotEnd.split(':')[0]}:${e.target.value}`)}
+                                      className="px-1 py-0.5 text-[10px] font-sans font-bold border border-slate-200 rounded-lg bg-white text-slate-700 min-w-[40px] h-7 focus:ring-1 focus:ring-[#EC4899] focus:outline-none cursor-pointer"
+                                    >
+                                      {["00", "15", "30", "45"].map(m => <option key={m} value={m}>{m}</option>)}
+                                    </select>
+                                  </div>
                                   <div className="flex gap-1 pl-0.5 shrink-0">
                                     <button 
                                       type="button"
@@ -2812,10 +3107,10 @@ const VetOnboarding = () => {
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
-                        <span>Review Profile</span>
                         <div className="w-[18px] h-[18px] rounded-full bg-pink-100 flex items-center justify-center shrink-0">
                           <ScrollText className="w-2.5 h-2.5 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
+                        <span>Review Profile</span>
                       </h2>
                       <p className="text-slate-500 text-xs sm:text-sm font-medium">Verify your details and accept agreements to submit</p>
                     </div>
@@ -2824,128 +3119,95 @@ const VetOnboarding = () => {
                     </div>
                   </div>
 
-                  {/* Local review helper */}
-                  {(() => {
-                    const renderReviewFilePreview = (fieldName: string, label: string) => {
-                      const preview = filePreviews[fieldName];
-                      const file = (formData as Record<string, unknown>)[fieldName] as File | null;
-                      
-                      if (!preview && !file) {
-                        return (
-                          <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center text-xs text-slate-400 font-semibold">
-                            No {label} uploaded
+                  <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200">
+                    {/* CARD 1: Personal Information */}
+                    <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-all">
+                      <div className="flex items-center justify-between pb-3.5 border-b border-slate-100/60">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-pink-50/80 border border-pink-100 flex items-center justify-center shrink-0">
+                            <User className="w-5 h-5 text-pink-600" />
                           </div>
-                        );
-                      }
-                      
-                      return (
-                        <div className="bg-slate-50/80 border border-slate-200/60 rounded-xl p-3 flex items-center justify-between gap-3 shadow-xs font-sans">
-                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                            {preview ? (
-                              <div className="w-12 h-12 rounded-lg border border-slate-200 overflow-hidden bg-white shrink-0">
-                                <img src={preview} alt={label} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                              </div>
-                            ) : (
-                              <div className="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center shrink-0 border border-pink-200 text-[#EC4899]">
-                                <FileText className="w-6 h-6" />
-                              </div>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs font-bold text-slate-700 truncate">{label}</p>
-                              <p className="text-[10px] text-slate-400 font-medium font-mono truncate">
-                                {file ? `${(file.size / 1024).toFixed(0)} KB • ${file.name}` : "Uploaded document"}
+                          <div>
+                            <h3 className="font-extrabold text-sm sm:text-base text-[#1E293B] tracking-tight">Personal Information</h3>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            type="button" 
+                            onClick={() => setCurrentStep(1)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-[#8A1550] transition-all shrink-0"
+                          >
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z" />
+                            </svg>
+                            Edit
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-4 border-t border-slate-100/50 space-y-5 text-xs sm:text-sm">
+                        <div className="flex flex-col sm:flex-row gap-5">
+                          {/* Photo Preview */}
+                          <div className="space-y-1.5 shrink-0">
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block font-sans">Profile Photo</span>
+                            <div className="w-24 h-24 rounded-2xl border-2 border-slate-100 bg-slate-50 overflow-hidden shadow-sm flex items-center justify-center">
+                              {formData.profilePhoto ? (
+                                <img src={URL.createObjectURL(formData.profilePhoto)} alt="Profile" className="w-full h-full object-cover" />
+                              ) : filePreviews.profilePhoto ? (
+                                <img src={filePreviews.profilePhoto} alt="Profile" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="flex flex-col items-center gap-1 text-slate-300">
+                                  <Camera className="w-6 h-6" />
+                                  <span className="text-[8px] font-bold">No Photo</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 flex-1">
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight font-sans">Full Name</span>
+                              <p className="font-bold text-[#1E293B] text-xs sm:text-sm">{formData.fullName || "N/A"}</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight font-sans">Email ID</span>
+                              <p className="font-bold text-[#1E293B] break-all text-xs sm:text-sm">{formData.email || profile?.email || "N/A"}</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight font-sans">Phone Number</span>
+                              <p className="font-bold text-[#1E293B] text-xs sm:text-sm">
+                                {formData.phone ? `+91 ${formData.phone}` : profile?.user_metadata?.phone ? `+91 ${profile.user_metadata.phone}` : "N/A"}
                               </p>
                             </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight font-sans">Date of Birth</span>
+                              <p className="font-bold text-[#1E293B] text-xs sm:text-sm">{formData.dob ? formatDisplayDate(formData.dob) : "N/A"}</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight font-sans">Gender</span>
+                              <p className="font-bold text-[#1E293B] capitalize text-xs sm:text-sm">{formData.gender || "N/A"}</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight font-sans">Language</span>
+                              <p className="font-bold text-[#1E293B] capitalize text-xs sm:text-sm">{formData.preferredLanguage && formData.preferredLanguage.length > 0 ? formData.preferredLanguage.join(", ") : "N/A"}</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight font-sans">State</span>
+                              <p className="font-bold text-[#1E293B] text-xs sm:text-sm">{formData.state || "N/A"}</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight font-sans">City</span>
+                              <p className="font-bold text-[#1E293B] text-xs sm:text-sm">{formData.city || "N/A"}</p>
+                            </div>
+                            <div className="col-span-2 md:col-span-1 space-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight font-sans">Full Address</span>
+                              <p className="font-bold text-[#1E293B] text-xs sm:text-sm leading-relaxed break-words">{formData.address || "N/A"}</p>
+                            </div>
                           </div>
                         </div>
-                      );
-                    };
-
-                    return (
-                      <div className="space-y-4">
-                        
-                        {/* CARD 1: Personal Information */}
-                        <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-all">
-                          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100/60">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-pink-50/80 border border-pink-100 flex items-center justify-center shrink-0">
-                                <User className="w-5 h-5 text-pink-600" />
-                              </div>
-                              <div>
-                                <h3 className="font-extrabold text-sm sm:text-base text-[#1E293B] tracking-tight">Personal Information</h3>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <button 
-                                type="button" 
-                                onClick={() => setCurrentStep(1)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-[#8A1550] transition-all shrink-0"
-                              >
-                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                  <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z" />
-                                </svg>
-                                Edit
-                              </button>
-                              <button 
-                                type="button"
-                                onClick={() => toggleSection("personal")}
-                                className="w-8 h-8 rounded-lg hover:bg-slate-50 border border-slate-100 text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center"
-                              >
-                                {expandedSections.personal ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Collapsed grid */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-xs sm:text-sm">
-                            <div className="space-y-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Name</span>
-                              <p className="font-bold text-[#1E293B]">{formData.fullName || "N/A"}</p>
-                            </div>
-                            <div className="space-y-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Phone</span>
-                              <p className="font-bold text-[#1E293B]">{formData.phone ? `+91 ${formData.phone}` : "N/A"}</p>
-                            </div>
-                            <div className="space-y-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">City</span>
-                              <p className="font-bold text-[#1E293B]">{formData.city ? `${formData.city}, ${formData.state}` : "N/A"}</p>
-                            </div>
-                          </div>
-
-                          {/* Expanded views */}
-                          {expandedSections.personal && (
-                            <div className="mt-4 pt-4 border-t border-slate-100/50 space-y-4 animate-fade-in text-xs sm:text-sm">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-0.5">
-                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Email Address</span>
-                                  <p className="font-bold text-[#1E293B] break-all">{formData.email || "N/A"}</p>
-                                </div>
-                                <div className="space-y-0.5">
-                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Date of Birth</span>
-                                  <p className="font-bold text-[#1E293B]">{formData.dob ? formatDisplayDate(formData.dob) : "N/A"}</p>
-                                </div>
-                                <div className="space-y-0.5">
-                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Gender</span>
-                                  <p className="font-bold text-[#1E293B] capitalize">{formData.gender || "N/A"}</p>
-                                </div>
-                                <div className="space-y-0.5">
-                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Address</span>
-                                  <p className="font-bold text-[#1E293B] break-words">{formData.address || "N/A"}</p>
-                                </div>
-                                <div className="space-y-0.5">
-                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Preferred Language</span>
-                                  <p className="font-bold text-[#1E293B] capitalize">{formData.preferredLanguage || "N/A"}</p>
-                                </div>
-                              </div>
-                              {/* Profile photo layout */}
-                              <div className="space-y-1.5 pt-2">
-                                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Profile Photo</span>
-                                {renderReviewFilePreview("profilePhoto", "Profile Photograph")}
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                      </div>
+                    </div>
 
                         {/* CARD 2: Identity Verification */}
                         <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-all">
@@ -2983,33 +3245,46 @@ const VetOnboarding = () => {
                           {/* Collapsed grid */}
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-xs sm:text-sm">
                             <div className="space-y-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Aadhar Card Verification</span>
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight font-sans">Aadhaar Card (Front)</span>
                               <p className="font-bold text-emerald-600 flex items-center gap-1.5">
-                                <Check className="w-4 h-4" /> Done
+                                <CheckCircle className="w-4 h-4" /> Uploaded
                               </p>
                             </div>
                             <div className="space-y-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Live Photo</span>
-                              <p className={`font-bold ${formData.passportPhotoFile || filePreviews.passportPhotoFile ? "text-emerald-600" : "text-amber-500"}`}>
-                                {formData.passportPhotoFile || filePreviews.passportPhotoFile ? "✓ Uploaded" : "Pending Upload"}
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight font-sans">Aadhaar Card (Back)</span>
+                              <p className={`font-bold ${formData.panCardFile || filePreviews.panCardFile ? "text-emerald-600" : "text-amber-500"} flex items-center gap-1.5`}>
+                                {formData.panCardFile || filePreviews.panCardFile ? (
+                                  <><CheckCircle className="w-4 h-4" /> Uploaded</>
+                                ) : (
+                                  <><AlertCircle className="w-4 h-4" /> Pending</>
+                                )}
                               </p>
                             </div>
                             <div className="space-y-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">ID Verification Status</span>
-                              <p className="font-bold text-emerald-600">Pending Review</p>
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight font-sans">Live Photo</span>
+                              <p className={`font-bold ${formData.passportPhotoFile || filePreviews.passportPhotoFile ? "text-emerald-600" : "text-amber-500"} flex items-center gap-1.5`}>
+                                {formData.passportPhotoFile || filePreviews.passportPhotoFile ? (
+                                  <><CheckCircle className="w-4 h-4" /> Uploaded</>
+                                ) : (
+                                  <><AlertCircle className="w-4 h-4" /> Pending</>
+                                )}
+                              </p>
                             </div>
                           </div>
 
                           {/* Expanded views */}
                           {expandedSections.identity && (
                             <div className="mt-4 pt-4 border-t border-slate-100/50 space-y-4 animate-fade-in">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {renderReviewFilePreview("govtIdFile", "Aadhaar Card (Front)")}
-                                {renderReviewFilePreview("panCardFile", "Aadhaar Card (Back)")}
+                              <div className="space-y-1.5">
+                                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Aadhaar Card</span>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  {renderReviewFilePreview("govtIdFile", "Aadhaar Card (Front)")}
+                                  {renderReviewFilePreview("panCardFile", "Aadhaar Card (Back)")}
+                                </div>
                               </div>
                               <div className="space-y-1.5">
-                                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Live Photo / Passport Photo</span>
-                                {renderReviewFilePreview("passportPhotoFile", "Live Photo / Passport Image")}
+                                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Live Photo</span>
+                                {renderReviewFilePreview("passportPhotoFile", "Live Photo Image")}
                               </div>
                             </div>
                           )}
@@ -3055,8 +3330,8 @@ const VetOnboarding = () => {
                               <p className="font-bold text-[#1E293B]">{formData.qualification || "N/A"}</p>
                             </div>
                             <div className="space-y-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Experience</span>
-                              <p className="font-bold text-[#1E293B]">{formData.yearsOfExperience ? `${formData.yearsOfExperience} Years` : "N/A"}</p>
+                              <span className="text-[10px] text-[#475569] font-bold uppercase tracking-wider font-sans">Years of Practice</span>
+                              <p className="font-extrabold text-[#0F172A] text-xs sm:text-sm">{formData.yearsOfExperience ? `${formData.yearsOfExperience} Years` : "N/A"}</p>
                             </div>
                             <div className="space-y-0.5">
                               <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Registration No.</span>
@@ -3074,7 +3349,7 @@ const VetOnboarding = () => {
                               
                               {formData.educationRows && formData.educationRows.length > 0 && (
                                 <div className="space-y-2">
-                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Additional Credentials / Medical History</span>
+                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Additional Qualifications</span>
                                   <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/55 space-y-2.5">
                                     {formData.educationRows.map((row, index) => (
                                       <div key={index} className="flex justify-between items-center text-xs border-b border-dashed border-slate-200/50 pb-2 last:border-none last:pb-0">
@@ -3250,14 +3525,14 @@ const VetOnboarding = () => {
                           {/* Collapsed grid */}
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-xs sm:text-sm">
                             <div className="space-y-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Available Days</span>
-                              <p className="font-bold text-[#1E293B] truncate">
+                              <span className="text-[10px] text-[#475569] font-bold uppercase tracking-wider font-sans">Available Days</span>
+                              <p className="font-extrabold text-[#0F172A] text-xs sm:text-sm truncate">
                                 {formData.availableDays.length > 0 ? formData.availableDays.join(", ") : "None chosen"}
                               </p>
                             </div>
                             <div className="space-y-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Time Sessions</span>
-                              <p className="font-bold text-[#1E293B]">
+                              <span className="text-[10px] text-[#475569] font-bold uppercase tracking-wider font-sans">Time Sessions</span>
+                              <p className="font-extrabold text-[#0F172A] text-xs sm:text-sm">
                                 {[
                                   formData.morningSlots && "09:00 AM - 01:00 PM",
                                   formData.eveningSlots && "04:00 PM - 08:00 PM"
@@ -3265,8 +3540,8 @@ const VetOnboarding = () => {
                               </p>
                             </div>
                             <div className="space-y-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Consultation Types</span>
-                              <p className="font-bold text-[#1E293B] truncate">
+                              <span className="text-[10px] text-[#475569] font-bold uppercase tracking-wider font-sans">Consultation Types</span>
+                              <p className="font-extrabold text-[#0F172A] text-xs sm:text-sm truncate">
                                 {formData.consultationTypes.length > 0 ? formData.consultationTypes.join(", ") : "N/A"}
                               </p>
                             </div>
@@ -3277,16 +3552,16 @@ const VetOnboarding = () => {
                             <div className="mt-4 pt-4 border-t border-slate-100/50 space-y-3 animate-fade-in text-xs sm:text-sm">
                               <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-0.5">
-                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Specializations</span>
-                                  <p className="font-bold text-[#1E293B]">{formData.specializations.join(", ") || "None selected"}</p>
+                                  <span className="text-[10px] text-[#475569] font-bold uppercase tracking-wider font-sans">Specializations</span>
+                                  <p className="font-extrabold text-[#0F172A] text-xs sm:text-sm">{formData.specializations.join(", ") || "None selected"}</p>
                                 </div>
                                 <div className="space-y-0.5">
-                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Morning Shift (9am-1pm)</span>
-                                  <p className="font-bold text-[#1E293B]">{formData.morningSlots ? "Enabled ✓" : "Disabled ✗"}</p>
+                                  <span className="text-[10px] text-[#475569] font-bold uppercase tracking-wider font-sans">Morning Shift</span>
+                                  <p className="font-extrabold text-[#0F172A] text-xs sm:text-sm">{formData.morningSlots ? "Enabled ✓" : "Disabled ✗"}</p>
                                 </div>
                                 <div className="space-y-0.5">
-                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Evening Shift (4pm-8pm)</span>
-                                  <p className="font-bold text-[#1E293B]">{formData.eveningSlots ? "Enabled ✓" : "Disabled ✗"}</p>
+                                  <span className="text-[10px] text-[#475569] font-bold uppercase tracking-wider font-sans">Evening Shift</span>
+                                  <p className="font-extrabold text-[#0F172A] text-xs sm:text-sm">{formData.eveningSlots ? "Enabled ✓" : "Disabled ✗"}</p>
                                 </div>
                               </div>
                             </div>
@@ -3329,16 +3604,16 @@ const VetOnboarding = () => {
                           {/* Collapsed grid */}
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-xs sm:text-sm">
                             <div className="space-y-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">In-clinic Consultation</span>
-                              <p className="font-bold text-[#1E293B]">₹{formData.onlineFee || "None"}</p>
+                              <span className="text-[10px] text-[#475569] font-bold uppercase tracking-wider font-sans">In-clinic Consultation</span>
+                              <p className="font-extrabold text-[#0F172A] text-xs sm:text-sm">₹{formData.onlineFee || "None"}</p>
                             </div>
                             <div className="space-y-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Home Consultation</span>
-                              <p className="font-bold text-[#1E293B]">₹{formData.offlineFee || "None"}</p>
+                              <span className="text-[10px] text-[#475569] font-bold uppercase tracking-wider font-sans">Home Consultation</span>
+                              <p className="font-extrabold text-[#0F172A] text-xs sm:text-sm">₹{formData.offlineFee || "None"}</p>
                             </div>
                             <div className="space-y-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Emergency Visit</span>
-                              <p className={`font-bold ${formData.emergencyAvailable ? "text-emerald-600" : "text-slate-400"}`}>
+                              <span className="text-[10px] text-[#475569] font-bold uppercase tracking-wider font-sans font-sans">Emergency Availability</span>
+                              <p className={`font-extrabold text-xs sm:text-sm ${formData.emergencyAvailable ? "text-emerald-600 font-bold" : "text-slate-400"}`}>
                                 {formData.emergencyAvailable ? "Available" : "Not Available"}
                               </p>
                             </div>
@@ -3359,13 +3634,10 @@ const VetOnboarding = () => {
                               </div>
                             </div>
                           )}
-                        </div>
-
                       </div>
-                    );
-                  })()}
+                    </div>
 
-                  {/* Gorgeous Agreements & Consent card block */}
+                    {/* Gorgeous Agreements & Consent card block */}
                   <div className="space-y-4 pt-4 pb-2">
                     <div>
                       <h3 className="text-base sm:text-lg font-extrabold text-[#1E293B] font-sans">Agreements & Consent</h3>
@@ -3382,7 +3654,7 @@ const VetOnboarding = () => {
                             className="mt-1 border-slate-300 data-[state=checked]:bg-[#8a1550] data-[state=checked]:border-[#8a1550]" 
                           />
                           <Label htmlFor="vendor-agreement" className="text-xs sm:text-sm cursor-pointer text-[#1E293B] font-bold select-none leading-none pt-0.5">
-                            I accept the <span className="text-[#8A1550] underline">Vendor / Service Agreement</span> *
+                            I accept the <span className="text-[#8A1550] underline">Vendor / Service Agreement</span>
                             <p className="text-[10px] text-slate-400 font-semibold mt-1 font-sans">Read the full service agreement below</p>
                           </Label>
                         </div>
@@ -3400,7 +3672,7 @@ const VetOnboarding = () => {
                             className="mt-1 border-slate-300 data-[state=checked]:bg-[#8a1550] data-[state=checked]:border-[#8a1550]" 
                           />
                           <Label htmlFor="terms-conditions" className="text-xs sm:text-sm cursor-pointer text-[#1E293B] font-bold select-none leading-none pt-0.5">
-                            I accept the <span className="text-[#8A1550] underline">Terms & Conditions</span> and confirm all information is accurate *
+                            I accept the <span className="text-[#8A1550] underline">Terms & Conditions</span> and confirm all information is accurate
                             <p className="text-[10px] text-slate-400 font-semibold mt-1 font-sans">Read the terms & conditions of onboarding</p>
                           </Label>
                         </div>

@@ -14,8 +14,13 @@ export const AccountReviewScreen = ({ onLogout, rejectionReason, onEditProfile }
     if (onLogout) {
       onLogout();
     } else {
-      await supabase.auth.signOut();
-      window.location.reload(); 
+      try {
+        await supabase.auth.signOut();
+        window.location.reload(); 
+      } catch (err) {
+        console.error("Logout error:", err);
+        window.location.reload();
+      }
     }
   };
 
