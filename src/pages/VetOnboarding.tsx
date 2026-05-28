@@ -25,7 +25,7 @@ import {
   Calendar, Banknote, User, Building2, ScrollText, Camera, Home, Video, Briefcase,
   CreditCard, GraduationCap, Plus, Trash2, ChevronLeft, ChevronRight, LogOut, MapPin,
   Dog, Cat, Bird, Sparkles, Sunrise, Sun, Moon, Copy, Check, X, Clock, CheckSquare, Info,
-  ChevronDown, ChevronUp, ExternalLink, AlertCircle, Activity
+  ChevronDown, ChevronUp, ExternalLink, AlertCircle
 } from "lucide-react";
 import { AccountReviewScreen } from "@/components/AccountReviewScreen";
 import { INDIA_STATES, INDIA_STATES_AND_CITIES } from "@/constants/indiaLocations";
@@ -185,7 +185,6 @@ const VetOnboarding = () => {
     Sat: { morning: { enabled: false, slots: [] }, afternoon: { enabled: false, slots: [] }, evening: { enabled: false, slots: [] }, night: { enabled: false, slots: [] } },
     Sun: { morning: { enabled: false, slots: [] }, afternoon: { enabled: false, slots: [] }, evening: { enabled: false, slots: [] }, night: { enabled: false, slots: [] } }
   });
-  const [demandLevel, setDemandLevel] = useState<"low" | "moderate" | "high">("moderate");
 
   // Load draft parser for weekly availability
   useEffect(() => {
@@ -234,6 +233,17 @@ const VetOnboarding = () => {
       setSelectedDay("");
     }
   }, [formData.availableDays, selectedDay]);
+
+  const parsedClinicFee = parseFloat(formData.onlineFee || "0") || 0;
+  const parsedHomeFee = parseFloat(formData.offlineFee || "0") || 0;
+  const isCityTier1 = ["mumbai", "delhi", "bangalore", "pune", "hyderabad", "chennai", "kolkata"].some(c => (formData.city || "").toLowerCase().includes(c));
+  const dynamicClinicSurchargePct = isCityTier1 ? 12 : 10;
+  const dynamicHomeSurchargePct = isCityTier1 ? 14 : 12;
+  const calculatedClinicSurchargeAmt = Math.round((parsedClinicFee * dynamicClinicSurchargePct) / 100);
+  const calculatedHomeSurchargeAmt = Math.round((parsedHomeFee * dynamicHomeSurchargePct) / 100);
+  const calculatedClinicTotal = parsedClinicFee + calculatedClinicSurchargeAmt;
+  const calculatedHomeTotal = parsedHomeFee + calculatedHomeSurchargeAmt;
+  const isNightSlotEnabled = Object.values(weeklyAvailability).some(d => d.night?.enabled);
 
   const [specializationOptions, setSpecializationOptions] = useState<string[]>(["Dog", "Cat", "Bird", "Hamster"]);
   const [isAddingCustom, setIsAddingCustom] = useState(false);
@@ -1207,15 +1217,6 @@ const VetOnboarding = () => {
       </div>
     );
   };
-
-  const isNightActive = Object.values(weeklyAvailability).some(day => day.night?.enabled);
-  const baseOnline = parseFloat(formData.onlineFee) || 0;
-  const baseOffline = parseFloat(formData.offlineFee) || 0;
-  const surchargePercent = demandLevel === "low" ? 9 : demandLevel === "moderate" ? 11.5 : 14;
-  const onlineSurcharge = Math.round((baseOnline * surchargePercent) / 100);
-  const offlineSurcharge = Math.round((baseOffline * surchargePercent) / 100);
-  const totalOnline = baseOnline + onlineSurcharge;
-  const totalOffline = baseOffline + offlineSurcharge;
 
   return (
     <div className="min-h-screen bg-gradient-soft">
@@ -2967,100 +2968,47 @@ const VetOnboarding = () => {
                           </div>
                         </div>
 
-                        {isNightActive && (
-                          <div className="mt-5 pt-4 border-t border-slate-100 flex flex-col space-y-4 animate-fade-in">
-                            {/* Heading & Sub-headings */}
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-1.5 text-[#1E293B]">
-                                <Moon className="w-5 h-5 text-[#8A1550]" strokeWidth={2.5} />
-                                <span className="font-extrabold text-sm sm:text-base tracking-tight text-[#8A1550]">Night Surcharge (9 PM - 12 AM)</span>
-                              </div>
-                              <p className="text-[11px] text-slate-400 font-semibold leading-normal">
-                                Adds a supply-demand compensation premium for late night consultations. Specify fees above to see calculation:
-                              </p>
+                        {isNightSlotEnabled && (
+                          <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col space-y-4 animate-fade-in text-slate-700">
+                            <div className="space-y-0.5">
+                              <h4 className="text-xs sm:text-sm font-extrabold text-[#8A1550] flex items-center gap-1.5 font-sans">
+                                <Moon className="w-4 h-4 text-pink-500" />
+                                <span>Night Surcharge</span>
+                              </h4>
+                              <p className="text-[10px] text-slate-400 font-medium">Auto-computed surcharge based on active late-hour demand & supply</p>
                             </div>
 
-                            {/* Demand & Supply Position Interactive Engine */}
-                            <div className="p-3 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-2.5">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1.5">
-                                  <Activity className="w-3.5 h-3.5 text-[#8A1550]" strokeWidth={2.5} />
-                                  <span className="text-[11px] font-extrabold text-[#1E293B]">Dynamic Demand & Supply Position</span>
-                                </div>
-                                <span className="text-[9px] font-extrabold text-[#8A1550] bg-[#8A1550]/10 px-2 py-0.5 rounded-full select-none capitalize">
-                                  {demandLevel} Surcharge
-                                </span>
-                              </div>
-                              <p className="text-[10px] text-slate-450 font-semibold leading-normal">
-                                Surcharge rates automatically shift between **9% and 14%** based on matching nearby active booking requests with available veterinarians in your zone:
-                              </p>
-                              <div className="grid grid-cols-3 gap-1.5">
-                                {(["low", "moderate", "high"] as const).map(level => {
-                                  const isSelected = demandLevel === level;
-                                  const label = level === "low" ? "Low Demand" : level === "moderate" ? "Moderate" : "High Demand";
-                                  const rateRange = level === "low" ? "9% Rate" : level === "moderate" ? "11.5% Rate" : "14% Rate";
-                                  return (
-                                    <button
-                                      key={level}
-                                      type="button"
-                                      onClick={() => setDemandLevel(level)}
-                                      className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer ${
-                                        isSelected
-                                          ? "bg-[#8A1550]/5 border-[#8A1550] text-[#8A1550] shadow-xs"
-                                          : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                                      }`}
-                                    >
-                                      <span className="text-[10px] font-extrabold">{label}</span>
-                                      <span className="text-[9px] font-semibold opacity-85 mt-0.5">{rateRange}</span>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-
-                            {/* Sub-headings and figures */}
                             <div className="grid grid-cols-2 gap-3">
-                              {/* In-clinic Surcharge Section */}
-                              <div className="p-3 rounded-2xl bg-purple-50/45 border border-purple-100 flex flex-col justify-between">
-                                <div>
-                                  <span className="text-[10px] font-extrabold text-purple-700 uppercase tracking-tight block">In-clinic Surcharge</span>
-                                  <span className="text-[9px] text-slate-400 font-medium block">Premium on base ₹{baseOnline}</span>
-                                </div>
-                                <div className="flex items-baseline gap-1 mt-1.5">
-                                  <span className="font-sans font-extrabold text-md sm:text-lg text-purple-900">₹{onlineSurcharge}</span>
-                                  <span className="text-[9px] text-purple-600 font-bold font-mono">({surchargePercent}%)</span>
+                              {/* In-clinic Custom Fee with Night Surcharge */}
+                              <div className="space-y-1 bg-[#F5F3FF]/30 p-2.5 rounded-2xl border border-[#E4E0FF]/60">
+                                <span className="text-[9px] text-[#4F46E5] font-extrabold uppercase tracking-wider block">In-clinic Surcharge</span>
+                                <div className="flex justify-between items-baseline">
+                                  <span className="font-extrabold text-sm sm:text-base text-[#1E293B]">₹{calculatedClinicSurchargeAmt}</span>
+                                  <span className="text-[10px] text-slate-400 font-bold">({dynamicClinicSurchargePct}%)</span>
                                 </div>
                               </div>
 
-                              {/* Home Visit Surcharge Section */}
-                              <div className="p-3 rounded-2xl bg-pink-50/45 border border-pink-100 flex flex-col justify-between">
-                                <div>
-                                  <span className="text-[10px] font-extrabold text-[#EC4899] uppercase tracking-tight block">Home Visit Surcharge</span>
-                                  <span className="text-[9px] text-slate-400 font-medium block">Premium on base ₹{baseOffline}</span>
-                                </div>
-                                <div className="flex items-baseline gap-1 mt-1.5">
-                                  <span className="font-sans font-extrabold text-md sm:text-lg text-pink-900">₹{offlineSurcharge}</span>
-                                  <span className="text-[9px] text-pink-600 font-bold font-mono">({surchargePercent}%)</span>
+                              {/* Home Visit Custom Fee with Night Surcharge */}
+                              <div className="space-y-1 bg-[#FFF3F7]/30 p-2.5 rounded-2xl border border-[#FFE0ED]/60">
+                                <span className="text-[9px] text-[#EC4899] font-extrabold uppercase tracking-wider block">Home Surcharge</span>
+                                <div className="flex justify-between items-baseline">
+                                  <span className="font-extrabold text-sm sm:text-base text-[#1E293B]">₹{calculatedHomeSurchargeAmt}</span>
+                                  <span className="text-[10px] text-slate-400 font-bold">({dynamicHomeSurchargePct}%)</span>
                                 </div>
                               </div>
                             </div>
 
-                            {/* Dynamic Payment Summary */}
-                            <div className="p-3.5 bg-[#FFF3F7]/50 border border-[#FFE0ED] rounded-2xl space-y-2">
-                              <span className="text-[10px] font-extrabold text-[#8A1550] uppercase tracking-wider block">Patient Cost & Earnings Summary</span>
-                              
-                              <div className="space-y-2 divide-y divide-[#FFE0ED]/50 text-xs text-slate-700">
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between font-semibold pb-1 gap-1">
-                                  <span className="text-slate-500 font-bold">In-clinic Night Total</span>
-                                  <span className="text-slate-800 text-right">
-                                    ₹{baseOnline} <span className="text-slate-400 text-[10px] font-medium">(base)</span> + ₹{onlineSurcharge} <span className="text-slate-400 text-[10px] font-medium">(surcharge)</span> = <span className="font-extrabold text-purple-700 text-sm">₹{totalOnline}</span>
-                                  </span>
+                            {/* Payment Summary */}
+                            <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100/80 space-y-2">
+                              <span className="text-[9px] font-extrabold text-[#8A1550] uppercase tracking-widest block">Payment Summary (Late-Hour)</span>
+                              <div className="space-y-1.5">
+                                <div className="flex justify-between items-center text-[11px] sm:text-xs">
+                                  <span className="text-slate-500 font-semibold text-[10px] sm:text-[11px]">In-clinic Total <span className="text-[9px] text-slate-400 font-normal">(Fee + Surcharge)</span></span>
+                                  <span className="font-extrabold text-slate-700 text-[11px] sm:text-xs">₹{parsedClinicFee} + ₹{calculatedClinicSurchargeAmt} = <span className="text-[#4F46E5]">₹{calculatedClinicTotal}</span></span>
                                 </div>
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between font-semibold pt-1.5 gap-1">
-                                  <span className="text-slate-500 font-bold">Home Visit Night Total</span>
-                                  <span className="text-slate-800 text-right">
-                                    ₹{baseOffline} <span className="text-slate-400 text-[10px] font-medium">(base)</span> + ₹{offlineSurcharge} <span className="text-slate-400 text-[10px] font-medium">(surcharge)</span> = <span className="font-extrabold text-pink-700 text-sm">₹{totalOffline}</span>
-                                  </span>
+                                <div className="flex justify-between items-center text-[11px] sm:text-xs">
+                                  <span className="text-slate-500 font-semibold text-[10px] sm:text-[11px]">Home Total <span className="text-[9px] text-slate-400 font-normal">(Fee + Surcharge)</span></span>
+                                  <span className="font-extrabold text-slate-700 text-[11px] sm:text-xs">₹{parsedHomeFee} + ₹{calculatedHomeSurchargeAmt} = <span className="text-[#EC4899]">₹{calculatedHomeTotal}</span></span>
                                 </div>
                               </div>
                             </div>
@@ -3743,6 +3691,24 @@ const VetOnboarding = () => {
                                   <p className="font-bold text-[#1E293B] uppercase">{formData.weekendAvailability || "Yes"}</p>
                                 </div>
                               </div>
+                              {isNightSlotEnabled && (
+                                <div className="mt-3 pt-3 border-t border-slate-100/60 flex flex-col space-y-2">
+                                  <span className="text-[10px] text-[#8A1550] font-extrabold uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                                    <Moon className="w-3.5 h-3.5 text-pink-500" />
+                                    <span>Night Surcharge & Totals (Active)</span>
+                                  </span>
+                                  <div className="grid grid-cols-2 gap-3 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100">
+                                    <div className="text-[11px]">
+                                      <span className="text-slate-400 font-semibold uppercase tracking-wider text-[9px] block">In-clinic Total</span>
+                                      <span className="font-extrabold text-[#1E293B]">₹{calculatedClinicTotal} <span className="font-medium text-[9px] text-slate-400 font-mono">(+₹{calculatedClinicSurchargeAmt})</span></span>
+                                    </div>
+                                    <div className="text-[11px]">
+                                      <span className="text-slate-400 font-semibold uppercase tracking-wider text-[9px] block">Home Visit Total</span>
+                                      <span className="font-extrabold text-[#1E293B]">₹{calculatedHomeTotal} <span className="font-medium text-[9px] text-slate-400 font-mono">(+₹{calculatedHomeSurchargeAmt})</span></span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                       </div>
