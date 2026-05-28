@@ -47,7 +47,7 @@ const VetDashboard = () => {
   useEffect(() => {
     if (user && profile) {
       if (profile.is_onboarding_complete === false) {
-        navigate("/vet-onboarding");
+        navigate("/vet/onboarding");
       } else {
         fetchData();
 

@@ -19,7 +19,7 @@ export const VetProtectionWrapper = ({ children, requiredStatus }: { children: R
       const isAdminApproved = profile?.is_admin_approved ?? false;
 
       if (!isOnboardingComplete && requiredStatus !== 'onboarding') {
-        navigate("/vet-onboarding", { replace: true });
+        navigate("/vet/onboarding", { replace: true });
       } else if (isOnboardingComplete && !isAdminApproved && requiredStatus !== 'pending') {
         navigate("/vet-pending-approval", { replace: true });
       } else if (isOnboardingComplete && isAdminApproved && requiredStatus === 'pending') {

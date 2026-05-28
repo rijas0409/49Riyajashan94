@@ -191,11 +191,12 @@ const App = () => (
                 <Route path="/vet/clinic-visit-details" element={<ClinicVisitDetails />} />
                  <Route path="/vet-earnings" element={<Navigate to="/vet/earnings" replace />} />
                 <Route path="/vet-schedule" element={<Navigate to="/vet/schedule" replace />} />
-                <Route path="/vet-onboarding" element={
+                <Route path="/vet/onboarding" element={
                   <VetProtectionWrapper requiredStatus="onboarding">
                     <VetOnboarding />
                   </VetProtectionWrapper>
                 } />
+                <Route path="/vet-onboarding" element={<Navigate to="/vet/onboarding" replace />} />
                 <Route path="/vet-pending-approval" element={
                   <VetProtectionWrapper requiredStatus="pending">
                     <VetPendingApproval />

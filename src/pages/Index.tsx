@@ -45,7 +45,7 @@ const Index = () => {
           }
 
           if (profile.is_onboarding_complete === false) {
-            navigate("/vet-onboarding", { replace: true });
+            navigate("/vet/onboarding", { replace: true });
             return;
           }
 

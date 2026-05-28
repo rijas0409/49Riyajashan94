@@ -34,7 +34,7 @@ const AuthVet = () => {
 
     if (authReady && user && profile?.role === "vet") {
       if (profile.is_onboarding_complete === false) {
-        navigate("/vet-onboarding");
+        navigate("/vet/onboarding");
       } else if (profile.is_admin_approved === false) {
         navigate("/vet-pending-approval");
       } else if (profile.is_onboarding_complete === true && profile.is_admin_approved === true) {
@@ -89,7 +89,7 @@ const AuthVet = () => {
 
         toast.success("Welcome back, Doctor!");
         if (userProfile.is_onboarding_complete === false) {
-          navigate("/vet-onboarding");
+          navigate("/vet/onboarding");
         } else if (userProfile.is_admin_approved === false) {
           navigate("/vet-pending-approval");
         } else {
@@ -125,7 +125,7 @@ const AuthVet = () => {
         if (error) throw error;
         if (data.user) {
           toast.success("Account created! Welcome, Doctor!");
-          navigate("/vet-onboarding");
+          navigate("/vet/onboarding");
         }
       }
     } catch (err) {

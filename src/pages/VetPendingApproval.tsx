@@ -45,7 +45,7 @@ const VetPendingApproval = () => {
            return;
         }
 
-        if (currentProfile?.is_onboarding_complete === false) { navigate("/vet-onboarding"); return; }
+        if (currentProfile?.is_onboarding_complete === false) { navigate("/vet/onboarding"); return; }
         
         setIsChecking(false);
 
@@ -177,7 +177,7 @@ const VetPendingApproval = () => {
       <AccountReviewScreen 
         onLogout={handleLogout} 
         rejectionReason={rejectionReason}
-        onEditProfile={() => navigate("/vet-onboarding")}
+        onEditProfile={() => navigate("/vet/onboarding")}
         isRejected={rejectionReason !== null}
       />
     </div>
