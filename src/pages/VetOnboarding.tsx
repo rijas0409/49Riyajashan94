@@ -370,36 +370,36 @@ const VetOnboarding = () => {
               return;
             }
 
-            // Pre-fill form
+            // Pre-fill form Safely avoiding overwriting user changes or loaded drafts
             setFormData(prev => ({
               ...prev,
-              fullName: p?.name || vp.fullName || defaultName,
-              email: defaultEmail,
-              phone: p?.phone || "",
-              qualification: vp.qualification || "BVSc",
-              registrationNumber: vp.registration_number || "",
-              isIndependentPractice: vp.self_practice || false,
-              yearsOfExperience: vp.years_of_experience?.toString() || "",
-              specializations: vp.specializations || [],
-              consultationTypes: vp.consultation_type?.split(", ") || [],
-              availableDays: vp.available_days || [],
-              morningSlots: vp.morning_slots || false,
-              eveningSlots: vp.evening_slots || false,
-              onlineFee: vp.online_fee?.toString() || "500",
-              offlineFee: vp.offline_fee?.toString() || "800",
-              bankAccountName: vp.bank_account_name || "",
-              bankName: vp.bank_name || "",
-              bankAccountNumber: vp.bank_account_number || "",
-              bankIfsc: vp.bank_ifsc || "",
-              preferredLanguage: vp.preferred_language ? vp.preferred_language.split(", ") : [],
-              clinicAddress: vp.clinic_address || "",
-              vendorAgreement: vp.vendor_agreement_accepted || false,
-              telemedicineConsent: vp.telemedicine_consent_accepted || false,
-              city: vp.city || p?.city || "",
-              state: vp.state || p?.state || "",
-              address: p?.address || "",
-              dob: p?.birth_date || "",
-              gender: p?.gender || "",
+              fullName: prev.fullName || p?.name || vp.fullName || defaultName,
+              email: prev.email || defaultEmail,
+              phone: prev.phone || p?.phone || "",
+              qualification: prev.qualification || vp.qualification || "BVSc",
+              registrationNumber: prev.registrationNumber || vp.registration_number || "",
+              isIndependentPractice: prev.isIndependentPractice || vp.self_practice || false,
+              yearsOfExperience: prev.yearsOfExperience || vp.years_of_experience?.toString() || "",
+              specializations: (prev.specializations && prev.specializations.length > 0) ? prev.specializations : (vp.specializations || []),
+              consultationTypes: (prev.consultationTypes && prev.consultationTypes.length > 0) ? prev.consultationTypes : (vp.consultation_type ? vp.consultation_type.split(", ") : []),
+              availableDays: (prev.availableDays && prev.availableDays.length > 0) ? prev.availableDays : (vp.available_days || []),
+              morningSlots: prev.morningSlots !== false ? prev.morningSlots : (vp.morning_slots || false),
+              eveningSlots: prev.eveningSlots !== false ? prev.eveningSlots : (vp.evening_slots || false),
+              onlineFee: prev.onlineFee || vp.online_fee?.toString() || "500",
+              offlineFee: prev.offlineFee || vp.offline_fee?.toString() || "800",
+              bankAccountName: prev.bankAccountName || vp.bank_account_name || "",
+              bankName: prev.bankName || vp.bank_name || "",
+              bankAccountNumber: prev.bankAccountNumber || vp.bank_account_number || "",
+              bankIfsc: prev.bankIfsc || vp.bank_ifsc || "",
+              preferredLanguage: (prev.preferredLanguage && prev.preferredLanguage.length > 0) ? prev.preferredLanguage : (vp.preferred_language ? vp.preferred_language.split(", ") : []),
+              clinicAddress: prev.clinicAddress || vp.clinic_address || "",
+              vendorAgreement: prev.vendorAgreement || vp.vendor_agreement_accepted || false,
+              telemedicineConsent: prev.telemedicineConsent || vp.telemedicine_consent_accepted || false,
+              city: prev.city || vp.city || p?.city || "",
+              state: prev.state || vp.state || p?.state || "",
+              address: prev.address || p?.address || "",
+              dob: prev.dob || p?.birth_date || "",
+              gender: prev.gender || p?.gender || "",
             }));
             
             // Pre-fill file previews for existing documents
@@ -451,14 +451,14 @@ const VetOnboarding = () => {
             // Pre-fill even if no vet profile exists yet!
             setFormData(prev => ({
               ...prev,
-              fullName: defaultName,
-              email: defaultEmail,
-              phone: p?.phone || "",
-              city: p?.city || "",
-              state: p?.state || "",
-              address: p?.address || "",
-              dob: p?.birth_date || "",
-              gender: p?.gender || "",
+              fullName: prev.fullName || defaultName,
+              email: prev.email || defaultEmail,
+              phone: prev.phone || p?.phone || "",
+              city: prev.city || p?.city || "",
+              state: prev.state || p?.state || "",
+              address: prev.address || p?.address || "",
+              dob: prev.dob || p?.birth_date || "",
+              gender: prev.gender || p?.gender || "",
             }));
             if (p?.is_onboarding_complete) {
                navigate("/vet-pending-approval", { replace: true });
@@ -1155,19 +1155,17 @@ const VetOnboarding = () => {
         );
         if (!standardFieldsValid) return false;
 
-        // Verify that for every selected day, there is at least one timezone enabled, and every toggled-on timezone has at least one slot created.
+        // Verify that for every selected day, there is at least one slot created overall on that day.
         const allSelectedDaysValid = formData.availableDays.every(d => {
           const dayData = weeklyAvailability[d];
           if (!dayData) return false;
           
           const periods = ['morning', 'afternoon', 'evening', 'night'] as const;
-          const enabledPeriods = periods.filter(p => dayData[p]?.enabled);
           
-          // Must have at least one enabled period on a selected day
-          if (enabledPeriods.length === 0) return false;
+          // Count total slots across all periods on this day
+          const totalSlotsOnDay = periods.reduce((sum, p) => sum + (dayData[p]?.slots?.length || 0), 0);
           
-          // Every enabled period must have at least one slot created
-          return enabledPeriods.every(p => dayData[p].slots && dayData[p].slots.length > 0);
+          return totalSlotsOnDay > 0;
         });
 
         return allSelectedDaysValid;
@@ -2087,7 +2085,7 @@ const VetOnboarding = () => {
                           <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
                             <Building2 className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
                           </div>
-                          <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Independent Clinic Details</span>
+                          <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Independent Clinic Details</span>
                         </div>
                       </div>
                       
@@ -2270,7 +2268,7 @@ const VetOnboarding = () => {
                           <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
                             <Stethoscope className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
                           </div>
-                          <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Hospital / Organization Details</span>
+                          <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Hospital / Organization Details</span>
                         </div>
                       </div>
                       
@@ -2433,7 +2431,7 @@ const VetOnboarding = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.907c.961 0 1.36 1.253.588 1.832l-3.97 2.883a1 1 0 00-.364 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.971-2.883a1 1 0 00-1.18 0l-3.97 2.883c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.364-1.118L2.49 10.123c-.773-.58-.372-1.832.589-1.832h4.907a1 1 0 00.95-.69L11.05 2.927z" />
                           </svg>
                         </div>
-                        <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Specializations</span>
+                        <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Specializations</span>
                       </div>
                       <p className="text-slate-400 text-xs sm:text-sm font-medium ml-1">Select all that apply</p>
                     </div>
@@ -2488,7 +2486,7 @@ const VetOnboarding = () => {
                             <div className="w-[28px] h-[28px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
                               <Stethoscope className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
                             </div>
-                            <span className="text-[#6366F1] font-bold text-sm sm:text-base font-sans">Consultation Types</span>
+                            <span className="text-[#8A1550] font-bold text-sm sm:text-base font-sans">Consultation Types</span>
                             <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 cursor-help" />
                           </div>
                           <p className="text-slate-450 text-[11px] sm:text-xs font-semibold leading-tight">Select the types of consultations you provide</p>
@@ -2570,7 +2568,7 @@ const VetOnboarding = () => {
                             <div className="w-[28px] h-[28px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
                               <GraduationCap className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
                             </div>
-                            <span className="text-[#6366F1] font-bold text-sm sm:text-base font-sans">Years of Practice</span>
+                            <span className="text-[#8A1550] font-bold text-sm sm:text-base font-sans">Years of Practice</span>
                             <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 cursor-help" />
                           </div>
                           <p className="text-slate-450 text-[11px] sm:text-xs font-semibold leading-tight">Your practice experience builds patient trust</p>
@@ -2634,7 +2632,7 @@ const VetOnboarding = () => {
                         <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
                           <Calendar className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
                         </div>
-                        <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Availability</span>
+                        <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Availability</span>
                       </div>
 
                       {/* Same timing for all selected days toggle */}
@@ -2905,7 +2903,7 @@ const VetOnboarding = () => {
                             <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
                               <Banknote className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
                             </div>
-                            <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Consultation Fees (₹)</span>
+                            <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Consultation Fees (₹)</span>
                             <Info className="w-4 h-4 text-slate-400 shrink-0 cursor-help ml-auto" />
                           </div>
                           <p className="text-slate-400 text-xs font-medium ml-1">Specify fees for your consultation types</p>
@@ -2969,7 +2967,7 @@ const VetOnboarding = () => {
                             <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
                               <AlertCircle className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
                             </div>
-                            <span className="text-[#6366F1] font-bold text-base sm:text-lg font-sans">Emergency Availability</span>
+                            <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Emergency Availability</span>
                             <Info className="w-4 h-4 text-slate-400 shrink-0 cursor-help ml-auto" />
                           </div>
                           <p className="text-slate-400 text-xs font-medium ml-1">Configure your emergency readiness</p>
@@ -3275,10 +3273,13 @@ const VetOnboarding = () => {
                           {/* Expanded views */}
                           {expandedSections.identity && (
                             <div className="mt-4 pt-4 border-t border-slate-100/50 space-y-4 animate-fade-in">
-                              <div className="space-y-1.5">
-                                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Aadhaar Card</span>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Aadhaar Card (Front)</span>
                                   {renderReviewFilePreview("govtIdFile", "Aadhaar Card (Front)")}
+                                </div>
+                                <div className="space-y-1.5">
+                                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Aadhaar Card (Back)</span>
                                   {renderReviewFilePreview("panCardFile", "Aadhaar Card (Back)")}
                                 </div>
                               </div>
