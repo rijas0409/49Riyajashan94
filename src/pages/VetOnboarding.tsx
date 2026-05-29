@@ -1344,7 +1344,7 @@ const VetOnboarding = () => {
   return (
     <div className="min-h-screen bg-gradient-soft">
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-lg border-b border-border">
-        <div className="container mx-auto px-4 py-4 max-w-3xl">
+        <div className="mx-auto px-4 sm:px-8 py-4 max-w-7xl w-full">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
@@ -1370,7 +1370,7 @@ const VetOnboarding = () => {
 
       <main className="container mx-auto px-4 py-6 max-w-3xl">
         {/* Progress bar */}
-        <div className="sticky top-[88px] z-40 flex items-center justify-between md:justify-center gap-1 md:gap-3 mb-6 bg-card p-3 rounded-2xl border border-border/60 shadow-sm overflow-x-auto scrollbar-none">
+        <div className="flex items-center justify-between md:justify-center gap-1 md:gap-3 mb-6 bg-card p-3 rounded-2xl border border-border/60 shadow-sm overflow-x-auto scrollbar-none">
           {visibleSteps.map((step, i) => {
             const isCompleted = currentStep > step.n;
             const isActive = currentStep === step.n;
@@ -2221,9 +2221,20 @@ const VetOnboarding = () => {
                           </div>
                           <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Independent Clinic Details</span>
                         </div>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => toggleSection("clinicDetails")}
+                            className="w-8 h-8 rounded-lg hover:bg-slate-50 border border-slate-100 text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center"
+                          >
+                            {(expandedSections.clinicDetails ?? true) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                        </div>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                      {(expandedSections.clinicDetails ?? true) && (
+                      <div className="space-y-4 animate-fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
                         {/* Clinic / Practice Name */}
                         <div className="space-y-1.5">
                           <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
@@ -2395,6 +2406,8 @@ const VetOnboarding = () => {
                       
                       {/* File uploads */}
                       <FileUploadBox field="clinicShopLicenseFile" label="Shop & Establishment License (Optional)" icon={FileText} />
+                      </div>
+                      )}
                     </div>
                   )}
 
@@ -2407,9 +2420,20 @@ const VetOnboarding = () => {
                           </div>
                           <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Hospital / Organization Details</span>
                         </div>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => toggleSection("hospitalDetails")}
+                            className="w-8 h-8 rounded-lg hover:bg-slate-50 border border-slate-100 text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center"
+                          >
+                            {(expandedSections.hospitalDetails ?? true) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                        </div>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                      {(expandedSections.hospitalDetails ?? true) && (
+                      <div className="space-y-4 animate-fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
                         {/* Hospital / Organization Name */}
                         <div className="space-y-1.5">
                           <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
@@ -2534,6 +2558,8 @@ const VetOnboarding = () => {
                       </div>
                       
                       <FileUploadBox field="hospitalJoiningProofFile" label="Joining Proof / ID" icon={FileText} />
+                      </div>
+                      )}
                     </div>
                   )}
 
@@ -2566,11 +2592,9 @@ const VetOnboarding = () => {
                   <div className="space-y-4 bg-white border border-[#F1F5F9] p-5 rounded-3xl shadow-sm/50">
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center gap-2">
-                        <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
-                          <svg className="w-4 h-4 text-[#EC4899]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.907c.961 0 1.36 1.253.588 1.832l-3.97 2.883a1 1 0 00-.364 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.971-2.883a1 1 0 00-1.18 0l-3.97 2.883c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.364-1.118L2.49 10.123c-.773-.58-.372-1.832.589-1.832h4.907a1 1 0 00.95-.69L11.05 2.927z" />
-                          </svg>
-                        </div>
+                        <svg className="w-5 h-5 text-[#8A1550]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.907c.961 0 1.36 1.253.588 1.832l-3.97 2.883a1 1 0 00-.364 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.971-2.883a1 1 0 00-1.18 0l-3.97 2.883c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.364-1.118L2.49 10.123c-.773-.58-.372-1.832.589-1.832h4.907a1 1 0 00.95-.69L11.05 2.927z" />
+                        </svg>
                         <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Specializations</span>
                       </div>
                       <p className="text-slate-400 text-xs sm:text-sm font-medium ml-1">Select all that apply</p>
@@ -2623,9 +2647,7 @@ const VetOnboarding = () => {
                       <div className="space-y-4">
                         <div className="flex flex-col gap-1 border-b border-slate-50 pb-2">
                           <div className="flex items-center gap-1.5 matches-step">
-                            <div className="w-[28px] h-[28px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
-                              <Stethoscope className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
-                            </div>
+                            <Stethoscope className="w-5 h-5 text-[#8A1550]" strokeWidth={2.5} />
                             <span className="text-[#8A1550] font-bold text-sm sm:text-base font-sans">Consultation Types</span>
                             <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 cursor-help" />
                           </div>
@@ -2705,11 +2727,9 @@ const VetOnboarding = () => {
                       <div className="space-y-4">
                         <div className="flex flex-col gap-1 border-b border-slate-50 pb-2">
                           <div className="flex items-center gap-1.5">
-                            <div className="w-[28px] h-[28px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
-                              <GraduationCap className="w-3.5 h-3.5 text-[#EC4899]" strokeWidth={2.5} />
-                            </div>
+                            <GraduationCap className="w-5 h-5 text-[#8A1550]" strokeWidth={2.5} />
                             <span className="text-[#8A1550] font-bold text-sm sm:text-base font-sans">Years of Practice</span>
-                            <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 cursor-help" />
+                            <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 cursor-help flex-none" />
                           </div>
                           <p className="text-slate-450 text-[11px] sm:text-xs font-semibold leading-tight">Your practice experience builds patient trust</p>
                         </div>
@@ -2769,9 +2789,7 @@ const VetOnboarding = () => {
                   <div className="space-y-6 bg-white border border-[#F1F5F9] p-4 sm:p-6 rounded-3xl shadow-sm">
                     <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
-                          <Calendar className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
-                        </div>
+                        <Calendar className="w-5 h-5 text-[#8A1550]" strokeWidth={2.5} />
                         <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Availability</span>
                       </div>
 
@@ -2985,9 +3003,7 @@ const VetOnboarding = () => {
                       <div className="space-y-4">
                         <div className="flex flex-col gap-1.5 border-b border-slate-100/80 pb-3">
                           <div className="flex items-center gap-2">
-                            <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
-                              <Banknote className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
-                            </div>
+                            <Banknote className="w-5 h-5 text-[#8A1550]" strokeWidth={2.5} />
                             <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Consultation Fees (₹)</span>
                             <Info className="w-4 h-4 text-slate-400 shrink-0 cursor-help ml-auto" />
                           </div>
@@ -3117,9 +3133,7 @@ const VetOnboarding = () => {
                       <div className="space-y-4">
                         <div className="flex flex-col gap-1.5 border-b border-slate-100/80 pb-3">
                           <div className="flex items-center gap-2">
-                            <div className="w-[30px] h-[30px] rounded-full border border-pink-200 bg-pink-50 flex items-center justify-center shrink-0">
-                              <AlertCircle className="w-4 h-4 text-[#EC4899]" strokeWidth={2.5} />
-                            </div>
+                            <AlertCircle className="w-5 h-5 text-[#8A1550]" strokeWidth={2.5} />
                             <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Emergency Availability</span>
                             <Info className="w-4 h-4 text-slate-400 shrink-0 cursor-help ml-auto" />
                           </div>
@@ -3253,7 +3267,7 @@ const VetOnboarding = () => {
 
               {/* ══════ STEP 6 – Platform Compliance & Submit ══════ */}
               {currentStep === 6 && (
-                <div className="space-y-6 animate-fade-in">
+                <div className="space-y-4 animate-fade-in">
                   {/* Step Header exactly matching Step 1 */}
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
@@ -3270,8 +3284,7 @@ const VetOnboarding = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200">
-                    {/* CARD 1: Personal Information */}
+                  {/* CARD 1: Personal Information */}
                     <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-all">
                       <div className="flex items-center justify-between pb-3.5 border-b border-slate-100/60">
                         <div className="flex items-center gap-3">
@@ -3294,10 +3307,36 @@ const VetOnboarding = () => {
                             </svg>
                             Edit
                           </button>
+                          <button 
+                            type="button"
+                            onClick={() => toggleSection("personal")}
+                            className="w-8 h-8 rounded-lg hover:bg-slate-50 border border-slate-100 text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center"
+                          >
+                            {expandedSections.personal ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
                         </div>
                       </div>
 
-                      <div className="mt-4 pt-4 border-t border-slate-100/50 space-y-5 text-xs sm:text-sm">
+                      {/* Collapsed overview */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-xs sm:text-sm">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight font-sans">Full Name</span>
+                          <p className="font-bold text-[#1E293B] flex items-center gap-1.5">{formData.fullName || "N/A"}</p>
+                        </div>
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight font-sans">Phone Number</span>
+                          <p className="font-bold text-[#1E293B] flex items-center gap-1.5">
+                            {formData.phone ? `+91 ${formData.phone}` : profile?.user_metadata?.phone ? `+91 ${profile.user_metadata.phone}` : "N/A"}
+                          </p>
+                        </div>
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight font-sans">City</span>
+                          <p className="font-bold text-[#1E293B] flex items-center gap-1.5">{formData.city || "N/A"}</p>
+                        </div>
+                      </div>
+
+                      {expandedSections.personal && (
+                      <div className="mt-4 pt-4 border-t border-slate-100/50 space-y-5 text-xs sm:text-sm animate-fade-in">
                         <div className="flex flex-col sm:flex-row gap-5">
                           {/* Photo Preview */}
                           <div className="space-y-1.5 shrink-0">
@@ -3358,6 +3397,7 @@ const VetOnboarding = () => {
                           </div>
                         </div>
                       </div>
+                      )}
                     </div>
 
                         {/* CARD 2: Identity Verification */}
@@ -4207,7 +4247,6 @@ const VetOnboarding = () => {
                     </Button>
                   </div>
                 </div>
-              </div>
               )}
 
             </form>
