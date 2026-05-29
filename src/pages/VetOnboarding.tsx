@@ -1789,11 +1789,20 @@ const VetOnboarding = () => {
                             >
                               <div className="flex flex-wrap gap-1 py-1 max-w-[calc(100%-24px)]">
                                 {formData.preferredLanguage.length > 0 ? (
-                                  formData.preferredLanguage.map((lang) => (
-                                    <Badge key={lang} variant="secondary" className="rounded-lg font-bold text-[10px] bg-pink-50 text-pink-700 border-pink-100 px-1.5 py-0.5 h-auto">
-                                      {lang}
+                                  formData.preferredLanguage.length === 1 ? (
+                                    <Badge variant="secondary" className="rounded-lg font-bold text-[10px] bg-pink-50 text-pink-700 border-pink-100 px-1.5 py-0.5 h-auto">
+                                      {formData.preferredLanguage[0]}
                                     </Badge>
-                                  ))
+                                  ) : (
+                                    <>
+                                      <Badge variant="secondary" className="rounded-lg font-bold text-[10px] bg-pink-50 text-pink-700 border-pink-100 px-1.5 py-0.5 h-auto">
+                                        {formData.preferredLanguage[0]}
+                                      </Badge>
+                                      <Badge variant="secondary" className="rounded-lg font-bold text-[10px] bg-slate-100 text-slate-700 border-slate-200 px-1.5 py-0.5 h-auto">
+                                        +{formData.preferredLanguage.length - 1}
+                                      </Badge>
+                                    </>
+                                  )
                                 ) : (
                                   <span className="text-slate-400">Select (Max 4)</span>
                                 )}
