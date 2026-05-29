@@ -2592,7 +2592,7 @@ const VetOnboarding = () => {
                   <div className="space-y-4 bg-white border border-[#F1F5F9] p-5 rounded-3xl shadow-sm/50">
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center gap-2">
-                        <svg className="w-5 h-5 text-[#8A1550]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.907c.961 0 1.36 1.253.588 1.832l-3.97 2.883a1 1 0 00-.364 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.971-2.883a1 1 0 00-1.18 0l-3.97 2.883c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.364-1.118L2.49 10.123c-.773-.58-.372-1.832.589-1.832h4.907a1 1 0 00.95-.69L11.05 2.927z" />
                         </svg>
                         <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Specializations</span>
@@ -2647,7 +2647,7 @@ const VetOnboarding = () => {
                       <div className="space-y-4">
                         <div className="flex flex-col gap-1 border-b border-slate-50 pb-2">
                           <div className="flex items-center gap-1.5 matches-step">
-                            <Stethoscope className="w-5 h-5 text-[#8A1550]" strokeWidth={2.5} />
+                            <Stethoscope className="w-4 h-4 text-primary shrink-0" />
                             <span className="text-[#8A1550] font-bold text-sm sm:text-base font-sans">Consultation Types</span>
                             <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 cursor-help" />
                           </div>
@@ -2727,7 +2727,7 @@ const VetOnboarding = () => {
                       <div className="space-y-4">
                         <div className="flex flex-col gap-1 border-b border-slate-50 pb-2">
                           <div className="flex items-center gap-1.5">
-                            <GraduationCap className="w-5 h-5 text-[#8A1550]" strokeWidth={2.5} />
+                            <GraduationCap className="w-4 h-4 text-primary shrink-0" />
                             <span className="text-[#8A1550] font-bold text-sm sm:text-base font-sans">Years of Practice</span>
                             <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 cursor-help flex-none" />
                           </div>
@@ -2789,7 +2789,7 @@ const VetOnboarding = () => {
                   <div className="space-y-6 bg-white border border-[#F1F5F9] p-4 sm:p-6 rounded-3xl shadow-sm">
                     <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-3">
                       <div className="flex items-center gap-2.5">
-                        <Calendar className="w-5 h-5 text-[#8A1550]" strokeWidth={2.5} />
+                        <Calendar className="w-4 h-4 text-primary shrink-0" />
                         <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Availability</span>
                       </div>
 
@@ -3003,7 +3003,7 @@ const VetOnboarding = () => {
                       <div className="space-y-4">
                         <div className="flex flex-col gap-1.5 border-b border-slate-100/80 pb-3">
                           <div className="flex items-center gap-2">
-                            <Banknote className="w-5 h-5 text-[#8A1550]" strokeWidth={2.5} />
+                            <Banknote className="w-4 h-4 text-primary shrink-0" />
                             <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Consultation Fees (₹)</span>
                             <Info className="w-4 h-4 text-slate-400 shrink-0 cursor-help ml-auto" />
                           </div>
@@ -3133,7 +3133,7 @@ const VetOnboarding = () => {
                       <div className="space-y-4">
                         <div className="flex flex-col gap-1.5 border-b border-slate-100/80 pb-3">
                           <div className="flex items-center gap-2">
-                            <AlertCircle className="w-5 h-5 text-[#8A1550]" strokeWidth={2.5} />
+                            <AlertCircle className="w-4 h-4 text-primary shrink-0" />
                             <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Emergency Availability</span>
                             <Info className="w-4 h-4 text-slate-400 shrink-0 cursor-help ml-auto" />
                           </div>
