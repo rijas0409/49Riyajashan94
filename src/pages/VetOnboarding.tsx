@@ -86,12 +86,13 @@ const InfoTooltip = ({ message }: { message: string }) => {
   return (
     <div className="group relative inline-flex items-center justify-center select-none shrink-0 z-[1000]">
       <Info className="w-3.5 h-3.5 text-slate-400 hover:text-[#EC4899] cursor-help transition-all duration-200" />
-      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center pointer-events-none drop-shadow-md z-[9999] opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        <div className="bg-slate-900 border border-slate-800 text-white text-[11px] sm:text-xs font-semibold rounded-2xl py-2 px-3 text-center leading-normal max-w-[240px] sm:max-w-[280px] w-max select-none shadow-xl">
+      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center pointer-events-none z-[9999] opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <div className="bg-white border border-[#E2E8F0] text-slate-600 text-[11px] sm:text-xs font-semibold rounded-2xl py-2 px-3 text-center leading-relaxed max-w-[190px] xs:max-w-[240px] sm:max-w-[280px] w-max select-none shadow-xl">
           {message}
         </div>
         {/* Down Arrow */}
-        <div className="w-0 h-0 border-solid border-t-slate-900 border-t-6 border-x-transparent border-x-6 border-b-0 -mt-0.5" />
+        <div className="w-0 h-0 border-solid border-t-white border-t-6 border-x-transparent border-x-6 border-b-0 -mt-[1px] relative z-10" />
+        <div className="w-0 h-0 border-solid border-t-[#E2E8F0] border-t-6 border-x-transparent border-x-6 border-b-0 -mt-[5px] opacity-40" />
       </div>
     </div>
   );
@@ -2635,7 +2636,7 @@ const VetOnboarding = () => {
                   )}
 
                   {/* Navigation Buttons exactly matching Steps 1, 2, 3, 5, 6 */}
-                  <div className="sticky bottom-0 bg-white border-t border-slate-100 p-4 sm:p-5 -mx-6 -mb-6 z-40 flex gap-3 shadow-[0_-8px_20px_-8px_rgba(0,0,0,0.06)] backdrop-blur-md bg-white/95 rounded-b-3xl">
+                  <div className="flex gap-3 pt-4">
                     <Button type="button" variant="outline" className="flex-1 rounded-2xl h-11 font-bold text-slate-600 border-slate-200" onClick={() => setCurrentStep(3)}>Back</Button>
                     <Button type="button" className="flex-1 rounded-2xl h-11 bg-gradient-primary font-bold text-white shadow-sm" onClick={() => setCurrentStep(5)} disabled={!canProceed(4)}>Continue</Button>
                   </div>
@@ -3336,9 +3337,9 @@ const VetOnboarding = () => {
                     </div>
                   </div>
 
-                  <div className="sticky bottom-0 bg-white border-t border-slate-100 p-4 sm:p-5 -mx-6 -mb-6 z-40 flex gap-3 shadow-[0_-8px_20px_-8px_rgba(0,0,0,0.06)] backdrop-blur-md bg-white/95 rounded-b-3xl">
-                    <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(4)}>Back</Button>
-                    <Button type="button" className="flex-1 rounded-2xl bg-gradient-primary" onClick={() => setCurrentStep(6)} disabled={!canProceed(5)}>Continue</Button>
+                  <div className="flex gap-3 pt-4">
+                    <Button type="button" variant="outline" className="flex-1 rounded-2xl h-11 font-bold text-slate-600 border-slate-200" onClick={() => setCurrentStep(4)}>Back</Button>
+                    <Button type="button" className="flex-1 rounded-2xl h-11 bg-gradient-primary font-bold text-white shadow-sm" onClick={() => setCurrentStep(6)} disabled={!canProceed(5)}>Continue</Button>
                   </div>
                 </div>
               )}
@@ -4326,9 +4327,9 @@ const VetOnboarding = () => {
                   </div>
 
                   {/* Submission and back buttons exactly formatted */}
-                  <div className="sticky bottom-0 bg-white border-t border-slate-100 p-4 sm:p-5 -mx-6 -mb-6 z-40 flex gap-3 shadow-[0_-8px_20px_-8px_rgba(0,0,0,0.06)] backdrop-blur-md bg-white/95 rounded-b-3xl">
-                    <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(5)}>Back</Button>
-                    <Button type="submit" className="flex-1 rounded-2xl bg-gradient-primary" disabled={isLoading || !formData.termsAccepted || !formData.vendorAgreement}>
+                  <div className="flex gap-3 pt-4">
+                    <Button type="button" variant="outline" className="flex-1 rounded-2xl h-11 font-bold text-slate-600 border-slate-200" onClick={() => setCurrentStep(5)}>Back</Button>
+                    <Button type="submit" className="flex-1 rounded-2xl h-11 bg-gradient-primary font-bold text-white shadow-sm" disabled={isLoading || !formData.termsAccepted || !formData.vendorAgreement}>
                       {isLoading ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" strokeWidth={2.5} />Submitting...</>) : "Submit for Verification"}
                     </Button>
                   </div>
