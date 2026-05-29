@@ -463,6 +463,18 @@ const VetOnboarding = () => {
               address: prev.address || p?.address || "",
               dob: prev.dob || p?.birth_date || "",
               gender: prev.gender || p?.gender || "",
+              practiceType: prev.practiceType && prev.practiceType.length > 0 ? prev.practiceType : (vp.practice_type || ["Hospital / Organization"]),
+              clinicName: prev.clinicName || vp.clinic_name || "",
+              clinicPincode: prev.clinicPincode || vp.clinic_pincode || "",
+              clinicGst: prev.clinicGst || vp.clinic_gst || "",
+              hospitalName: prev.hospitalName || vp.hospital_name || "",
+              hospitalRole: prev.hospitalRole || vp.hospital_role || "",
+              hospitalAddress: prev.hospitalAddress || vp.hospital_address || "",
+              hospitalPincode: prev.hospitalPincode || vp.hospital_pincode || "",
+              hospitalEmployeeId: prev.hospitalEmployeeId || vp.hospital_employee_id || "",
+              emergencyAvailable: prev.emergencyAvailable !== false ? prev.emergencyAvailable : (vp.emergency_available || false),
+              support24x7: prev.support24x7 !== "no" ? prev.support24x7 : (vp.support_24x7 || "no"),
+              weekendAvailability: prev.weekendAvailability !== "no" ? prev.weekendAvailability : (vp.weekend_availability || "no"),
             }));
             
             // Pre-fill file previews for existing documents
@@ -483,6 +495,7 @@ const VetOnboarding = () => {
               clinicAddressProofFile: getUrl(vp.clinic_address_proof_file) || "",
               cancelledChequeFile: getUrl(vp.cancelled_cheque_file) || "",
               profilePhoto: getUrl(vp.profile_photo) || "",
+              hospitalJoiningProofFile: getUrl(vp.hospital_joining_proof_file) || "",
             });
 
             // Handle special cases like education rows
@@ -509,6 +522,10 @@ const VetOnboarding = () => {
                   }
                 }
               });
+            }
+
+            if (vp.weekly_availability) {
+              setWeeklyAvailability(vp.weekly_availability as Record<string, DayAvailability>);
             }
           } else {
             // Pre-fill even if no vet profile exists yet!
@@ -967,7 +984,8 @@ const VetOnboarding = () => {
 
       const [
         govtIdUrl, panUrl, passportUrl, vetDegreeUrl, clinicRegUrl, 
-        shopLicUrl, gstUrl, clinicAddrProofUrl, chequeUrl, profilePhotoUrl
+        shopLicUrl, gstUrl, clinicAddrProofUrl, chequeUrl, profilePhotoUrl,
+        hospitalJoiningProofUrl
       ] = await Promise.all([
         handleFile(formData.govtIdFile, 'govt_id', existingVp?.govt_id_file),
         handleFile(formData.panCardFile, 'pan_card', existingVp?.pan_card_file),
@@ -979,6 +997,7 @@ const VetOnboarding = () => {
         handleFile(formData.clinicAddressProofFile, 'clinic_addr_proof', existingVp?.clinic_address_proof_file),
         handleFile(formData.cancelledChequeFile, 'cancelled_cheque', existingVp?.cancelled_cheque_file),
         handleFile(formData.profilePhoto, 'profile_photo', existingVp?.profile_photo),
+        handleFile(formData.hospitalJoiningProofFile, 'hospital_proof', existingVp?.hospital_joining_proof_file),
       ]);
 
       // Upload education certificates
@@ -1063,6 +1082,19 @@ const VetOnboarding = () => {
         is_active: true,
         city: formData.city,
         state: formData.state,
+        practice_type: formData.practiceType,
+        clinic_name: formData.clinicName,
+        clinic_pincode: formData.clinicPincode,
+        clinic_gst: formData.clinicGst,
+        hospital_name: formData.hospitalName,
+        hospital_role: formData.hospitalRole,
+        hospital_address: formData.hospitalAddress,
+        hospital_pincode: formData.hospitalPincode,
+        hospital_joining_proof_file: hospitalJoiningProofUrl,
+        weekly_availability: weeklyAvailability as any,
+        emergency_available: formData.emergencyAvailable,
+        weekend_availability: formData.weekendAvailability,
+        support_24x7: formData.support24x7,
       };
 
       if (existingVet) {
@@ -1078,6 +1110,19 @@ const VetOnboarding = () => {
            delete (fallbackData as any).state;
            delete (fallbackData as any).clinic_videos;
            delete (fallbackData as any).hospital_employee_id;
+           delete (fallbackData as any).practice_type;
+           delete (fallbackData as any).clinic_name;
+           delete (fallbackData as any).clinic_pincode;
+           delete (fallbackData as any).clinic_gst;
+           delete (fallbackData as any).hospital_name;
+           delete (fallbackData as any).hospital_role;
+           delete (fallbackData as any).hospital_address;
+           delete (fallbackData as any).hospital_pincode;
+           delete (fallbackData as any).hospital_joining_proof_file;
+           delete (fallbackData as any).weekly_availability;
+           delete (fallbackData as any).emergency_available;
+           delete (fallbackData as any).weekend_availability;
+           delete (fallbackData as any).support_24x7;
            const fallback = await supabase.from("vet_profiles").update(fallbackData).eq("id", existingVet.id);
            vetError = fallback.error;
         }
@@ -1095,6 +1140,19 @@ const VetOnboarding = () => {
            delete (fallbackData as any).state;
            delete (fallbackData as any).clinic_videos;
            delete (fallbackData as any).hospital_employee_id;
+           delete (fallbackData as any).practice_type;
+           delete (fallbackData as any).clinic_name;
+           delete (fallbackData as any).clinic_pincode;
+           delete (fallbackData as any).clinic_gst;
+           delete (fallbackData as any).hospital_name;
+           delete (fallbackData as any).hospital_role;
+           delete (fallbackData as any).hospital_address;
+           delete (fallbackData as any).hospital_pincode;
+           delete (fallbackData as any).hospital_joining_proof_file;
+           delete (fallbackData as any).weekly_availability;
+           delete (fallbackData as any).emergency_available;
+           delete (fallbackData as any).weekend_availability;
+           delete (fallbackData as any).support_24x7;
            const fallback = await supabase.from("vet_profiles").insert([fallbackData]);
            vetError = fallback.error;
         }

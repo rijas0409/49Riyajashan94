@@ -1397,6 +1397,23 @@ export type Database = {
           vet_degree_file: string | null
           wallet_balance: number | null
           years_of_experience: number
+          clinic_name: string | null
+          clinic_pincode: string | null
+          clinic_gst: string | null
+          clinic_videos: string[] | null
+          hospital_name: string | null
+          hospital_role: string | null
+          hospital_address: string | null
+          hospital_pincode: string | null
+          hospital_joining_proof_file: string | null
+          hospital_employee_id: string | null
+          weekly_availability: Json | null
+          emergency_available: boolean | null
+          weekend_availability: string | null
+          support_24x7: string | null
+          practice_type: string[] | null
+          city: string | null
+          state: string | null
         }
         Insert: {
           available_days?: string[]
@@ -1439,6 +1456,23 @@ export type Database = {
           vet_degree_file?: string | null
           wallet_balance?: number | null
           years_of_experience?: number
+          clinic_name?: string | null
+          clinic_pincode?: string | null
+          clinic_gst?: string | null
+          clinic_videos?: string[] | null
+          hospital_name?: string | null
+          hospital_role?: string | null
+          hospital_address?: string | null
+          hospital_pincode?: string | null
+          hospital_joining_proof_file?: string | null
+          hospital_employee_id?: string | null
+          weekly_availability?: Json | null
+          emergency_available?: boolean | null
+          weekend_availability?: string | null
+          support_24x7?: string | null
+          practice_type?: string[] | null
+          city?: string | null
+          state?: string | null
         }
         Update: {
           available_days?: string[]
@@ -1481,6 +1515,23 @@ export type Database = {
           vet_degree_file?: string | null
           wallet_balance?: number | null
           years_of_experience?: number
+          clinic_name?: string | null
+          clinic_pincode?: string | null
+          clinic_gst?: string | null
+          clinic_videos?: string[] | null
+          hospital_name?: string | null
+          hospital_role?: string | null
+          hospital_address?: string | null
+          hospital_pincode?: string | null
+          hospital_joining_proof_file?: string | null
+          hospital_employee_id?: string | null
+          weekly_availability?: Json | null
+          emergency_available?: boolean | null
+          weekend_availability?: string | null
+          support_24x7?: string | null
+          practice_type?: string[] | null
+          city?: string | null
+          state?: string | null
         }
         Relationships: []
       }
