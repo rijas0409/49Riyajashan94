@@ -186,10 +186,10 @@ export default function ClockPickerModal({
         className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 flex flex-col items-stretch"
         id="custom-clock-modal"
       >
-        {/* Header Block */}
-        <div className="bg-[#8A1550] text-white p-5 flex items-center justify-between">
+        {/* Header Block with gradient inspired by date of birth calendar */}
+        <div className="bg-gradient-primary text-primary-foreground p-5 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-pink-300 animate-pulse" />
+            <Clock className="w-5 h-5 text-primary-foreground/80 animate-pulse" />
             <h3 className="font-extrabold text-base tracking-tight font-sans">
               Set {periodLabel} Timing
             </h3>
@@ -197,7 +197,7 @@ export default function ClockPickerModal({
           <button 
             type="button" 
             onClick={onClose}
-            className="text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-full transition-colors"
+            className="text-primary-foreground/80 hover:text-white hover:bg-white/10 p-1.5 rounded-full transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -213,7 +213,7 @@ export default function ClockPickerModal({
             }}
             className={`flex-1 py-2 rounded-xl font-bold text-xs sm:text-sm text-center transition-all flex flex-col items-center justify-center gap-0.5 border ${
               activeTab === "start"
-                ? "bg-white text-[#8A1550] shadow-sm border-slate-200"
+                ? "bg-white text-primary shadow-sm border-slate-200"
                 : "text-slate-500 border-transparent hover:text-slate-700"
             }`}
           >
@@ -231,7 +231,7 @@ export default function ClockPickerModal({
             }}
             className={`flex-1 py-2 rounded-xl font-bold text-xs sm:text-sm text-center transition-all flex flex-col items-center justify-center gap-0.5 border ${
               activeTab === "end"
-                ? "bg-white text-[#8A1550] shadow-sm border-slate-200"
+                ? "bg-white text-primary shadow-sm border-slate-200"
                 : "text-slate-500 border-transparent hover:text-slate-700"
             }`}
           >
@@ -251,7 +251,7 @@ export default function ClockPickerModal({
               onClick={() => setPickerMode("hours")}
               className={`text-3xl sm:text-4xl font-extrabold rounded-2xl px-5 py-3 transition-all duration-200 ${
                 pickerMode === "hours" 
-                  ? "bg-[#FFEAF2] text-[#8A1550] font-sans scale-105 shadow-xs border border-pink-100" 
+                  ? "bg-primary/10 text-primary font-sans scale-105 shadow-xs border border-primary/20" 
                   : "text-slate-400 bg-slate-50 hover:text-slate-600 hover:bg-slate-100"
               }`}
             >
@@ -265,7 +265,7 @@ export default function ClockPickerModal({
               onClick={() => setPickerMode("minutes")}
               className={`text-3xl sm:text-4xl font-extrabold rounded-2xl px-5 py-3 transition-all duration-200 ${
                 pickerMode === "minutes" 
-                  ? "bg-[#FFEAF2] text-[#8A1550] font-sans scale-105 shadow-xs border border-pink-100" 
+                  ? "bg-primary/10 text-primary font-sans scale-105 shadow-xs border border-primary/20" 
                   : "text-slate-400 bg-slate-50 hover:text-slate-600 hover:bg-slate-100"
               }`}
             >
@@ -279,7 +279,7 @@ export default function ClockPickerModal({
                 onClick={() => handleToggleAmPm("AM")}
                 className={`px-3 py-1.5 text-xs font-black rounded-xl transition-all duration-200 ${
                   currentActiveTime.ampm === "AM"
-                    ? "bg-[#8A1550] text-white shadow-sm"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-slate-500 hover:text-slate-700"
                 }`}
               >
@@ -290,7 +290,7 @@ export default function ClockPickerModal({
                 onClick={() => handleToggleAmPm("PM")}
                 className={`px-3 py-1.5 text-xs font-black rounded-xl transition-all duration-200 ${
                   currentActiveTime.ampm === "PM"
-                    ? "bg-[#8A1550] text-white shadow-sm"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-slate-500 hover:text-slate-700"
                 }`}
               >
@@ -307,11 +307,11 @@ export default function ClockPickerModal({
             className="relative w-56 h-56 sm:w-60 sm:h-60 bg-[#F8FAFC] rounded-full border border-slate-200/60 flex items-center justify-center shadow-inner cursor-pointer select-none touch-none"
           >
             {/* Center Pivot Pin */}
-            <div className="absolute left-1/2 top-1/2 w-2.5 h-2.5 -translate-x-1/2 -translate-y-1/2 bg-[#8A1550] rounded-full z-20 shadow-sm" />
+            <div className="absolute left-1/2 top-1/2 w-2.5 h-2.5 -translate-x-1/2 -translate-y-1/2 bg-primary rounded-full z-20 shadow-sm" />
 
             {/* Selector Hand (Sui) with circle tip and stem connector */}
             <div 
-              className="absolute bottom-1/2 left-1/2 w-0.5 bg-[#8A1550] origin-bottom pointer-events-none"
+              className="absolute bottom-1/2 left-1/2 w-0.5 bg-primary origin-bottom pointer-events-none"
               style={{ 
                 height: `${pickerMode === "hours" ? "74px" : "84px"}`,
                 transform: `rotate(${angleDeg}deg)`,
@@ -319,7 +319,7 @@ export default function ClockPickerModal({
               }}
             >
               {/* Highlight Circle Tip - perfectly aligned with the numbers */}
-              <div className="absolute w-8 h-8 -translate-x-1/2 -translate-y-1/2 top-0 bg-[#8A1550] rounded-full flex items-center justify-center shadow-md">
+              <div className="absolute w-8 h-8 -translate-x-1/2 -translate-y-1/2 top-0 bg-primary rounded-full flex items-center justify-center shadow-md">
                 <div className="w-1.5 h-1.5 bg-white rounded-full" />
               </div>
             </div>
@@ -344,8 +344,8 @@ export default function ClockPickerModal({
                     }}
                     className={`absolute w-8 h-8 rounded-full flex items-center justify-center font-bold text-[13px] sm:text-[14px] transition-all duration-150 cursor-pointer ${
                       isSelected
-                        ? "text-white font-black z-10"
-                        : "text-slate-600 hover:bg-[#FFEAF2]/55 hover:text-[#8A1550]"
+                        ? "text-primary-foreground font-black z-10"
+                        : "text-slate-600 hover:bg-primary/10 hover:text-primary"
                     }`}
                   >
                     {h}
@@ -371,8 +371,8 @@ export default function ClockPickerModal({
                     }}
                     className={`absolute w-8 h-8 rounded-full flex items-center justify-center font-bold text-[13px] sm:text-[14px] transition-all duration-150 cursor-pointer ${
                       isSelected
-                        ? "text-white font-black z-10"
-                        : "text-slate-600 hover:bg-[#FFEAF2]/55 hover:text-[#8A1550]"
+                        ? "text-primary-foreground font-black z-10"
+                        : "text-slate-600 hover:bg-primary/10 hover:text-primary"
                     }`}
                   >
                     {m.toString().padStart(2, "0")}
@@ -396,7 +396,7 @@ export default function ClockPickerModal({
           <button
             type="button"
             onClick={handleSave}
-            className="px-4 py-2 text-xs font-extrabold text-white bg-[#8A1550] hover:bg-[#701041] rounded-xl transition-all shadow flex items-center gap-1.5 active:scale-[0.98]"
+            className="px-4 py-2 text-xs font-extrabold text-primary-foreground bg-primary hover:opacity-90 rounded-xl transition-all shadow flex items-center gap-1.5 active:scale-[0.98]"
           >
             <Check className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>Apply Slot</span>

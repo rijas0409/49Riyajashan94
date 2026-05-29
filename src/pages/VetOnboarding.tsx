@@ -82,6 +82,21 @@ const HamsterIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+const InfoTooltip = ({ message }: { message: string }) => {
+  return (
+    <div className="group relative inline-flex items-center justify-center select-none shrink-0 z-[1000]">
+      <Info className="w-3.5 h-3.5 text-slate-400 hover:text-[#EC4899] cursor-help transition-all duration-200" />
+      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center pointer-events-none drop-shadow-md z-[9999] opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <div className="bg-slate-900 border border-slate-800 text-white text-[11px] sm:text-xs font-semibold rounded-2xl py-2 px-3 text-center leading-normal max-w-[240px] sm:max-w-[280px] w-max select-none shadow-xl">
+          {message}
+        </div>
+        {/* Down Arrow */}
+        <div className="w-0 h-0 border-solid border-t-slate-900 border-t-6 border-x-transparent border-x-6 border-b-0 -mt-0.5" />
+      </div>
+    </div>
+  );
+};
+
 const VetOnboarding = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
@@ -176,7 +191,6 @@ const VetOnboarding = () => {
   }, [profile?.id]);
 
   const [selectedDay, setSelectedDay] = useState<string>("Mon");
-  const [infoPopup, setInfoPopup] = useState<{ title: string; description: string } | null>(null);
   const [sameTimingAllDays, setSameTimingAllDays] = useState<boolean>(false);
   const [weeklyAvailability, setWeeklyAvailability] = useState<Record<string, DayAvailability>>({
     Mon: { morning: { enabled: false, slots: [] }, afternoon: { enabled: false, slots: [] }, evening: { enabled: false, slots: [] }, night: { enabled: false, slots: [] } },
@@ -762,6 +776,11 @@ const VetOnboarding = () => {
       
       if (periodData.slots.includes(newSlotStr)) {
         toast.error("Time slot already exists");
+        return prev;
+      }
+
+      if (clockPickerPeriod === "morning" && periodData.slots.length >= 1) {
+        toast.error("Only one slot is allowed in the morning period.");
         return prev;
       }
 
@@ -2616,7 +2635,7 @@ const VetOnboarding = () => {
                   )}
 
                   {/* Navigation Buttons exactly matching Steps 1, 2, 3, 5, 6 */}
-                  <div className="flex gap-3 pt-2">
+                  <div className="sticky bottom-0 bg-white border-t border-slate-100 p-4 sm:p-5 -mx-6 -mb-6 z-40 flex gap-3 shadow-[0_-8px_20px_-8px_rgba(0,0,0,0.06)] backdrop-blur-md bg-white/95 rounded-b-3xl">
                     <Button type="button" variant="outline" className="flex-1 rounded-2xl h-11 font-bold text-slate-600 border-slate-200" onClick={() => setCurrentStep(3)}>Back</Button>
                     <Button type="button" className="flex-1 rounded-2xl h-11 bg-gradient-primary font-bold text-white shadow-sm" onClick={() => setCurrentStep(5)} disabled={!canProceed(4)}>Continue</Button>
                   </div>
@@ -2648,13 +2667,7 @@ const VetOnboarding = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.907c.961 0 1.36 1.253.588 1.832l-3.97 2.883a1 1 0 00-.364 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.971-2.883a1 1 0 00-1.18 0l-3.97 2.883c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.364-1.118L2.49 10.123c-.773-.58-.372-1.832.589-1.832h4.907a1 1 0 00.95-.69L11.05 2.927z" />
                         </svg>
                         <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Specializations</span>
-                        <Info 
-                          className="w-3.5 h-3.5 text-slate-400 hover:text-[#8A1550] cursor-pointer transition-colors shrink-0 flex-none" 
-                          onClick={() => setInfoPopup({
-                            title: "Specializations",
-                            description: "Select the specific categories of pets you are qualified to treat or handle. This helps pet parents find the exact expertise they need for their pets."
-                          })}
-                        />
+                        <InfoTooltip message="Select the specific categories of pets you are qualified to treat or handle. This helps pet parents find the exact expertise they need for their pets." />
                       </div>
                       <p className="text-slate-400 text-xs sm:text-sm font-medium ml-1">Select all that apply</p>
                     </div>
@@ -2708,13 +2721,7 @@ const VetOnboarding = () => {
                           <div className="flex items-center gap-1.5 matches-step">
                             <Stethoscope className="w-4 h-4 text-primary shrink-0" />
                             <span className="text-[#8A1550] font-bold text-sm sm:text-base font-sans">Consultation Types</span>
-                            <Info 
-                              className="w-3.5 h-3.5 text-slate-400 hover:text-[#8A1550] cursor-pointer transition-colors" 
-                              onClick={() => setInfoPopup({
-                                title: "Consultation Types",
-                                description: "Choose how you want to connect with pet parents. You can offer video consultations, home visits, or in-clinic appointments based on your preference."
-                              })}
-                            />
+                            <InfoTooltip message="Choose how you want to connect with pet parents. You can offer video consultations, home visits, or in-clinic appointments based on your preference." />
                           </div>
                           <p className="text-slate-450 text-[11px] sm:text-xs font-semibold leading-tight">Select the types of consultations you provide</p>
                         </div>
@@ -2794,13 +2801,7 @@ const VetOnboarding = () => {
                           <div className="flex items-center gap-1.5">
                             <GraduationCap className="w-4 h-4 text-primary shrink-0" />
                             <span className="text-[#8A1550] font-bold text-sm sm:text-base font-sans">Years of Practice</span>
-                            <Info 
-                              className="w-3.5 h-3.5 text-slate-400 hover:text-[#8A1550] cursor-pointer transition-colors flex-none" 
-                              onClick={() => setInfoPopup({
-                                title: "Years of Practice",
-                                description: "Enter the total number of years you have been practicing professionally. Verified experience builds higher trust within the community."
-                              })}
-                            />
+                            <InfoTooltip message="Enter the total number of years you have been practicing professionally. Verified experience builds higher trust within the community." />
                           </div>
                           <p className="text-slate-450 text-[11px] sm:text-xs font-semibold leading-tight">Your practice experience builds patient trust</p>
                         </div>
@@ -2862,13 +2863,7 @@ const VetOnboarding = () => {
                       <div className="flex items-center gap-2.5">
                         <Calendar className="w-4 h-4 text-primary shrink-0" />
                         <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Availability</span>
-                        <Info 
-                          className="w-3.5 h-3.5 text-slate-400 hover:text-[#8A1550] cursor-pointer transition-colors flex-none" 
-                          onClick={() => setInfoPopup({
-                            title: "Availability",
-                            description: "Set your standard working days and time slots. Pet parents will only be able to book appointments during these active hours."
-                          })}
-                        />
+                        <InfoTooltip message="Set your standard working days and time slots. Pet parents will only be able to book appointments during these active hours." />
                       </div>
 
                       {/* Same timing for all selected days toggle */}
@@ -3002,9 +2997,17 @@ const VetOnboarding = () => {
                               </div>
                               <div className="flex flex-col min-w-0">
                                 <span className="font-bold text-xs sm:text-sm tracking-tight truncate">{periodInfo.label}</span>
-                                <span className="text-[9px] sm:text-[11px] font-semibold opacity-75 truncate leading-tight block" title={periodAvailability.slots.join(", ")}>
-                                  {periodAvailability.slots.length > 0 ? periodAvailability.slots.join(", ") : periodInfo.hours}
-                                </span>
+                                {periodAvailability.slots.length > 0 ? (
+                                  <span className="text-[9px] sm:text-[11px] font-semibold opacity-75 truncate leading-tight block text-primary font-sans" title={periodAvailability.slots.join(", ")}>
+                                    {periodAvailability.slots.join(", ")}
+                                  </span>
+                                ) : (
+                                  isEnabled ? (
+                                    <span className="text-[9px] sm:text-[11px] font-semibold opacity-75 truncate leading-tight block text-slate-500 font-sans">
+                                      {periodInfo.hours}
+                                    </span>
+                                  ) : null
+                                )}
                               </div>
                             </div>
 
@@ -3026,14 +3029,16 @@ const VetOnboarding = () => {
                                 </div>
                               ))}
                               {isEnabled ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenAddSlot(periodKey)}
-                                  className="flex items-center justify-center gap-1.5 py-1.5 px-3.5 rounded-xl border border-dashed border-pink-200 text-[#EC4899] bg-[#FFFDFE] hover:bg-[#FFF5F7] hover:border-pink-300 font-bold text-xs transition active:scale-[0.98] shrink-0"
-                                >
-                                  <Plus className="w-3.5 h-3.5 text-pink-500 stroke-[2.5]" />
-                                  <span>Add slot</span>
-                                </button>
+                                (periodKey === "morning" && periodAvailability.slots.length >= 1) ? null : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenAddSlot(periodKey)}
+                                    className="flex items-center justify-center gap-1.5 py-1.5 px-3.5 rounded-xl border border-dashed border-pink-200 text-[#EC4899] bg-[#FFFDFE] hover:bg-[#FFF5F7] hover:border-pink-300 font-bold text-xs transition active:scale-[0.98] shrink-0"
+                                  >
+                                    <Plus className="w-3.5 h-3.5 text-pink-500 stroke-[2.5]" />
+                                    <span>Add slot</span>
+                                  </button>
+                                )
                               ) : (
                                 <span className="text-slate-400 font-medium text-xs py-1 italic">Disabled for {selectedDay}</span>
                               )}
@@ -3077,13 +3082,7 @@ const VetOnboarding = () => {
                           <div className="flex items-center gap-2">
                             <Banknote className="w-4 h-4 text-primary shrink-0" />
                             <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Consultation Fees (₹)</span>
-                            <Info 
-                              className="w-4 h-4 text-slate-400 hover:text-[#8A1550] cursor-pointer transition-colors shrink-0 ml-auto" 
-                              onClick={() => setInfoPopup({
-                                title: "Consultation Fees (₹)",
-                                description: "Set your base consulting charges for each interaction type. This will be the standard fee visible to pet parents when booking an appointment with you."
-                              })}
-                            />
+                            <InfoTooltip message="Set your base consulting charges for each interaction type. This will be the standard fee visible to pet parents when booking an appointment with you." />
                           </div>
                           <p className="text-slate-400 text-xs font-medium ml-1">Specify fees for your consultation types</p>
                         </div>
@@ -3142,13 +3141,7 @@ const VetOnboarding = () => {
                               <h4 className="text-xs sm:text-sm font-extrabold text-[#8A1550] flex items-center gap-1.5 font-sans">
                                 <Moon className="w-4 h-4 text-pink-500" />
                                 <span>Night Surcharge{getNightSlotsText()}</span>
-                                <Info 
-                                  className="w-3.5 h-3.5 text-slate-400 hover:text-[#8A1550] cursor-pointer transition-colors shrink-0 flex-none" 
-                                  onClick={() => setInfoPopup({
-                                    title: "Night Surcharge",
-                                    description: "An additional fee applied to late-night consultations to value your dedicated availability during off-hours."
-                                  })}
-                                />
+                                <InfoTooltip message="An additional fee applied to late-night consultations to value your dedicated availability during off-hours." />
                               </h4>
                               <p className="text-[10px] text-slate-400 font-medium">Additional charges applied during selected late-hour availability</p>
                             </div>
@@ -3220,13 +3213,7 @@ const VetOnboarding = () => {
                           <div className="flex items-center gap-2">
                             <AlertCircle className="w-4 h-4 text-primary shrink-0" />
                             <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Emergency Availability</span>
-                            <Info 
-                              className="w-4 h-4 text-slate-400 hover:text-[#8A1550] cursor-pointer transition-colors shrink-0 ml-auto" 
-                              onClick={() => setInfoPopup({
-                                title: "Emergency Availability",
-                                description: "Enable this if you are available for urgent, immediate medical attention outside regular hours. Emergency bookings are highlighted to ensure instant response times."
-                              })}
-                            />
+                            <InfoTooltip message="Enable this if you are available for urgent, immediate medical attention outside regular hours. Emergency bookings are highlighted to ensure instant response times." />
                           </div>
                           <p className="text-slate-400 text-xs font-medium ml-1">Configure your emergency readiness</p>
                         </div>
@@ -3349,7 +3336,7 @@ const VetOnboarding = () => {
                     </div>
                   </div>
 
-                  <div className="flex gap-3">
+                  <div className="sticky bottom-0 bg-white border-t border-slate-100 p-4 sm:p-5 -mx-6 -mb-6 z-40 flex gap-3 shadow-[0_-8px_20px_-8px_rgba(0,0,0,0.06)] backdrop-blur-md bg-white/95 rounded-b-3xl">
                     <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(4)}>Back</Button>
                     <Button type="button" className="flex-1 rounded-2xl bg-gradient-primary" onClick={() => setCurrentStep(6)} disabled={!canProceed(5)}>Continue</Button>
                   </div>
@@ -4077,9 +4064,17 @@ const VetOnboarding = () => {
                                               <div className="shrink-0 font-bold">{periodInfo.icon}</div>
                                               <div className="flex flex-col min-w-0">
                                                 <span className="font-extrabold text-[#1E293B] text-xs tracking-tight truncate">{periodInfo.label}</span>
-                                                <span className="text-[10px] font-semibold opacity-75 truncate leading-tight block text-slate-500" title={periodAvailability.slots.join(", ")}>
-                                                  {periodAvailability.slots.length > 0 ? periodAvailability.slots.join(", ") : periodInfo.hours}
-                                                </span>
+                                                {periodAvailability.slots.length > 0 ? (
+                                                  <span className="text-[10px] font-semibold opacity-75 truncate leading-tight block text-primary font-sans" title={periodAvailability.slots.join(", ")}>
+                                                    {periodAvailability.slots.join(", ")}
+                                                  </span>
+                                                ) : (
+                                                  isEnabled ? (
+                                                    <span className="text-[10px] font-semibold opacity-75 truncate leading-tight block text-slate-500 font-sans">
+                                                      {periodInfo.hours}
+                                                    </span>
+                                                  ) : null
+                                                )}
                                               </div>
                                             </div>
 
@@ -4331,7 +4326,7 @@ const VetOnboarding = () => {
                   </div>
 
                   {/* Submission and back buttons exactly formatted */}
-                  <div className="flex gap-3 pt-3">
+                  <div className="sticky bottom-0 bg-white border-t border-slate-100 p-4 sm:p-5 -mx-6 -mb-6 z-40 flex gap-3 shadow-[0_-8px_20px_-8px_rgba(0,0,0,0.06)] backdrop-blur-md bg-white/95 rounded-b-3xl">
                     <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={() => setCurrentStep(5)}>Back</Button>
                     <Button type="submit" className="flex-1 rounded-2xl bg-gradient-primary" disabled={isLoading || !formData.termsAccepted || !formData.vendorAgreement}>
                       {isLoading ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" strokeWidth={2.5} />Submitting...</>) : "Submit for Verification"}
@@ -4356,52 +4351,6 @@ const VetOnboarding = () => {
           clockPickerPeriod === "evening" ? "Evening" : "Night"
         }
       />
-
-      {infoPopup && (
-        <div 
-          className="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-xs flex items-center justify-center p-4 z-[9999] animate-fade-in"
-          onClick={() => setInfoPopup(null)}
-        >
-          <div 
-            className="bg-white rounded-3xl border border-slate-100 shadow-2xl max-w-md w-full p-6 relative overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="absolute top-0 right-0 p-4">
-              <button 
-                type="button" 
-                onClick={() => setInfoPopup(null)}
-                className="w-7 h-7 flex items-center justify-center bg-slate-100 text-slate-500 hover:text-[#8A1550] hover:bg-slate-200 transition rounded-xl font-bold font-sans text-xs"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-full bg-pink-100/60 text-[#EC4899] flex items-center justify-center shrink-0">
-                <Info className="w-5 h-5 stroke-[2.5]" />
-              </div>
-              <div className="space-y-2 mt-1">
-                <h3 className="text-[#8A1550] font-sans font-extrabold text-base sm:text-lg tracking-tight">
-                  {infoPopup.title}
-                </h3>
-                <p className="text-[#334155] font-sans text-xs sm:text-sm font-medium leading-relaxed">
-                  {infoPopup.description}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 flex justify-end">
-              <Button 
-                type="button" 
-                onClick={() => setInfoPopup(null)}
-                className="rounded-xl px-5 bg-gradient-primary text-white font-bold text-xs"
-              >
-                Got it
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
