@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { X, Clock, Check } from "lucide-react";
 
 interface ClockPickerModalProps {
@@ -44,17 +44,14 @@ export default function ClockPickerModal({
     }
   }, [isOpen, period]);
 
-  if (!isOpen) return null;
-
   const currentActiveTime = activeTab === "start" ? startTime : endTime;
   const setCurrentActiveTime = activeTab === "start" ? setStartTime : setEndTime;
 
+  const [isDragging, setIsDragging] = useState(false);
+  const dialRef = useRef<HTMLDivElement>(null);
+
   const handleSelectHour = (h: number) => {
     setCurrentActiveTime((prev) => ({ ...prev, hour: h }));
-    // Auto shift to minutes after hour select
-    setTimeout(() => {
-      setPickerMode("minutes");
-    }, 250);
   };
 
   const handleSelectMinute = (m: number) => {
@@ -87,6 +84,101 @@ export default function ClockPickerModal({
   const angleDeg = pickerMode === "hours" 
     ? (activeValue % 12) * 30 
     : (activeValue / 60) * 360;
+
+  // Real-time drag math tracking target cursor angle
+  const handleDialInteraction = (clientX: number, clientY: number) => {
+    if (!dialRef.current) return;
+    const rect = dialRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const dx = clientX - centerX;
+    const dy = clientY - centerY;
+    
+    let angleRad = Math.atan2(dy, dx);
+    let angleDeg = (angleRad * 180) / Math.PI + 90;
+    if (angleDeg < 0) angleDeg += 360;
+
+    if (pickerMode === "hours") {
+      let hour = Math.round(angleDeg / 30);
+      if (hour === 0) hour = 12;
+      if (hour > 12) hour = 12;
+      setCurrentActiveTime((prev) => ({ ...prev, hour }));
+    } else {
+      let minute = Math.round(angleDeg / 6);
+      if (minute >= 60) minute = 0;
+      setCurrentActiveTime((prev) => ({ ...prev, minute }));
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+    handleDialInteraction(e.clientX, e.clientY);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    // Only call preventDefault to stop scroll/pinch if interaction is on dial
+    if (e.cancelable) {
+      e.preventDefault();
+    }
+    setIsDragging(true);
+    if (e.touches[0]) {
+      handleDialInteraction(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      handleDialInteraction(e.clientX, e.clientY);
+    };
+
+    const handleMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        // Seamless Google transition from hours to minutes
+        if (pickerMode === "hours") {
+          setTimeout(() => {
+            setPickerMode("minutes");
+          }, 200);
+        }
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDragging) return;
+      if (e.touches[0]) {
+        handleDialInteraction(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        if (pickerMode === "hours") {
+          setTimeout(() => {
+            setPickerMode("minutes");
+          }, 200);
+        }
+      }
+    };
+
+    if (isDragging) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+      window.addEventListener("touchmove", handleTouchMove, { passive: false });
+      window.addEventListener("touchend", handleTouchEnd);
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [isDragging, pickerMode, activeTab]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
@@ -207,29 +299,37 @@ export default function ClockPickerModal({
             </div>
           </div>
 
-          {/* Clean Google Material style Dial Face */}
-          <div className="relative w-56 h-56 sm:w-60 sm:h-60 bg-[#F8FAFC] rounded-full border border-slate-200/60 flex items-center justify-center shadow-inner">
+          {/* Clean Google Material style Interactive Dial Face */}
+          <div 
+            ref={dialRef}
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+            className="relative w-56 h-56 sm:w-60 sm:h-60 bg-[#F8FAFC] rounded-full border border-slate-200/60 flex items-center justify-center shadow-inner cursor-pointer select-none touch-none"
+          >
             {/* Center Pivot Pin */}
             <div className="absolute left-1/2 top-1/2 w-2.5 h-2.5 -translate-x-1/2 -translate-y-1/2 bg-[#8A1550] rounded-full z-20 shadow-sm" />
 
-            {/* Radial Line Connector */}
+            {/* Selector Hand (Sui) with circle tip and stem connector */}
             <div 
-              className="absolute bottom-1/2 left-1/2 w-0.5 bg-[#8A1550]/80 origin-bottom transition-all duration-300 ease-out pointer-events-none"
+              className="absolute bottom-1/2 left-1/2 w-0.5 bg-[#8A1550] origin-bottom pointer-events-none"
               style={{ 
-                height: `${pickerMode === "hours" ? "82px" : "88px"}`,
-                transform: `rotate(${angleDeg}deg)` 
+                height: `${pickerMode === "hours" ? "74px" : "84px"}`,
+                transform: `rotate(${angleDeg}deg)`,
+                transition: isDragging ? "none" : "transform 150ms cubic-bezier(0.4, 0, 0.2, 1)"
               }}
             >
-              {/* Tip Pivot Point */}
-              <div className="absolute w-1.5 h-1.5 -translate-x-1/2 -top-0.5 bg-[#8A1550] rounded-full" />
+              {/* Highlight Circle Tip - perfectly aligned with the numbers */}
+              <div className="absolute w-8 h-8 -translate-x-1/2 -translate-y-1/2 top-0 bg-[#8A1550] rounded-full flex items-center justify-center shadow-md">
+                <div className="w-1.5 h-1.5 bg-white rounded-full" />
+              </div>
             </div>
 
             {/* Render Numbers on Face dial */}
             {pickerMode === "hours" ? (
               hoursList.map((h, index) => {
                 const angle = (index * 30 - 90) * (Math.PI / 180);
-                const x = Math.round(82 * Math.cos(angle));
-                const y = Math.round(82 * Math.sin(angle));
+                const x = Math.round(74 * Math.cos(angle));
+                const y = Math.round(74 * Math.sin(angle));
                 const isSelected = currentActiveTime.hour === h;
 
                 return (
@@ -242,10 +342,10 @@ export default function ClockPickerModal({
                       top: "50%",
                       transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
                     }}
-                    className={`absolute w-8.5 h-8.5 rounded-full flex items-center justify-center font-bold text-[13px] sm:text-[14px] transition-all duration-200 cursor-pointer ${
+                    className={`absolute w-8 h-8 rounded-full flex items-center justify-center font-bold text-[13px] sm:text-[14px] transition-all duration-150 cursor-pointer ${
                       isSelected
-                        ? "bg-[#8A1550] text-white scale-110 shadow-md font-black z-10"
-                        : "text-slate-600 hover:bg-[#FFEAF2]/50 hover:text-[#8A1550]"
+                        ? "text-white font-black z-10"
+                        : "text-slate-600 hover:bg-[#FFEAF2]/55 hover:text-[#8A1550]"
                     }`}
                   >
                     {h}
@@ -255,8 +355,8 @@ export default function ClockPickerModal({
             ) : (
               minutesList.map((m, index) => {
                 const angle = (index * 30 - 90) * (Math.PI / 180);
-                const x = Math.round(88 * Math.cos(angle));
-                const y = Math.round(88 * Math.sin(angle));
+                const x = Math.round(84 * Math.cos(angle));
+                const y = Math.round(84 * Math.sin(angle));
                 const isSelected = currentActiveTime.minute === m;
 
                 return (
@@ -269,10 +369,10 @@ export default function ClockPickerModal({
                       top: "50%",
                       transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
                     }}
-                    className={`absolute w-8.5 h-8.5 rounded-full flex items-center justify-center font-bold text-[13px] sm:text-[14px] transition-all duration-200 cursor-pointer ${
+                    className={`absolute w-8 h-8 rounded-full flex items-center justify-center font-bold text-[13px] sm:text-[14px] transition-all duration-150 cursor-pointer ${
                       isSelected
-                        ? "bg-[#8A1550] text-white scale-110 shadow-md font-black z-10"
-                        : "text-slate-600 hover:bg-[#FFEAF2]/50 hover:text-[#8A1550]"
+                        ? "text-white font-black z-10"
+                        : "text-slate-600 hover:bg-[#FFEAF2]/55 hover:text-[#8A1550]"
                     }`}
                   >
                     {m.toString().padStart(2, "0")}
@@ -284,7 +384,7 @@ export default function ClockPickerModal({
         </div>
 
         {/* Action Button Row */}
-        <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-2 justify-end">
+        <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-2 justify-end animate-fade-in">
           <button
             type="button"
             onClick={onClose}

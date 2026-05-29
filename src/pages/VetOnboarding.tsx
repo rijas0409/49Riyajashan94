@@ -176,6 +176,7 @@ const VetOnboarding = () => {
   }, [profile?.id]);
 
   const [selectedDay, setSelectedDay] = useState<string>("Mon");
+  const [infoPopup, setInfoPopup] = useState<{ title: string; description: string } | null>(null);
   const [sameTimingAllDays, setSameTimingAllDays] = useState<boolean>(false);
   const [weeklyAvailability, setWeeklyAvailability] = useState<Record<string, DayAvailability>>({
     Mon: { morning: { enabled: false, slots: [] }, afternoon: { enabled: false, slots: [] }, evening: { enabled: false, slots: [] }, night: { enabled: false, slots: [] } },
@@ -720,7 +721,7 @@ const VetOnboarding = () => {
             morning: { enabled: true, slots: [] },
             afternoon: { enabled: true, slots: [] },
             evening: { enabled: true, slots: [] },
-            night: { enabled: true, slots: [] }
+            night: { enabled: false, slots: [] }
           };
         }
       }
@@ -746,14 +747,6 @@ const VetOnboarding = () => {
   };
 
   const handleOpenAddSlot = (period: "morning" | "afternoon" | "evening" | "night") => {
-    if (period === "morning") {
-      const dayData = weeklyAvailability[selectedDay];
-      const periodAvailability = dayData ? dayData[period] : { enabled: false, slots: [] };
-      if (periodAvailability.slots.length >= 1) {
-        toast.error("Morning shift is limited to a maximum of 1 slot");
-        return;
-      }
-    }
     setClockPickerPeriod(period);
     setIsClockPickerOpen(true);
   };
@@ -810,14 +803,6 @@ const VetOnboarding = () => {
     if (!newSlotStart || !newSlotEnd) {
       toast.error("Please select a valid start and end time");
       return;
-    }
-    if (period === "morning") {
-      const dayData = weeklyAvailability[selectedDay];
-      const periodAvailability = dayData ? dayData[period] : { enabled: false, slots: [] };
-      if (periodAvailability.slots.length >= 1) {
-        toast.error("Morning shift is limited to a maximum of 1 slot");
-        return;
-      }
     }
     const formattedStart = convertTimeTo12Hr(newSlotStart);
     const formattedEnd = convertTimeTo12Hr(newSlotEnd);
@@ -2663,6 +2648,13 @@ const VetOnboarding = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.907c.961 0 1.36 1.253.588 1.832l-3.97 2.883a1 1 0 00-.364 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.971-2.883a1 1 0 00-1.18 0l-3.97 2.883c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.364-1.118L2.49 10.123c-.773-.58-.372-1.832.589-1.832h4.907a1 1 0 00.95-.69L11.05 2.927z" />
                         </svg>
                         <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Specializations</span>
+                        <Info 
+                          className="w-3.5 h-3.5 text-slate-400 hover:text-[#8A1550] cursor-pointer transition-colors shrink-0 flex-none" 
+                          onClick={() => setInfoPopup({
+                            title: "Specializations",
+                            description: "Select the specific categories of pets you are qualified to treat or handle. This helps pet parents find the exact expertise they need for their pets."
+                          })}
+                        />
                       </div>
                       <p className="text-slate-400 text-xs sm:text-sm font-medium ml-1">Select all that apply</p>
                     </div>
@@ -2716,13 +2708,19 @@ const VetOnboarding = () => {
                           <div className="flex items-center gap-1.5 matches-step">
                             <Stethoscope className="w-4 h-4 text-primary shrink-0" />
                             <span className="text-[#8A1550] font-bold text-sm sm:text-base font-sans">Consultation Types</span>
-                            <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 cursor-help" />
+                            <Info 
+                              className="w-3.5 h-3.5 text-slate-400 hover:text-[#8A1550] cursor-pointer transition-colors" 
+                              onClick={() => setInfoPopup({
+                                title: "Consultation Types",
+                                description: "Choose how you want to connect with pet parents. You can offer video consultations, home visits, or in-clinic appointments based on your preference."
+                              })}
+                            />
                           </div>
                           <p className="text-slate-450 text-[11px] sm:text-xs font-semibold leading-tight">Select the types of consultations you provide</p>
                         </div>
                         
-                        {/* 3 Grid Cards Layout - styled compactly to fit perfectly in 60% width */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                        {/* 3 Grid Cards Layout - styled compactly to fit perfectly in 1 row on mobile (33.33% each) without any overlap or text cutoff */}
+                        <div className="grid grid-cols-3 gap-1.5 pt-1">
                           {[
                             {
                               id: "Clinic visit",
@@ -2752,14 +2750,14 @@ const VetOnboarding = () => {
                                 key={opt.id}
                                 type="button"
                                 onClick={() => toggleConsultation(opt.id)}
-                                className={`flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-2xl border transition-all relative group select-none cursor-pointer w-full min-w-0 ${
+                                className={`flex flex-col items-center justify-center text-center p-1.5 min-[370px]:p-2.5 sm:p-3 rounded-2xl border transition-all relative group select-none cursor-pointer w-full min-w-0 ${
                                   isSelected
                                     ? "border-[#EC4899] bg-[#FFF5F7] text-[#EC4899] font-extrabold shadow-sm ring-1 ring-[#EC4899]"
                                     : "border-slate-100 bg-white text-[#1E293B] hover:shadow-xs hover:border-slate-300"
                                 }`}
                               >
                                 {/* Rounded Icon Container with soft background */}
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mb-1.5 transition-colors ${
+                                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 mb-1 sm:mb-1.5 transition-colors ${
                                   isSelected
                                     ? "bg-pink-100/60 text-[#EC4899]"
                                     : opt.color === "pink"
@@ -2769,17 +2767,17 @@ const VetOnboarding = () => {
                                   {opt.icon}
                                 </div>
                                 
-                                <span className="font-bold font-sans text-[11px] sm:text-xs text-[#333333] tracking-tight block w-full truncate">
+                                <span className="font-bold font-sans text-[8.5px] min-[360px]:text-[10px] sm:text-xs text-[#333333] tracking-tight block w-full truncate">
                                   {opt.label}
                                 </span>
-                                <span className="text-slate-400 text-[9px] sm:text-[10px] block mt-0.5 w-full truncate">
+                                <span className="text-slate-400 text-[7.5px] min-[360px]:text-[9px] sm:text-[10px] block mt-0.5 w-full truncate">
                                   {opt.desc}
                                 </span>
 
                                 {/* Absolute check at top-right if selected */}
                                 {isSelected && (
-                                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#EC4899] text-white flex items-center justify-center shadow-xs shrink-0">
-                                    <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                  <span className="absolute top-1 sm:top-1.5 right-1 sm:right-1.5 w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-[#EC4899] text-white flex items-center justify-center shadow-xs shrink-0">
+                                    <Check className="w-2 sm:w-2.5 h-2 sm:h-2.5 stroke-[3]" />
                                   </span>
                                 )}
                               </button>
@@ -2796,7 +2794,13 @@ const VetOnboarding = () => {
                           <div className="flex items-center gap-1.5">
                             <GraduationCap className="w-4 h-4 text-primary shrink-0" />
                             <span className="text-[#8A1550] font-bold text-sm sm:text-base font-sans">Years of Practice</span>
-                            <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 cursor-help flex-none" />
+                            <Info 
+                              className="w-3.5 h-3.5 text-slate-400 hover:text-[#8A1550] cursor-pointer transition-colors flex-none" 
+                              onClick={() => setInfoPopup({
+                                title: "Years of Practice",
+                                description: "Enter the total number of years you have been practicing professionally. Verified experience builds higher trust within the community."
+                              })}
+                            />
                           </div>
                           <p className="text-slate-450 text-[11px] sm:text-xs font-semibold leading-tight">Your practice experience builds patient trust</p>
                         </div>
@@ -2854,19 +2858,26 @@ const VetOnboarding = () => {
                   </div>
                    {/* Core Interactive Weekly Availability Planner */}
                   <div className="space-y-6 bg-white border border-[#F1F5F9] p-4 sm:p-6 rounded-3xl shadow-sm">
-                    <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 border-b border-slate-100 pb-3">
                       <div className="flex items-center gap-2.5">
                         <Calendar className="w-4 h-4 text-primary shrink-0" />
                         <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Availability</span>
+                        <Info 
+                          className="w-3.5 h-3.5 text-slate-400 hover:text-[#8A1550] cursor-pointer transition-colors flex-none" 
+                          onClick={() => setInfoPopup({
+                            title: "Availability",
+                            description: "Set your standard working days and time slots. Pet parents will only be able to book appointments during these active hours."
+                          })}
+                        />
                       </div>
 
                       {/* Same timing for all selected days toggle */}
                       {formData.availableDays.length > 0 && selectedDay && (
-                        <div className="flex items-center gap-2 select-none shrink-0 sm:gap-2.5">
+                        <div className="flex items-center justify-between sm:justify-end gap-2.5 select-none w-full sm:w-auto mt-1 sm:mt-0 pt-1.5 sm:pt-0 border-t border-dashed border-slate-100 sm:border-t-0 shrink-0">
                           <span className="text-slate-500 font-sans font-semibold text-[11px] sm:text-xs md:text-sm tracking-tight">
                             Same timing for all selected days
                           </span>
-                          <label className="relative inline-flex items-center cursor-pointer select-none">
+                          <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
                             <input
                               type="checkbox"
                               checked={sameTimingAllDays}
@@ -2965,10 +2976,10 @@ const VetOnboarding = () => {
                     <div className="space-y-4 pt-2">
                       {(["morning", "afternoon", "evening", "night"] as const).map(periodKey => {
                         const periodInfo = {
-                          morning: { label: "Morning", hours: "9 AM - 1 PM", bg: "bg-emerald-50/45 border-emerald-100 text-emerald-800", icon: <Sunrise className="w-4 h-4 text-emerald-600" strokeWidth={2.5} /> },
-                          afternoon: { label: "Afternoon", hours: "1 PM - 4 PM", bg: "bg-amber-50/45 border-amber-100 text-amber-850", icon: <Sun className="w-4 h-4 text-amber-600" strokeWidth={2.5} /> },
-                          evening: { label: "Evening", hours: "4 PM - 8 PM", bg: "bg-indigo-50/45 border-indigo-100 text-indigo-900", icon: <Moon className="w-4 h-4 text-indigo-600" strokeWidth={2.5} /> },
-                          night: { label: "Night", hours: "8 PM - 12 AM", bg: "bg-pink-50/45 border-pink-100 text-pink-900", icon: <Moon className="w-4 h-4 text-pink-600" strokeWidth={2.5} /> }
+                          morning: { label: "Morning", hours: "09:00 AM - 01:00 PM", bg: "bg-emerald-50/45 border-emerald-100 text-emerald-800", icon: <Sunrise className="w-4 h-4 text-emerald-600" strokeWidth={2.5} /> },
+                          afternoon: { label: "Afternoon", hours: "01:00 PM - 04:00 PM", bg: "bg-amber-50/45 border-amber-100 text-amber-850", icon: <Sun className="w-4 h-4 text-amber-600" strokeWidth={2.5} /> },
+                          evening: { label: "Evening", hours: "04:00 PM - 08:00 PM", bg: "bg-indigo-50/45 border-indigo-100 text-indigo-900", icon: <Moon className="w-4 h-4 text-indigo-600" strokeWidth={2.5} /> },
+                          night: { label: "Night", hours: "08:00 PM - 12:00 AM", bg: "bg-pink-50/45 border-pink-100 text-pink-900", icon: <Moon className="w-4 h-4 text-pink-600" strokeWidth={2.5} /> }
                         }[periodKey];
 
                         const dayData = weeklyAvailability[selectedDay];
@@ -2991,8 +3002,8 @@ const VetOnboarding = () => {
                               </div>
                               <div className="flex flex-col min-w-0">
                                 <span className="font-bold text-xs sm:text-sm tracking-tight truncate">{periodInfo.label}</span>
-                                <span className="text-[9px] sm:text-[11px] font-semibold opacity-75 whitespace-nowrap">
-                                  {periodAvailability.slots.length > 0 ? periodAvailability.slots[0] : periodInfo.hours}
+                                <span className="text-[9px] sm:text-[11px] font-semibold opacity-75 truncate leading-tight block" title={periodAvailability.slots.join(", ")}>
+                                  {periodAvailability.slots.length > 0 ? periodAvailability.slots.join(", ") : periodInfo.hours}
                                 </span>
                               </div>
                             </div>
@@ -3015,20 +3026,14 @@ const VetOnboarding = () => {
                                 </div>
                               ))}
                               {isEnabled ? (
-                                (periodKey === "morning" && periodAvailability.slots.length >= 1) ? (
-                                  <span className="text-slate-400 font-semibold text-xs py-1.5 px-3 bg-[#F1F5F9] border border-slate-200 rounded-xl select-none shrink-0">
-                                    Morning Limit (Max 1)
-                                  </span>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenAddSlot(periodKey)}
-                                    className="flex items-center justify-center gap-1.5 py-1.5 px-3.5 rounded-xl border border-dashed border-pink-200 text-[#EC4899] bg-[#FFFDFE] hover:bg-[#FFF5F7] hover:border-pink-300 font-bold text-xs transition active:scale-[0.98] shrink-0"
-                                  >
-                                    <Plus className="w-3.5 h-3.5 text-pink-500 stroke-[2.5]" />
-                                    <span>Add slot</span>
-                                  </button>
-                                )
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenAddSlot(periodKey)}
+                                  className="flex items-center justify-center gap-1.5 py-1.5 px-3.5 rounded-xl border border-dashed border-pink-200 text-[#EC4899] bg-[#FFFDFE] hover:bg-[#FFF5F7] hover:border-pink-300 font-bold text-xs transition active:scale-[0.98] shrink-0"
+                                >
+                                  <Plus className="w-3.5 h-3.5 text-pink-500 stroke-[2.5]" />
+                                  <span>Add slot</span>
+                                </button>
                               ) : (
                                 <span className="text-slate-400 font-medium text-xs py-1 italic">Disabled for {selectedDay}</span>
                               )}
@@ -3072,7 +3077,13 @@ const VetOnboarding = () => {
                           <div className="flex items-center gap-2">
                             <Banknote className="w-4 h-4 text-primary shrink-0" />
                             <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Consultation Fees (₹)</span>
-                            <Info className="w-4 h-4 text-slate-400 shrink-0 cursor-help ml-auto" />
+                            <Info 
+                              className="w-4 h-4 text-slate-400 hover:text-[#8A1550] cursor-pointer transition-colors shrink-0 ml-auto" 
+                              onClick={() => setInfoPopup({
+                                title: "Consultation Fees (₹)",
+                                description: "Set your base consulting charges for each interaction type. This will be the standard fee visible to pet parents when booking an appointment with you."
+                              })}
+                            />
                           </div>
                           <p className="text-slate-400 text-xs font-medium ml-1">Specify fees for your consultation types</p>
                         </div>
@@ -3131,6 +3142,13 @@ const VetOnboarding = () => {
                               <h4 className="text-xs sm:text-sm font-extrabold text-[#8A1550] flex items-center gap-1.5 font-sans">
                                 <Moon className="w-4 h-4 text-pink-500" />
                                 <span>Night Surcharge{getNightSlotsText()}</span>
+                                <Info 
+                                  className="w-3.5 h-3.5 text-slate-400 hover:text-[#8A1550] cursor-pointer transition-colors shrink-0 flex-none" 
+                                  onClick={() => setInfoPopup({
+                                    title: "Night Surcharge",
+                                    description: "An additional fee applied to late-night consultations to value your dedicated availability during off-hours."
+                                  })}
+                                />
                               </h4>
                               <p className="text-[10px] text-slate-400 font-medium">Additional charges applied during selected late-hour availability</p>
                             </div>
@@ -3156,8 +3174,8 @@ const VetOnboarding = () => {
                             {/* Payment Summary */}
                             <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-100/80 space-y-3">
                               <span className="text-[9px] font-extrabold text-[#8A1550] uppercase tracking-widest block border-b border-slate-200/60 pb-1">Payment Summary (Late-Hour)</span>
-                              <div className="space-y-3.5 divide-y divide-slate-100">
-                                <div className="space-y-1">
+                              <div className="flex flex-col sm:flex-row gap-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/60">
+                                <div className="space-y-1 sm:flex-1">
                                   <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">In-Clinic Consultation</span>
                                   <div className="flex justify-between text-[11px] sm:text-xs">
                                     <span className="text-slate-500 font-semibold">Base Fee</span>
@@ -3173,7 +3191,7 @@ const VetOnboarding = () => {
                                   </div>
                                 </div>
 
-                                <div className="space-y-1 pt-3">
+                                <div className="space-y-1 pt-3 sm:pt-0 sm:pl-4 sm:flex-1">
                                   <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Home Visit Consultation</span>
                                   <div className="flex justify-between text-[11px] sm:text-xs">
                                     <span className="text-slate-500 font-semibold">Base Fee</span>
@@ -3202,7 +3220,13 @@ const VetOnboarding = () => {
                           <div className="flex items-center gap-2">
                             <AlertCircle className="w-4 h-4 text-primary shrink-0" />
                             <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Emergency Availability</span>
-                            <Info className="w-4 h-4 text-slate-400 shrink-0 cursor-help ml-auto" />
+                            <Info 
+                              className="w-4 h-4 text-slate-400 hover:text-[#8A1550] cursor-pointer transition-colors shrink-0 ml-auto" 
+                              onClick={() => setInfoPopup({
+                                title: "Emergency Availability",
+                                description: "Enable this if you are available for urgent, immediate medical attention outside regular hours. Emergency bookings are highlighted to ensure instant response times."
+                              })}
+                            />
                           </div>
                           <p className="text-slate-400 text-xs font-medium ml-1">Configure your emergency readiness</p>
                         </div>
@@ -3222,18 +3246,18 @@ const VetOnboarding = () => {
                               }`}
                             />
                           </button>
-                          <span className="text-sm font-bold text-slate-700">Available for emergency</span>
+                          <span className="text-sm font-bold text-slate-700">Accept Emergency Requests</span>
                         </div>
 
                         {/* Grid with 2 items inside */}
                         <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 transition-all duration-300 ${(formData.emergencyAvailable ?? true) ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-                          {/* 24x7 Support Container */}
+                          {/* 24x7 Emergency Availability Container */}
                           <div className="p-3 border border-slate-100 rounded-2xl bg-[#FAFAFC]/65 space-y-3.5 shadow-xs">
                             <div className="flex items-center gap-2">
                               <div className="w-[34px] h-[34px] rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0">
                                 <Clock className="w-4 h-4 text-purple-600" />
                               </div>
-                              <span className="font-extrabold text-xs sm:text-sm text-[#1E293B] tracking-tight">24x7 Support</span>
+                              <span className="font-extrabold text-xs sm:text-sm text-[#1E293B] tracking-tight">24×7 Emergency Availability</span>
                             </div>
                             
                             {/* Custom Circular Radio Selection */}
@@ -4029,10 +4053,10 @@ const VetOnboarding = () => {
                                     <div className="space-y-3.5 font-sans">
                                       {(["morning", "afternoon", "evening", "night"] as const).map(periodKey => {
                                         const periodInfo = {
-                                          morning: { label: "Morning", hours: "9 AM - 1 PM", bg: "bg-emerald-50/45 border-emerald-100 text-emerald-800", icon: <Sunrise className="w-4 h-4 text-emerald-600" strokeWidth={2.5} /> },
-                                          afternoon: { label: "Afternoon", hours: "1 PM - 4 PM", bg: "bg-amber-50/45 border-amber-100 text-amber-850", icon: <Sun className="w-4 h-4 text-amber-600" strokeWidth={2.5} /> },
-                                          evening: { label: "Evening", hours: "4 PM - 8 PM", bg: "bg-indigo-50/45 border-[#E2E1FF] text-indigo-900", icon: <Moon className="w-4 h-4 text-indigo-600" strokeWidth={2.5} /> },
-                                          night: { label: "Night", hours: "8 PM - 12 AM", bg: "bg-pink-50/45 border-pink-100 text-pink-900", icon: <Moon className="w-4 h-4 text-pink-600" strokeWidth={2.5} /> }
+                                          morning: { label: "Morning", hours: "09:00 AM - 01:00 PM", bg: "bg-emerald-50/45 border-emerald-100 text-emerald-800", icon: <Sunrise className="w-4 h-4 text-emerald-600" strokeWidth={2.5} /> },
+                                          afternoon: { label: "Afternoon", hours: "01:00 PM - 04:00 PM", bg: "bg-amber-50/45 border-amber-105 text-amber-850", icon: <Sun className="w-4 h-4 text-amber-600" strokeWidth={2.5} /> },
+                                          evening: { label: "Evening", hours: "04:00 PM - 08:00 PM", bg: "bg-indigo-50/45 border-[#E2E1FF] text-indigo-900", icon: <Moon className="w-4 h-4 text-indigo-600" strokeWidth={2.5} /> },
+                                          night: { label: "Night", hours: "08:00 PM - 12:00 AM", bg: "bg-pink-50/45 border-pink-100 text-pink-900", icon: <Moon className="w-4 h-4 text-pink-600" strokeWidth={2.5} /> }
                                         }[periodKey];
 
                                         const dayData = weeklyAvailability[selectedDay];
@@ -4053,8 +4077,8 @@ const VetOnboarding = () => {
                                               <div className="shrink-0 font-bold">{periodInfo.icon}</div>
                                               <div className="flex flex-col min-w-0">
                                                 <span className="font-extrabold text-[#1E293B] text-xs tracking-tight truncate">{periodInfo.label}</span>
-                                                <span className="text-[10px] font-semibold opacity-75 whitespace-nowrap text-slate-500">
-                                                  {periodAvailability.slots.length > 0 ? periodAvailability.slots[0] : periodInfo.hours}
+                                                <span className="text-[10px] font-semibold opacity-75 truncate leading-tight block text-slate-500" title={periodAvailability.slots.join(", ")}>
+                                                  {periodAvailability.slots.length > 0 ? periodAvailability.slots.join(", ") : periodInfo.hours}
                                                 </span>
                                               </div>
                                             </div>
@@ -4155,8 +4179,8 @@ const VetOnboarding = () => {
                                     {/* Payment Summary */}
                                     <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-100/80 space-y-3 font-sans">
                                       <span className="text-[9px] font-extrabold text-[#8A1550] uppercase tracking-widest block border-b border-slate-200/60 pb-1">Payment Summary (Late-Hour)</span>
-                                      <div className="space-y-3.5 divide-y divide-slate-100">
-                                        <div className="space-y-1">
+                                      <div className="flex flex-col sm:flex-row gap-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/60">
+                                        <div className="space-y-1 sm:flex-1">
                                           <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">In-Clinic Consultation</span>
                                           <div className="flex justify-between text-[11px] sm:text-xs">
                                             <span className="text-slate-500 font-semibold">Base Fee</span>
@@ -4172,7 +4196,7 @@ const VetOnboarding = () => {
                                           </div>
                                         </div>
 
-                                        <div className="space-y-1 pt-3">
+                                        <div className="space-y-1 pt-3 sm:pt-0 sm:pl-4 sm:flex-1">
                                           <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Home Visit Consultation</span>
                                           <div className="flex justify-between text-[11px] sm:text-xs">
                                             <span className="text-slate-500 font-semibold">Base Fee</span>
@@ -4226,7 +4250,7 @@ const VetOnboarding = () => {
                                   <div className={`p-3 rounded-2xl border font-sans text-xs flex flex-col justify-between h-20 ${
                                     (formData.support24x7 ?? 'yes') === 'yes' ? "border-purple-200 bg-purple-50/20" : "border-slate-100 bg-slate-50/50"
                                   }`}>
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">24x7 Support</span>
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">24×7 Emergency Availability</span>
                                     <div className="flex items-center gap-1.5 mt-2">
                                       {(formData.support24x7 ?? 'yes') === 'yes' ? (
                                         <><CheckCircle className="w-4 h-4 text-purple-600 shrink-0" /><span className="font-extrabold text-purple-950">Active</span></>
@@ -4332,6 +4356,52 @@ const VetOnboarding = () => {
           clockPickerPeriod === "evening" ? "Evening" : "Night"
         }
       />
+
+      {infoPopup && (
+        <div 
+          className="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-xs flex items-center justify-center p-4 z-[9999] animate-fade-in"
+          onClick={() => setInfoPopup(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl border border-slate-100 shadow-2xl max-w-md w-full p-6 relative overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute top-0 right-0 p-4">
+              <button 
+                type="button" 
+                onClick={() => setInfoPopup(null)}
+                className="w-7 h-7 flex items-center justify-center bg-slate-100 text-slate-500 hover:text-[#8A1550] hover:bg-slate-200 transition rounded-xl font-bold font-sans text-xs"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-pink-100/60 text-[#EC4899] flex items-center justify-center shrink-0">
+                <Info className="w-5 h-5 stroke-[2.5]" />
+              </div>
+              <div className="space-y-2 mt-1">
+                <h3 className="text-[#8A1550] font-sans font-extrabold text-base sm:text-lg tracking-tight">
+                  {infoPopup.title}
+                </h3>
+                <p className="text-[#334155] font-sans text-xs sm:text-sm font-medium leading-relaxed">
+                  {infoPopup.description}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end">
+              <Button 
+                type="button" 
+                onClick={() => setInfoPopup(null)}
+                className="rounded-xl px-5 bg-gradient-primary text-white font-bold text-xs"
+              >
+                Got it
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
