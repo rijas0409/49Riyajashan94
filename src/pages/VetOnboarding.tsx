@@ -140,9 +140,6 @@ const VetOnboarding = () => {
     practiceType: ["Hospital / Organization"] as string[],
     clinicName: "", clinicPincode: "", clinicGst: "",
     hospitalName: "", hospitalRole: "", hospitalAddress: "", hospitalPincode: "", hospitalEmployeeId: "", hospitalJoiningProofFile: null as File | null,
-    // Bank info (Optional/Internal)
-    bankAccountName: "", bankName: "", bankAccountNumber: "", bankIfsc: "",
-    cancelledChequeFile: null as File | null,
     // Step 5 – Availability
     specializations: [] as string[], consultationTypes: [] as string[],
     availableDays: [] as string[], morningSlots: false, eveningSlots: false,
@@ -165,7 +162,7 @@ const VetOnboarding = () => {
       const { 
         govtIdFile, panCardFile, passportPhotoFile, vetDegreeFile, 
         clinicRegistrationFile, clinicShopLicenseFile, gstCertificateFile, 
-        clinicAddressProofFile, cancelledChequeFile, profilePhoto, educationRows, 
+        clinicAddressProofFile, profilePhoto, educationRows, 
         clinicPhotos, clinicVideos, hospitalJoiningProofFile, ...rest 
       } = formData;
       localStorage.setItem(`vet-onboarding-draft-${profile?.id}`, JSON.stringify(rest));
@@ -466,10 +463,6 @@ const VetOnboarding = () => {
               eveningSlots: prev.eveningSlots !== false ? prev.eveningSlots : (vp.evening_slots || false),
               onlineFee: prev.onlineFee || vp.online_fee?.toString() || "500",
               offlineFee: prev.offlineFee || vp.offline_fee?.toString() || "800",
-              bankAccountName: prev.bankAccountName || vp.bank_account_name || "",
-              bankName: prev.bankName || vp.bank_name || "",
-              bankAccountNumber: prev.bankAccountNumber || vp.bank_account_number || "",
-              bankIfsc: prev.bankIfsc || vp.bank_ifsc || "",
               preferredLanguage: (prev.preferredLanguage && prev.preferredLanguage.length > 0) ? prev.preferredLanguage : (vp.preferred_language ? vp.preferred_language.split(", ") : []),
               clinicAddress: prev.clinicAddress || vp.clinic_address || "",
               vendorAgreement: prev.vendorAgreement || vp.vendor_agreement_accepted || false,
@@ -509,7 +502,6 @@ const VetOnboarding = () => {
               clinicShopLicenseFile: getUrl(vp.clinic_shop_license_file) || "",
               gstCertificateFile: getUrl(vp.gst_certificate_file) || "",
               clinicAddressProofFile: getUrl(vp.clinic_address_proof_file) || "",
-              cancelledChequeFile: getUrl(vp.cancelled_cheque_file) || "",
               profilePhoto: getUrl(vp.profile_photo) || "",
               hospitalJoiningProofFile: getUrl(vp.hospital_joining_proof_file) || "",
             });
@@ -992,7 +984,7 @@ const VetOnboarding = () => {
 
       const [
         govtIdUrl, panUrl, passportUrl, vetDegreeUrl, clinicRegUrl, 
-        shopLicUrl, gstUrl, clinicAddrProofUrl, chequeUrl, profilePhotoUrl,
+        shopLicUrl, gstUrl, clinicAddrProofUrl, profilePhotoUrl,
         hospitalJoiningProofUrl
       ] = await Promise.all([
         handleFile(formData.govtIdFile, 'govt_id', existingVp?.govt_id_file),
@@ -1003,7 +995,6 @@ const VetOnboarding = () => {
         handleFile(formData.clinicShopLicenseFile, 'shop_license', existingVp?.clinic_shop_license_file),
         handleFile(formData.gstCertificateFile, 'gst_cert', existingVp?.gst_certificate_file),
         handleFile(formData.clinicAddressProofFile, 'clinic_addr_proof', existingVp?.clinic_address_proof_file),
-        handleFile(formData.cancelledChequeFile, 'cancelled_cheque', existingVp?.cancelled_cheque_file),
         handleFile(formData.profilePhoto, 'profile_photo', existingVp?.profile_photo),
         handleFile(formData.hospitalJoiningProofFile, 'hospital_proof', existingVp?.hospital_joining_proof_file),
       ]);
@@ -1064,10 +1055,6 @@ const VetOnboarding = () => {
         evening_slots: formData.eveningSlots,
         online_fee: parseFloat(formData.onlineFee) || 500,
         offline_fee: parseFloat(formData.offlineFee) || 800,
-        bank_account_name: formData.bankAccountName,
-        bank_name: formData.bankName,
-        bank_account_number: formData.bankAccountNumber,
-        bank_ifsc: formData.bankIfsc,
         preferred_language: formData.preferredLanguage.join(", "),
         clinic_address: formData.clinicAddress,
         pan_card_file: panUrl,
@@ -1075,7 +1062,6 @@ const VetOnboarding = () => {
         clinic_shop_license_file: shopLicUrl,
         gst_certificate_file: gstUrl,
         clinic_address_proof_file: clinicAddrProofUrl,
-        cancelled_cheque_file: chequeUrl,
         vendor_agreement_accepted: formData.vendorAgreement,
         telemedicine_consent_accepted: formData.telemedicineConsent,
         clinic_photos: clinicPhotoUrls,
@@ -1128,6 +1114,7 @@ const VetOnboarding = () => {
            delete (fallbackData as any).hospital_pincode;
            delete (fallbackData as any).hospital_joining_proof_file;
            delete (fallbackData as any).weekly_availability;
+           delete (fallbackData as any).available_days;
            delete (fallbackData as any).emergency_available;
            delete (fallbackData as any).weekend_availability;
            delete (fallbackData as any).support_24x7;
@@ -1158,6 +1145,7 @@ const VetOnboarding = () => {
            delete (fallbackData as any).hospital_pincode;
            delete (fallbackData as any).hospital_joining_proof_file;
            delete (fallbackData as any).weekly_availability;
+           delete (fallbackData as any).available_days;
            delete (fallbackData as any).emergency_available;
            delete (fallbackData as any).weekend_availability;
            delete (fallbackData as any).support_24x7;
