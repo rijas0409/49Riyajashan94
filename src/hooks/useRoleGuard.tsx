@@ -104,44 +104,71 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
           currentPath: window.location.pathname
         });
 
-        if (currentProfile?.role === "vet" && currentProfile.is_onboarding_complete === undefined) {
-           console.log("useRoleGuard: Onboarding status undefined for vet, waiting for full load...");
-           return;
-        }
+        // Check onboarding/approval status for vets specifically using vetStatus from AuthContext
+        if (currentProfile?.role === "vet") {
+           const vetStatus = currentProfile.vetStatus || 'not_submitted';
+           const currentPath = window.location.pathname;
 
-        if (currentProfile?.role === "vet" && currentProfile.is_onboarding_complete === false) {
-           if (window.location.pathname !== "/vet/onboarding") {
-             console.log("useRoleGuard: Onboarding incomplete for vet - navigating to onboarding");
-             navigate("/vet/onboarding", { replace: true });
+           console.log("useRoleGuard (Vet): Status:", vetStatus, "Path:", currentPath);
+
+           if (vetStatus === 'not_submitted') {
+             if (currentPath !== "/vet/onboarding") {
+               navigate("/vet/onboarding", { replace: true });
+               setIsLoading(false);
+               return;
+             }
              setIsLoading(false);
              return;
            }
-           setIsLoading(false);
-           return;
+
+           if (vetStatus === 'pending_verification') {
+             if (currentPath !== "/vet-pending-approval") {
+               navigate("/vet-pending-approval", { replace: true });
+               setIsLoading(false);
+               return;
+             }
+             setIsLoading(false);
+             return;
+           }
+
+           if (vetStatus === 'rejected') {
+             // In rejection case, we might allow them to stay on pending approval (which shows rejection reason) 
+             // or onboarding to resubmit. 
+             // If they are on home, redirect to pending/rejection screen
+             if (currentPath.startsWith("/vet/home")) {
+               navigate("/vet-pending-approval", { replace: true });
+               setIsLoading(false);
+               return;
+             }
+           }
+
+           if (vetStatus === 'approved') {
+             // If approved but on onboarding or pending, go to home
+             if (currentPath === "/vet/onboarding" || currentPath === "/vet-pending-approval") {
+               navigate("/vet/home", { replace: true });
+               setIsLoading(false);
+               return;
+             }
+           }
         }
 
         if (requireAdminApproval && !isActuallyApproved) {
-            // Skip redirect if we are already on the pending approval page OR if the vet is at onboarding (e.g. to resubmit)
+            // This is a fallback for other roles or if vetStatus wasn't definitive
             const currentPath = window.location.pathname;
-            if (currentPath === "/vet-pending-approval" || currentPath === "/vet/onboarding") {
+            if (currentPath === "/vet-pending-approval" || currentPath === "/vet/onboarding" || currentPath.includes("pending-approval")) {
                setIsLoading(false);
                return;
             }
-            console.log("useRoleGuard: REJECTED - navigating to pending approval");
-           navigate("/vet-pending-approval", { replace: true });
-           setIsLoading(false);
-           return;
-        }
-
-        // Check onboarding status for vets if they are approved
-        const isApprovedForOnboardingCheck = currentProfile?.is_admin_approved === true || localStorage.getItem("sruvo_admin_approved") === "true";
-        if (currentProfile?.role === "vet" && isApprovedForOnboardingCheck && currentProfile.is_onboarding_complete === false) {
-           if (window.location.pathname !== "/vet/onboarding") {
-             console.log("useRoleGuard: Approved but onboarding incomplete - navigating to onboarding");
-             navigate("/vet/onboarding", { replace: true });
-             setIsLoading(false);
-             return;
-           }
+            console.log("useRoleGuard: REJECTED - navigating to pending-approval screen");
+            
+            // Determine correct pending path
+            let pendingPath = "/vet-pending-approval";
+            if (currentProfile?.role === "seller") pendingPath = "/seller-pending-approval";
+            if (currentProfile?.role === "product_seller") pendingPath = "/products-pending-approval";
+            
+            navigate(pendingPath, { replace: true });
+            setIsLoading(false);
+            return;
         }
 
         // Use profile from AuthContext if it already has the role we need

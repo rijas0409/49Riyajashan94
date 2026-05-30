@@ -14,22 +14,19 @@ export const VetProtectionWrapper = ({ children, requiredStatus }: { children: R
         return;
       }
 
-      // Check onboarding status
-      const isOnboardingComplete = profile?.is_onboarding_complete;
-      
-      // Wait if the full profile from database has not loaded yet
-      if (isOnboardingComplete === undefined) {
-        return;
-      }
+      // Check onboarding status specifically for vets using vetStatus
+      const vetStatus = profile?.vetStatus || 'not_submitted';
+      const isAdminApproved = profile?.is_admin_approved ?? (vetStatus === 'approved');
 
-      const isAdminApproved = profile?.is_admin_approved ?? false;
-
-      if (!isOnboardingComplete && requiredStatus !== 'onboarding') {
+      if (vetStatus === 'not_submitted' && requiredStatus !== 'onboarding') {
         navigate("/vet/onboarding", { replace: true });
-      } else if (isOnboardingComplete && !isAdminApproved && requiredStatus !== 'pending') {
+      } else if (vetStatus === 'pending_verification' && requiredStatus !== 'pending') {
         navigate("/vet-pending-approval", { replace: true });
-      } else if (isOnboardingComplete && isAdminApproved && requiredStatus === 'pending') {
+      } else if (vetStatus === 'approved' && requiredStatus !== 'approved' && (requiredStatus === 'onboarding' || requiredStatus === 'pending')) {
         navigate("/vet/home", { replace: true });
+      } else if (vetStatus === 'rejected' && requiredStatus === 'onboarding') {
+        // If rejected, they can be at onboarding to fix issues
+        return; 
       }
     }
   }, [authReady, user, profile, navigate, requiredStatus]);

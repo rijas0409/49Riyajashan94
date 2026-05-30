@@ -36,7 +36,7 @@ const VetPendingApproval = () => {
           .eq("user_id", session.user.id)
           .maybeSingle();
  
-        setRejectionReason(vetProfile?.verification_status === "failed" ? (vetProfile.rejection_reason || "Your application was not approved. Please review your details and try again.") : null);
+        setRejectionReason(vetProfile?.verification_status === "rejected" || vetProfile?.verification_status === "failed" ? (vetProfile.rejection_reason || "Your application did not meet our verification criteria at this time. Please review your details and resubmit.") : null);
  
         const { data: currentProfile } = await supabase.from("profiles").select("is_admin_approved, is_onboarding_complete").eq("id", session.user.id).single();
         if (currentProfile?.is_admin_approved) {
@@ -45,7 +45,7 @@ const VetPendingApproval = () => {
            return;
         }
 
-        if (currentProfile?.is_onboarding_complete === false) { navigate("/vet/onboarding"); return; }
+        if (!currentProfile?.is_onboarding_complete) { navigate("/vet/onboarding"); return; }
         
         setIsChecking(false);
 

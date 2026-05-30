@@ -56,6 +56,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           .maybeSingle();
         vetStatus = vetData?.verification_status || 'not_submitted';
         
+        // Map common alternative statuses to standard ones if needed
+        if (vetStatus === 'pending') vetStatus = 'pending_verification';
+        if (vetStatus === 'verified') vetStatus = 'approved';
+        if (vetStatus === 'failed') vetStatus = 'rejected';
+        
         // Gucci bypass
         if (userEmail === 'gucci@123.com' || userEmail === 'rijas@lv.com') {
            vetStatus = 'approved';
@@ -69,8 +74,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           photo: data.profile_photo,
           role: data.role || metaRole || null,
           vetStatus,
-          is_onboarding_complete: data.is_onboarding_complete,
-          is_admin_approved: data.is_admin_approved,
+          is_onboarding_complete: data.is_onboarding_complete ?? false,
+          is_admin_approved: data.is_admin_approved ?? false,
         });
         if (data.role) localStorage.setItem("sruvo_user_role", data.role);
         else if (metaRole) localStorage.setItem("sruvo_user_role", metaRole);
@@ -82,6 +87,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           photo: null,
           role: metaRole || null,
           vetStatus,
+          is_onboarding_complete: false,
+          is_admin_approved: false,
         });
         if (metaRole) localStorage.setItem("sruvo_user_role", metaRole);
       }
