@@ -60,7 +60,10 @@ const useBuyerActivityTracker = ({ entityType, entityId, entityName, entityImage
           .from("buyer_activity")
           .update({ duration_seconds: duration })
           .eq("id", aid)
-          .then(() => {});
+          .then(() => {})
+          .catch((err) => {
+            console.warn("buyer_activity final duration update failed:", err);
+          });
       }
     };
   }, [entityId, entityType]);
@@ -76,7 +79,10 @@ const useBuyerActivityTracker = ({ entityType, entityId, entityName, entityImage
       .from("buyer_activity")
       .update(updates)
       .eq("id", activityIdRef.current)
-      .then(() => {});
+      .then(() => {})
+      .catch((err) => {
+        console.warn("buyer_activity metadata update failed:", err);
+      });
   }, [entityName, entityImage]);
 };
 

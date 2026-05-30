@@ -264,7 +264,7 @@ const Vet = () => {
 
     const handleRealtimeChange = () => {
       // Delay fetching slightly to allow DB sequential updates to settle
-      setTimeout(fetchVets, 500);
+      setTimeout(fetchVets, 300);
     };
 
     // Real-time listener for vet profiles and profiles
@@ -274,10 +274,10 @@ const Vet = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleRealtimeChange)
       .subscribe();
 
-    // Polling fallback every 10 seconds just in case Realtime isn't configured for these tables
+    // Polling fallback every 2 seconds to make sure approval reflects instantly
     const pollInterval = setInterval(() => {
       fetchVets();
-    }, 10000);
+    }, 2000);
 
     return () => {
       supabase.removeChannel(channel);

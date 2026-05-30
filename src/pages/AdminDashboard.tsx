@@ -60,25 +60,34 @@ const AdminDashboard = () => {
   });
 
   const checkUser = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { navigate("/auth-admin"); return; }
-    
-    const { data: userRole } = await supabase.rpc('get_user_role', { _user_id: session.user.id });
-    const metaRole = session.user.user_metadata?.role;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { navigate("/auth-admin"); return; }
+      
+      const { data: userRole } = await supabase.rpc('get_user_role', { _user_id: session.user.id });
+      const metaRole = session.user.user_metadata?.role;
 
-    if (userRole !== 'admin' && metaRole !== 'admin') {
-      toast({ title: "Access Denied", description: "Admin access required.", variant: "destructive" });
-      navigate("/"); return;
+      if (userRole !== 'admin' && metaRole !== 'admin') {
+        toast({ title: "Access Denied", description: "Admin access required.", variant: "destructive" });
+        navigate("/"); return;
+      }
+      setUser(session.user);
+    } catch (err: any) {
+      console.error("checkUser error:", err);
+      navigate("/auth-admin");
     }
-    setUser(session.user);
   }, [navigate, toast]);
 
   const fetchProfilePhoto = useCallback(async () => {
-    if (!user?.id) return;
-    const { data } = await supabase.from("profiles").select("profile_photo").eq("id", user.id).maybeSingle();
-    if (data?.profile_photo) {
-      const url = data.profile_photo.startsWith("http") ? data.profile_photo : supabase.storage.from("vet-documents").getPublicUrl(data.profile_photo).data.publicUrl;
-      setProfilePhoto(url);
+    try {
+      if (!user?.id) return;
+      const { data } = await supabase.from("profiles").select("profile_photo").eq("id", user.id).maybeSingle();
+      if (data?.profile_photo) {
+        const url = data.profile_photo.startsWith("http") ? data.profile_photo : supabase.storage.from("vet-documents").getPublicUrl(data.profile_photo).data.publicUrl;
+        setProfilePhoto(url);
+      }
+    } catch (err: any) {
+      console.error("fetchProfilePhoto error:", err);
     }
   }, [user?.id]);
 

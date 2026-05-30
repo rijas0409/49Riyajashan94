@@ -61,7 +61,7 @@ export default function VetsNearYou() {
         const userIds = vetData.map((v) => v.user_id).filter(Boolean);
         const { data: profilesData } = await supabase
           .from("profiles")
-          .select("id, name, full_name, address, city, profile_photo")
+          .select("id, name, full_name, address, city, profile_photo, is_admin_approved")
           .in("id", userIds);
 
         const profilesMap = new Map();
@@ -69,33 +69,39 @@ export default function VetsNearYou() {
           profilesData.forEach((p) => profilesMap.set(p.id, p));
         }
 
-        const parsedVets: VetRecord[] = vetData.map((vp: any) => {
-          const profile = profilesMap.get(vp.user_id);
-          
-          let photo = vp.profile_photo || profile?.profile_photo;
-          if (photo && !photo.startsWith("http")) {
-            photo = supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
-          }
+        const parsedVets: VetRecord[] = vetData
+          .filter((vp: any) => {
+            const profile = profilesMap.get(vp.user_id);
+            if (profile && profile.is_admin_approved === false) return false;
+            return true;
+          })
+          .map((vp: any) => {
+            const profile = profilesMap.get(vp.user_id);
+            
+            let photo = vp.profile_photo || profile?.profile_photo;
+            if (photo && !photo.startsWith("http")) {
+              photo = supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
+            }
 
-          const rawName = profile?.full_name || profile?.name || "Veterinarian";
-          const specs = vp.specializations || [];
-          
-          // Generate a chunked search string
-          const addressStr = `${vp.clinic_address || ""} ${profile?.address || ""} ${profile?.city || ""}`.trim();
+            const rawName = profile?.full_name || profile?.name || "Veterinarian";
+            const specs = vp.specializations || [];
+            
+            // Generate a chunked search string
+            const addressStr = `${vp.clinic_address || ""} ${profile?.address || ""} ${profile?.city || ""}`.trim();
 
-          return {
-            id: vp.id,
-            user_id: vp.user_id,
-            name: `Dr. ${rawName}`,
-            specialty: specs.length > 0 ? specs[0] : "General Veterinarian",
-            experience: vp.years_of_experience || 0,
-            rating: vp.average_rating || 0,
-            onlineFee: vp.online_fee || 0,
-            image: photo || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=800&h=1200&fit=crop",
-            city: addressStr,
-            verification_status: vp.verification_status,
-          };
-        });
+            return {
+              id: vp.id,
+              user_id: vp.user_id,
+              name: `Dr. ${rawName}`,
+              specialty: specs.length > 0 ? specs[0] : "General Veterinarian",
+              experience: vp.years_of_experience || 0,
+              rating: vp.average_rating || 0,
+              onlineFee: vp.online_fee || 0,
+              image: photo || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=800&h=1200&fit=crop",
+              city: addressStr,
+              verification_status: vp.verification_status,
+            };
+          });
 
         setVets(parsedVets);
       } else {
@@ -113,20 +119,29 @@ export default function VetsNearYou() {
 
     fetchVets();
 
+    const handleRealtimeChange = () => {
+      setTimeout(fetchVets, 300);
+    };
+
     const channel = supabase
       .channel("realtime-vet-profiles-vats_nearby")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "vet_profiles" },
-        (payload) => {
-          console.log("Realtime event on vet_profiles (NearYou):", payload);
-          fetchVets();
-        }
+        handleRealtimeChange
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        handleRealtimeChange
       )
       .subscribe();
 
+    const pollInterval = setInterval(fetchVets, 2000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
     };
   }, [authReady]);
 

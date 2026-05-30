@@ -44,7 +44,7 @@ interface EducationRow {
 
 interface AvailabilityPeriod {
   enabled: boolean;
-  slots: string[];
+  slots: { time: string; location: string }[];
 }
 
 interface DayAvailability {
@@ -758,13 +758,26 @@ const VetOnboarding = () => {
   const handleSaveClockPickerSlot = (start24: string, end24: string) => {
     const formattedStart = convertTimeTo12Hr(start24);
     const formattedEnd = convertTimeTo12Hr(end24);
-    const newSlotStr = `${formattedStart} – ${formattedEnd}`;
+    const timeStr = `${formattedStart} – ${formattedEnd}`;
+
+    // Determine default location based on practiceType
+    let defaultLocation = "";
+    if (formData.practiceType.length === 1) {
+      if (formData.practiceType.includes("Hospital / Organization")) {
+        defaultLocation = "Hospital";
+      } else if (formData.practiceType.includes("Independent Clinic / Practice")) {
+        defaultLocation = "Independent Clinic";
+      }
+    } else if (formData.practiceType.length > 1) {
+      // Default to the first one, let user change in the card
+      defaultLocation = formData.practiceType[0].includes("Hospital") ? "Hospital" : "Independent Clinic";
+    }
 
     setWeeklyAvailability(prev => {
       const currentDayData = prev[selectedDay];
       const periodData = currentDayData[clockPickerPeriod];
       
-      if (periodData.slots.includes(newSlotStr)) {
+      if (periodData.slots.some(s => s.time === timeStr)) {
         toast.error("Time slot already exists");
         return prev;
       }
@@ -774,8 +787,10 @@ const VetOnboarding = () => {
         return prev;
       }
 
-      const updatedSlots = [...periodData.slots, newSlotStr];
-      updatedSlots.sort();
+      const newSlot = { time: timeStr, location: defaultLocation };
+      const updatedSlots = [...periodData.slots, newSlot];
+      // Sort by time
+      updatedSlots.sort((a, b) => a.time.localeCompare(b.time));
 
       const next = {
         ...prev,
@@ -815,19 +830,32 @@ const VetOnboarding = () => {
     }
     const formattedStart = convertTimeTo12Hr(newSlotStart);
     const formattedEnd = convertTimeTo12Hr(newSlotEnd);
-    const newSlotStr = `${formattedStart} – ${formattedEnd}`;
+    const timeStr = `${formattedStart} – ${formattedEnd}`;
+
+    // Determine default location based on practiceType
+    let defaultLocation = "";
+    if (formData.practiceType.length === 1) {
+      if (formData.practiceType.includes("Hospital / Organization")) {
+        defaultLocation = "Hospital";
+      } else if (formData.practiceType.includes("Independent Clinic / Practice")) {
+        defaultLocation = "Independent Clinic";
+      }
+    } else if (formData.practiceType.length > 1) {
+      defaultLocation = formData.practiceType[0].includes("Hospital") ? "Hospital" : "Independent Clinic";
+    }
 
     setWeeklyAvailability(prev => {
       const currentDayData = prev[selectedDay];
       const periodData = currentDayData[period];
       
-      if (periodData.slots.includes(newSlotStr)) {
+      if (periodData.slots.some(s => s.time === timeStr)) {
         toast.error("Time slot already exists");
         return prev;
       }
 
-      const updatedSlots = [...periodData.slots, newSlotStr];
-      updatedSlots.sort();
+      const newSlot = { time: timeStr, location: defaultLocation };
+      const updatedSlots = [...periodData.slots, newSlot];
+      updatedSlots.sort((a, b) => a.time.localeCompare(b.time));
 
       const next = {
         ...prev,
@@ -974,8 +1002,8 @@ const VetOnboarding = () => {
       const { data: existingVp } = await supabase.from('vet_profiles').select('*').eq('user_id', uid).maybeSingle();
 
       // Helper to handle new upload or preserve existing
-      const handleFile = async (file: File | null, type: string, existingPath: string | null) => {
-        if (file) return await uploadFile(file, uid, type);
+      const handleFile = async (file: File | string | null, type: string, existingPath: string | null) => {
+        if (file && file instanceof File) return await uploadFile(file, uid, type);
         return existingPath;
       };
 
@@ -1038,7 +1066,6 @@ const VetOnboarding = () => {
       const upsertData = {
         user_id: uid,
         qualification: formData.qualification,
-        self_practice: formData.isIndependentPractice,
         years_of_experience: parseInt(formData.yearsOfExperience) || 0,
         specializations: formData.specializations,
         consultation_type: formData.consultationTypes.join(", "),
@@ -1065,10 +1092,6 @@ const VetOnboarding = () => {
         hospital_employee_id: formData.hospitalEmployeeId,
         education_details: eduDetails,
         verification_status: "pending", 
-        rejection_reason: null as string | null, 
-        reviewed_at: null as string | null,
-        reviewed_by: null as string | null,
-        appeal_requested: false,
         is_active: true,
         city: formData.city,
         state: formData.state,
@@ -3086,21 +3109,88 @@ const VetOnboarding = () => {
 
                             {/* Center Slots list with responsive overflow */}
                             <div className="flex-1 flex flex-row flex-nowrap items-center gap-2 min-w-0 px-1 overflow-x-auto scrollbar-none py-0.5">
-                              {isEnabled && periodAvailability.slots.map((slot, sIdx) => (
-                                <div 
-                                  key={slot} 
-                                  className="flex items-center gap-1.5 bg-white border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-slate-700 shadow-xs transition hover:border-slate-300 shrink-0"
-                                >
-                                  <span>{slot}</span>
-                                  <button 
-                                    type="button" 
-                                    onClick={() => handleRemoveSlot(periodKey, sIdx)}
-                                    className="text-slate-400 hover:text-[#EC4899] transition-colors p-0.5 rounded-full hover:bg-slate-50 shrink-0"
+                              {isEnabled && periodAvailability.slots.map((slot, sIdx) => {
+                                const hasMultipleLocations = formData.practiceType.length > 1;
+                                
+                                return (
+                                  <div 
+                                    key={`${slot.time}-${sIdx}`} 
+                                    className="flex flex-col gap-1.5 bg-white border border-slate-200 p-2 sm:p-2.5 rounded-2xl text-xs sm:text-sm font-bold text-slate-700 shadow-xs transition hover:border-slate-300 shrink-0 min-w-[130px]"
                                   >
-                                    <X className="w-3 h-3 stroke-[2.5]" />
-                                  </button>
-                                </div>
-                              ))}
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-[#333] font-black">{slot.time}</span>
+                                      <button 
+                                        type="button" 
+                                        onClick={() => handleRemoveSlot(periodKey, sIdx)}
+                                        className="text-slate-400 hover:text-[#EC4899] transition-colors p-0.5 rounded-full hover:bg-slate-50 shrink-0"
+                                      >
+                                        <X className="w-3.5 h-3.5 stroke-[2.5]" />
+                                      </button>
+                                    </div>
+                                    
+                                    {hasMultipleLocations ? (
+                                      <Select
+                                        value={slot.location}
+                                        onValueChange={(val) => {
+                                          setWeeklyAvailability(prev => {
+                                            const currentDayData = prev[selectedDay];
+                                            const periodData = currentDayData[periodKey];
+                                            const updatedSlots = [...periodData.slots];
+                                            updatedSlots[sIdx] = { ...updatedSlots[sIdx], location: val };
+                                            
+                                            const next = {
+                                              ...prev,
+                                              [selectedDay]: {
+                                                ...currentDayData,
+                                                [periodKey]: {
+                                                  ...periodData,
+                                                  slots: updatedSlots
+                                                }
+                                              }
+                                            };
+                                            
+                                            if (sameTimingAllDays) {
+                                              const sourceDayData = next[selectedDay];
+                                              Object.keys(next).forEach(day => {
+                                                if (day !== selectedDay) {
+                                                  const isDayActive = next[day] && (next[day].morning.enabled || next[day].afternoon.enabled || next[day].evening.enabled || next[day].night.enabled);
+                                                  if (isDayActive) {
+                                                    next[day] = JSON.parse(JSON.stringify(sourceDayData));
+                                                  }
+                                                }
+                                              });
+                                            }
+                                            return next;
+                                          });
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-6 text-[10px] sm:text-xs py-0 px-2 rounded-lg border-slate-100 bg-slate-50/50 hover:bg-slate-100 font-bold focus:ring-1 focus:ring-pink-200">
+                                          <SelectValue placeholder="Location" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {formData.practiceType.map(pt => {
+                                            const label = pt.includes("Hospital") ? "Hospital" : "Independent Clinic";
+                                            return (
+                                              <SelectItem key={pt} value={label} className="text-[10px] sm:text-xs font-semibold">
+                                                {label}
+                                              </SelectItem>
+                                            );
+                                          })}
+                                        </SelectContent>
+                                      </Select>
+                                    ) : (
+                                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pink-50/50 border border-pink-100/40 w-fit">
+                                        <span className="text-[9.5px] sm:text-[10.5px] text-[#EC4899] font-black uppercase tracking-tight">
+                                          {slot.location || "Clinic"}
+                                        </span>
+                                      </div>
+                                    )}
+                                    <div className="text-[9px] text-slate-400 font-medium">
+                                      {periodInfo.label} Period
+                                    </div>
+                                  </div>
+                                );
+                              })}
                               {isEnabled ? (
                                 (periodKey === "morning" && periodAvailability.slots.length >= 1) ? null : (
                                   <button
@@ -4138,8 +4228,8 @@ const VetOnboarding = () => {
                                               <div className="flex flex-col min-w-0">
                                                 <span className="font-extrabold text-[#1E293B] text-xs tracking-tight truncate">{periodInfo.label}</span>
                                                 {periodAvailability.slots.length > 0 ? (
-                                                  <span className="text-[10px] font-semibold opacity-75 truncate leading-tight block text-primary font-sans" title={periodAvailability.slots.join(", ")}>
-                                                    {periodAvailability.slots.join(", ")}
+                                                  <span className="text-[10px] font-semibold opacity-75 truncate leading-tight block text-primary font-sans" title={periodAvailability.slots.map(s => typeof s === 'string' ? s : s.time).join(", ")}>
+                                                    {periodAvailability.slots.map(s => typeof s === 'string' ? s : s.time).join(", ")}
                                                   </span>
                                                 ) : (
                                                   isEnabled ? (
@@ -4153,14 +4243,21 @@ const VetOnboarding = () => {
 
                                             {/* Center Slots */}
                                             <div className="flex-1 flex flex-row flex-wrap items-center gap-2 min-w-0 px-1">
-                                              {isEnabled && periodAvailability.slots.map((slot) => (
-                                                <div 
-                                                  key={slot} 
-                                                  className="flex items-center gap-1.5 bg-white border border-slate-200/85 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 shadow-3xs shrink-0"
-                                                >
-                                                  <span>{slot}</span>
-                                                </div>
-                                              ))}
+                                              {isEnabled && periodAvailability.slots.map((slot, sIdx) => {
+                                                const time = typeof slot === 'string' ? slot : slot.time;
+                                                const location = typeof slot === 'object' ? slot.location : null;
+                                                return (
+                                                  <div 
+                                                    key={`${time}-${sIdx}`} 
+                                                    className="flex flex-col gap-0.5 bg-white border border-slate-200/85 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 shadow-3xs shrink-0"
+                                                  >
+                                                    <span>{time}</span>
+                                                    {location && (
+                                                      <span className="text-[9px] text-[#EC4899] font-black uppercase tracking-tight">{location}</span>
+                                                    )}
+                                                  </div>
+                                                );
+                                              })}
                                               {isEnabled && periodAvailability.slots.length === 0 && (
                                                 <span className="text-slate-400 font-semibold text-xs italic">No slots created</span>
                                               )}
