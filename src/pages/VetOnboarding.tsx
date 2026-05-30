@@ -1061,7 +1061,6 @@ const VetOnboarding = () => {
         passport_photo_file: passportUrl,
         clinic_shop_license_file: shopLicUrl,
         gst_certificate_file: gstUrl,
-        clinic_address_proof_file: clinicAddrProofUrl,
         vendor_agreement_accepted: formData.vendorAgreement,
         telemedicine_consent_accepted: formData.telemedicineConsent,
         clinic_photos: clinicPhotoUrls,
@@ -1422,7 +1421,7 @@ const VetOnboarding = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 max-w-3xl">
+      <main className={cn("container mx-auto px-4 py-6 transition-all duration-300", currentStep === 5 ? "max-w-4xl" : "max-w-3xl")}>
         {/* Progress bar */}
         <div className="flex items-center justify-between md:justify-center gap-1 md:gap-3 mb-6 bg-card p-3 rounded-2xl border border-border/60 shadow-sm overflow-x-auto scrollbar-none">
           {visibleSteps.map((step, i) => {
@@ -2636,7 +2635,7 @@ const VetOnboarding = () => {
 
               {/* ══════ STEP 5 – Availability & Fees ══════ */}
               {currentStep === 5 && (
-                <div className="space-y-4 animate-fade-in">
+                <div className="space-y-4 animate-fade-in -mx-4 sm:-mx-[49px] px-4 sm:px-[49px]">
                   <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
