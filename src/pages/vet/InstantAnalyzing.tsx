@@ -30,7 +30,7 @@ const InstantAnalyzing = () => {
   useEffect(() => {
     const isBypassUser = user?.email === 'jas@sruvo.com' || user?.email === 'rijas@123.com';
 
-    // Progress bar animation - 94 seconds total (940ms per percent)
+    // Progress bar animation - 8 seconds total (80ms per percent)
     const progressInterval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 100) {
@@ -38,17 +38,17 @@ const InstantAnalyzing = () => {
           if (!vetFound) setIsFailed(true);
           return 100;
         }
-        // Slow down even more near the end if not found
-        if (prev > 80 && !vetFound) return prev + 0.5;
+        // Slow down slightly near the end if not found
+        if (prev > 85 && !vetFound) return prev + 0.3;
         // Speed up for bypass users
         if (isBypassUser) return prev + 5;
         return prev + 1;
       });
-    }, isBypassUser ? 100 : 940);
+    }, isBypassUser ? 50 : 80);
 
-    // Step progression - spread across 94 seconds
-    const baseStepIntervals = [2000, 15000, 45000, 75000];
-    const stepIntervals = isBypassUser ? baseStepIntervals.map(i => i / 10) : baseStepIntervals;
+    // Step progression - spread across 8 seconds
+    const baseStepIntervals = [800, 2500, 4500, 6500];
+    const stepIntervals = isBypassUser ? baseStepIntervals.map(i => i / 4) : baseStepIntervals;
     const timers = steps.map((_, i) =>
       setTimeout(() => setActiveStep(i), stepIntervals[i])
     );
@@ -131,7 +131,7 @@ const InstantAnalyzing = () => {
                 onlineFee: bestVet.online_fee || 500,
                 offlineFee: bestVet.offline_fee || 800,
               });
-            }, 12000); // Increased find time to be more realistic in the 94s window
+            }, isBypassUser ? 1000 : 3500); 
           }
         }
       } catch (err) {
@@ -146,7 +146,7 @@ const InstantAnalyzing = () => {
       clearInterval(progressInterval);
       timers.forEach(clearTimeout);
     };
-  }, [user?.email, vetFound, assessmentData]);
+  }, [user?.email, assessmentData]);
 
   useEffect(() => {
     if (vetFound && matchedVet) {

@@ -3087,16 +3087,24 @@ const VetOnboarding = () => {
                             }`}
                           >
                             {/* Left Period Metadata visual card layout */}
-                            <div className={`flex items-center gap-2 py-1.5 px-3 rounded-xl border w-full md:w-[145px] shrink-0 ${periodInfo.bg}`}>
+                            <div className={`flex items-center gap-2 py-1.5 px-3 rounded-xl border w-full md:w-[155px] shrink-0 ${periodInfo.bg}`}>
                               <div className="shrink-0">
                                 {periodInfo.icon}
                               </div>
                               <div className="flex flex-col min-w-0">
                                 <span className="font-bold text-xs sm:text-sm tracking-tight truncate">{periodInfo.label}</span>
                                 {periodAvailability.slots.length > 0 ? (
-                                  <span className="text-[9px] sm:text-[11px] font-semibold opacity-75 truncate leading-tight block text-primary font-sans" title={periodAvailability.slots.join(", ")}>
-                                    {periodAvailability.slots.join(", ")}
-                                  </span>
+                                  <div className="flex flex-col gap-0.5 min-w-0">
+                                    <span className="text-[9px] sm:text-[10px] font-bold opacity-75 truncate leading-tight block text-primary font-sans" title={periodAvailability.slots.map(s => s.time).join(", ")}>
+                                      {periodAvailability.slots.map(s => s.time).join(", ")}
+                                    </span>
+                                    {periodAvailability.slots.length === 1 && (
+                                      <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-tight opacity-60 truncate flex items-center gap-1">
+                                        {periodAvailability.slots[0].location === "Hospital" ? <Stethoscope className="w-2 h-2" /> : <Building2 className="w-2 h-2" />}
+                                        {periodAvailability.slots[0].location}
+                                      </span>
+                                    )}
+                                  </div>
                                 ) : (
                                   isEnabled ? (
                                     <span className="text-[9px] sm:text-[11px] font-semibold opacity-75 truncate leading-tight block text-slate-500 font-sans">
@@ -3108,85 +3116,88 @@ const VetOnboarding = () => {
                             </div>
 
                             {/* Center Slots list with responsive overflow */}
-                            <div className="flex-1 flex flex-row flex-nowrap items-center gap-2 min-w-0 px-1 overflow-x-auto scrollbar-none py-0.5">
+                            <div className="flex-1 flex flex-row flex-wrap items-center gap-2 min-w-0 px-1 py-0.5">
                               {isEnabled && periodAvailability.slots.map((slot, sIdx) => {
                                 const hasMultipleLocations = formData.practiceType.length > 1;
                                 
                                 return (
-                                  <div 
-                                    key={`${slot.time}-${sIdx}`} 
-                                    className="flex flex-col gap-1.5 bg-white border border-slate-200 p-2 sm:p-2.5 rounded-2xl text-xs sm:text-sm font-bold text-slate-700 shadow-xs transition hover:border-slate-300 shrink-0 min-w-[130px]"
-                                  >
-                                    <div className="flex items-center justify-between gap-2">
-                                      <span className="text-[#333] font-black">{slot.time}</span>
-                                      <button 
-                                        type="button" 
-                                        onClick={() => handleRemoveSlot(periodKey, sIdx)}
-                                        className="text-slate-400 hover:text-[#EC4899] transition-colors p-0.5 rounded-full hover:bg-slate-50 shrink-0"
-                                      >
-                                        <X className="w-3.5 h-3.5 stroke-[2.5]" />
-                                      </button>
-                                    </div>
-                                    
-                                    {hasMultipleLocations ? (
-                                      <Select
-                                        value={slot.location}
-                                        onValueChange={(val) => {
-                                          setWeeklyAvailability(prev => {
-                                            const currentDayData = prev[selectedDay];
-                                            const periodData = currentDayData[periodKey];
-                                            const updatedSlots = [...periodData.slots];
-                                            updatedSlots[sIdx] = { ...updatedSlots[sIdx], location: val };
-                                            
-                                            const next = {
-                                              ...prev,
-                                              [selectedDay]: {
-                                                ...currentDayData,
-                                                [periodKey]: {
-                                                  ...periodData,
-                                                  slots: updatedSlots
-                                                }
-                                              }
-                                            };
-                                            
-                                            if (sameTimingAllDays) {
-                                              const sourceDayData = next[selectedDay];
-                                              Object.keys(next).forEach(day => {
-                                                if (day !== selectedDay) {
-                                                  const isDayActive = next[day] && (next[day].morning.enabled || next[day].afternoon.enabled || next[day].evening.enabled || next[day].night.enabled);
-                                                  if (isDayActive) {
-                                                    next[day] = JSON.parse(JSON.stringify(sourceDayData));
+                                  <div key={`${slot.time}-${sIdx}`} className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-slate-700 shadow-3xs transition hover:border-slate-300 shrink-0">
+                                    <div className="flex flex-col gap-0.5">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[#333] font-black">{slot.time}</span>
+                                        <button 
+                                          type="button" 
+                                          onClick={() => handleRemoveSlot(periodKey, sIdx)}
+                                          className="text-slate-400 hover:text-[#EC4899] transition-colors p-0.5 rounded-full hover:bg-slate-50 shrink-0"
+                                        >
+                                          <X className="w-3 h-3 stroke-[2.5]" />
+                                        </button>
+                                      </div>
+                                      
+                                      {hasMultipleLocations ? (
+                                        <Select
+                                          value={slot.location}
+                                          onValueChange={(val) => {
+                                            setWeeklyAvailability(prev => {
+                                              const currentDayData = prev[selectedDay];
+                                              const periodData = currentDayData[periodKey];
+                                              const updatedSlots = [...periodData.slots];
+                                              updatedSlots[sIdx] = { ...updatedSlots[sIdx], location: val };
+                                              
+                                              const next = {
+                                                ...prev,
+                                                [selectedDay]: {
+                                                  ...currentDayData,
+                                                  [periodKey]: {
+                                                    ...periodData,
+                                                    slots: updatedSlots
                                                   }
                                                 }
-                                              });
-                                            }
-                                            return next;
-                                          });
-                                        }}
-                                      >
-                                        <SelectTrigger className="h-6 text-[10px] sm:text-xs py-0 px-2 rounded-lg border-slate-100 bg-slate-50/50 hover:bg-slate-100 font-bold focus:ring-1 focus:ring-pink-200">
-                                          <SelectValue placeholder="Location" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {formData.practiceType.map(pt => {
-                                            const label = pt.includes("Hospital") ? "Hospital" : "Independent Clinic";
-                                            return (
-                                              <SelectItem key={pt} value={label} className="text-[10px] sm:text-xs font-semibold">
-                                                {label}
-                                              </SelectItem>
-                                            );
-                                          })}
-                                        </SelectContent>
-                                      </Select>
-                                    ) : (
-                                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pink-50/50 border border-pink-100/40 w-fit">
-                                        <span className="text-[9.5px] sm:text-[10.5px] text-[#EC4899] font-black uppercase tracking-tight">
-                                          {slot.location || "Clinic"}
-                                        </span>
-                                      </div>
-                                    )}
-                                    <div className="text-[9px] text-slate-400 font-medium">
-                                      {periodInfo.label} Period
+                                              };
+                                              
+                                              if (sameTimingAllDays) {
+                                                const sourceDayData = next[selectedDay];
+                                                Object.keys(next).forEach(day => {
+                                                  if (day !== selectedDay) {
+                                                    const isDayActive = next[day] && (next[day].morning.enabled || next[day].afternoon.enabled || next[day].evening.enabled || next[day].night.enabled);
+                                                    if (isDayActive) {
+                                                      next[day] = JSON.parse(JSON.stringify(sourceDayData));
+                                                    }
+                                                  }
+                                                });
+                                              }
+                                              return next;
+                                            });
+                                          }}
+                                        >
+                                          <SelectTrigger className="h-6 min-w-[90px] text-[9px] py-0 px-1.5 rounded-lg border-none bg-pink-50/50 hover:bg-pink-100/50 font-bold focus:ring-0 shadow-none -ml-1">
+                                            <div className="flex items-center gap-1 overflow-hidden">
+                                              {slot.location === "Hospital" ? <Stethoscope className="w-2.5 h-2.5 text-[#EC4899]" /> : <Building2 className="w-2.5 h-2.5 text-[#EC4899]" />}
+                                              <SelectValue placeholder="Location" />
+                                            </div>
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {formData.practiceType.map(pt => {
+                                              const label = pt.includes("Hospital") ? "Hospital" : "Independent Clinic";
+                                              return (
+                                                <SelectItem key={pt} value={label} className="text-[10px] font-semibold">
+                                                  <div className="flex items-center gap-2">
+                                                    {label === "Hospital" ? <Stethoscope className="w-3 h-3" /> : <Building2 className="w-3 h-3" />}
+                                                    {label}
+                                                  </div>
+                                                </SelectItem>
+                                              );
+                                            })}
+                                          </SelectContent>
+                                        </Select>
+                                      ) : (
+                                        <div className="flex items-center gap-1 transition-all opacity-80">
+                                          {slot.location === "Hospital" ? <Stethoscope className="w-2.5 h-2.5 text-[#EC4899]" /> : <Building2 className="w-2.5 h-2.5 text-[#EC4899]" />}
+                                          <span className="text-[9px] text-[#EC4899] font-black uppercase tracking-tight">
+                                            {slot.location || "Clinic"}
+                                          </span>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 );

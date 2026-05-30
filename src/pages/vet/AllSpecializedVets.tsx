@@ -216,7 +216,7 @@ export default function AllSpecializedVets() {
             {filteredVets.map((vet) => (
               <div 
                 key={vet.id}
-                onClick={() => navigate(`/vet/${vet.id}`)}
+                onClick={() => navigate(`/vet/doctor/${vet.id}`)}
                 className="bg-white rounded-2xl p-4 shadow-sm border border-neutral-100 flex gap-4 cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99]"
               >
                 <div className="w-24 h-24 rounded-2xl overflow-hidden bg-neutral-100 shrink-0">

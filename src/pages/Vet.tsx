@@ -123,6 +123,7 @@ const Vet = () => {
   const { totalWishlistCount } = useWishlist();
   const [realVets, setRealVets] = useState<RealVet[]>([]);
   const [displayVets, setDisplayVets] = useState<RealVet[]>([]);
+  const [allSpecializedVets, setAllSpecializedVets] = useState<RealVet[]>([]);
 
   const DEMO_CLINICS: Clinic[] = [
     {
@@ -185,6 +186,7 @@ const Vet = () => {
         console.warn("[Vet.tsx] No verified and active vet_profiles returned. RLS or empty table?");
         setRealVets([]);
         setDisplayVets([]);
+        setAllSpecializedVets([]);
         return;
       }
 
@@ -200,7 +202,7 @@ const Vet = () => {
         console.log(`[Vet.tsx] Fetched ${profiles?.length || 0} associated profiles:`, profiles);
       }
 
-      let vetsArr: RealVet[] = [];
+      const pMap = new Map((profiles || []).map((p) => [p.id, p]));
 
       const getPublicUrl = (photo: string) => {
         if (!photo) return "";
@@ -208,33 +210,13 @@ const Vet = () => {
         return supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
       };
 
-      interface VetProfileItem {
-        id?: string;
-        user_id: string;
-        specializations?: string[];
-        years_of_experience?: number;
-        online_fee?: number;
-        average_rating?: number | null;
-        verification_status?: string;
-        is_active?: boolean | null;
-        profile_photo?: string | null;
-        offline_fee?: number;
-        clinic_address?: string | null;
-      }
-
-      const pMap = new Map((profiles || []).map((p) => [p.id, p]));
-
-      vetsArr = vetProfiles
+      // Raw array of all verified vets
+      const rawVetsArr: RealVet[] = vetProfiles
         .filter(vp => {
           const p = pMap.get(vp.user_id);
           // If profile exists, check if admin approved. If profile is missing, bypass check.
-          if (p && !p.is_admin_approved) return false;
-
-          const addrMatch = matchCity(p?.address || null, location);
-          const clinicMatch = matchCity(vp?.clinic_address || null, location);
-          const noLocationKnown = !p?.address && !vp?.clinic_address;
-          
-          return addrMatch || clinicMatch || noLocationKnown || !location || location.toLowerCase() === "all" || location.toLowerCase() === "";
+          if (p && p.is_admin_approved === false) return false;
+          return true;
         })
         .map((vp) => {
           const p = pMap.get(vp.user_id);
@@ -252,12 +234,24 @@ const Vet = () => {
             verified: vp?.verification_status === "verified",
             isActive: vp?.is_active ?? true,
             distance: Math.floor(Math.random() * 20) + 1,
-            availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`
+            availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`,
+            address: p?.address,
+            clinic_address: vp?.clinic_address
           };
         });
 
-      setRealVets(vetsArr);
-      setDisplayVets(vetsArr);
+      // Filtered by city for "Near You"
+      const filteredVets = rawVetsArr.filter(vet => {
+        const addrMatch = matchCity(vet.address || null, location);
+        const clinicMatch = matchCity(vet.clinic_address || null, location);
+        const noLocationKnown = !vet.address && !vet.clinic_address;
+        
+        return addrMatch || clinicMatch || noLocationKnown || !location || location.toLowerCase() === "all" || location.toLowerCase() === "";
+      });
+
+      setRealVets(rawVetsArr);
+      setDisplayVets(filteredVets);
+      setAllSpecializedVets(rawVetsArr);
     };
 
     fetchVets();
@@ -678,12 +672,12 @@ const Vet = () => {
               See All
             </button>
           </div>
-          {displayVets.length === 0 ? (
+          {allSpecializedVets.length === 0 ? (
             <div className="bg-card rounded-2xl p-6 border border-border text-center">
               <p className="text-sm text-muted-foreground">No specialized vets available yet</p>
             </div>
           ) : (
-            displayVets.slice(0, 4).map((doctor) => (
+            allSpecializedVets.slice(0, 4).map((doctor) => (
               <div 
                 key={doctor.id} 
                 onClick={() => navigate(`/vet/doctor/${doctor.id}`)} 

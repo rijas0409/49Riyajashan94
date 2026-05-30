@@ -499,8 +499,8 @@ const AdminVets = ({ data, actions }: Props) => {
                           </h4>
                           <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                             <DetailItem label="Clinic/Practice Name" value={selectedVet.clinic_name} />
-                            <DetailItem label="State" value={selectedVet.state} />
-                            <DetailItem label="City" value={selectedVet.city} />
+                            <DetailItem label="State" value={selectedVet.state || selectedVet.profile?.state} />
+                            <DetailItem label="City" value={selectedVet.city || selectedVet.profile?.city} />
                             <DetailItem label="Pincode" value={selectedVet.clinic_pincode} />
                             <DetailItem label="GST Number (Optional)" value={selectedVet.clinic_gst} />
                             <div className="col-span-2">
@@ -545,8 +545,8 @@ const AdminVets = ({ data, actions }: Props) => {
                           <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                             <DetailItem label="Hospital / Organization Name" value={selectedVet.hospital_name} />
                             <DetailItem label="Your Role / Designation" value={selectedVet.hospital_role} />
-                            <DetailItem label="State" value={selectedVet.state} />
-                            <DetailItem label="City" value={selectedVet.city} />
+                            <DetailItem label="State" value={selectedVet.state || selectedVet.profile?.state} />
+                            <DetailItem label="City" value={selectedVet.city || selectedVet.profile?.city} />
                             <DetailItem label="Pincode" value={selectedVet.hospital_pincode} />
                             <DetailItem label="Employee ID" value={selectedVet.hospital_employee_id} />
                             <div className="col-span-2">

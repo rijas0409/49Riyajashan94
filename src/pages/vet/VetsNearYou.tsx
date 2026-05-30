@@ -236,7 +236,7 @@ export default function VetsNearYou() {
           filteredVets.map((doctor) => (
             <div 
               key={doctor.id}
-              onClick={() => navigate(`/vet/${doctor.id}`)}
+              onClick={() => navigate(`/vet/doctor/${doctor.id}`)}
               className="bg-white rounded-3xl p-4 shadow-sm border border-neutral-100 flex gap-4 cursor-pointer hover:shadow-md transition-all active:scale-[0.99] group"
             >
               <div className="relative w-[100px] h-[100px] shrink-0">

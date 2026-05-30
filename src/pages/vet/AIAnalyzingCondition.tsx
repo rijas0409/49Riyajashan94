@@ -31,12 +31,12 @@ const AIAnalyzingCondition = () => {
     const progressInterval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 100) return 100;
-        return prev + (isBypassUser ? 5 : 1);
+        return prev + (isBypassUser ? 5 : 2);
       });
-    }, 80);
+    }, isBypassUser ? 40 : 80);
 
     const timers = steps.map((_, i) =>
-      setTimeout(() => setActiveStep(i), i * (isBypassUser ? 500 : 2000))
+      setTimeout(() => setActiveStep(i), i * (isBypassUser ? 300 : 900))
     );
 
     // Fetch real vet from DB and navigate with data
@@ -117,7 +117,7 @@ const AIAnalyzingCondition = () => {
               image: bestVet.profile_photo || bestVet.profile?.profile_photo || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
               rating: bestVet.average_rating || 4.9,
               experience: bestVet.years_of_experience || 0,
-              fee: bestVet.offline_fee || 800,
+              fee: bestVet.online_fee || 800,
               qualification: bestVet.qualification || "BVSc",
               onlineFee: bestVet.online_fee || 500,
               offlineFee: bestVet.offline_fee || 800,
@@ -131,13 +131,13 @@ const AIAnalyzingCondition = () => {
           navigate("/vet/booking-details", {
             state: { ...assessmentData, matchedVet }
           });
-        }, isBypassUser ? 2000 : 8000);
+        }, isBypassUser ? 1500 : 4000);
       } catch (err) {
         console.error('Error fetching vet:', err);
         // toast.error("Failed to connect with analytical server. Retrying..."); // Optional or use regular console.error
         setTimeout(() => {
           navigate("/vet/booking-details", { state: assessmentData });
-        }, isBypassUser ? 2000 : 8000);
+        }, isBypassUser ? 1500 : 4000);
       }
     };
 
