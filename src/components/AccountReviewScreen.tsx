@@ -7,9 +7,10 @@ interface AccountReviewScreenProps {
   onLogout?: () => void;
   rejectionReason?: string | null;
   onEditProfile?: () => void;
+  isRejected?: boolean;
 }
 
-export const AccountReviewScreen = ({ onLogout, rejectionReason, onEditProfile }: AccountReviewScreenProps) => {
+export const AccountReviewScreen = ({ onLogout, rejectionReason, onEditProfile, isRejected }: AccountReviewScreenProps) => {
   const handleLogout = async () => { 
     if (onLogout) {
       onLogout();
@@ -24,50 +25,60 @@ export const AccountReviewScreen = ({ onLogout, rejectionReason, onEditProfile }
     }
   };
 
-  if (rejectionReason) {
+  if (rejectionReason || isRejected) {
     return (
-      <div className="min-h-screen bg-gradient-soft flex flex-col items-center justify-center p-4">
-        <Card className="w-full max-w-md border-0 shadow-card animate-fade-in text-center border-t-4 border-destructive">
-          <CardHeader className="space-y-4">
-            <div className="w-20 h-20 mx-auto bg-destructive/10 rounded-full flex items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center p-4">
+        <Card className="w-full max-w-md border-0 shadow-2xl animate-fade-in text-center overflow-hidden bg-white/90 backdrop-blur-sm">
+          <div className="h-2 w-full bg-destructive" />
+          <CardHeader className="space-y-4 pt-8">
+            <div className="w-20 h-20 mx-auto bg-destructive/10 rounded-full flex items-center justify-center animate-bounce-subtle">
               <XCircle className="w-10 h-10 text-destructive" />
             </div>
-            <CardTitle className="text-2xl font-bold text-destructive">
-              Application Rejected
-            </CardTitle>
-            <CardDescription className="text-base text-muted-foreground max-w-sm mx-auto">
-              Unfortunately, your veterinary application was not approved at this time.
-            </CardDescription>
+            <div className="space-y-1">
+              <CardTitle className="text-2xl font-black text-destructive tracking-tight">
+                Application Rejected
+              </CardTitle>
+              <CardDescription className="text-sm font-medium text-muted-foreground px-4">
+                We've completed the review of your professional credentials.
+              </CardDescription>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="bg-destructive/5 rounded-3xl p-5 space-y-4 border border-destructive/10 text-left">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold text-sm text-destructive uppercase tracking-wide">Reason for Rejection</p>
-                  <p className="text-sm text-[hsl(220,20%,15%)] font-medium leading-relaxed mt-1">
-                    {rejectionReason}
-                  </p>
-                </div>
-              </div>
+          <CardContent className="space-y-6 pb-8">
+            <div className="bg-destructive/[0.03] rounded-2xl p-6 border border-destructive/10 text-left relative overflow-hidden">
+               <div className="absolute top-0 right-0 p-3 opacity-10">
+                  <AlertCircle className="w-12 h-12 text-destructive" />
+               </div>
+               <p className="font-bold text-[10px] text-destructive uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                 <Shield className="w-3 h-3" />
+                 Official Review Outcome
+               </p>
+               <p className="text-sm text-[hsl(220,20%,15%)] font-semibold leading-relaxed">
+                 {rejectionReason || "Your application did not meet our verification criteria at this time. Common reasons include incomplete documentation or unverified medical registration."}
+               </p>
             </div>
 
-            <div className="p-4 bg-muted/40 rounded-2xl border border-border/50 text-xs text-muted-foreground leading-relaxed">
-              Don't worry! You can appeal this decision by editing your information and resubmitting your application for another review.
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/60 text-[11px] text-slate-500 font-medium leading-relaxed">
+              Don't worry! This isn't final. You can update your details, upload the correct certificates, and resubmit for another review.
             </div>
             
-            <Button 
-              className="w-full rounded-2xl bg-gradient-primary h-12 text-sm font-bold shadow-lg" 
-              onClick={onEditProfile}
-            >
-              <Edit3 className="w-4 h-4 mr-2" />
-              Edit & Resubmit Application
-            </Button>
+            <div className="flex flex-col gap-3">
+              <Button 
+                className="w-full rounded-xl bg-destructive hover:bg-destructive/90 text-white h-12 text-sm font-bold shadow-lg shadow-destructive/20 transition-all active:scale-[0.98]" 
+                onClick={onEditProfile}
+              >
+                <Edit3 className="w-4 h-4 mr-2" />
+                Edit & Resubmit Application
+              </Button>
 
-            <Button variant="ghost" className="w-full rounded-2xl text-muted-foreground py-0 h-auto" onClick={handleLogout}>
-              <LogOut className="w-3 h-3 mr-1.5" />
-              Sign out
-            </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full rounded-xl text-muted-foreground h-10 hover:bg-slate-100 font-bold text-xs" 
+                onClick={handleLogout}
+              >
+                <LogOut className="w-3.5 h-3.5 mr-2" />
+                Sign Out
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

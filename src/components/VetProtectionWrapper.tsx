@@ -15,7 +15,13 @@ export const VetProtectionWrapper = ({ children, requiredStatus }: { children: R
       }
 
       // Check onboarding status
-      const isOnboardingComplete = profile?.is_onboarding_complete ?? false;
+      const isOnboardingComplete = profile?.is_onboarding_complete;
+      
+      // Wait if the full profile from database has not loaded yet
+      if (isOnboardingComplete === undefined) {
+        return;
+      }
+
       const isAdminApproved = profile?.is_admin_approved ?? false;
 
       if (!isOnboardingComplete && requiredStatus !== 'onboarding') {
@@ -28,8 +34,8 @@ export const VetProtectionWrapper = ({ children, requiredStatus }: { children: R
     }
   }, [authReady, user, profile, navigate, requiredStatus]);
 
-  if (!authReady) {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /></div>;
+  if (!authReady || (user && profile?.role === 'vet' && profile?.is_onboarding_complete === undefined)) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-teal-600" /></div>;
   }
 
   return <>{children}</>;

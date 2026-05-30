@@ -973,7 +973,10 @@ const VetOnboarding = () => {
   /* ─── submit ─── */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.termsAccepted || !formData.vendorAgreement) { toast.error("Please accept all required agreements"); return; }
+    if (!formData.termsAccepted || !formData.vendorAgreement || !formData.telemedicineConsent) { 
+      toast.error("Please accept all 3 required agreements and consents"); 
+      return; 
+    }
     setIsLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -4329,7 +4332,7 @@ const VetOnboarding = () => {
                   {/* Submission and back buttons exactly formatted */}
                   <div className="flex gap-3 pt-4">
                     <Button type="button" variant="outline" className="flex-1 rounded-2xl h-11 font-bold text-slate-600 border-slate-200" onClick={() => setCurrentStep(5)}>Back</Button>
-                    <Button type="submit" className="flex-1 rounded-2xl h-11 bg-gradient-primary font-bold text-white shadow-sm" disabled={isLoading || !formData.termsAccepted || !formData.vendorAgreement}>
+                    <Button type="submit" className="flex-1 rounded-2xl h-11 bg-gradient-primary font-bold text-white shadow-sm" disabled={isLoading || !formData.termsAccepted || !formData.vendorAgreement || !formData.telemedicineConsent}>
                       {isLoading ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" strokeWidth={2.5} />Submitting...</>) : "Submit for Verification"}
                     </Button>
                   </div>

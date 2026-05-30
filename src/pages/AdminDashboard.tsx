@@ -303,6 +303,14 @@ const AdminDashboard = () => {
       }
 
       if (r2) throw r2;
+      
+      // Audit Log
+      await supabase.from("admin_vet_verification_logs").insert({
+        vet_id: id,
+        admin_id: user?.id,
+        action: 'approve'
+      });
+
       if (!d2 || d2.length === 0) {
         console.warn("Vet profiles update affected 0 rows for user_id:", id);
         throw new Error("Could not update vet database. The vet profile might not exist for this user.");
@@ -340,6 +348,15 @@ const AdminDashboard = () => {
       }
 
       if (r1 || r2) throw r1 || r2;
+      
+      // Audit Log
+      await supabase.from("admin_vet_verification_logs").insert({
+        vet_id: id,
+        admin_id: user?.id,
+        action: 'reject',
+        rejection_reason: reason || "Your application was not approved."
+      });
+
       if (!d2 || d2.length === 0) throw new Error("Update failed: No rows updated. Possibly due to RLS.");
       
       toast({ title: "Vet Rejected" });

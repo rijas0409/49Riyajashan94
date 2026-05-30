@@ -1,6 +1,6 @@
 import { AdminData } from "@/pages/AdminDashboard";
-import { useState } from "react";
-import { Search, CheckCircle2, XCircle, Eye, Star, X, FileText, Phone, Mail, MapPin, Clock, Calendar, CreditCard, Stethoscope, Camera, GraduationCap, Building, ChevronRight, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, CheckCircle2, XCircle, Eye, Star, X, FileText, Phone, Mail, MapPin, Clock, Calendar, CreditCard, Stethoscope, Camera, GraduationCap, Building, ChevronRight, AlertCircle, Sunrise, Sun, Moon, Check, Video, HeartHandshake, ShieldCheck, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { SafeImage } from "../SafeImage";
@@ -69,6 +69,15 @@ const AdminVets = ({ data, actions }: Props) => {
   const [editForm, setEditForm] = useState<any>({});
   const [previewDoc, setPreviewDoc] = useState<{label: string, url: string} | null>(null);
   const { toast } = useToast();
+  const [selectedAvailDay, setSelectedAvailDay] = useState<string>("Mon");
+
+  useEffect(() => {
+    if (selectedVet?.available_days?.length > 0) {
+      setSelectedAvailDay(selectedVet.available_days[0]);
+    } else {
+      setSelectedAvailDay("Mon");
+    }
+  }, [selectedVet]);
 
   const filtered = data.allVets.filter((v: any) => {
     const displayName = v.profile?.name || v.profile?.full_name || "Doctor";
@@ -268,10 +277,10 @@ const AdminVets = ({ data, actions }: Props) => {
                 </div>
               </div>
 
-              {/* Professional Details */}
+              {/* Professional Details & Basic Info */}
               <div className="bg-[hsl(220,20%,97%)] rounded-xl p-4">
-                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] mb-3 flex items-center gap-2"><GraduationCap className="w-4 h-4" /> Professional Details</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] mb-3 flex items-center gap-2"><GraduationCap className="w-4 h-4" /> Professional & Personal Details</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {isEditingDocs ? (
                     <div className="flex flex-col gap-1 py-1">
                       <label className="text-[11px] text-[hsl(220,15%,60%)] uppercase tracking-wide">Qualification</label>
@@ -283,39 +292,224 @@ const AdminVets = ({ data, actions }: Props) => {
                   <InfoRow icon={Clock} label="Consultation Type" value={selectedVet.consultation_type} />
                   <InfoRow icon={MapPin} label="City" value={selectedVet.city || selectedVet.profile?.city || (selectedVet.profile?.address ? selectedVet.profile.address.split(',')[0]?.trim() : null)} />
                   <InfoRow icon={MapPin} label="State" value={selectedVet.state || selectedVet.profile?.state || (selectedVet.profile?.address ? selectedVet.profile.address.split(',')[1]?.trim() : null)} />
-                  <InfoRow icon={MapPin} label="Clinic Address" value={selectedVet.clinic_address} />
                   <InfoRow icon={Phone} label="Phone" value={selectedVet.profile?.phone} />
                   <InfoRow icon={Mail} label="Email" value={selectedVet.profile?.email} />
-                  <InfoRow icon={Calendar} label="Preferred Language" value={selectedVet.preferred_language} />
+                  <InfoRow icon={Calendar} label="Date of Birth" value={selectedVet.profile?.birth_date} />
+                  <InfoRow icon={User} label="Gender" value={selectedVet.profile?.gender} />
+                  <InfoRow icon={Calendar} label="Preferred Language" value={selectedVet.preferred_language || (selectedVet.preferred_languages && selectedVet.preferred_languages.join(", "))} />
                 </div>
               </div>
 
-              {/* Availability & Fees */}
-              <div className="bg-[hsl(145,30%,97%)] rounded-xl p-4">
-                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] mb-3 flex items-center gap-2"><Calendar className="w-4 h-4" /> Availability & Fees</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                  <InfoRow icon={Calendar} label="Available Days" value={selectedVet.available_days?.join(", ")} />
-                  <InfoRow icon={Clock} label="Morning Slots" value={selectedVet.morning_slots ? "Available" : "Not Available"} />
-                  <InfoRow icon={Clock} label="Evening Slots" value={selectedVet.evening_slots ? "Available" : "Not Available"} />
+              {/* Detailed Education History (Step 3) */}
+              {selectedVet.education_details && selectedVet.education_details.length > 0 && (
+                <div className="bg-[hsl(260,30%,97%)] rounded-xl p-4 space-y-3">
+                  <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] flex items-center gap-2"><GraduationCap className="w-4 h-4" /> Detailed Education History</h4>
+                  <div className="space-y-3">
+                    {selectedVet.education_details.map((edu: any, idx: number) => (
+                      <div key={idx} className="border-b border-[hsl(220,20%,90%)] last:border-0 pb-2.5 last:pb-0 text-xs text-[hsl(220,20%,25%)]">
+                        <p className="font-extrabold text-sm text-[hsl(220,20%,15%)]">{edu.qualification}</p>
+                        <p className="font-medium text-[hsl(220,15%,45%)]">{edu.institution} — Year: <span className="font-bold">{edu.year}</span></p>
+                        {edu.certificate_url && (
+                          <button 
+                            onClick={() => {
+                              const furl = edu.certificate_url.startsWith("http") ? edu.certificate_url : supabase.storage.from("vet-documents").getPublicUrl(edu.certificate_url).data.publicUrl;
+                              setPreviewDoc({ label: `${edu.qualification} Certificate`, url: furl });
+                            }} 
+                            className="mt-1 text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
+                          >
+                            <FileText className="w-3 h-3" /> View Certificate ↗
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Practice & Location Details (Step 4) */}
+              <div className="bg-[hsl(200,30%,97%)] rounded-xl p-4 space-y-3">
+                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] flex items-center gap-2"><Building className="w-4 h-4" /> Practice & Location Details</h4>
+                
+                <div className="text-xs space-y-1 text-[hsl(220,15%,45%)] font-semibold">
+                  <p><span className="font-bold text-[hsl(220,20%,25%)]">Selected Practice Type:</span> {selectedVet.practice_type?.join(", ") || (selectedVet.self_practice ? "Independent Clinic / Practice" : "Hospital / Organization")}</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 border-t border-[hsl(220,20%,90%)]">
+                  {/* Private Clinic Details */}
+                  {(selectedVet.practice_type?.includes('Independent Clinic / Practice') || selectedVet.clinic_name || selectedVet.clinic_address) && (
+                    <div className="space-y-1 bg-white p-3 rounded-lg border border-[hsl(220,20%,92%)]">
+                      <p className="font-bold text-xs text-blue-800 uppercase tracking-tight flex items-center gap-1 border-b pb-1 mb-1.5"><Building className="w-3.5 h-3.5 text-blue-600" /> Private Clinic Details</p>
+                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Clinic Name:</span> {selectedVet.clinic_name || "N/A"}</p>
+                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Clinic Address:</span> {selectedVet.clinic_address || "N/A"}</p>
+                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Pincode:</span> {selectedVet.clinic_pincode || "N/A"}</p>
+                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Clinic GST ID:</span> {selectedVet.clinic_gst || "N/A"}</p>
+                    </div>
+                  )}
+                  
+                  {/* Hospital/Organization Details */}
+                  {(selectedVet.practice_type?.includes('Hospital / Organization') || selectedVet.hospital_name || selectedVet.hospital_address) && (
+                    <div className="space-y-1 bg-white p-3 rounded-lg border border-[hsl(220,20%,92%)]">
+                      <p className="font-bold text-xs text-purple-800 uppercase tracking-tight flex items-center gap-1 border-b pb-1 mb-1.5"><Stethoscope className="w-3.5 h-3.5 text-purple-600" /> Hospital/Org Details</p>
+                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Hospital Name:</span> {selectedVet.hospital_name || "N/A"}</p>
+                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Designation/Role:</span> {selectedVet.hospital_role || "N/A"}</p>
+                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Address:</span> {selectedVet.hospital_address || "N/A"}</p>
+                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Pincode:</span> {selectedVet.hospital_pincode || "N/A"}</p>
+                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Employee ID:</span> {selectedVet.hospital_employee_id || "N/A"}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Clinic Photos Array Preview */}
+                {selectedVet.clinic_photos && selectedVet.clinic_photos.length > 0 && (
+                  <div className="pt-2.5 border-t border-[hsl(220,20%,90%)]">
+                    <p className="text-[11px] text-[hsl(220,15%,60%)] uppercase tracking-wide font-bold mb-1.5">Uploaded Practice Photos ({selectedVet.clinic_photos.length})</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedVet.clinic_photos.map((url: string, idx: number) => {
+                        const fullUrl = url.startsWith("http") ? url : supabase.storage.from("vet-documents").getPublicUrl(url).data.publicUrl;
+                        return (
+                          <div key={idx} className="relative w-16 h-16 rounded-lg border border-[hsl(220,20%,85%)] overflow-hidden bg-slate-50 hover:border-slate-400 cursor-pointer" onClick={() => setPreviewDoc({ label: `Practice Photo #${idx+1}`, url: fullUrl })}>
+                            <SafeImage src={fullUrl} className="w-full h-full object-cover" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Availability & Fees & Interactive Schedule (Step 5) */}
+              <div className="bg-[hsl(145,30%,97%)] rounded-xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] flex items-center gap-2"><Calendar className="w-4 h-4" /> Availability & Surcharges</h4>
+                  <span className="text-xs text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded-md font-bold">{selectedVet.consultation_type}</span>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {isEditingDocs ? (
                     <div className="flex flex-col gap-1 py-1">
                       <label className="text-[11px] text-[hsl(220,15%,60%)] uppercase tracking-wide">Online Fee</label>
                       <input type="number" value={editForm.online_fee || ''} onChange={e => setEditForm({...editForm, online_fee: e.target.value})} className="border rounded px-2 py-1 text-sm bg-white" />
                     </div>
-                  ) : <InfoRow icon={CreditCard} label="Online Fee" value={`₹${selectedVet.online_fee}`} />}
+                  ) : <InfoRow icon={CreditCard} label="Online Call Fee" value={`₹${selectedVet.online_fee}`} />}
                   {isEditingDocs ? (
                     <div className="flex flex-col gap-1 py-1">
                       <label className="text-[11px] text-[hsl(220,15%,60%)] uppercase tracking-wide">Offline Fee</label>
                       <input type="number" value={editForm.offline_fee || ''} onChange={e => setEditForm({...editForm, offline_fee: e.target.value})} className="border rounded px-2 py-1 text-sm bg-white" />
                     </div>
-                  ) : <InfoRow icon={CreditCard} label="Offline Fee" value={`₹${selectedVet.offline_fee}`} />}
+                  ) : <InfoRow icon={CreditCard} label="Physical Clinic Visit Fee" value={`₹${selectedVet.offline_fee}`} />}
+                </div>
+
+                {/* Day selector for weekly schedule parsing */}
+                {selectedVet.weekly_availability && (
+                  <div className="space-y-3 pt-2.5 border-t border-[hsl(145,30%,90%)]">
+                    <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Configured Weekly Availability Slots ({selectedVet.available_days?.join(", ")})</p>
+                    
+                    <div className="flex flex-wrap gap-1 bg-white p-1 rounded-xl border border-[hsl(220,20%,91%)]">
+                      {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d: string) => {
+                        const isAvailable = selectedVet.available_days?.includes(d);
+                        const isSelected = selectedAvailDay === d;
+                        return (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => isAvailable && setSelectedAvailDay(d)}
+                            className={`flex-1 min-w-[36px] py-1.5 rounded-lg text-xs font-bold transition-all ${
+                              isSelected 
+                                ? "bg-blue-600 text-white shadow-sm" 
+                                : isAvailable 
+                                  ? "bg-[hsl(145,40%,90%)] text-[hsl(145,70%,30%)] hover:bg-[hsl(145,40%,85%)]" 
+                                  : "bg-slate-50 text-slate-400 opacity-40 cursor-not-allowed"
+                            }`}
+                            disabled={!isAvailable}
+                          >
+                            {d}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Render details of active period slots */}
+                    {selectedVet.weekly_availability[selectedAvailDay] ? (
+                      <div className="grid grid-cols-1 gap-2">
+                        {(["morning", "afternoon", "evening", "night"] as const).map((periodKey) => {
+                          const periodInfo = {
+                            morning: { label: "Morning Session", icon: Sunrise, color: "bg-emerald-50 text-emerald-800 border-emerald-100" },
+                            afternoon: { label: "Afternoon Session", icon: Sun, color: "bg-amber-50 text-amber-800 border-amber-100" },
+                            evening: { label: "Evening Session", icon: Moon, color: "bg-indigo-50 text-indigo-800 border-indigo-150" },
+                            night: { label: "Night Session", icon: Moon, color: "bg-rose-50 text-rose-800 border-rose-100" }
+                          }[periodKey];
+
+                          const dayConfig = selectedVet.weekly_availability[selectedAvailDay];
+                          const periodConfig = dayConfig[periodKey];
+                          const isEnabled = periodConfig?.enabled;
+                          const slots = periodConfig?.slots || [];
+                          const PIcon = periodInfo.icon;
+
+                          return (
+                            <div key={periodKey} className={`flex items-center justify-between p-2.5 border rounded-xl bg-white text-xs ${isEnabled ? "border-[hsl(220,15%,90%)]" : "border-slate-100 opacity-50 bg-slate-50"}`}>
+                              <div className="flex items-center gap-2">
+                                <PIcon className="w-3.5 h-3.5 text-slate-500" />
+                                <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] border ${periodInfo.color}`}>{periodInfo.label}</span>
+                              </div>
+                              <div className="flex-1 flex flex-wrap gap-1 px-3 justify-end">
+                                {isEnabled ? (
+                                  slots.length > 0 ? (
+                                    slots.map((s: string) => (
+                                      <span key={s} className="bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded font-bold text-[10px] text-slate-700">{s}</span>
+                                    ))
+                                  ) : (
+                                    <span className="text-slate-400 italic">No specific slots enabled</span>
+                                  )
+                                ) : (
+                                  <span className="text-slate-400 italic text-[10px]">Disabled</span>
+                                )}
+                              </div>
+                              <span className={`text-[10px] font-extrabold pb-0.5 uppercase tracking-wide px-2 py-0.5 rounded-full ${isEnabled ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-400"}`}>
+                                {isEnabled ? "Active" : "Off"}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400 italic">No daily schedule mapping available for {selectedAvailDay}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Emergency & Support Surcharges (Step 5) */}
+              <div className="bg-[hsl(0,35%,97%)] rounded-xl p-4 space-y-3">
+                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] flex items-center gap-2"><HeartHandshake className="w-4 h-4 text-rose-600" /> Emergency, Night, & Support Coverage</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white p-3 rounded-xl border border-[hsl(220,20%,92%)]">
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Emergency Available</p>
+                    <p className="font-extrabold text-xs text-[hsl(220,20%,15%)] flex items-center gap-1.5 mt-0.5">
+                      <span className={`w-2 h-2 rounded-full ${(selectedVet.emergency_available === 'yes' || selectedVet.emergency_available === true) ? "bg-green-500" : "bg-slate-400"}`} />
+                      {(selectedVet.emergency_available === 'yes' || selectedVet.emergency_available === true) ? "Yes (Available)" : "No"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Weekend Coverage</p>
+                    <p className="font-extrabold text-xs text-[hsl(220,20%,15%)] flex items-center gap-1.5 mt-0.5">
+                      <span className={`w-2 h-2 rounded-full ${(selectedVet.weekend_availability === 'yes' || selectedVet.weekend_availability === true) ? "bg-green-500" : "bg-slate-400"}`} />
+                      {(selectedVet.weekend_availability === 'yes' || selectedVet.weekend_availability === true) ? "Yes (Working)" : "No"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">24x7 Night Cover</p>
+                    <p className="font-extrabold text-xs text-[hsl(220,20%,15%)] flex items-center gap-1.5 mt-0.5">
+                      <span className={`w-2 h-2 rounded-full ${(selectedVet.support_24x7 === 'yes' || selectedVet.support_24x7 === true) ? "bg-green-500" : "bg-slate-400"}`} />
+                      {(selectedVet.support_24x7 === 'yes' || selectedVet.support_24x7 === true) ? "Yes (Supported)" : "No"}
+                    </p>
+                  </div>
                 </div>
               </div>
 
               {/* Bank Details */}
               <div className="bg-[hsl(40,40%,97%)] rounded-xl p-4">
-                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] mb-3 flex items-center gap-2"><CreditCard className="w-4 h-4" /> Bank Details</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] mb-3 flex items-center gap-2"><CreditCard className="w-4 h-4 text-amber-600" /> Settlement Bank Details</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   <InfoRow icon={Building} label="Account Holder" value={selectedVet.bank_account_name} />
                   <InfoRow icon={Building} label="Bank Name" value={selectedVet.bank_name} />
                   <InfoRow icon={CreditCard} label="Account Number" value={selectedVet.bank_account_number} />
@@ -323,14 +517,58 @@ const AdminVets = ({ data, actions }: Props) => {
                 </div>
               </div>
 
+              {/* Compliance & Consents (Step 6) */}
+              <div className="bg-[hsl(35,50%,98%)] rounded-xl p-4 space-y-3">
+                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-amber-600" /> Onboarding Legal Compliance & Consents</h4>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center gap-2 bg-white px-3 py-2.5 rounded-xl border border-[hsl(220,20%,93%)]">
+                    <span className={`w-2 h-2 rounded-full ${selectedVet.vendor_agreement_accepted ? "bg-green-500" : "bg-red-500"}`} />
+                    <p className="font-semibold text-slate-700">Vendor & Service Level Agreement: <span className="font-bold">{selectedVet.vendor_agreement_accepted ? "Accepted & Signed" : "Undetermined/Invalid"}</span></p>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white px-3 py-2.5 rounded-xl border border-[hsl(220,20%,93%)]">
+                    <span className={`w-2 h-2 rounded-full ${selectedVet.telemedicine_consent_accepted ? "bg-green-500" : "bg-red-500"}`} />
+                    <p className="font-semibold text-slate-700">Telemedicine Consultation Consent: <span className="font-bold">{selectedVet.telemedicine_consent_accepted ? "Consent Granted" : "Consent Missing"}</span></p>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white px-3 py-2.5 rounded-xl border border-[hsl(220,20%,93%)]">
+                    <span className="w-2 h-2 rounded-full bg-green-500" />
+                    <p className="font-semibold text-slate-700">Accurate Declarations & Terms Confirmation: <span className="font-bold">Fully Certified & Verified</span></p>
+                  </div>
+                </div>
+              </div>
+
               {/* Documents */}
               <div>
-                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] mb-3">Uploaded Documents</h4>
+                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] mb-3">Verification Documents Vault ({
+                  [
+                    selectedVet.vet_degree_file,
+                    selectedVet.govt_id_file,
+                    selectedVet.pan_card_file,
+                    selectedVet.passport_photo_file,
+                    selectedVet.clinic_registration_file,
+                    selectedVet.clinic_shop_license_file,
+                    selectedVet.gst_certificate_file,
+                    selectedVet.clinic_address_proof_file,
+                    selectedVet.cancelled_cheque_file,
+                    selectedVet.hospital_joining_proof_file,
+                    selectedVet.profile_photo || selectedVet.profile?.profile_photo
+                  ].filter(Boolean).length
+                } Documents)</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <DocViewer label="Veterinary Degree" url={selectedVet.vet_degree_file} onOpenPreview={(label, url) => setPreviewDoc({label, url})} />
-                  <DocViewer label="Government ID" url={selectedVet.govt_id_file} onOpenPreview={(label, url) => setPreviewDoc({label, url})} />
-                  <DocViewer label="Clinic Registration" url={selectedVet.clinic_registration_file} onOpenPreview={(label, url) => setPreviewDoc({label, url})} />
-                  <DocViewer label="Profile Photo" url={selectedVet.profile_photo || selectedVet.profile?.profile_photo} onOpenPreview={(label, url) => setPreviewDoc({label, url})} />
+                  {[
+                    { label: "Veterinary Degree Certificate (Step 3)", url: selectedVet.vet_degree_file },
+                    { label: "Aadhaar Card (Front Side) (Step 2)", url: selectedVet.govt_id_file },
+                    { label: "Aadhaar Card (Back) / PAN (Step 2)", url: selectedVet.pan_card_file },
+                    { label: "Verification Live Photo (Step 2)", url: selectedVet.passport_photo_file },
+                    { label: "Clinic Registration Certificate (Step 4)", url: selectedVet.clinic_registration_file },
+                    { label: "Shop & Establishment License (Step 4)", url: selectedVet.clinic_shop_license_file },
+                    { label: "GST Certificate File (Step 4)", url: selectedVet.gst_certificate_file },
+                    { label: "Clinic Address Proof Document (Step 4)", url: selectedVet.clinic_address_proof_file },
+                    { label: "Settlement Cancelled Cheque (Step 4)", url: selectedVet.cancelled_cheque_file },
+                    { label: "Hospital ID Card / Proof (Step 4)", url: selectedVet.hospital_joining_proof_file },
+                    { label: "Doctor Portfolio Photo (Primary)", url: selectedVet.profile_photo || selectedVet.profile?.profile_photo }
+                  ].filter(doc => !!doc.url).map((doc, idx) => (
+                    <DocViewer key={idx} label={doc.label} url={doc.url} onOpenPreview={(label, url) => setPreviewDoc({label, url})} />
+                  ))}
                 </div>
               </div>
             </div>
@@ -520,7 +758,7 @@ const AdminVets = ({ data, actions }: Props) => {
                               {v.verification_status === "pending" && <Clock className="w-3.5 h-3.5" />}
                             </>
                           )}
-                          {v.verification_status === "verified" ? "APPROVED" : (v.verification_status || "Pending").toUpperCase()}
+                          {v.verification_status === "verified" ? "APPROVED" : v.verification_status === "failed" ? "REJECTED" : (v.verification_status || "Pending").toUpperCase()}
                         </div>
                       </td>
                       <td className="py-4">

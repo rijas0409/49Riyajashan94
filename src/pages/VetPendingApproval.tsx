@@ -62,6 +62,7 @@ const VetPendingApproval = () => {
               if (payload.new && payload.new.is_admin_approved === true) {
                 toast.success("Account approved! Unlocking portal...");
                 localStorage.setItem("sruvo_admin_approved", "true");
+                await refreshProfile();
                 navigate("/vet/home");
                 return;
               }
@@ -78,6 +79,7 @@ const VetPendingApproval = () => {
               if (payload.new && (payload.new.verification_status === "verified" || payload.new.verification_status === "approved")) {
                 toast.success("Identity verified! Redirecting to dashboard...");
                 localStorage.setItem("sruvo_admin_approved", "true");
+                await refreshProfile();
                 navigate("/vet/home");
                 return;
               }
