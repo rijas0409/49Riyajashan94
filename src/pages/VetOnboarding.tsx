@@ -100,7 +100,7 @@ const InfoTooltip = ({ message }: { message: string }) => {
 
 const VetOnboarding = () => {
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -442,7 +442,7 @@ const VetOnboarding = () => {
               navigate("/vet/home", { replace: true });
               return;
             } else if (p?.is_onboarding_complete && !p?.is_admin_approved && vp.verification_status !== 'failed') {
-              navigate("/vet-pending-approval", { replace: true });
+              navigate("/vet/account-review", { replace: true });
               return;
             }
 
@@ -548,9 +548,6 @@ const VetOnboarding = () => {
               dob: prev.dob || p?.birth_date || "",
               gender: prev.gender || p?.gender || "",
             }));
-            if (p?.is_onboarding_complete) {
-               navigate("/vet-pending-approval", { replace: true });
-            }
           }
         }
       } catch (err) {
@@ -1090,93 +1087,178 @@ const VetOnboarding = () => {
         support_24x7: formData.support24x7,
       };
 
-      if (existingVet) {
-        let { error: vetError } = await supabase.from("vet_profiles").update(upsertData).eq("id", existingVet.id);
-        if (vetError && (vetError.message?.includes("Could not find the") || vetError.message?.includes("column"))) {
-           const fallbackData = { ...upsertData };
-           delete (fallbackData as any).rejection_reason;
-           delete (fallbackData as any).reviewed_at;
-           delete (fallbackData as any).reviewed_by;
-           delete (fallbackData as any).appeal_requested;
-           delete (fallbackData as any).self_practice;
-           delete (fallbackData as any).city;
-           delete (fallbackData as any).state;
-           delete (fallbackData as any).clinic_videos;
-           delete (fallbackData as any).hospital_employee_id;
-           delete (fallbackData as any).practice_type;
-           delete (fallbackData as any).clinic_name;
-           delete (fallbackData as any).clinic_pincode;
-           delete (fallbackData as any).clinic_gst;
-           delete (fallbackData as any).hospital_name;
-           delete (fallbackData as any).hospital_role;
-           delete (fallbackData as any).hospital_address;
-           delete (fallbackData as any).hospital_pincode;
-           delete (fallbackData as any).hospital_joining_proof_file;
-           delete (fallbackData as any).weekly_availability;
-           delete (fallbackData as any).available_days;
-           delete (fallbackData as any).emergency_available;
-           delete (fallbackData as any).weekend_availability;
-           delete (fallbackData as any).support_24x7;
-           const fallback = await supabase.from("vet_profiles").update(fallbackData).eq("id", existingVet.id);
-           vetError = fallback.error;
+      const cleanAndPersistVet = async (isUpdate: boolean) => {
+        const currentData = { ...upsertData };
+        let attempts = 0;
+        const maxAttempts = 15;
+
+        while (attempts < maxAttempts) {
+          console.log(`Attempting vet_profiles persist... Attempt ${attempts + 1}`);
+          let res;
+          if (isUpdate) {
+            res = await supabase.from("vet_profiles").update(currentData).eq("id", existingVet.id);
+          } else {
+            res = await supabase.from("vet_profiles").insert([currentData]);
+          }
+
+          if (res.error) {
+            console.error("Persist error:", res.error);
+            const errMsg = res.error.message || "";
+            
+            const isMissingColumn = 
+              errMsg.includes("schema cache") || 
+              errMsg.includes("column") || 
+              errMsg.includes("does not exist") || 
+              res.error.code === "42703";
+            
+            if (isMissingColumn) {
+              const match1 = errMsg.match(/column ['"](.+?)['"]/i);
+              const match2 = errMsg.match(/column:? (.+?)(?:$|\s|not found)/i);
+              const parsedColumn = match1?.[1] || match2?.[1];
+
+              if (parsedColumn && parsedColumn in currentData) {
+                console.warn(`Dynamically deleting failed column from payload: ${parsedColumn}`);
+                delete (currentData as any)[parsedColumn];
+                attempts++;
+                continue;
+              }
+
+              const fallbackOptionalColumns = [
+                'clinic_address_proof_file',
+                'gst_certificate_file',
+                'clinic_shop_license_file',
+                'passport_photo_file',
+                'clinic_photos',
+                'clinic_videos',
+                'rejection_reason',
+                'reviewed_at',
+                'reviewed_by',
+                'appeal_requested',
+                'self_practice',
+                'city',
+                'state',
+                'practice_type',
+                'clinic_name',
+                'clinic_pincode',
+                'clinic_gst',
+                'hospital_name',
+                'hospital_role',
+                'hospital_address',
+                'hospital_pincode',
+                'hospital_joining_proof_file',
+                'weekly_availability',
+                'available_days',
+                'emergency_available',
+                'weekend_availability',
+                'support_24x7'
+              ];
+
+              let deletedSome = false;
+              for (const col of fallbackOptionalColumns) {
+                if (col in currentData) {
+                  delete (currentData as any)[col];
+                  deletedSome = true;
+                }
+              }
+
+              if (deletedSome) {
+                attempts++;
+                continue;
+              }
+            }
+            throw res.error;
+          } else {
+            console.log("Successfully persisted vet profile!");
+            return;
+          }
         }
-        if (vetError) throw vetError;
-      } else {
-        let { error: vetError } = await supabase.from("vet_profiles").insert([upsertData]);
-        if (vetError && (vetError.message?.includes("Could not find the") || vetError.message?.includes("column"))) {
-           const fallbackData = { ...upsertData };
-           delete (fallbackData as any).rejection_reason;
-           delete (fallbackData as any).reviewed_at;
-           delete (fallbackData as any).reviewed_by;
-           delete (fallbackData as any).appeal_requested;
-           delete (fallbackData as any).self_practice;
-           delete (fallbackData as any).city;
-           delete (fallbackData as any).state;
-           delete (fallbackData as any).clinic_videos;
-           delete (fallbackData as any).hospital_employee_id;
-           delete (fallbackData as any).practice_type;
-           delete (fallbackData as any).clinic_name;
-           delete (fallbackData as any).clinic_pincode;
-           delete (fallbackData as any).clinic_gst;
-           delete (fallbackData as any).hospital_name;
-           delete (fallbackData as any).hospital_role;
-           delete (fallbackData as any).hospital_address;
-           delete (fallbackData as any).hospital_pincode;
-           delete (fallbackData as any).hospital_joining_proof_file;
-           delete (fallbackData as any).weekly_availability;
-           delete (fallbackData as any).available_days;
-           delete (fallbackData as any).emergency_available;
-           delete (fallbackData as any).weekend_availability;
-           delete (fallbackData as any).support_24x7;
-           const fallback = await supabase.from("vet_profiles").insert([fallbackData]);
-           vetError = fallback.error;
-        }
-        if (vetError) throw vetError;
-      }
+        throw new Error("Failed to persist vet profile after removing unsupported columns.");
+      };
+
+      await cleanAndPersistVet(!!existingVet);
 
       // 3. Update Profile
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        id: uid,
-        name: formData.fullName,
-        full_name: formData.fullName,
-        phone: formData.phone,
-        email: formData.email,
-        gender: formData.gender,
-        birth_date: formData.dob || null,
-        address: formData.address || `${formData.city}, ${formData.state}`,
-        city: formData.city,
-        state: formData.state,
-        is_onboarding_complete: true,
-        is_admin_approved: false,
-        role: 'vet',
-      } as any);
+      const cleanAndPersistProfile = async () => {
+        const currentProfileData = {
+          id: uid,
+          name: formData.fullName,
+          full_name: formData.fullName,
+          phone: formData.phone,
+          email: formData.email,
+          gender: formData.gender,
+          birth_date: formData.dob || null,
+          address: formData.address || `${formData.city}, ${formData.state}`,
+          city: formData.city,
+          state: formData.state,
+          is_onboarding_complete: true,
+          is_admin_approved: false,
+          role: 'vet',
+        };
 
-      if (profileError) throw profileError;
+        let attempts = 0;
+        const maxAttempts = 10;
 
-      // 4. Success feedback and routing
+        while (attempts < maxAttempts) {
+          console.log(`Attempting profiles upsert... Attempt ${attempts + 1}`);
+          const { error: profileError } = await supabase.from("profiles").upsert(currentProfileData as any);
+          
+          if (profileError) {
+            console.error("Profile upsert error:", profileError);
+            const errMsg = profileError.message || "";
+            const isMissingColumn = 
+              errMsg.includes("schema cache") || 
+              errMsg.includes("column") || 
+              errMsg.includes("does not exist") || 
+              profileError.code === "42703";
+
+            if (isMissingColumn) {
+              const match1 = errMsg.match(/column ['"](.+?)['"]/i);
+              const match2 = errMsg.match(/column:? (.+?)(?:$|\s|not found)/i);
+              const parsedColumn = match1?.[1] || match2?.[1];
+
+              if (parsedColumn && parsedColumn in currentProfileData && parsedColumn !== 'id') {
+                console.warn(`Filtering non-existent profile column: ${parsedColumn}`);
+                delete (currentProfileData as any)[parsedColumn];
+                attempts++;
+                continue;
+              }
+
+              // Generic fallback keys for profiles
+              const fallbacks = ['full_name', 'is_onboarding_complete', 'is_admin_approved', 'phone', 'gender', 'birth_date', 'address', 'city', 'state'];
+              let deletedSome = false;
+              for (const key of fallbacks) {
+                if (key in currentProfileData) {
+                  delete (currentProfileData as any)[key];
+                  deletedSome = true;
+                }
+              }
+              if (deletedSome) {
+                attempts++;
+                continue;
+              }
+            }
+            throw profileError;
+          } else {
+            console.log("Successfully upserted profile data!");
+            return;
+          }
+        }
+        throw new Error("Failed to upsert profile after filtering non-existent columns.");
+      };
+
+      await cleanAndPersistProfile();
+
+      // 4. Force state sync with AuthContext before redirecting
+      try {
+        await refreshProfile();
+      } catch (e) {
+        console.error("Failed to auto-refresh profile in auth context:", e);
+      }
+
+      // 5. Success feedback and routing
       toast.success("Professional profile submitted successfully!");
       localStorage.removeItem(`vet-onboarding-draft-${uid}`);
-      navigate("/vet-pending-approval", { replace: true });
+      navigate("/vet/account-review", { replace: true });
     } catch (error: any) {
       console.error("Submission error:", error);
       toast.error(error.message || "Failed to submit application. Please try again.");
@@ -1421,7 +1503,7 @@ const VetOnboarding = () => {
         </div>
       </header>
 
-      <main className={cn("container mx-auto px-4 py-6 transition-all duration-300", currentStep === 5 ? "max-w-4xl" : "max-w-3xl")}>
+      <main className={cn("container mx-auto px-4 py-6 transition-all duration-300", currentStep === 5 ? "max-w-[1122px] lg:px-[49px]" : "max-w-3xl")}>
         {/* Progress bar */}
         <div className="flex items-center justify-between md:justify-center gap-1 md:gap-3 mb-6 bg-card p-3 rounded-2xl border border-border/60 shadow-sm overflow-x-auto scrollbar-none">
           {visibleSteps.map((step, i) => {

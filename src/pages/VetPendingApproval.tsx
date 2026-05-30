@@ -45,7 +45,17 @@ const VetPendingApproval = () => {
            return;
         }
 
-        if (!currentProfile?.is_onboarding_complete) { navigate("/vet/onboarding"); return; }
+        const isCompleted = currentProfile?.is_onboarding_complete || 
+                            vetProfile?.verification_status === "pending" || 
+                            vetProfile?.verification_status === "verified" || 
+                            vetProfile?.verification_status === "approved" ||
+                            vetProfile?.verification_status === "rejected" ||
+                            vetProfile?.verification_status === "failed" ||
+                            !!vetProfile;
+        if (!isCompleted) { 
+          navigate("/vet/onboarding"); 
+          return; 
+        }
         
         setIsChecking(false);
 

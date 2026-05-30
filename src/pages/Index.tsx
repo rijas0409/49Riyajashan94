@@ -50,7 +50,7 @@ const Index = () => {
           }
 
           if (profile.vetStatus !== 'verified' && profile.vetStatus !== 'approved' && profile.email !== 'gucci@123.com' && profile.email !== 'rijas@lv.com') {
-            navigate("/vet-pending-approval", { replace: true });
+            navigate("/vet/account-review", { replace: true });
             return;
           }
         }

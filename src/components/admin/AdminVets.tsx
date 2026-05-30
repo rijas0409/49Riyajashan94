@@ -1,6 +1,32 @@
 import { AdminData } from "@/pages/AdminDashboard";
 import { useState, useEffect } from "react";
-import { Search, CheckCircle2, XCircle, Eye, Star, X, FileText, Phone, Mail, MapPin, Clock, Calendar, CreditCard, Stethoscope, Camera, GraduationCap, Building, ChevronRight, AlertCircle, Sunrise, Sun, Moon, Check, Video, HeartHandshake, ShieldCheck, User } from "lucide-react";
+import { Search, CheckCircle2, XCircle, Eye, Star, X, FileText, Phone, Mail, MapPin, Clock, Calendar, CreditCard, Stethoscope, Camera, GraduationCap, Building, ChevronRight, AlertCircle, Sunrise, Sun, Moon, Check, Video, HeartHandshake, ShieldCheck, User, Briefcase, Home, Dog, Cat, Bird } from "lucide-react";
+
+const HamsterIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    {/* Body/Head outline */}
+    <rect x="5" y="8" width="14" height="12" rx="6" />
+    {/* Ears */}
+    <path d="M7 8V5a2 2 0 1 1 4 0v3" />
+    <path d="M13 8V5a2 2 0 1 1 4 0v3" />
+    {/* Eyes */}
+    <circle cx="9.5" cy="13.5" r="1.2" fill="currentColor" />
+    <circle cx="14.5" cy="13.5" r="1.2" fill="currentColor" />
+    {/* Nose and mouth detail */}
+    <path d="M12 15.5 M11.5 15.5h1" />
+    {/* Little Whiskers */}
+    <path d="M3 13.5h2" />
+    <path d="M21 13.5h-2" />
+  </svg>
+);
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { SafeImage } from "../SafeImage";
@@ -253,306 +279,754 @@ const AdminVets = ({ data, actions }: Props) => {
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
-              {/* Profile Photo */}
-              <div className="flex items-center gap-4">
-                <div className="w-20 h-20 rounded-2xl overflow-hidden bg-[hsl(220,20%,94%)] border-2 border-[hsl(220,20%,88%)]">
-                  {getVetPhotoUrl(selectedVet) ? (
-                    <SafeImage src={getVetPhotoUrl(selectedVet)!} className="w-full h-full" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center"><Camera className="w-8 h-8 text-[hsl(220,15%,70%)]" /></div>
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-[hsl(220,20%,15%)]">Dr. {selectedVet.profile?.name || "Doctor"}</h3>
-                  <p className="text-sm text-[hsl(220,15%,55%)]">{selectedVet.profile?.email}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="px-2.5 py-0.5 bg-[hsl(220,60%,95%)] text-[hsl(220,70%,45%)] text-[11px] font-bold rounded-md">{selectedVet.qualification}</span>
-                    {isEditingDocs ? (
-                      <input type="number" placeholder="Exp (Yrs)" value={editForm.years_of_experience || ''} onChange={e => setEditForm({...editForm, years_of_experience: e.target.value})} className="border rounded px-2 py-0.5 text-[12px] bg-white w-20" />
-                    ) : (
-                      <span className="text-[12px] text-[hsl(220,15%,55%)]">{selectedVet.years_of_experience} yrs experience</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Professional Details & Basic Info */}
-              <div className="bg-[hsl(220,20%,97%)] rounded-xl p-4">
-                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] mb-3 flex items-center gap-2"><GraduationCap className="w-4 h-4" /> Professional & Personal Details</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  {isEditingDocs ? (
-                    <div className="flex flex-col gap-1 py-1">
-                      <label className="text-[11px] text-[hsl(220,15%,60%)] uppercase tracking-wide">Qualification</label>
-                      <input type="text" value={editForm.qualification || ''} onChange={e => setEditForm({...editForm, qualification: e.target.value})} className="border rounded px-2 py-1 text-sm bg-white" />
-                    </div>
-                  ) : <InfoRow icon={Stethoscope} label="Qualification" value={selectedVet.qualification} />}
-                  <InfoRow icon={FileText} label="Registration Number" value={selectedVet.registration_number} />
-                  <InfoRow icon={Stethoscope} label="Specializations" value={selectedVet.specializations?.join(", ")} />
-                  <InfoRow icon={Clock} label="Consultation Type" value={selectedVet.consultation_type} />
-                  <InfoRow icon={MapPin} label="City" value={selectedVet.city || selectedVet.profile?.city || (selectedVet.profile?.address ? selectedVet.profile.address.split(',')[0]?.trim() : null)} />
-                  <InfoRow icon={MapPin} label="State" value={selectedVet.state || selectedVet.profile?.state || (selectedVet.profile?.address ? selectedVet.profile.address.split(',')[1]?.trim() : null)} />
-                  <InfoRow icon={Phone} label="Phone" value={selectedVet.profile?.phone} />
-                  <InfoRow icon={Mail} label="Email" value={selectedVet.profile?.email} />
-                  <InfoRow icon={Calendar} label="Date of Birth" value={selectedVet.profile?.birth_date} />
-                  <InfoRow icon={User} label="Gender" value={selectedVet.profile?.gender} />
-                  <InfoRow icon={Calendar} label="Preferred Language" value={selectedVet.preferred_language || (selectedVet.preferred_languages && selectedVet.preferred_languages.join(", "))} />
-                </div>
-              </div>
-
-              {/* Detailed Education History (Step 3) */}
-              {selectedVet.education_details && selectedVet.education_details.length > 0 && (
-                <div className="bg-[hsl(260,30%,97%)] rounded-xl p-4 space-y-3">
-                  <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] flex items-center gap-2"><GraduationCap className="w-4 h-4" /> Detailed Education History</h4>
-                  <div className="space-y-3">
-                    {selectedVet.education_details.map((edu: any, idx: number) => (
-                      <div key={idx} className="border-b border-[hsl(220,20%,90%)] last:border-0 pb-2.5 last:pb-0 text-xs text-[hsl(220,20%,25%)]">
-                        <p className="font-extrabold text-sm text-[hsl(220,20%,15%)]">{edu.qualification}</p>
-                        <p className="font-medium text-[hsl(220,15%,45%)]">{edu.institution} — Year: <span className="font-bold">{edu.year}</span></p>
-                        {edu.certificate_url && (
-                          <button 
-                            onClick={() => {
-                              const furl = edu.certificate_url.startsWith("http") ? edu.certificate_url : supabase.storage.from("vet-documents").getPublicUrl(edu.certificate_url).data.publicUrl;
-                              setPreviewDoc({ label: `${edu.qualification} Certificate`, url: furl });
-                            }} 
-                            className="mt-1 text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
-                          >
-                            <FileText className="w-3 h-3" /> View Certificate ↗
-                          </button>
-                        )}
-                      </div>
-                    ))}
+            <div className="p-6 space-y-6 font-sans">
+              {isEditingDocs && (
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-2 text-xs text-amber-800 animate-fade-in shadow-3xs">
+                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+                  <div>
+                    <p className="font-extrabold uppercase tracking-wide text-[10px]">Easy Edit Mode Enabled</p>
+                    <p className="font-semibold text-[11px] opacity-90 mt-0.5">As an Administrator, you can adjust the basic qualification, experience years, and base consultation fees. Other sections are locked for accurate auditing.</p>
                   </div>
                 </div>
               )}
 
-              {/* Practice & Location Details (Step 4) */}
-              <div className="bg-[hsl(200,30%,97%)] rounded-xl p-4 space-y-3">
-                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] flex items-center gap-2"><Building className="w-4 h-4" /> Practice & Location Details</h4>
-                
-                <div className="text-xs space-y-1 text-[hsl(220,15%,45%)] font-semibold">
-                  <p><span className="font-bold text-[hsl(220,20%,25%)]">Selected Practice Type:</span> {selectedVet.practice_type?.join(", ") || (selectedVet.self_practice ? "Independent Clinic / Practice" : "Hospital / Organization")}</p>
+              {/* A) Personal Info */}
+              <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-colors hover:border-[#E4E8F0]">
+                <div className="flex items-center gap-3 pb-3.5 border-b border-slate-100/60">
+                  <div className="w-10 h-10 rounded-xl bg-pink-50/80 border border-pink-100 flex items-center justify-center shrink-0">
+                    <User className="w-5 h-5 text-pink-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-sm sm:text-base text-[#1E293B] tracking-tight">A) Personal Info</h3>
+                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Primary Profile Details</p>
+                  </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 border-t border-[hsl(220,20%,90%)]">
-                  {/* Private Clinic Details */}
-                  {(selectedVet.practice_type?.includes('Independent Clinic / Practice') || selectedVet.clinic_name || selectedVet.clinic_address) && (
-                    <div className="space-y-1 bg-white p-3 rounded-lg border border-[hsl(220,20%,92%)]">
-                      <p className="font-bold text-xs text-blue-800 uppercase tracking-tight flex items-center gap-1 border-b pb-1 mb-1.5"><Building className="w-3.5 h-3.5 text-blue-600" /> Private Clinic Details</p>
-                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Clinic Name:</span> {selectedVet.clinic_name || "N/A"}</p>
-                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Clinic Address:</span> {selectedVet.clinic_address || "N/A"}</p>
-                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Pincode:</span> {selectedVet.clinic_pincode || "N/A"}</p>
-                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Clinic GST ID:</span> {selectedVet.clinic_gst || "N/A"}</p>
-                    </div>
-                  )}
-                  
-                  {/* Hospital/Organization Details */}
-                  {(selectedVet.practice_type?.includes('Hospital / Organization') || selectedVet.hospital_name || selectedVet.hospital_address) && (
-                    <div className="space-y-1 bg-white p-3 rounded-lg border border-[hsl(220,20%,92%)]">
-                      <p className="font-bold text-xs text-purple-800 uppercase tracking-tight flex items-center gap-1 border-b pb-1 mb-1.5"><Stethoscope className="w-3.5 h-3.5 text-purple-600" /> Hospital/Org Details</p>
-                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Hospital Name:</span> {selectedVet.hospital_name || "N/A"}</p>
-                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Designation/Role:</span> {selectedVet.hospital_role || "N/A"}</p>
-                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Address:</span> {selectedVet.hospital_address || "N/A"}</p>
-                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Pincode:</span> {selectedVet.hospital_pincode || "N/A"}</p>
-                      <p className="text-xs font-semibold text-[hsl(220,20%,15%)]"><span className="text-[hsl(220,15%,55%)] font-normal">Employee ID:</span> {selectedVet.hospital_employee_id || "N/A"}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Clinic Photos Array Preview */}
-                {selectedVet.clinic_photos && selectedVet.clinic_photos.length > 0 && (
-                  <div className="pt-2.5 border-t border-[hsl(220,20%,90%)]">
-                    <p className="text-[11px] text-[hsl(220,15%,60%)] uppercase tracking-wide font-bold mb-1.5">Uploaded Practice Photos ({selectedVet.clinic_photos.length})</p>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedVet.clinic_photos.map((url: string, idx: number) => {
-                        const fullUrl = url.startsWith("http") ? url : supabase.storage.from("vet-documents").getPublicUrl(url).data.publicUrl;
-                        return (
-                          <div key={idx} className="relative w-16 h-16 rounded-lg border border-[hsl(220,20%,85%)] overflow-hidden bg-slate-50 hover:border-slate-400 cursor-pointer" onClick={() => setPreviewDoc({ label: `Practice Photo #${idx+1}`, url: fullUrl })}>
-                            <SafeImage src={fullUrl} className="w-full h-full object-cover" />
-                          </div>
-                        );
-                      })}
+                <div className="mt-4 flex flex-col sm:flex-row gap-5 items-start">
+                  <div className="w-20 h-20 rounded-2xl overflow-hidden bg-[hsl(220,20%,94%)] border border-[hsl(220,20%,88%)] shrink-0 shadow-3xs self-center sm:self-start">
+                    {getVetPhotoUrl(selectedVet) ? (
+                      <SafeImage src={getVetPhotoUrl(selectedVet)!} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center"><Camera className="w-8 h-8 text-[hsl(220,15%,70%)]" /></div>
+                    )}
+                  </div>
+                  <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-3.5 w-full">
+                    <DetailItem label="Profile Photo" value={getVetPhotoUrl(selectedVet) ? "Uploaded" : "No photo uploaded"} />
+                    <DetailItem label="Full Name" value={selectedVet.profile?.name || "Doctor"} />
+                    <DetailItem label="Email ID" value={selectedVet.profile?.email} />
+                    <DetailItem label="Phone Number" value={selectedVet.profile?.phone} />
+                    <DetailItem label="Date of Birth" value={selectedVet.profile?.birth_date} />
+                    <DetailItem label="Gender" value={selectedVet.profile?.gender} />
+                    <DetailItem label="Language" value={selectedVet.preferred_language || (selectedVet.preferred_languages && selectedVet.preferred_languages.join(", "))} />
+                    <DetailItem label="State" value={selectedVet.state || selectedVet.profile?.state} />
+                    <DetailItem label="City" value={selectedVet.city || selectedVet.profile?.city} />
+                    <div className="col-span-2">
+                      <DetailItem label="Full Address" value={selectedVet.profile?.address || selectedVet.clinic_address || selectedVet.hospital_address} />
                     </div>
                   </div>
-                )}
+                </div>
               </div>
 
-              {/* Availability & Fees & Interactive Schedule (Step 5) */}
-              <div className="bg-[hsl(145,30%,97%)] rounded-xl p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] flex items-center gap-2"><Calendar className="w-4 h-4" /> Availability & Surcharges</h4>
-                  <span className="text-xs text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded-md font-bold">{selectedVet.consultation_type}</span>
+              {/* B) Identity Verification */}
+              <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-colors hover:border-[#E4E8F0]">
+                <div className="flex items-center gap-3 pb-3.5 border-b border-slate-100/60">
+                  <div className="w-10 h-10 rounded-xl bg-teal-50/80 border border-teal-100 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-5 h-5 text-teal-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-sm sm:text-base text-[#1E293B] tracking-tight">B) Identity Verification</h3>
+                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Government IDs & Verification Media</p>
+                  </div>
                 </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {isEditingDocs ? (
-                    <div className="flex flex-col gap-1 py-1">
-                      <label className="text-[11px] text-[hsl(220,15%,60%)] uppercase tracking-wide">Online Fee</label>
-                      <input type="number" value={editForm.online_fee || ''} onChange={e => setEditForm({...editForm, online_fee: e.target.value})} className="border rounded px-2 py-1 text-sm bg-white" />
+                <div className="mt-4 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-tight block">Aadhaar Card (Front)</span>
+                      {renderReviewFile(selectedVet.govt_id_file, "Aadhaar Card (Front)")}
                     </div>
-                  ) : <InfoRow icon={CreditCard} label="Online Call Fee" value={`₹${selectedVet.online_fee}`} />}
-                  {isEditingDocs ? (
-                    <div className="flex flex-col gap-1 py-1">
-                      <label className="text-[11px] text-[hsl(220,15%,60%)] uppercase tracking-wide">Offline Fee</label>
-                      <input type="number" value={editForm.offline_fee || ''} onChange={e => setEditForm({...editForm, offline_fee: e.target.value})} className="border rounded px-2 py-1 text-sm bg-white" />
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-tight block">Aadhaar Card (Back)</span>
+                      {renderReviewFile(selectedVet.pan_card_file, "Aadhaar Card (Back)")}
                     </div>
-                  ) : <InfoRow icon={CreditCard} label="Physical Clinic Visit Fee" value={`₹${selectedVet.offline_fee}`} />}
+                  </div>
+                  <div className="space-y-1.5 border-t border-slate-100/50 pt-3.5">
+                    <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-tight block">Live Photo</span>
+                    {renderReviewFile(selectedVet.passport_photo_file, "Live Photo image")}
+                  </div>
                 </div>
+              </div>
 
-                {/* Day selector for weekly schedule parsing */}
-                {selectedVet.weekly_availability && (
-                  <div className="space-y-3 pt-2.5 border-t border-[hsl(145,30%,90%)]">
-                    <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Configured Weekly Availability Slots ({selectedVet.available_days?.join(", ")})</p>
+              {/* C) Professional Qualification */}
+              <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-colors hover:border-[#E4E8F0]">
+                <div className="flex items-center gap-3 pb-3.5 border-b border-slate-100/60">
+                  <div className="w-10 h-10 rounded-xl bg-violet-50/80 border border-violet-100 flex items-center justify-center shrink-0">
+                    <GraduationCap className="w-5 h-5 text-violet-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-sm sm:text-base text-[#1E293B] tracking-tight">C) Professional Qualification</h3>
+                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Certifications & Licensing details</p>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {isEditingDocs ? (
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wide">Highest Qualification</span>
+                        <input 
+                          type="text" 
+                          value={editForm.qualification || ''} 
+                          onChange={e => setEditForm({...editForm, qualification: e.target.value})} 
+                          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm bg-white font-extrabold text-[#1E293B]" 
+                        />
+                      </div>
+                    ) : (
+                      <DetailItem label="Highest Qualification" value={selectedVet.qualification} />
+                    )}
+                    <DetailItem label="Vet License Number" value={selectedVet.registration_number || "Not uploaded"} />
+                    <DetailItem label="Veterinary Council Registration Number" value={selectedVet.registration_number || "Not uploaded"} />
+                    <DetailItem label="Veterinary Degree Certificate" value={selectedVet.vet_degree_file ? "Attached Below" : "N/A"} />
+                  </div>
+                  
+                  <div className="space-y-1.5 border-t border-slate-100/50 pt-3.5">
+                    <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-tight block">Veterinary Degree Certificate</span>
+                    {renderReviewFile(selectedVet.vet_degree_file, `Degree Certificate (${selectedVet.qualification})`)}
+                  </div>
+
+                  {/* a) Primary Qualification */}
+                  <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/40 space-y-3 mt-1 shadow-3xs">
+                    <h4 className="text-xs font-black text-violet-700 uppercase tracking-wider">a) Primary Qualification</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <DetailItem label="Qualification" value={selectedVet.education_details?.[0]?.qualification || selectedVet.qualification} />
+                      <DetailItem label="Passing Year" value={selectedVet.education_details?.[0]?.year || "N/A"} />
+                      <DetailItem label="Institution/University" value={selectedVet.education_details?.[0]?.institution || "N/A"} />
+                    </div>
+                    {selectedVet.education_details?.[0]?.certificate_url && (
+                      <div className="space-y-1.5 border-t border-slate-150/55 pt-3 mt-2">
+                        <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-tight block">Certificate File</span>
+                        {renderReviewFile(selectedVet.education_details[0].certificate_url, "Primary Qualification Certificate")}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* b) Additional Qualification */}
+                  {selectedVet.education_details && selectedVet.education_details.length > 1 && (
+                    selectedVet.education_details.slice(1).map((edu: any, idx: number) => (
+                      <div key={idx} className="border border-slate-110 rounded-2xl p-4 bg-slate-50/40 space-y-3 mt-1 shadow-3xs">
+                        <h4 className="text-xs font-black text-violet-700 uppercase tracking-wider">b) Additional Qualification #{idx + 1}</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <DetailItem label="Qualification" value={edu.qualification} />
+                          <DetailItem label="Passing Year" value={edu.year || "N/A"} />
+                          <DetailItem label="Institution/University" value={edu.institution || "N/A"} />
+                        </div>
+                        {edu.certificate_url && (
+                          <div className="space-y-1.5 border-t border-slate-150/55 pt-3 mt-2">
+                            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-tight block">Certificate File</span>
+                            {renderReviewFile(edu.certificate_url, `Additional Qualification #${idx + 1} Certificate`)}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* D) Professional Practice */}
+              {(() => {
+                const parsedPracticeTypes = selectedVet.practice_type || 
+                  (selectedVet.self_practice ? ['Independent Clinic / Practice'] : ['Hospital / Organization']);
+                const hasClinic = parsedPracticeTypes.includes('Independent Clinic / Practice') || !!selectedVet.clinic_name;
+                const hasHospital = parsedPracticeTypes.includes('Hospital / Organization') || !!selectedVet.hospital_name;
+
+                return (
+                  <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-all">
+                    <div className="flex items-center gap-3 pb-3.5 border-b border-slate-100/60">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50/80 border border-blue-100 flex items-center justify-center shrink-0">
+                        <Building className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-sm sm:text-base text-[#1E293B] tracking-tight">D) Professional Practice</h3>
+                        <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Active medical practice centers</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-5">
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">Where do you practice?</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1.5 font-sans">
+                          <div className={`p-3.5 rounded-2xl border text-xs font-bold flex items-center gap-2.5 transition-all ${
+                            hasHospital 
+                              ? "border-pink-350 bg-pink-50/45 text-pink-950" 
+                              : "border-slate-100 bg-slate-50/40 text-slate-400 opacity-60"
+                          }`}>
+                            <span className={`w-2.5 h-2.5 rounded-full ${hasHospital ? 'bg-pink-500' : 'bg-slate-300'}`} />
+                            <span>a) Hospital/Organization (Hospital/work)</span>
+                          </div>
+                          <div className={`p-3.5 rounded-2xl border text-xs font-bold flex items-center gap-2.5 transition-all ${
+                            hasClinic 
+                              ? "border-blue-200 bg-blue-50/45 text-blue-950" 
+                              : "border-slate-100 bg-slate-50/40 text-slate-400 opacity-60"
+                          }`}>
+                            <span className={`w-2.5 h-2.5 rounded-full ${hasClinic ? 'bg-blue-500' : 'bg-slate-300'}`} />
+                            <span>b) Independent Clinic/Practice (Private clinic)</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Independent Clinic details */}
+                      {hasClinic && (
+                        <div className="space-y-3.5 bg-slate-50/40 p-4 rounded-2xl border border-slate-100/70 shadow-3xs">
+                          <h4 className="text-xs font-extrabold text-blue-800 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
+                            <Building className="w-4 h-4 text-blue-600" />
+                            <span>a) Independent Clinic Details</span>
+                          </h4>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                            <DetailItem label="Clinic/Practice Name" value={selectedVet.clinic_name} />
+                            <DetailItem label="State" value={selectedVet.clinic_state || selectedVet.state} />
+                            <DetailItem label="City" value={selectedVet.clinic_city || selectedVet.city} />
+                            <DetailItem label="Pincode" value={selectedVet.clinic_pincode} />
+                            <DetailItem label="GST Number (Optional)" value={selectedVet.clinic_gst} />
+                            <div className="col-span-2">
+                              <DetailItem label="Clinic Address" value={selectedVet.clinic_address} />
+                            </div>
+                          </div>
+
+                          {/* Clinic Photos Array Preview */}
+                          {selectedVet.clinic_photos && selectedVet.clinic_photos.length > 0 && (
+                            <div className="pt-3.5 border-t border-slate-100/60 mt-1">
+                              <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wide block mb-2">Practice Photos & Videos</p>
+                              <div className="flex flex-wrap gap-2">
+                                {selectedVet.clinic_photos.map((url: string, idx: number) => {
+                                  const fullUrl = url.startsWith("http") ? url : supabase.storage.from("vet-documents").getPublicUrl(url).data.publicUrl;
+                                  return (
+                                    <div key={idx} className="relative w-16 h-16 rounded-xl border border-slate-200 overflow-hidden bg-white hover:border-slate-400 cursor-pointer shadow-3xs" onClick={() => setPreviewDoc({ label: `Practice Photo #${idx+1}`, url: fullUrl })}>
+                                      <SafeImage src={fullUrl} className="w-full h-full object-cover" />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Shop License document */}
+                          {selectedVet.clinic_shop_license_file && (
+                            <div className="space-y-1.5 border-t border-slate-100/60 pt-3.5 mt-1.5">
+                              <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-tight block">Shop & Establishment License</p>
+                              {renderReviewFile(selectedVet.clinic_shop_license_file, "Shop & Establishment License Certificate")}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Hospital details */}
+                      {hasHospital && (
+                        <div className="space-y-3.5 bg-slate-50/40 p-4 rounded-2xl border border-slate-100/70 shadow-3xs">
+                          <h4 className="text-xs font-extrabold text-pink-800 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
+                            <Stethoscope className="w-4 h-4 text-pink-600" />
+                            <span>b) Hospital/Organization Details</span>
+                          </h4>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                            <DetailItem label="Hospital/Organization Name" value={selectedVet.hospital_name} />
+                            <DetailItem label="Your Role / Designation" value={selectedVet.hospital_role} />
+                            <DetailItem label="State" value={selectedVet.hospital_state || selectedVet.state} />
+                            <DetailItem label="City" value={selectedVet.hospital_city || selectedVet.city} />
+                            <DetailItem label="Pincode" value={selectedVet.hospital_pincode} />
+                            <DetailItem label="Employee ID" value={selectedVet.hospital_employee_id} />
+                            <div className="col-span-2">
+                              <DetailItem label="Hospital Address" value={selectedVet.hospital_address} />
+                            </div>
+                          </div>
+
+                          {/* Joining Proof Document */}
+                          {selectedVet.hospital_joining_proof_file && (
+                            <div className="space-y-1.5 border-t border-slate-100/60 pt-3.5 mt-1.5">
+                              <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-tight block">Joining Proof/ID Document</p>
+                              {renderReviewFile(selectedVet.hospital_joining_proof_file, "Hospital ID Card / Office Joining Proof")}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* E) Availability & Fees */}
+              {(() => {
+                // Surcharge parameters calculation
+                const surchargeParams = (() => {
+                  const parsedClinicFee = parseFloat(isEditingDocs ? editForm.online_fee : selectedVet.online_fee) || 0;
+                  const parsedHomeFee = parseFloat(isEditingDocs ? editForm.offline_fee : selectedVet.offline_fee) || 0;
+                  const isCityTier1 = ["mumbai", "delhi", "bangalore", "pune", "hyderabad", "chennai", "kolkata"].some(c => (selectedVet.city || selectedVet.profile?.city || "").toLowerCase().includes(c));
+                  const weeklyAvailability = selectedVet.weekly_availability || {};
+                  const dDays = selectedVet.available_days || [];
+                  const daysCount = dDays.length || 1;
+                  const activeNightSlots = Object.values(weeklyAvailability).reduce((acc: number, d: any) => acc + (d?.night?.slots?.length || 0), 0);
+                  
+                  const getPct = (type: 'clinic' | 'home') => {
+                    let pct = 9; // baseline 9%
+                    if (daysCount <= 2) pct += 3;
+                    else if (daysCount <= 4) pct += 1.5;
                     
-                    <div className="flex flex-wrap gap-1 bg-white p-1 rounded-xl border border-[hsl(220,20%,91%)]">
-                      {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d: string) => {
-                        const isAvailable = selectedVet.available_days?.includes(d);
-                        const isSelected = selectedAvailDay === d;
-                        return (
-                          <button
-                            key={d}
-                            type="button"
-                            onClick={() => isAvailable && setSelectedAvailDay(d)}
-                            className={`flex-1 min-w-[36px] py-1.5 rounded-lg text-xs font-bold transition-all ${
-                              isSelected 
-                                ? "bg-blue-600 text-white shadow-sm" 
-                                : isAvailable 
-                                  ? "bg-[hsl(145,40%,90%)] text-[hsl(145,70%,30%)] hover:bg-[hsl(145,40%,85%)]" 
-                                  : "bg-slate-50 text-slate-400 opacity-40 cursor-not-allowed"
-                            }`}
-                            disabled={!isAvailable}
-                          >
-                            {d}
-                          </button>
-                        );
-                      })}
+                    if (activeNightSlots > 2) pct += 1;
+                    if (type === 'home') pct += 1.5;
+                    if (isCityTier1) pct += 1;
+                    return Math.min(14, Math.max(9, Math.round(pct)));
+                  };
+
+                  const dynamicClinicSurchargePct = getPct('clinic');
+                  const dynamicHomeSurchargePct = getPct('home');
+
+                  const calculatedClinicSurchargeAmt = Math.round((parsedClinicFee * dynamicClinicSurchargePct) / 100);
+                  const calculatedHomeSurchargeAmt = Math.round((parsedHomeFee * dynamicHomeSurchargePct) / 100);
+                  const calculatedClinicTotal = parsedClinicFee + calculatedClinicSurchargeAmt;
+                  const calculatedHomeTotal = parsedHomeFee + calculatedHomeSurchargeAmt;
+                  const isNightSlotEnabled = Object.values(weeklyAvailability).some((d: any) => d?.night?.enabled);
+
+                  return {
+                    parsedClinicFee,
+                    parsedHomeFee,
+                    calculatedClinicSurchargeAmt,
+                    calculatedHomeSurchargeAmt,
+                    calculatedClinicTotal,
+                    calculatedHomeTotal,
+                    isNightSlotEnabled
+                  };
+                })();
+
+                const selectedSpecs = selectedVet.specializations || [];
+                const isSpecSelected = (name: string) => {
+                  return selectedSpecs.some((s: string) => s.toLowerCase() === name.toLowerCase()) || selectedSpecs.includes(name);
+                };
+
+                const rawConsultTypes = selectedVet.consultation_type || selectedVet.consultation_types || '';
+                const parsedConsultTypes = Array.isArray(rawConsultTypes) 
+                  ? rawConsultTypes 
+                  : (typeof rawConsultTypes === 'string' ? rawConsultTypes.split(',').map((s: string) => s.trim()) : []);
+                const isConsultTypeSelected = (name: string) => {
+                  return parsedConsultTypes.some((s: string) => s.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(s.toLowerCase()));
+                };
+
+                return (
+                  <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-all space-y-6">
+                    <div className="flex items-center gap-3 pb-3.5 border-b border-slate-100/60">
+                      <div className="w-10 h-10 rounded-xl bg-orange-50/80 border border-orange-100 flex items-center justify-center shrink-0">
+                        <Calendar className="w-5 h-5 text-orange-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-sm sm:text-base text-[#1E293B] tracking-tight">E) Availability & Fees</h3>
+                        <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Weekly coverage & pricing details</p>
+                      </div>
                     </div>
 
-                    {/* Render details of active period slots */}
-                    {selectedVet.weekly_availability[selectedAvailDay] ? (
-                      <div className="grid grid-cols-1 gap-2">
-                        {(["morning", "afternoon", "evening", "night"] as const).map((periodKey) => {
-                          const periodInfo = {
-                            morning: { label: "Morning Session", icon: Sunrise, color: "bg-emerald-50 text-emerald-800 border-emerald-100" },
-                            afternoon: { label: "Afternoon Session", icon: Sun, color: "bg-amber-50 text-amber-800 border-amber-100" },
-                            evening: { label: "Evening Session", icon: Moon, color: "bg-indigo-50 text-indigo-800 border-indigo-150" },
-                            night: { label: "Night Session", icon: Moon, color: "bg-rose-50 text-rose-800 border-rose-100" }
-                          }[periodKey];
-
-                          const dayConfig = selectedVet.weekly_availability[selectedAvailDay];
-                          const periodConfig = dayConfig[periodKey];
-                          const isEnabled = periodConfig?.enabled;
-                          const slots = periodConfig?.slots || [];
-                          const PIcon = periodInfo.icon;
-
+                    {/* a) Specializations */}
+                    <div className="space-y-2">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider font-sans block">a) Specializations</span>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        {[
+                          { name: "Dog", icon: Dog },
+                          { name: "Cat", icon: Cat },
+                          { name: "Bird", icon: Bird },
+                          { name: "Hamster", icon: HamsterIcon }
+                        ].map(({ name, icon: Icon }) => {
+                          const isSelected = isSpecSelected(name);
                           return (
-                            <div key={periodKey} className={`flex items-center justify-between p-2.5 border rounded-xl bg-white text-xs ${isEnabled ? "border-[hsl(220,15%,90%)]" : "border-slate-100 opacity-50 bg-slate-50"}`}>
-                              <div className="flex items-center gap-2">
-                                <PIcon className="w-3.5 h-3.5 text-slate-500" />
-                                <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] border ${periodInfo.color}`}>{periodInfo.label}</span>
-                              </div>
-                              <div className="flex-1 flex flex-wrap gap-1 px-3 justify-end">
-                                {isEnabled ? (
-                                  slots.length > 0 ? (
-                                    slots.map((s: string) => (
-                                      <span key={s} className="bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded font-bold text-[10px] text-slate-700">{s}</span>
-                                    ))
-                                  ) : (
-                                    <span className="text-slate-400 italic">No specific slots enabled</span>
-                                  )
-                                ) : (
-                                  <span className="text-slate-400 italic text-[10px]">Disabled</span>
-                                )}
-                              </div>
-                              <span className={`text-[10px] font-extrabold pb-0.5 uppercase tracking-wide px-2 py-0.5 rounded-full ${isEnabled ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-400"}`}>
-                                {isEnabled ? "Active" : "Off"}
-                              </span>
+                            <div
+                              key={name}
+                              className={`flex items-center gap-2 px-3 py-2.5 rounded-2xl border text-xs font-bold transition-all shadow-3xs ${
+                                isSelected 
+                                  ? "border-pink-350 bg-pink-50/45 text-pink-950 font-extrabold" 
+                                  : "border-slate-100 bg-slate-50/40 text-slate-400 opacity-60"
+                              }`}
+                            >
+                              <Icon className={`w-4 h-4 ${isSelected ? "text-pink-500" : "text-slate-300"}`} />
+                              <span>{name}</span>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-pink-600 ml-auto stroke-[2.5]" />}
                             </div>
                           );
                         })}
                       </div>
+                    </div>
+
+                    {/* b) Consultation types */}
+                    <div className="space-y-2 pt-1">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider font-sans block">b) Consultation Types</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        {[
+                          { name: "In-clinic Visit", icon: Briefcase },
+                          { name: "Home Visit", icon: Home },
+                          { name: "Video Consultation", icon: Video }
+                        ].map(({ name, icon: Icon }) => {
+                          const isSelected = isConsultTypeSelected(name);
+                          return (
+                            <div
+                              key={name}
+                              className={`flex items-center gap-2 px-3 py-2.5 rounded-2xl border text-xs font-bold transition-all shadow-3xs ${
+                                isSelected 
+                                  ? "border-blue-200 bg-blue-50/45 text-blue-950 font-extrabold" 
+                                  : "border-slate-100 bg-slate-50/40 text-slate-400 opacity-60"
+                              }`}
+                            >
+                              <Icon className={`w-4 h-4 ${isSelected ? "text-blue-500" : "text-slate-300"}`} />
+                              <span>{name}</span>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 ml-auto stroke-[2.5]" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* c) Years of Practice */}
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider font-sans block">c) Years of Practice</span>
+                      <div className="inline-flex items-center gap-2 bg-[#FAF9FF]/80 px-3.5 py-2 rounded-2xl border border-slate-150/60 font-sans shadow-3xs text-xs">
+                        <GraduationCap className="w-4.5 h-4.5 text-[#8A1550]" strokeWidth={2.5} />
+                        <span className="font-extrabold text-[#8A1550]/80">Practice Experience:</span>
+                        {isEditingDocs ? (
+                          <input 
+                            type="number" 
+                            value={editForm.years_of_experience || ''} 
+                            onChange={e => setEditForm({...editForm, years_of_experience: e.target.value})} 
+                            className="border border-slate-200 rounded px-2 py-0.5 bg-white text-xs w-16" 
+                          />
+                        ) : (
+                          <span className="font-black text-[#1E293B]">{selectedVet.years_of_experience || "None"} Years of Active Practice</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* d) Availability & Shifts */}
+                    {selectedVet.weekly_availability ? (
+                      <div className="space-y-3 pt-1">
+                        <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider font-sans block">d) Availability & Shifts</span>
+                        <div className="border border-slate-100 bg-[#FAF9FF]/80 p-1.5 rounded-2xl flex flex-wrap gap-1.5 font-sans">
+                          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => {
+                            const isChosen = selectedAvailDay === d;
+                            const isAvailable = selectedVet.available_days?.includes(d);
+                            const isSunday = d === "Sun";
+                            
+                            return (
+                              <button
+                                key={d}
+                                type="button"
+                                onClick={() => isAvailable && setSelectedAvailDay(d)}
+                                className={`flex-1 min-w-[50px] py-2 rounded-xl font-bold text-xs text-center transition-all flex flex-col items-center gap-0.5 relative ${
+                                  isChosen 
+                                    ? "bg-[#8A1550] text-white shadow-3xs" 
+                                    : isAvailable
+                                      ? isSunday 
+                                        ? "bg-rose-50 text-rose-600 hover:bg-rose-100/80 border border-rose-100/20"
+                                        : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-100"
+                                      : "bg-slate-50 text-slate-350 opacity-40 cursor-not-allowed border border-dashed border-slate-200"
+                                }`}
+                                disabled={!isAvailable}
+                              >
+                                <span>{d}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Shifts Details */}
+                        <div className="space-y-3 font-sans">
+                          {(["morning", "afternoon", "evening", "night"] as const).map(periodKey => {
+                            const periodInfo = {
+                              morning: { label: "Morning", hours: "09:00 AM - 01:00 PM", bg: "bg-emerald-50/45 border-emerald-100 text-emerald-800", icon: <Sunrise className="w-4 h-4 text-emerald-600" strokeWidth={2.5} /> },
+                              afternoon: { label: "Afternoon", hours: "01:00 PM - 04:00 PM", bg: "bg-amber-50/45 border-amber-100 text-amber-850", icon: <Sun className="w-4 h-4 text-amber-600" strokeWidth={2.5} /> },
+                              evening: { label: "Evening", hours: "04:00 PM - 08:00 PM", bg: "bg-indigo-50/45 border-[#E2E1FF] text-indigo-950", icon: <Moon className="w-4 h-4 text-indigo-600" strokeWidth={2.5} /> },
+                              night: { label: "Night", hours: "08:00 PM - 12:00 AM", bg: "bg-pink-50/45 border-pink-100 text-pink-950", icon: <Moon className="w-4 h-4 text-pink-600" strokeWidth={2.5} /> }
+                            }[periodKey];
+
+                            const dayData = selectedVet.weekly_availability[selectedAvailDay];
+                            const periodAvailability = dayData ? dayData[periodKey] : { enabled: false, slots: [] };
+                            const isEnabled = periodAvailability?.enabled;
+
+                            return (
+                              <div 
+                                key={periodKey} 
+                                className={`flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3.5 p-3 border rounded-2xl transition-all ${
+                                  isEnabled 
+                                    ? "border-slate-110 bg-[#FAFAFC] shadow-3xs" 
+                                    : "border-slate-100 bg-slate-50/30 opacity-60"
+                                }`}
+                              >
+                                <div className={`flex items-center gap-2 py-1.5 px-3 rounded-xl border w-full md:w-[145px] shrink-0 ${periodInfo.bg}`}>
+                                  <div className="shrink-0 font-bold">{periodInfo.icon}</div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="font-extrabold text-[#1E293B] text-xs tracking-tight truncate">{periodInfo.label}</span>
+                                    {isEnabled && (
+                                      <span className="text-[9px] font-semibold opacity-75 truncate leading-tight block text-slate-500 font-sans">
+                                        {periodInfo.hours}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex-1 flex flex-row flex-wrap items-center gap-2 min-w-0 px-1">
+                                  {isEnabled && periodAvailability.slots && periodAvailability.slots.map((slot: string) => (
+                                    <div 
+                                      key={slot} 
+                                      className="flex items-center gap-1.5 bg-white border border-slate-200/85 px-3 py-1 rounded-xl text-[10px] font-bold text-slate-700 shadow-3xs shrink-0"
+                                    >
+                                      <span>{slot}</span>
+                                    </div>
+                                  ))}
+                                  {isEnabled && (!periodAvailability.slots || periodAvailability.slots.length === 0) && (
+                                    <span className="text-slate-400 font-semibold text-xs italic">No specific slots created</span>
+                                  )}
+                                  {!isEnabled && (
+                                    <span className="text-slate-400 font-semibold text-xs italic">Disabled for {selectedAvailDay}</span>
+                                  )}
+                                </div>
+
+                                <div className="shrink-0 flex items-center pr-2">
+                                  <span className={`text-[10px] font-extrabold uppercase tracking-wide px-2.5 py-1 rounded-full ${
+                                    isEnabled ? "bg-emerald-50 text-emerald-800 border border-emerald-100/60 font-extrabold" : "bg-slate-100 text-slate-400"
+                                  }`}>
+                                    {isEnabled ? "Active" : "Inactive"}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     ) : (
-                      <p className="text-xs text-slate-400 italic">No daily schedule mapping available for {selectedAvailDay}</p>
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider font-sans block">d) Availability & Shifts</span>
+                        <p className="text-slate-400 text-xs italic">No weekly schedule configuration specified.</p>
+                      </div>
                     )}
-                  </div>
-                )}
-              </div>
 
-              {/* Emergency & Support Surcharges (Step 5) */}
-              <div className="bg-[hsl(0,35%,97%)] rounded-xl p-4 space-y-3">
-                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] flex items-center gap-2"><HeartHandshake className="w-4 h-4 text-rose-600" /> Emergency, Night, & Support Coverage</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white p-3 rounded-xl border border-[hsl(220,20%,92%)]">
-                  <div>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Emergency Available</p>
-                    <p className="font-extrabold text-xs text-[hsl(220,20%,15%)] flex items-center gap-1.5 mt-0.5">
-                      <span className={`w-2 h-2 rounded-full ${(selectedVet.emergency_available === 'yes' || selectedVet.emergency_available === true) ? "bg-green-500" : "bg-slate-400"}`} />
-                      {(selectedVet.emergency_available === 'yes' || selectedVet.emergency_available === true) ? "Yes (Available)" : "No"}
-                    </p>
+                    {/* e) 1) Consultation Fees */}
+                    <div className="space-y-3.5 pt-3.5 border-t border-slate-100 mt-1">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider font-sans block">e) 1) Consultation Fees (₹)</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="p-3.5 rounded-2xl border border-slate-100 bg-[#FBFBFE]/80 flex items-center justify-between shadow-3xs">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center">
+                              <Briefcase className="w-4 h-4 text-purple-600" />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-slate-800 font-sans">In-clinic Visit Fee</span>
+                              <span className="text-[9px] text-slate-400 font-medium">At your clinic</span>
+                            </div>
+                          </div>
+                          {isEditingDocs ? (
+                            <input 
+                              type="number" 
+                              value={editForm.online_fee || ''} 
+                              onChange={e => setEditForm({...editForm, online_fee: e.target.value})} 
+                              className="border border-slate-200 rounded px-2 py-1 text-center bg-white text-xs font-extrabold w-16" 
+                            />
+                          ) : (
+                            <span className="text-[#1E293B] font-black text-sm sm:text-base">₹{surchargeParams.parsedClinicFee}</span>
+                          )}
+                        </div>
+
+                        <div className="p-3.5 rounded-2xl border border-slate-100 bg-[#FFFDFE]/80 flex items-center justify-between shadow-3xs">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-pink-50 flex items-center justify-center">
+                              <Home className="w-4 h-4 text-[#EC4899]" />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-slate-800 font-sans">Home Visit Fee</span>
+                              <span className="text-[9px] text-slate-400 font-medium">At pet parent's home</span>
+                            </div>
+                          </div>
+                          {isEditingDocs ? (
+                            <input 
+                              type="number" 
+                              value={editForm.offline_fee || ''} 
+                              onChange={e => setEditForm({...editForm, offline_fee: e.target.value})} 
+                              className="border border-slate-200 rounded px-2 py-1 text-center bg-white text-xs font-extrabold w-16" 
+                            />
+                          ) : (
+                            <span className="text-[#1E293B] font-black text-sm sm:text-base">₹{surchargeParams.parsedHomeFee}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 2) Night Surcharge Rate indicator */}
+                      {surchargeParams.isNightSlotEnabled && (
+                        <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col space-y-3.5 animate-fade-in text-slate-700 font-sans">
+                          <div className="space-y-0.5">
+                            <h4 className="text-xs sm:text-sm font-extrabold text-[#8A1550] flex items-center gap-1.5 font-sans">
+                              <Moon className="w-4 h-4 text-pink-500" strokeWidth={2.5} />
+                              <span>2) Night Surcharge (Late-Hour Active)</span>
+                            </h4>
+                            <p className="text-[10px] text-slate-400 font-medium leading-relaxed">Additional charges automatically applied during late-hour slots (Night shift active)</p>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1 bg-[#F5F3FF]/30 p-2.5 rounded-2xl border border-[#E4E0FF]/60 shadow-3xs">
+                              <span className="text-[9px] text-[#4F46E5] font-extrabold uppercase tracking-wider block">In-clinic Surcharge</span>
+                              <span className="font-extrabold text-sm sm:text-base text-[#1E293B]">₹{surchargeParams.calculatedClinicSurchargeAmt}</span>
+                            </div>
+
+                            <div className="space-y-1 bg-[#FFF3F7]/30 p-2.5 rounded-2xl border border-[#FFE0ED]/60 shadow-3xs">
+                              <span className="text-[9px] text-[#EC4899] font-extrabold uppercase tracking-wider block">Home Surcharge</span>
+                              <span className="font-extrabold text-sm sm:text-base text-[#1E293B]">₹{surchargeParams.calculatedHomeSurchargeAmt}</span>
+                            </div>
+                          </div>
+
+                          {/* 3) Payment Summary Late-Hour */}
+                          <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-100 space-y-3 shadow-3xs">
+                            <span className="text-[9px] font-extrabold text-[#8A1550] uppercase tracking-wider block border-b border-slate-200 pb-1">3) Payment Summary (Late-Hour)</span>
+                            <div className="flex flex-col sm:flex-row gap-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
+                              <div className="space-y-1 sm:flex-1">
+                                <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">∆) In-Clinic Consultation</span>
+                                <div className="flex justify-between text-[11px]">
+                                  <span className="text-slate-500 font-semibold">Base Fee</span>
+                                  <span className="font-bold text-slate-700">₹{surchargeParams.parsedClinicFee}</span>
+                                </div>
+                                <div className="flex justify-between text-[11px]">
+                                  <span className="text-slate-500 font-semibold">Night Surcharge</span>
+                                  <span className="font-bold text-slate-700">+ ₹{surchargeParams.calculatedClinicSurchargeAmt}</span>
+                                </div>
+                                <div className="flex justify-between text-[11px] pt-1 border-t border-dashed border-slate-200 font-black text-[#4F46E5]">
+                                  <span>Total Price</span>
+                                  <span>₹{surchargeParams.calculatedClinicTotal}</span>
+                                </div>
+                              </div>
+
+                              <div className="space-y-1 pt-3 sm:pt-0 sm:pl-4 sm:flex-1">
+                                <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">∆) Home Visit Consultation</span>
+                                <div className="flex justify-between text-[11px]">
+                                  <span className="text-slate-500 font-semibold">Base Fee</span>
+                                  <span className="font-bold text-slate-700">₹{surchargeParams.parsedHomeFee}</span>
+                                </div>
+                                <div className="flex justify-between text-[11px]">
+                                  <span className="text-slate-500 font-semibold">Night Surcharge</span>
+                                  <span className="font-bold text-slate-700">+ ₹{surchargeParams.calculatedHomeSurchargeAmt}</span>
+                                </div>
+                                <div className="flex justify-between text-[11px] pt-1 border-t border-dashed border-slate-200 font-black text-[#EC4899]">
+                                  <span>Total Price</span>
+                                  <span>₹{surchargeParams.calculatedHomeTotal}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* f) Emergency & Support Services */}
+                    <div className="space-y-2 pt-3.5 border-t border-slate-100 mt-1">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider font-sans block">f) Emergency & Support Services</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        <div className={`p-3 rounded-2xl border font-sans text-xs flex flex-col justify-between h-20 shadow-3xs ${
+                          (selectedVet.emergency_available === 'yes' || selectedVet.emergency_available === true) ? "border-emerald-200 bg-emerald-50/20" : "border-slate-100 bg-slate-50/50"
+                        }`}>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">∆) Emergency Readiness</span>
+                          <div className="flex items-center gap-1.5 mt-2">
+                            {(selectedVet.emergency_available === 'yes' || selectedVet.emergency_available === true) ? (
+                              <><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /><span className="font-extrabold text-emerald-950">Available</span></>
+                            ) : (
+                              <><CheckCircle2 className="w-4 h-4 text-slate-300 shrink-0" /><span className="font-extrabold text-slate-400">Not Available</span></>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className={`p-3 rounded-2xl border font-sans text-xs flex flex-col justify-between h-20 shadow-3xs ${
+                          (selectedVet.weekend_availability === 'yes' || selectedVet.weekend_availability === true) ? "border-pink-200 bg-pink-50/20" : "border-slate-100 bg-slate-50/50"
+                        }`}>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Weekend Availability</span>
+                          <div className="flex items-center gap-1.5 mt-2">
+                            {(selectedVet.weekend_availability === 'yes' || selectedVet.weekend_availability === true) ? (
+                              <><CheckCircle2 className="w-4 h-4 text-[#EC4899] shrink-0" /><span className="font-extrabold text-[#8A1550]">Active</span></>
+                            ) : (
+                              <><CheckCircle2 className="w-4 h-4 text-slate-300 shrink-0" /><span className="font-extrabold text-slate-400">Offline</span></>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className={`p-3 rounded-2xl border font-sans text-xs flex flex-col justify-between h-20 shadow-3xs ${
+                          (selectedVet.support_24x7 === 'yes' || selectedVet.support_24x7 === true) ? "border-purple-200 bg-purple-50/20" : "border-slate-100 bg-slate-50/50"
+                        }`}>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">24x7 Support</span>
+                          <div className="flex items-center gap-1.5 mt-2">
+                            {(selectedVet.support_24x7 === 'yes' || selectedVet.support_24x7 === true) ? (
+                              <><CheckCircle2 className="w-4 h-4 text-purple-600 shrink-0" /><span className="font-extrabold text-purple-950 font-sans">Active</span></>
+                            ) : (
+                              <><CheckCircle2 className="w-4 h-4 text-slate-300 shrink-0" /><span className="font-extrabold text-slate-400 font-sans">Standard hours</span></>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* F) Review Profile (Agreements & Consent) */}
+              <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-colors hover:border-[#E4E8F0]">
+                <div className="flex items-center gap-3 pb-3.5 border-b border-slate-100/60">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50/80 border border-amber-100 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-5 h-5 text-amber-600" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Weekend Coverage</p>
-                    <p className="font-extrabold text-xs text-[hsl(220,20%,15%)] flex items-center gap-1.5 mt-0.5">
-                      <span className={`w-2 h-2 rounded-full ${(selectedVet.weekend_availability === 'yes' || selectedVet.weekend_availability === true) ? "bg-green-500" : "bg-slate-400"}`} />
-                      {(selectedVet.weekend_availability === 'yes' || selectedVet.weekend_availability === true) ? "Yes (Working)" : "No"}
-                    </p>
+                    <h3 className="font-extrabold text-sm sm:text-base text-[#1E293B] tracking-tight">F) Review Profile</h3>
+                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Onboarding terms & signed certifications</p>
                   </div>
+                </div>
+                <div className="mt-4 space-y-4">
                   <div>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">24x7 Night Cover</p>
-                    <p className="font-extrabold text-xs text-[hsl(220,20%,15%)] flex items-center gap-1.5 mt-0.5">
-                      <span className={`w-2 h-2 rounded-full ${(selectedVet.support_24x7 === 'yes' || selectedVet.support_24x7 === true) ? "bg-green-500" : "bg-slate-400"}`} />
-                      {(selectedVet.support_24x7 === 'yes' || selectedVet.support_24x7 === true) ? "Yes (Supported)" : "No"}
-                    </p>
+                    <h4 className="text-xs font-black text-amber-700 uppercase tracking-widest leading-wide">Agreements & Consent</h4>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3 p-4 bg-[#F8F9FC]/80 border border-slate-100 rounded-2xl shadow-3xs">
+                      <Check className="w-4 h-4 text-emerald-600 stroke-[2.5] mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs font-black text-slate-800 leading-tight">Vendor Agreement</p>
+                        <p className="text-[10px] text-slate-400 font-semibold mt-1">I accept the Vendor/Service Agreement</p>
+                        <span className="inline-flex items-center gap-1 mt-1.5 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-extrabold rounded-lg border border-emerald-100/60">Accepted & Signed</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3 p-4 bg-[#F8F9FC]/80 border border-slate-100 rounded-2xl shadow-3xs">
+                      <Check className="w-4 h-4 text-emerald-600 stroke-[2.5] mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs font-black text-slate-800 leading-tight">Terms & Conditions</p>
+                        <p className="text-[10px] text-slate-400 font-semibold mt-1">I accept the Terms & Conditions and confirm all information is accurate</p>
+                        <span className="inline-flex items-center gap-1 mt-1.5 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-extrabold rounded-lg border border-emerald-100/60">Confirmed</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3 p-4 bg-[#F8F9FC]/80 border border-slate-100 rounded-2xl shadow-3xs">
+                      <Check className="w-4 h-4 text-emerald-600 stroke-[2.5] mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs font-black text-slate-800 leading-tight">Telemedicine Consultation Consent</p>
+                        <p className="text-[10px] text-slate-400 font-semibold mt-1">I consent to provide Telemedicine Consultations via this platform</p>
+                        <span className="inline-flex items-center gap-1 mt-1.5 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-extrabold rounded-lg border border-emerald-100/60 font-sans">Consent Granted</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Bank Details */}
-              <div className="bg-[hsl(40,40%,97%)] rounded-xl p-4">
-                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] mb-3 flex items-center gap-2"><CreditCard className="w-4 h-4 text-amber-600" /> Settlement Bank Details</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  <InfoRow icon={Building} label="Account Holder" value={selectedVet.bank_account_name} />
-                  <InfoRow icon={Building} label="Bank Name" value={selectedVet.bank_name} />
-                  <InfoRow icon={CreditCard} label="Account Number" value={selectedVet.bank_account_number} />
-                  <InfoRow icon={FileText} label="IFSC Code" value={selectedVet.bank_ifsc} />
-                </div>
-              </div>
-
-              {/* Compliance & Consents (Step 6) */}
-              <div className="bg-[hsl(35,50%,98%)] rounded-xl p-4 space-y-3">
-                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-amber-600" /> Onboarding Legal Compliance & Consents</h4>
-                <div className="space-y-2 text-xs">
-                  <div className="flex items-center gap-2 bg-white px-3 py-2.5 rounded-xl border border-[hsl(220,20%,93%)]">
-                    <span className={`w-2 h-2 rounded-full ${selectedVet.vendor_agreement_accepted ? "bg-green-500" : "bg-red-500"}`} />
-                    <p className="font-semibold text-slate-700">Vendor & Service Level Agreement: <span className="font-bold">{selectedVet.vendor_agreement_accepted ? "Accepted & Signed" : "Undetermined/Invalid"}</span></p>
+              {/* Master Documents Vault */}
+              <div className="bg-white border border-[#F1F5F9] p-4 sm:p-5 rounded-3xl shadow-xs transition-colors hover:border-[#E4E8F0]">
+                <div className="flex items-center gap-3 pb-3.5 border-b border-slate-100/60 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-slate-50/80 border border-slate-100 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5 text-slate-600" />
                   </div>
-                  <div className="flex items-center gap-2 bg-white px-3 py-2.5 rounded-xl border border-[hsl(220,20%,93%)]">
-                    <span className={`w-2 h-2 rounded-full ${selectedVet.telemedicine_consent_accepted ? "bg-green-500" : "bg-red-500"}`} />
-                    <p className="font-semibold text-slate-700">Telemedicine Consultation Consent: <span className="font-bold">{selectedVet.telemedicine_consent_accepted ? "Consent Granted" : "Consent Missing"}</span></p>
-                  </div>
-                  <div className="flex items-center gap-2 bg-white px-3 py-2.5 rounded-xl border border-[hsl(220,20%,93%)]">
-                    <span className="w-2 h-2 rounded-full bg-green-500" />
-                    <p className="font-semibold text-slate-700">Accurate Declarations & Terms Confirmation: <span className="font-bold">Fully Certified & Verified</span></p>
+                  <div>
+                    <h3 className="font-extrabold text-sm sm:text-base text-[#1E293B] tracking-tight">Verification Documents Vault</h3>
+                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">{
+                      [
+                        selectedVet.vet_degree_file,
+                        selectedVet.govt_id_file,
+                        selectedVet.pan_card_file,
+                        selectedVet.passport_photo_file,
+                        selectedVet.clinic_registration_file,
+                        selectedVet.clinic_shop_license_file,
+                        selectedVet.gst_certificate_file,
+                        selectedVet.clinic_address_proof_file,
+                        selectedVet.cancelled_cheque_file,
+                        selectedVet.hospital_joining_proof_file,
+                        selectedVet.profile_photo || selectedVet.profile?.profile_photo
+                      ].filter(Boolean).length
+                    } Document certificates uploaded</p>
                   </div>
                 </div>
-              </div>
-
-              {/* Documents */}
-              <div>
-                <h4 className="text-sm font-bold text-[hsl(220,20%,15%)] mb-3">Verification Documents Vault ({
-                  [
-                    selectedVet.vet_degree_file,
-                    selectedVet.govt_id_file,
-                    selectedVet.pan_card_file,
-                    selectedVet.passport_photo_file,
-                    selectedVet.clinic_registration_file,
-                    selectedVet.clinic_shop_license_file,
-                    selectedVet.gst_certificate_file,
-                    selectedVet.clinic_address_proof_file,
-                    selectedVet.cancelled_cheque_file,
-                    selectedVet.hospital_joining_proof_file,
-                    selectedVet.profile_photo || selectedVet.profile?.profile_photo
-                  ].filter(Boolean).length
-                } Documents)</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[
                     { label: "Veterinary Degree Certificate (Step 3)", url: selectedVet.vet_degree_file },

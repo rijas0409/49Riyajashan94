@@ -197,11 +197,12 @@ const App = () => (
                   </VetProtectionWrapper>
                 } />
                 <Route path="/vet-onboarding" element={<Navigate to="/vet/onboarding" replace />} />
-                <Route path="/vet-pending-approval" element={
+                <Route path="/vet/account-review" element={
                   <VetProtectionWrapper requiredStatus="pending">
                     <VetPendingApproval />
                   </VetProtectionWrapper>
                 } />
+                <Route path="/vet-pending-approval" element={<Navigate to="/vet/account-review" replace />} />
                 <Route path="/wallet" element={<WalletPage />} />
                 <Route path="/wishlist" element={<Wishlist />} />
 

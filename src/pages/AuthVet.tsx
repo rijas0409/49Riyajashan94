@@ -36,7 +36,7 @@ const AuthVet = () => {
       if (profile.is_onboarding_complete === false) {
         navigate("/vet/onboarding");
       } else if (profile.is_admin_approved === false) {
-        navigate("/vet-pending-approval");
+        navigate("/vet/account-review");
       } else if (profile.is_onboarding_complete === true && profile.is_admin_approved === true) {
         navigate("/vet/home");
       }
@@ -91,7 +91,7 @@ const AuthVet = () => {
         if (userProfile.is_onboarding_complete === false) {
           navigate("/vet/onboarding");
         } else if (userProfile.is_admin_approved === false) {
-          navigate("/vet-pending-approval");
+          navigate("/vet/account-review");
         } else {
           navigate("/vet/home");
         }
