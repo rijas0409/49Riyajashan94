@@ -1454,17 +1454,24 @@ const VetOnboarding = () => {
         );
         if (!standardFieldsValid) return false;
 
-        // Verify that for every selected day, there is at least one slot created overall on that day.
+        // Verify that for every selected day, at least one period is enabled and all enabled periods have slots.
         const allSelectedDaysValid = formData.availableDays.every(d => {
           const dayData = weeklyAvailability[d];
           if (!dayData) return false;
           
           const periods = ['morning', 'afternoon', 'evening', 'night'] as const;
           
-          // Count total slots across all periods on this day
-          const totalSlotsOnDay = periods.reduce((sum, p) => sum + (dayData[p]?.slots?.length || 0), 0);
-          
-          return totalSlotsOnDay > 0;
+          // Check if at least one period is enabled for this selected day
+          const anyEnabled = periods.some(p => dayData[p]?.enabled);
+          if (!anyEnabled) return false;
+
+          // Check if all enabled periods have at least one slot
+          return periods.every(p => {
+            if (dayData[p]?.enabled) {
+              return dayData[p].slots.length > 0;
+            }
+            return true;
+          });
         });
 
         return allSelectedDaysValid;
@@ -1533,7 +1540,7 @@ const VetOnboarding = () => {
         </div>
       </header>
 
-      <main className={cn("container mx-auto px-4 py-6 transition-all duration-300", currentStep >= 1 && currentStep <= 6 ? "max-w-[1122px] lg:px-[49px]" : "max-w-3xl")}>
+      <main className={cn("container mx-auto px-4 py-6 transition-all duration-300", currentStep >= 1 && currentStep <= 6 ? "max-w-[1104px] lg:px-[58px]" : "max-w-3xl")}>
         {/* Progress bar */}
         <div className="flex items-center justify-between md:justify-center gap-1 md:gap-3 mb-6 bg-card p-3 rounded-2xl border border-border/60 shadow-sm overflow-x-auto scrollbar-none">
           {visibleSteps.map((step, i) => {
