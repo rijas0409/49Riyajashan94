@@ -781,13 +781,13 @@ const VetOnboarding = () => {
       const currentDayData = prev[selectedDay];
       const pData = currentDayData[clockPickerPeriod];
       
-      if (pData.slots.some(s => s.time === timeStr)) {
-        toast.error("Time slot already exists");
+      if (pData.slots.length >= 1) {
+        toast.error(`Only one slot is allowed in the ${clockPickerPeriod} period.`);
         return prev;
       }
 
-      if (clockPickerPeriod === "morning" && periodData.slots.length >= 1) {
-        toast.error("Only one slot is allowed in the morning period.");
+      if (pData.slots.some(s => s.time === timeStr)) {
+        toast.error("Time slot already exists");
         return prev;
       }
 
@@ -852,6 +852,11 @@ const VetOnboarding = () => {
       const currentDayData = prev[selectedDay];
       const periodData = currentDayData[period];
       
+      if (periodData.slots.length >= 1) {
+        toast.error(`Only one slot is allowed in the ${period} period.`);
+        return prev;
+      }
+
       if (periodData.slots.some(s => s.time === timeStr)) {
         toast.error("Time slot already exists");
         return prev;
@@ -1454,24 +1459,26 @@ const VetOnboarding = () => {
         );
         if (!standardFieldsValid) return false;
 
-        // Verify that for every selected day, at least one period is enabled and all enabled periods have slots.
+        // Verify that for every selected day, every enabled period has at least one slot.
         const allSelectedDaysValid = formData.availableDays.every(d => {
           const dayData = weeklyAvailability[d];
           if (!dayData) return false;
           
           const periods = ['morning', 'afternoon', 'evening', 'night'] as const;
           
-          // Check if at least one period is enabled for this selected day
-          const anyEnabled = periods.some(p => dayData[p]?.enabled);
-          if (!anyEnabled) return false;
-
-          // Check if all enabled periods have at least one slot
-          return periods.every(p => {
-            if (dayData[p]?.enabled) {
-              return dayData[p].slots.length > 0;
+          // Check that IF a period is enabled, it MUST have at least one slot.
+          const allEnabledPeriodsHaveSlots = periods.every(p => {
+            const period = dayData[p];
+            if (period.enabled) {
+              return period.slots.length > 0;
             }
-            return true;
+            return true; // If not enabled, it's valid to have 0 slots
           });
+
+          // Also ensure at least one period is enabled and has slots for this day
+          const atLeastOnePeriodEnabled = periods.some(p => dayData[p].enabled && dayData[p].slots.length > 0);
+          
+          return allEnabledPeriodsHaveSlots && atLeastOnePeriodEnabled;
         });
 
         return allSelectedDaysValid;
@@ -1540,7 +1547,7 @@ const VetOnboarding = () => {
         </div>
       </header>
 
-      <main className={cn("container mx-auto px-4 py-6 transition-all duration-300", currentStep >= 1 && currentStep <= 6 ? "max-w-[1104px] lg:px-[58px]" : "max-w-3xl")}>
+      <main className={cn("container mx-auto px-4 py-6 transition-all duration-300", currentStep >= 1 && currentStep <= 6 ? "max-w-[1006px] lg:px-[107px]" : "max-w-3xl")}>
         {/* Progress bar */}
         <div className="flex items-center justify-between md:justify-center gap-1 md:gap-3 mb-6 bg-card p-3 rounded-2xl border border-border/60 shadow-sm overflow-x-auto scrollbar-none">
           {visibleSteps.map((step, i) => {
@@ -3160,7 +3167,7 @@ const VetOnboarding = () => {
                               
                               {isEnabled && (
                                 <>
-                                  {(periodKey === "morning" && periodAvailability.slots.length >= 1) ? null : (
+                                  {periodAvailability.slots.length >= 1 ? null : (
                                     <button
                                       type="button"
                                       onClick={() => handleOpenAddSlot(periodKey)}
@@ -4288,7 +4295,7 @@ const VetOnboarding = () => {
                                                 return (
                                                   <div 
                                                     key={`${time}-${sIdx}`} 
-                                                    className="flex items-center gap-2 bg-white border border-slate-200/85 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold text-slate-700 shadow-3xs shrink-0"
+                                                    className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold text-slate-700 shadow-3xs shrink-0"
                                                   >
                                                     <span className="text-[#333] font-black">{time}</span>
                                                   </div>
@@ -4296,20 +4303,21 @@ const VetOnboarding = () => {
                                               })}
                                               {isEnabled && (
                                                 <>
-                                                  {/* Duration Card for Step 6 */}
+                                                  {/* Duration Card for Step 6 - Matching Step 5 */}
                                                   <div className="flex items-center gap-2 px-4 h-11 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0 ml-1">
                                                     <Clock className="w-4 h-4 text-indigo-500 shrink-0" />
                                                     <span className="text-xs font-black uppercase tracking-tight">30 Minutes</span>
                                                   </div>
 
-                                                  {/* Location Card for Step 6 */}
+                                                  {/* Location Card for Step 6 - Matching Step 5 */}
                                                   {(() => {
                                                     const defaultLoc = (formData.practiceType[0]?.includes("Hospital") || !formData.practiceType[0]) ? "Hospital" : "Independent Clinic";
                                                     const currentLocation = periodAvailability.slots[0]?.location || defaultLoc;
+                                                    const icon = currentLocation === "Hospital" ? <Stethoscope className="w-4 h-4 text-pink-500" /> : <Building2 className="w-4 h-4 text-pink-500" />;
                                                     
                                                     return (
                                                       <div className="flex items-center gap-2 px-5 h-11 rounded-2xl bg-slate-100 text-slate-600 border-none shrink-0 ml-1">
-                                                        {currentLocation === "Hospital" ? <Stethoscope className="w-4 h-4 text-pink-500" /> : <Building2 className="w-4 h-4 text-pink-500" />}
+                                                        {icon}
                                                         <span className="text-xs font-black uppercase tracking-tight">
                                                           {currentLocation}
                                                         </span>
