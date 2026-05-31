@@ -3121,84 +3121,84 @@ const VetOnboarding = () => {
                                 const hasMultipleLocations = formData.practiceType.length > 1;
                                 
                                 return (
-                                  <div key={`${slot.time}-${sIdx}`} className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-slate-700 shadow-3xs transition hover:border-slate-300 shrink-0">
-                                    <div className="flex flex-col gap-0.5">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-[#333] font-black">{slot.time}</span>
-                                        <button 
-                                          type="button" 
-                                          onClick={() => handleRemoveSlot(periodKey, sIdx)}
-                                          className="text-slate-400 hover:text-[#EC4899] transition-colors p-0.5 rounded-full hover:bg-slate-50 shrink-0"
-                                        >
-                                          <X className="w-3 h-3 stroke-[2.5]" />
-                                        </button>
-                                      </div>
-                                      
-                                      {hasMultipleLocations ? (
-                                        <Select
-                                          value={slot.location}
-                                          onValueChange={(val) => {
-                                            setWeeklyAvailability(prev => {
-                                              const currentDayData = prev[selectedDay];
-                                              const periodData = currentDayData[periodKey];
-                                              const updatedSlots = [...periodData.slots];
-                                              updatedSlots[sIdx] = { ...updatedSlots[sIdx], location: val };
-                                              
-                                              const next = {
-                                                ...prev,
-                                                [selectedDay]: {
-                                                  ...currentDayData,
-                                                  [periodKey]: {
-                                                    ...periodData,
-                                                    slots: updatedSlots
+                                  <div key={`${slot.time}-${sIdx}`} className="flex items-center gap-2 shrink-0">
+                                    {/* Time Slot Card - Reverted to clean version */}
+                                    <div className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold text-slate-700 shadow-3xs transition hover:border-slate-300">
+                                      <span className="text-[#333] font-black">{slot.time}</span>
+                                      <button 
+                                        type="button" 
+                                        onClick={() => handleRemoveSlot(periodKey, sIdx)}
+                                        className="text-slate-400 hover:text-[#EC4899] transition-colors p-0.5 rounded-full hover:bg-slate-50"
+                                      >
+                                        <X className="w-4 h-4 stroke-[2.5]" />
+                                      </button>
+                                    </div>
+                                    
+                                    {/* Location Specific Card / Selector */}
+                                    {hasMultipleLocations ? (
+                                      <Select
+                                        value={slot.location}
+                                        onValueChange={(val) => {
+                                          setWeeklyAvailability(prev => {
+                                            const currentDayData = prev[selectedDay];
+                                            const periodData = currentDayData[periodKey];
+                                            const updatedSlots = [...periodData.slots];
+                                            updatedSlots[sIdx] = { ...updatedSlots[sIdx], location: val };
+                                            
+                                            const next = {
+                                              ...prev,
+                                              [selectedDay]: {
+                                                ...currentDayData,
+                                                [periodKey]: {
+                                                  ...periodData,
+                                                  slots: updatedSlots
+                                                }
+                                              }
+                                            };
+                                            
+                                            if (sameTimingAllDays) {
+                                              const sourceDayData = next[selectedDay];
+                                              Object.keys(next).forEach(day => {
+                                                if (day !== selectedDay) {
+                                                  const isDayActive = next[day] && (next[day].morning.enabled || next[day].afternoon.enabled || next[day].evening.enabled || next[day].night.enabled);
+                                                  if (isDayActive) {
+                                                    next[day] = JSON.parse(JSON.stringify(sourceDayData));
                                                   }
                                                 }
-                                              };
-                                              
-                                              if (sameTimingAllDays) {
-                                                const sourceDayData = next[selectedDay];
-                                                Object.keys(next).forEach(day => {
-                                                  if (day !== selectedDay) {
-                                                    const isDayActive = next[day] && (next[day].morning.enabled || next[day].afternoon.enabled || next[day].evening.enabled || next[day].night.enabled);
-                                                    if (isDayActive) {
-                                                      next[day] = JSON.parse(JSON.stringify(sourceDayData));
-                                                    }
-                                                  }
-                                                });
-                                              }
-                                              return next;
-                                            });
-                                          }}
-                                        >
-                                          <SelectTrigger className="h-6 min-w-[90px] text-[9px] py-0 px-1.5 rounded-lg border-none bg-pink-50/50 hover:bg-pink-100/50 font-bold focus:ring-0 shadow-none -ml-1">
-                                            <div className="flex items-center gap-1 overflow-hidden">
-                                              {slot.location === "Hospital" ? <Stethoscope className="w-2.5 h-2.5 text-[#EC4899]" /> : <Building2 className="w-2.5 h-2.5 text-[#EC4899]" />}
-                                              <SelectValue placeholder="Location" />
-                                            </div>
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {formData.practiceType.map(pt => {
-                                              const label = pt.includes("Hospital") ? "Hospital" : "Independent Clinic";
-                                              return (
-                                                <SelectItem key={pt} value={label} className="text-[10px] font-semibold">
-                                                  <div className="flex items-center gap-2">
-                                                    {label === "Hospital" ? <Stethoscope className="w-3 h-3" /> : <Building2 className="w-3 h-3" />}
-                                                    {label}
-                                                  </div>
-                                                </SelectItem>
-                                              );
-                                            })}
-                                          </SelectContent>
-                                        </Select>
-                                      ) : (
-                                        <div className="flex items-center gap-1 transition-all opacity-80">
-                                          {slot.location === "Hospital" ? <Stethoscope className="w-2.5 h-2.5 text-[#EC4899]" /> : <Building2 className="w-2.5 h-2.5 text-[#EC4899]" />}
-                                          <span className="text-[9px] text-[#EC4899] font-black uppercase tracking-tight">
-                                            {slot.location || "Clinic"}
-                                          </span>
-                                        </div>
-                                      )}
-                                    </div>
+                                              });
+                                            }
+                                            return next;
+                                          });
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-10 min-w-[120px] text-[11px] sm:text-xs py-0 px-3.5 rounded-2xl border-none bg-[#F1F5F9] hover:bg-slate-200 text-slate-600 font-bold focus:ring-0 shadow-none">
+                                          <div className="flex items-center gap-2 overflow-hidden">
+                                            {slot.location === "Hospital" ? <Stethoscope className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
+                                            <SelectValue placeholder="Location" />
+                                          </div>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {formData.practiceType.map(pt => {
+                                            const label = pt.includes("Hospital") ? "Hospital" : "Independent Clinic";
+                                            return (
+                                              <SelectItem key={pt} value={label} className="text-xs font-semibold">
+                                                <div className="flex items-center gap-2">
+                                                  {label === "Hospital" ? <Stethoscope className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
+                                                  {label}
+                                                </div>
+                                              </SelectItem>
+                                            );
+                                          })}
+                                        </SelectContent>
+                                      </Select>
+                                    ) : (
+                                      <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#F1F5F9] text-slate-600 border-none">
+                                        {slot.location === "Hospital" ? <Stethoscope className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
+                                        <span className="text-[11px] sm:text-xs font-bold uppercase tracking-tight">
+                                          {slot.location || "Clinic"}
+                                        </span>
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               })}
