@@ -760,24 +760,28 @@ const VetOnboarding = () => {
     const formattedEnd = convertTimeTo12Hr(end24);
     const timeStr = `${formattedStart} – ${formattedEnd}`;
 
-    // Determine default location based on practiceType
+    // Determine location for the new slot
     let defaultLocation = "";
-    if (formData.practiceType.length === 1) {
+    
+    // Check if row already has a location preference
+    const periodData = weeklyAvailability[selectedDay][clockPickerPeriod];
+    if (periodData.slots.length > 0) {
+      defaultLocation = periodData.slots[0].location;
+    } else if (formData.practiceType.length === 1) {
       if (formData.practiceType.includes("Hospital / Organization")) {
         defaultLocation = "Hospital";
       } else if (formData.practiceType.includes("Independent Clinic / Practice")) {
         defaultLocation = "Independent Clinic";
       }
     } else if (formData.practiceType.length > 1) {
-      // Default to the first one, let user change in the card
       defaultLocation = formData.practiceType[0].includes("Hospital") ? "Hospital" : "Independent Clinic";
     }
 
     setWeeklyAvailability(prev => {
       const currentDayData = prev[selectedDay];
-      const periodData = currentDayData[clockPickerPeriod];
+      const pData = currentDayData[clockPickerPeriod];
       
-      if (periodData.slots.some(s => s.time === timeStr)) {
+      if (pData.slots.some(s => s.time === timeStr)) {
         toast.error("Time slot already exists");
         return prev;
       }
@@ -3098,18 +3102,22 @@ const VetOnboarding = () => {
                                     <span className="text-[9px] sm:text-[10px] font-bold opacity-75 truncate leading-tight block text-primary font-sans" title={periodAvailability.slots.map(s => s.time).join(", ")}>
                                       {periodAvailability.slots.map(s => s.time).join(", ")}
                                     </span>
-                                    {periodAvailability.slots.length === 1 && (
-                                      <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-tight opacity-60 truncate flex items-center gap-1">
-                                        {periodAvailability.slots[0].location === "Hospital" ? <Stethoscope className="w-2 h-2" /> : <Building2 className="w-2 h-2" />}
-                                        {periodAvailability.slots[0].location}
-                                      </span>
-                                    )}
+                                    <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-tight opacity-60 truncate flex items-center gap-1">
+                                      {periodAvailability.slots[0].location === "Hospital" ? <Stethoscope className="w-2.5 h-2.5" /> : <Building2 className="w-2.5 h-2.5" />}
+                                      {periodAvailability.slots[0].location}
+                                    </span>
                                   </div>
                                 ) : (
                                   isEnabled ? (
-                                    <span className="text-[9px] sm:text-[11px] font-semibold opacity-75 truncate leading-tight block text-slate-500 font-sans">
-                                      {periodInfo.hours}
-                                    </span>
+                                    <div className="flex flex-col gap-0.5 min-w-0">
+                                      <span className="text-[9px] sm:text-[11px] font-semibold opacity-75 truncate leading-tight block text-slate-500 font-sans">
+                                        {periodInfo.hours}
+                                      </span>
+                                      <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-tight opacity-40 truncate flex items-center gap-1">
+                                        {(formData.practiceType[0]?.includes("Hospital") || !formData.practiceType[0]) ? <Stethoscope className="w-2.5 h-2.5" /> : <Building2 className="w-2.5 h-2.5" />}
+                                        {(formData.practiceType[0]?.includes("Hospital") || !formData.practiceType[0]) ? "Hospital" : "Independent Clinic"}
+                                      </span>
+                                    </div>
                                   ) : null
                                 )}
                               </div>
@@ -3118,39 +3126,54 @@ const VetOnboarding = () => {
                             {/* Center Slots list with responsive overflow */}
                             <div className="flex-1 flex flex-row flex-wrap items-center gap-2 min-w-0 px-1 py-0.5">
                               {isEnabled && periodAvailability.slots.map((slot, sIdx) => {
-                                const hasMultipleLocations = formData.practiceType.length > 1;
-                                
                                 return (
-                                  <div key={`${slot.time}-${sIdx}`} className="flex items-center gap-2 shrink-0">
-                                    {/* Time Slot Card - Reverted to clean version */}
-                                    <div className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold text-slate-700 shadow-3xs transition hover:border-slate-300">
-                                      <span className="text-[#333] font-black">{slot.time}</span>
-                                      <button 
-                                        type="button" 
-                                        onClick={() => handleRemoveSlot(periodKey, sIdx)}
-                                        className="text-slate-400 hover:text-[#EC4899] transition-colors p-0.5 rounded-full hover:bg-slate-50"
-                                      >
-                                        <X className="w-4 h-4 stroke-[2.5]" />
-                                      </button>
-                                    </div>
+                                  <div key={`${slot.time}-${sIdx}`} className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold text-slate-700 shadow-3xs transition hover:border-slate-300 shrink-0">
+                                    <span className="text-[#333] font-black">{slot.time}</span>
+                                    <button 
+                                      type="button" 
+                                      onClick={() => handleRemoveSlot(periodKey, sIdx)}
+                                      className="text-slate-400 hover:text-[#EC4899] transition-colors p-0.5 rounded-full hover:bg-slate-50"
+                                    >
+                                      <X className="w-4 h-4 stroke-[2.5]" />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                              
+                              {isEnabled && (
+                                <>
+                                  {(periodKey === "morning" && periodAvailability.slots.length >= 1) ? null : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenAddSlot(periodKey)}
+                                      className="flex items-center justify-center gap-1.5 py-2.5 px-6 rounded-2xl border-2 border-dashed border-pink-200 text-[#EC4899] bg-white hover:bg-pink-50 hover:border-pink-300 font-black text-xs sm:text-sm transition-all active:scale-[0.98] shrink-0 shadow-3xs"
+                                    >
+                                      <Plus className="w-4 h-4 text-pink-500 stroke-[3]" />
+                                      <span>Add slot</span>
+                                    </button>
+                                  )}
+
+                                  {/* Row-level Location Card - Always visible when enabled */}
+                                  {(() => {
+                                    const hasMultipleLocations = formData.practiceType.length > 1;
+                                    const defaultLoc = (formData.practiceType[0]?.includes("Hospital") || !formData.practiceType[0]) ? "Hospital" : "Independent Clinic";
+                                    const currentLocation = periodAvailability.slots[0]?.location || defaultLoc;
                                     
-                                    {/* Location Specific Card / Selector */}
-                                    {hasMultipleLocations ? (
+                                    return hasMultipleLocations ? (
                                       <Select
-                                        value={slot.location}
+                                        value={currentLocation}
                                         onValueChange={(val) => {
                                           setWeeklyAvailability(prev => {
-                                            const currentDayData = prev[selectedDay];
-                                            const periodData = currentDayData[periodKey];
-                                            const updatedSlots = [...periodData.slots];
-                                            updatedSlots[sIdx] = { ...updatedSlots[sIdx], location: val };
+                                            const dayData = prev[selectedDay];
+                                            const pData = dayData[periodKey];
+                                            const updatedSlots = pData.slots.map(s => ({ ...s, location: val }));
                                             
                                             const next = {
                                               ...prev,
                                               [selectedDay]: {
-                                                ...currentDayData,
+                                                ...dayData,
                                                 [periodKey]: {
-                                                  ...periodData,
+                                                  ...pData,
                                                   slots: updatedSlots
                                                 }
                                               }
@@ -3171,11 +3194,8 @@ const VetOnboarding = () => {
                                           });
                                         }}
                                       >
-                                        <SelectTrigger className="h-10 min-w-[120px] text-[11px] sm:text-xs py-0 px-3.5 rounded-2xl border-none bg-[#F1F5F9] hover:bg-slate-200 text-slate-600 font-bold focus:ring-0 shadow-none">
-                                          <div className="flex items-center gap-2 overflow-hidden">
-                                            {slot.location === "Hospital" ? <Stethoscope className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
-                                            <SelectValue placeholder="Location" />
-                                          </div>
+                                        <SelectTrigger className="h-11 w-fit text-xs sm:text-sm py-0 px-4 rounded-2xl border-none bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold focus:ring-0 shadow-none shrink-0 transition-all ml-1">
+                                          <SelectValue placeholder="Location" />
                                         </SelectTrigger>
                                         <SelectContent>
                                           {formData.practiceType.map(pt => {
@@ -3183,7 +3203,7 @@ const VetOnboarding = () => {
                                             return (
                                               <SelectItem key={pt} value={label} className="text-xs font-semibold">
                                                 <div className="flex items-center gap-2">
-                                                  {label === "Hospital" ? <Stethoscope className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
+                                                  {label === "Hospital" ? <Stethoscope className="w-4 h-4 text-pink-500" /> : <Building2 className="w-4 h-4 text-pink-500" />}
                                                   {label}
                                                 </div>
                                               </SelectItem>
@@ -3192,28 +3212,17 @@ const VetOnboarding = () => {
                                         </SelectContent>
                                       </Select>
                                     ) : (
-                                      <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#F1F5F9] text-slate-600 border-none">
-                                        {slot.location === "Hospital" ? <Stethoscope className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
-                                        <span className="text-[11px] sm:text-xs font-bold uppercase tracking-tight">
-                                          {slot.location || "Clinic"}
+                                      <div className="flex items-center gap-2 px-5 h-11 rounded-2xl bg-slate-100 text-slate-600 border-none shrink-0 ml-1">
+                                        {currentLocation === "Hospital" ? <Stethoscope className="w-4 h-4 text-pink-500" /> : <Building2 className="w-4 h-4 text-pink-500" />}
+                                        <span className="text-xs font-black uppercase tracking-tight">
+                                          {currentLocation}
                                         </span>
                                       </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                              {isEnabled ? (
-                                (periodKey === "morning" && periodAvailability.slots.length >= 1) ? null : (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenAddSlot(periodKey)}
-                                    className="flex items-center justify-center gap-1.5 py-1.5 px-3.5 rounded-xl border border-dashed border-pink-200 text-[#EC4899] bg-[#FFFDFE] hover:bg-[#FFF5F7] hover:border-pink-300 font-bold text-xs transition active:scale-[0.98] shrink-0"
-                                  >
-                                    <Plus className="w-3.5 h-3.5 text-pink-500 stroke-[2.5]" />
-                                    <span>Add slot</span>
-                                  </button>
-                                )
-                              ) : (
+                                    );
+                                  })()}
+                                </>
+                              )}
+                              {!isEnabled && (
                                 <span className="text-slate-400 font-medium text-xs py-1 italic">Disabled for {selectedDay}</span>
                               )}
                             </div>
