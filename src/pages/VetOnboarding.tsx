@@ -1549,7 +1549,7 @@ const VetOnboarding = () => {
 
       <main className={cn("container mx-auto px-4 py-6 transition-all duration-300", currentStep >= 1 && currentStep <= 6 ? "max-w-[1006px] lg:px-[107px]" : "max-w-3xl")}>
         {/* Progress bar */}
-        <div className="sticky top-0 z-50 flex items-center justify-between md:justify-center gap-1 md:gap-3 mb-6 bg-card/95 backdrop-blur-sm p-3 rounded-2xl border border-border/60 shadow-md overflow-x-auto scrollbar-none">
+        <div className="flex items-center justify-between md:justify-center gap-1 md:gap-3 mb-6 bg-card p-3 rounded-2xl border border-border/60 shadow-sm overflow-x-auto scrollbar-none">
           {visibleSteps.map((step, i) => {
             const isCompleted = currentStep > step.n;
             const isActive = currentStep === step.n;
