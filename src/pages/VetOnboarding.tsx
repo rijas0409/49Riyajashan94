@@ -1409,9 +1409,12 @@ const VetOnboarding = () => {
       }
       case 3: {
         const hasVetDegree = formData.vetDegreeFile !== null || !!filePreviews.vetDegreeFile;
-        const edu1 = formData.educationRows[0];
-        const isEdu1Valid = edu1.institution && edu1.year;
-        return hasVetDegree && formData.registrationNumber && isEdu1Valid;
+        // Check ALL education rows: primary is mandatory, additional rows must be fully filled if they exist
+        const allEduValid = formData.educationRows.every((row, idx) => {
+          if (idx === 0) return row.institution && row.year;
+          return row.qualification && row.institution && row.year;
+        });
+        return hasVetDegree && formData.registrationNumber && allEduValid;
       }
       case 4: {
         const hasHospital = formData.practiceType.includes("Hospital / Organization");
@@ -1530,7 +1533,7 @@ const VetOnboarding = () => {
         </div>
       </header>
 
-      <main className={cn("container mx-auto px-4 py-6 transition-all duration-300", currentStep === 5 ? "max-w-[1122px] lg:px-[49px]" : "max-w-3xl")}>
+      <main className={cn("container mx-auto px-4 py-6 transition-all duration-300", currentStep >= 1 && currentStep <= 6 ? "max-w-[1122px] lg:px-[49px]" : "max-w-3xl")}>
         {/* Progress bar */}
         <div className="flex items-center justify-between md:justify-center gap-1 md:gap-3 mb-6 bg-card p-3 rounded-2xl border border-border/60 shadow-sm overflow-x-auto scrollbar-none">
           {visibleSteps.map((step, i) => {
@@ -2492,8 +2495,12 @@ const VetOnboarding = () => {
                               type="tel"
                               inputMode="numeric"
                               pattern="[0-9]*"
+                              maxLength={6}
                               value={formData.clinicPincode} 
-                              onChange={e => setFormData({ ...formData, clinicPincode: e.target.value.replace(/\D/g, '') })} 
+                              onChange={e => {
+                                const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                setFormData({ ...formData, clinicPincode: val });
+                              }}
                               placeholder="Enter pincode" 
                               className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
                             />
@@ -2705,8 +2712,12 @@ const VetOnboarding = () => {
                               type="tel"
                               inputMode="numeric"
                               pattern="[0-9]*"
+                              maxLength={6}
                               value={formData.hospitalPincode} 
-                              onChange={e => setFormData({ ...formData, hospitalPincode: e.target.value.replace(/\D/g, '') })} 
+                              onChange={e => {
+                                const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                setFormData({ ...formData, hospitalPincode: val });
+                              }}
                               placeholder="Enter pincode" 
                               className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
                             />
@@ -3153,11 +3164,18 @@ const VetOnboarding = () => {
                                     </button>
                                   )}
 
-                                  {/* Row-level Location Card - Always visible when enabled */}
+                                  {/* Duration Card - Always visible after add slot */}
+                                  <div className="flex items-center gap-2 px-4 h-11 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0 ml-1">
+                                    <Clock className="w-4 h-4 text-indigo-500 shrink-0" />
+                                    <span className="text-xs font-black uppercase tracking-tight">30 Minutes</span>
+                                  </div>
+
+                                  {/* Location Card - Always visible after duration */}
                                   {(() => {
                                     const hasMultipleLocations = formData.practiceType.length > 1;
                                     const defaultLoc = (formData.practiceType[0]?.includes("Hospital") || !formData.practiceType[0]) ? "Hospital" : "Independent Clinic";
                                     const currentLocation = periodAvailability.slots[0]?.location || defaultLoc;
+                                    const icon = currentLocation === "Hospital" ? <Stethoscope className="w-4 h-4 text-pink-500" /> : <Building2 className="w-4 h-4 text-pink-500" />;
                                     
                                     return hasMultipleLocations ? (
                                       <Select
@@ -3194,26 +3212,21 @@ const VetOnboarding = () => {
                                           });
                                         }}
                                       >
-                                        <SelectTrigger className="h-11 w-fit text-xs sm:text-sm py-0 px-4 rounded-2xl border-none bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold focus:ring-0 shadow-none shrink-0 transition-all ml-1">
+                                        <SelectTrigger className="h-11 w-fit text-xs sm:text-sm py-0 px-4 rounded-2xl border-none bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold focus:ring-0 shadow-none shrink-0 transition-all ml-1 flex items-center gap-2">
+                                          {icon}
                                           <SelectValue placeholder="Location" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          {formData.practiceType.map(pt => {
-                                            const label = pt.includes("Hospital") ? "Hospital" : "Independent Clinic";
-                                            return (
-                                              <SelectItem key={pt} value={label} className="text-xs font-semibold">
-                                                <div className="flex items-center gap-2">
-                                                  {label === "Hospital" ? <Stethoscope className="w-4 h-4 text-pink-500" /> : <Building2 className="w-4 h-4 text-pink-500" />}
-                                                  {label}
-                                                </div>
-                                              </SelectItem>
-                                            );
-                                          })}
+                                          {formData.practiceType.map(type => (
+                                            <SelectItem key={type} value={type === 'Hospital / Organization' ? 'Hospital' : 'Independent Clinic'}>
+                                              {type === 'Hospital / Organization' ? 'Hospital' : 'Independent Clinic'}
+                                            </SelectItem>
+                                          ))}
                                         </SelectContent>
                                       </Select>
                                     ) : (
                                       <div className="flex items-center gap-2 px-5 h-11 rounded-2xl bg-slate-100 text-slate-600 border-none shrink-0 ml-1">
-                                        {currentLocation === "Hospital" ? <Stethoscope className="w-4 h-4 text-pink-500" /> : <Building2 className="w-4 h-4 text-pink-500" />}
+                                        {icon}
                                         <span className="text-xs font-black uppercase tracking-tight">
                                           {currentLocation}
                                         </span>
@@ -4262,22 +4275,42 @@ const VetOnboarding = () => {
                                             </div>
 
                                             {/* Center Slots */}
-                                            <div className="flex-1 flex flex-row flex-wrap items-center gap-2 min-w-0 px-1">
+                                            <div className="flex-1 flex flex-wrap items-center gap-2 min-w-0 px-1 py-0.5">
                                               {isEnabled && periodAvailability.slots.map((slot, sIdx) => {
                                                 const time = typeof slot === 'string' ? slot : slot.time;
-                                                const location = typeof slot === 'object' ? slot.location : null;
                                                 return (
                                                   <div 
                                                     key={`${time}-${sIdx}`} 
-                                                    className="flex flex-col gap-0.5 bg-white border border-slate-200/85 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 shadow-3xs shrink-0"
+                                                    className="flex items-center gap-2 bg-white border border-slate-200/85 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold text-slate-700 shadow-3xs shrink-0"
                                                   >
-                                                    <span>{time}</span>
-                                                    {location && (
-                                                      <span className="text-[9px] text-[#EC4899] font-black uppercase tracking-tight">{location}</span>
-                                                    )}
+                                                    <span className="text-[#333] font-black">{time}</span>
                                                   </div>
                                                 );
                                               })}
+                                              {isEnabled && (
+                                                <>
+                                                  {/* Duration Card for Step 6 */}
+                                                  <div className="flex items-center gap-2 px-4 h-11 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0 ml-1">
+                                                    <Clock className="w-4 h-4 text-indigo-500 shrink-0" />
+                                                    <span className="text-xs font-black uppercase tracking-tight">30 Minutes</span>
+                                                  </div>
+
+                                                  {/* Location Card for Step 6 */}
+                                                  {(() => {
+                                                    const defaultLoc = (formData.practiceType[0]?.includes("Hospital") || !formData.practiceType[0]) ? "Hospital" : "Independent Clinic";
+                                                    const currentLocation = periodAvailability.slots[0]?.location || defaultLoc;
+                                                    
+                                                    return (
+                                                      <div className="flex items-center gap-2 px-5 h-11 rounded-2xl bg-slate-100 text-slate-600 border-none shrink-0 ml-1">
+                                                        {currentLocation === "Hospital" ? <Stethoscope className="w-4 h-4 text-pink-500" /> : <Building2 className="w-4 h-4 text-pink-500" />}
+                                                        <span className="text-xs font-black uppercase tracking-tight">
+                                                          {currentLocation}
+                                                        </span>
+                                                      </div>
+                                                    );
+                                                  })()}
+                                                </>
+                                              )}
                                               {isEnabled && periodAvailability.slots.length === 0 && (
                                                 <span className="text-slate-400 font-semibold text-xs italic">No slots created</span>
                                               )}
