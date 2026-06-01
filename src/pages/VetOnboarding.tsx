@@ -1547,9 +1547,9 @@ const VetOnboarding = () => {
         </div>
       </header>
 
-      <main className={cn("container mx-auto px-4 py-6 transition-all duration-300", currentStep >= 1 && currentStep <= 6 ? "max-w-[1006px] lg:px-[107px]" : "max-w-3xl")}>
+      <main className={cn("container mx-auto px-4 py-6 transition-all duration-300", currentStep >= 1 && currentStep <= 6 ? "max-w-[957px] lg:px-[107px]" : "max-w-3xl")}>
         {/* Progress bar */}
-        <div className="flex items-center justify-between md:justify-center gap-1 md:gap-3 mb-6 bg-card/95 backdrop-blur-md p-3 rounded-2xl border border-border/60 shadow-sm overflow-x-auto scrollbar-none sticky top-[105px] z-40 transition-all">
+        <div className="flex items-center justify-between md:justify-center gap-1 md:gap-3 mb-6 bg-card/95 backdrop-blur-md p-3 rounded-2xl border border-border/60 shadow-sm overflow-x-auto scrollbar-none sticky top-[105px] z-40 px-4">
           {visibleSteps.map((step, i) => {
             const isCompleted = currentStep > step.n;
             const isActive = currentStep === step.n;
@@ -1587,8 +1587,8 @@ const VetOnboarding = () => {
 
               {/* ══════ STEP 1 – Personal Info ══════ */}
               {currentStep === 1 && (
-                <div className="space-y-4 animate-fade-in">
-                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-6 px-6 transition-all rounded-t-2xl">
+                <div className="space-y-4 animate-fade-in relative">
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-4 px-4 rounded-b-2xl shadow-sm">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
@@ -2043,8 +2043,8 @@ const VetOnboarding = () => {
 
               {/* ══════ STEP 2 – Identity Verification ══════ */}
               {currentStep === 2 && (
-                <div className="space-y-6 animate-fade-in">
-                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-6 px-6 transition-all rounded-t-2xl">
+                <div className="space-y-6 animate-fade-in relative">
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-4 px-4 rounded-b-2xl shadow-sm">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
@@ -2101,9 +2101,9 @@ const VetOnboarding = () => {
 
               {/* ══════ STEP 3 – Professional Qualification ══════ */}
               {currentStep === 3 && (
-                <div className="space-y-6 animate-fade-in">
+                <div className="space-y-6 animate-fade-in relative">
                   {/* Step Header exactly matching Step 1 */}
-                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-6 px-6 transition-all rounded-t-2xl">
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 mb-2 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-4 px-4 rounded-b-2xl shadow-sm">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
@@ -2320,8 +2320,8 @@ const VetOnboarding = () => {
 
               {/* ══════ STEP 4 – Professional Practice ══════ */}
               {currentStep === 4 && (
-                <div className="space-y-6 animate-fade-in">
-                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-6 px-6 transition-all rounded-t-2xl">
+                <div className="space-y-6 animate-fade-in relative">
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-4 px-4 rounded-b-2xl shadow-sm">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
@@ -2769,8 +2769,8 @@ const VetOnboarding = () => {
 
               {/* ══════ STEP 5 – Availability & Fees ══════ */}
               {currentStep === 5 && (
-                <div className="space-y-4 animate-fade-in -mx-4 sm:-mx-[49px] px-4 sm:px-[49px]">
-                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-6 px-6 transition-all rounded-t-2xl">
+                <div className="space-y-4 animate-fade-in relative">
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-4 px-4 rounded-b-2xl shadow-sm">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
@@ -3120,8 +3120,31 @@ const VetOnboarding = () => {
                               <div className="shrink-0">
                                 {periodInfo.icon}
                               </div>
-                              <div className="flex flex-col min-w-0">
-                                <span className="font-bold text-xs sm:text-sm tracking-tight truncate">{periodInfo.label}</span>
+                              <div className="flex flex-col min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-2 mr-1">
+                                  <span className="font-bold text-xs sm:text-sm tracking-tight truncate">{periodInfo.label}</span>
+                                  <label className="relative inline-flex items-center cursor-pointer select-none scale-75 origin-right">
+                                    <input
+                                      type="checkbox"
+                                      checked={isEnabled}
+                                      onChange={(e) => {
+                                        const val = e.target.checked;
+                                        setWeeklyAvailability(prev => ({
+                                          ...prev,
+                                          [selectedDay]: {
+                                            ...prev[selectedDay],
+                                            [periodKey]: {
+                                              ...prev[selectedDay][periodKey],
+                                              enabled: val
+                                            }
+                                          }
+                                        }));
+                                      }}
+                                      className="sr-only peer"
+                                    />
+                                    <div className="w-9 h-5 bg-[#CBD5E1] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-[16px] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#EC4899] peer-checked:after:border-[#EC4899]"></div>
+                                  </label>
+                                </div>
                                 {periodAvailability.slots.length > 0 ? (
                                   <div className="flex flex-col gap-0.5 min-w-0">
                                     <span className="text-[9px] sm:text-[10px] font-bold opacity-75 truncate leading-tight block text-primary font-sans" title={periodAvailability.slots.map(s => s.time).join(", ")}>
@@ -3555,9 +3578,9 @@ const VetOnboarding = () => {
 
               {/* ══════ STEP 6 – Platform Compliance & Submit ══════ */}
               {currentStep === 6 && (
-                <div className="space-y-4 animate-fade-in">
+                <div className="space-y-4 animate-fade-in relative">
                   {/* Step Header exactly matching Step 1 */}
-                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-6 px-6 transition-all rounded-t-2xl">
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-4 px-4 rounded-b-2xl shadow-sm">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">

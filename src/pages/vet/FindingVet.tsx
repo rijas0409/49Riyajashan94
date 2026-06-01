@@ -28,7 +28,7 @@ const FindingVet = () => {
           // 1. Fetch verified active vet_profiles first
           const { data: vetProfiles, error: vpErr } = await supabase
             .from("vet_profiles")
-            .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee")
+            .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, weekly_availability")
             .in("verification_status", ["verified", "approved"])
             .eq("is_active", true);
 
@@ -78,6 +78,7 @@ const FindingVet = () => {
                 fee: bestVet.online_fee || 499,
                 onlineFee: bestVet.online_fee || 500,
                 offlineFee: bestVet.offline_fee || 800,
+                weekly_availability: bestVet.weekly_availability,
               };
             }
           }

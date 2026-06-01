@@ -109,7 +109,7 @@ const VetDoctorProfile = () => {
         // Fetch vet_profiles with the given id
         const { data: vetProfile, error: vetError } = await supabase
           .from("vet_profiles")
-          .select("*")
+          .select("*, weekly_availability")
           .eq("id", id)
           .single();
 
@@ -174,6 +174,7 @@ const VetDoctorProfile = () => {
           offlineFee: vetProfile.offline_fee || 800,
           consultationType: vetProfile.consultation_type || "both",
           vetProfileId: vetProfile.id,
+          weekly_availability: vetProfile.weekly_availability,
         });
       } catch (err) {
         console.error("Error fetching vet profile:", err);
@@ -436,7 +437,24 @@ const VetDoctorProfile = () => {
       {/* Sticky Bottom Booking Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border px-4 py-4 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
         <button
-          onClick={() => navigate("/vet/booking-details", { state: { matchedVet: doctor ? { id: doctor.vetProfileId, name: doctor.name, specialization: doctor.title, image: doctor.profileImage, rating: doctor.rating, experience: doctor.yearsExp, fee: doctor.offlineFee, onlineFee: doctor.onlineFee, offlineFee: doctor.offlineFee, qualification: doctor.qualification, clinicAddress: doctor.clinic } : undefined } })}
+          onClick={() => navigate("/vet/booking-details", { 
+            state: { 
+              matchedVet: doctor ? { 
+                id: doctor.vetProfileId, 
+                name: doctor.name, 
+                specialization: doctor.title, 
+                image: doctor.profileImage, 
+                rating: doctor.rating, 
+                experience: doctor.yearsExp, 
+                fee: doctor.offlineFee, 
+                onlineFee: doctor.onlineFee, 
+                offlineFee: doctor.offlineFee, 
+                qualification: doctor.qualification, 
+                clinicAddress: doctor.clinic,
+                weekly_availability: doctor.weekly_availability
+              } : undefined 
+            } 
+          })}
           className="w-full py-4 rounded-2xl text-white font-semibold text-base shadow-lg"
           style={{ background: "linear-gradient(135deg, #FF4D6D, #8B5CF6)" }}
         >

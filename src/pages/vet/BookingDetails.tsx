@@ -6,21 +6,87 @@ import { format, addDays, startOfToday } from "date-fns";
 const BookingDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { matchedVet } = location.state || {};
+  const { matchedVet, isDirectBooking } = location.state || {};
   const [visitType, setVisitType] = useState<"clinic" | "home">("clinic");
 
-  const today = startOfToday();
-  const dates = useMemo(() => Array.from({ length: 4 }, (_, i) => addDays(today, i)), []);
-  const [selectedDate, setSelectedDate] = useState(dates[1]);
-  const [selectedSlot, setSelectedSlot] = useState("10:30 AM");
-
-  const allSlots = ["09:00 AM", "10:30 AM", "01:00 PM", "02:30 PM", "04:00 PM", "05:30 PM"];
-  const disabledSlots = ["05:30 PM"];
+  const today = useMemo(() => startOfToday(), []);
+  const dates = useMemo(() => Array.from({ length: 4 }, (_, i) => addDays(today, i)), [today]);
+  const [selectedDate, setSelectedDate] = useState(dates[0]);
+  const [selectedSlot, setSelectedSlot] = useState("");
 
   const vet = matchedVet || {};
-  const clinicFee = vet.offlineFee || 800;
-  const onlineFee = vet.onlineFee || 500;
+  
+  // Dynamic slots generation based on vet's availability
+  const allSlots = useMemo(() => {
+    if (!vet.weekly_availability) return ["09:00 AM", "10:30 AM", "01:00 PM", "02:30 PM", "04:00 PM", "05:30 PM"];
+    
+    const dayName = format(selectedDate, "EEE"); // "Mon", "Tue", etc.
+    const dayData = vet.weekly_availability[dayName];
+    if (!dayData) return [];
 
+    const slots: string[] = [];
+    const periods = ["morning", "afternoon", "evening", "night"] as const;
+
+    periods.forEach(p => {
+      const period = dayData[p];
+      if (period && period.enabled && period.slots) {
+        period.slots.forEach((s: { time: string; location: string }) => {
+          // Parse range "09:00 AM – 11:00 AM" or handle single time
+          const parts = s.time.split(" – ");
+          if (parts.length === 2) {
+            const startStr = parts[0];
+            const endStr = parts[1];
+
+            const parseTime = (str: string) => {
+              const [timeParts, modifier] = str.split(" ");
+              const [hoursStr, minutesStr] = timeParts.split(":");
+              let hours = Number(hoursStr);
+              const minutes = Number(minutesStr);
+              if (modifier === "PM" && hours !== 12) hours += 12;
+              if (modifier === "AM" && hours === 12) hours = 0;
+              return hours * 60 + minutes;
+            };
+
+            const formatTime = (mins: number) => {
+              let h = Math.floor(mins / 60);
+              const m = mins % 60;
+              const modifier = h >= 12 ? "PM" : "AM";
+              h = h % 12;
+              if (h === 0) h = 12;
+              return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} ${modifier}`;
+            };
+
+            let start = parseTime(startStr);
+            const end = parseTime(endStr);
+
+            while (start < end) {
+              slots.push(formatTime(start));
+              start += 30; // 30 minutes interval
+            }
+          } else {
+            slots.push(s.time);
+          }
+        });
+      }
+    });
+
+    return [...new Set(slots)].sort((a, b) => {
+      const parse = (s: string) => {
+        const [t, m] = s.split(" ");
+        const [hStr, minStr] = t.split(":");
+        let h = Number(hStr);
+        const min = Number(minStr);
+        if (m === "PM" && h !== 12) h += 12;
+        if (m === "AM" && h === 12) h = 0;
+        return h * 60 + min;
+      };
+      return parse(a) - parse(b);
+    });
+  }, [selectedDate, vet.weekly_availability]);
+
+  const disabledSlots: string[] = []; // Can be expanded with real booking data later
+
+  const clinicFee = Number(vet.offline_fee || vet.offlineFee || vet.fee || 800);
   const fees = {
     clinic: { visit: clinicFee, service: 50 },
     home: { visit: clinicFee + 300, service: 50 },
@@ -33,6 +99,9 @@ const BookingDetails = () => {
   const vetImage = vet.image || "";
   const vetRating = vet.rating || 0;
   const vetExperience = vet.experience || 0;
+
+  // Check if this is a direct profile booking or AI recommendation
+  const isDirectBooking = !!matchedVet;
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -47,14 +116,18 @@ const BookingDetails = () => {
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-5">
-        <div className="flex justify-center">
-          <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-green-50 text-green-600 text-xs font-bold tracking-wider uppercase">
-            <span className="text-sm">✦</span> AI Recommended Specialist
-          </span>
-        </div>
-        <p className="text-center text-sm text-muted-foreground -mt-2">
-          Based on your pet's symptoms and history, we recommend this top-rated specialist.
-        </p>
+        {!isDirectBooking && (
+          <>
+            <div className="flex justify-center">
+              <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-green-50 text-green-600 text-xs font-bold tracking-wider uppercase">
+                <span className="text-sm">✦</span> AI Recommended Specialist
+              </span>
+            </div>
+            <p className="text-center text-sm text-muted-foreground -mt-2">
+              Based on your pet's symptoms and history, we recommend this top-rated specialist.
+            </p>
+          </>
+        )}
 
         {/* Doctor Card */}
         <div className="border border-border rounded-2xl p-4">
