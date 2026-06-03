@@ -244,6 +244,142 @@ Keep descriptions concise (max 2 sentences).`;
     }
   });
 
+  // End Point: Generate Vet Biography / Description using Gemini and cache it
+  app.post("/api/generate-vet-bio", async (req, res) => {
+    try {
+      const { 
+        vetId, 
+        name, 
+        qualification, 
+        yearsExp, 
+        specializations, 
+        consultationType, 
+        clinic, 
+        preferredLanguage,
+        support24x7,
+        emergencyAvailable
+      } = req.body;
+
+      // 1. Initialize Supabase secure client if vetId is provided for caching
+      let supabaseAdmin: any = null;
+      let vetProfile: any = null;
+
+      if (vetId) {
+        const { createClient } = await import("@supabase/supabase-js");
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co";
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+        supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+
+        // Fetch the profile first to see if it already has an ai_description in weekly_availability
+        const { data, error: fetchErr } = await supabaseAdmin
+          .from("vet_profiles")
+          .select("weekly_availability")
+          .eq("id", vetId)
+          .single();
+
+        if (!fetchErr && data) {
+          vetProfile = data;
+          const weeklyAvailability = data.weekly_availability as any;
+          if (weeklyAvailability && weeklyAvailability.ai_description) {
+            console.log(`[Server] Found cached AI description for vetId: ${vetId}`);
+            return res.json({ description: weeklyAvailability.ai_description });
+          }
+        }
+      }
+
+      // 2. generate it using Gemini
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("GEMINI_API_KEY environment variable is required");
+      }
+      const ai = new GoogleGenAI({ apiKey });
+
+      const specList = Array.isArray(specializations) && specializations.length > 0 
+        ? specializations.join(", ") 
+        : "companion animals and small pets";
+
+      const prompt = `You are an expert veterinary copywriter and SEO specialist. 
+Generate a professional, warm, and highly engaging veterinary doctor biography.
+The description must be search-engine optimized (SEO), extremely clean, and perfectly crafted for a veterinarian's public booking profile.
+
+DOCTOR PROFILE DETAILS:
+- Name: ${name || "Qualified Vet"}
+- Qualification: ${qualification || "BVSc & AH"}
+- Years of Experience: ${yearsExp || "4"}+ years of dedicated experience
+- Specializations / Pets: ${specList}
+
+DEMO EXAMPLES FOR INSPIRATION:
+Example 1: "Dr. Anaya is a verified veterinarian with 4+ years of experience in companion animal care. She specializes in the diagnosis, treatment, and preventive healthcare of dogs, cats, birds, and small pets. Committed to delivering trusted and compassionate veterinary care."
+Example 2: "Dr. Kabir is a highly dedicated companion animal specialist with over 6 years of experience in veterinary medicine. He is passionate about preventive healthcare, veterinary diagnostics, and treating dogs, cats, and rabbits. Focused on providing gentle and reliable healthcare for your beloved family members."
+
+STRICT RULES:
+1. Limit the biography to exactly 3 to 4 lines of fluent text (no bullet points, no lists).
+2. DO NOT include any physical address, office/clinic location, phone numbers, or long list of collegiate degree qualifications. Keep the focus entirely on their compassion, expertise, years of experience, and clinical specializations.
+3. Use warm, trusted, and empathetic language. Do NOT use the exact same wording for every doctor. Vary the sentence structure and vocabulary to ensure each vet has a customized profile.
+4. Integrate search terms naturally (such as "veterinary companion care", "preventive medical diagnostics", "compassionate animal wellness", "trusted healthcare expert").
+5. Return the response as a single JSON object containing only a "description" key.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              description: { type: Type.STRING }
+            },
+            required: ["description"]
+          }
+        }
+      });
+
+      let generatedText = "";
+      if (response.text) {
+        let jsonString = response.text.trim();
+        if (jsonString.startsWith("```json")) {
+          jsonString = jsonString.replace(/^```json/, "").replace(/```$/, "").trim();
+        } else if (jsonString.startsWith("```")) {
+          jsonString = jsonString.replace(/^```/, "").replace(/```$/, "").trim();
+        }
+        const parsed = JSON.parse(jsonString);
+        generatedText = parsed.description;
+      } else {
+        throw new Error("No response text from Gemini");
+      }
+
+      if (!generatedText) {
+        throw new Error("Gemini produced an empty description");
+      }
+
+      // 3. Try to save the generated description back to Supabase in weekly_availability.ai_description if we have vetId
+      if (vetId && supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        console.log(`[Server] Saving AI generated description to DB for vetId: ${vetId}.`);
+        const currentAvailability = (vetProfile?.weekly_availability as any) || {};
+        const updatedAvailability = { ...currentAvailability, ai_description: generatedText };
+
+        const { error: updateErr } = await supabaseAdmin
+          .from("vet_profiles")
+          .update({ weekly_availability: updatedAvailability })
+          .eq("id", vetId);
+
+        if (updateErr) {
+          console.warn(`[Server] Failed to write generated description to Supabase for vetId: ${vetId}. Error: ${updateErr.message}`);
+        } else {
+          console.log(`[Server] Successfully persisted generated description for vetId: ${vetId}`);
+        }
+      } else if (vetId) {
+         console.warn(`[Server] Skipped saving AI generated description to DB. Requires SUPABASE_SERVICE_ROLE_KEY.`);
+      }
+
+      res.json({ description: generatedText });
+    } catch (err: unknown) {
+      console.error("Error generating vet biography:", err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: errorMessage });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

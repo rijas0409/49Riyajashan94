@@ -16,6 +16,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useLocation } from "@/contexts/LocationContext";
 import { toast } from "sonner";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 import {
   Dialog,
   DialogContent,
@@ -695,9 +696,7 @@ const Vet = () => {
                       )}
                     </div>
                     {doctor.verified && (
-                      <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#4F86FF] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                        <BadgeCheck className="w-4 h-4 text-white" />
-                      </div>
+                      <VerifiedBadge className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white border-2 border-white shadow-sm" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

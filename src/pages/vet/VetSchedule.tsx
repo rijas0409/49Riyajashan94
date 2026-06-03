@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   CaretLeft, MagnifyingGlass, Bell, Clock, User, 
@@ -7,14 +7,56 @@ import {
 } from "@phosphor-icons/react";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
 import SplashScreen from "@/components/SplashScreen";
+import { supabase } from "@/integrations/supabase/client";
+
+interface ScheduleAppointment {
+  id: string;
+  date: string;
+  type: string;
+  petName: string;
+  breed: string;
+  ownerName: string;
+  ownerPhone: string;
+  time: string;
+  status: string;
+  image: string;
+  diagnosis?: string | null;
+  medicines?: string | null;
+  consultation_notes?: string | null;
+  care_instructions?: string | null;
+}
+
+interface DbAppointmentRaw {
+  id: string;
+  appointment_date: string;
+  appointment_time?: string | null;
+  appointment_type?: string | null;
+  amount?: number | null;
+  status?: string | null;
+  pet_name?: string | null;
+  pet_type?: string | null;
+  pet_breed?: string | null;
+  diagnosis?: string | null;
+  medicines?: string | null;
+  consultation_notes?: string | null;
+  care_instructions?: string | null;
+  user?: {
+    name?: string | null;
+    full_name?: string | null;
+    profile_photo?: string | null;
+    phone?: string | null;
+  } | null;
+}
 
 const VetSchedule = () => {
   const navigate = useNavigate();
-  const { isLoading: guardLoading, showSpinner } = useRoleGuard(["vet"], "/auth-vet", true);
+  const { isLoading: guardLoading, showSpinner, user, profile } = useRoleGuard(["vet"], "/auth-vet", true);
   const today = useMemo(() => new Date(), []);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDateId, setSelectedDateId] = useState(today.toISOString().split('T')[0]);
   const [activeTab, setActiveTab] = useState<"Active" | "Upcoming" | "Cancelled" | "Done">("Active");
+  const [appointments, setAppointments] = useState<ScheduleAppointment[]>([]);
+  const [isDbLoading, setIsDbLoading] = useState(true);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const isInitialMount = React.useRef(true);
 
@@ -109,65 +151,76 @@ const VetSchedule = () => {
     }
   }, [isPast, activeTab]);
 
-  // Mock filtering for demo purposes
-  const filteredAppointments = useMemo(() => {
-    const all = [
-      {
-        id: "HV-123",
-        date: today.toISOString().split('T')[0],
-        type: "home",
-        petName: "Bella",
-        breed: "Golden Retriever • 2Y",
-        ownerName: "Sarah Jenkins",
-        time: "11:30 AM",
-        status: "confirmed",
-        image: "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80"
-      },
-      {
-        id: "CV-124",
-        date: today.toISOString().split('T')[0],
-        type: "clinic",
-        petName: "Gabru",
-        breed: "Labrador • 3Y",
-        ownerName: "Michael Ross",
-        time: "12:30 PM",
-        status: "pending",
-        image: "https://images.unsplash.com/photo-1593134257782-e89567b7718a?auto=format&fit=crop&w=150&q=80"
-      },
-      {
-        id: "CV-125",
-        date: today.toISOString().split('T')[0],
-        type: "clinic",
-        petName: "Cooper",
-        breed: "Beagle • 1Y",
-        ownerName: "Alice Cooper",
-        time: "09:00 AM",
-        status: "completed",
-        image: "https://images.unsplash.com/photo-1537151608804-ea6f254191eb?auto=format&fit=crop&w=150&q=80"
-      },
-      {
-        id: "CAN-1",
-        date: today.toISOString().split('T')[0],
-        type: "clinic",
-        petName: "Luna",
-        breed: "Persian Cat • 1Y",
-        ownerName: "Emily Davis",
-        time: "03:00 PM",
-        status: "cancelled",
-        image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=150&q=80"
-      },
-      {
-        id: "OLD-1",
-        date: yesterday.toISOString().split('T')[0],
-        type: "clinic",
-        petName: "Rocky",
-        breed: "Doberman • 4Y",
-        ownerName: "John Wick",
-        time: "10:00 AM",
-        status: "completed",
-        image: "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80"
+  const fetchAppointments = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      setIsDbLoading(true);
+      const { data, error } = await supabase
+        .from("vet_appointments")
+        .select(`
+          *,
+          user:profiles!vet_appointments_user_id_fkey(name, full_name, profile_photo, phone)
+        `)
+        .eq("vet_id", user.id);
+      
+      if (error) {
+        console.error("Error fetching real appointments:", error);
+      } else if (data) {
+        const mapped = (data as unknown[] as DbAppointmentRaw[]).map((apt: DbAppointmentRaw) => ({
+          id: apt.id,
+          date: apt.appointment_date,
+          type: apt.appointment_type || "clinic",
+          petName: apt.pet_name || "Luna",
+          breed: apt.pet_breed || (apt.pet_type ? `${apt.pet_type}` : "Dog"),
+          ownerName: apt.user?.full_name || apt.user?.name || "Sarah Jenkins",
+          ownerPhone: apt.user?.phone || "+91 98765 43210",
+          time: apt.appointment_time || "11:30 AM",
+          status: apt.status || "pending",
+          image: apt.user?.profile_photo || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80",
+          diagnosis: apt.diagnosis,
+          medicines: apt.medicines,
+          consultation_notes: apt.consultation_notes,
+          care_instructions: apt.care_instructions
+        }));
+        setAppointments(mapped);
       }
-    ];
+    } catch (e) {
+      console.error("Error in fetchAppointments:", e);
+    } finally {
+      setIsDbLoading(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    fetchAppointments();
+
+    const channel = supabase
+      .channel("vet_appointments_realtime_schedule")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "vet_appointments",
+          filter: `vet_id=eq.${user.id}`
+        },
+        () => {
+          console.log("Realtime update detected for vet appointments!");
+          fetchAppointments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, fetchAppointments]);
+
+  // Real data filtering
+  const filteredAppointments = useMemo(() => {
+    const all = appointments;
 
     return all.filter(apt => {
       // Only show items for the selected date
@@ -199,7 +252,7 @@ const VetSchedule = () => {
       
       return false;
     });
-  }, [activeTab, isToday, isPast, isFuture, currentTime, isTimeReached, selectedDateId, today]);
+  }, [activeTab, isToday, isPast, isFuture, currentTime, isTimeReached, selectedDateId, today, appointments]);
 
   const handleHomeVisitClick = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -342,7 +395,25 @@ const VetSchedule = () => {
           filteredAppointments.map((apt) => (
             <div 
               key={apt.id}
-              onClick={apt.type === 'home' ? handleHomeVisitClick : handleClinicVisitClick}
+              onClick={() => {
+                navigate(apt.type === 'home' ? "/vet/home-visit-details" : "/vet/clinic-visit-details", {
+                  state: {
+                    visit: {
+                      id: apt.id,
+                      petName: apt.petName,
+                      petBreed: apt.breed,
+                      petAge: "4 Years",
+                      ownerName: apt.ownerName,
+                      ownerPhone: apt.ownerPhone,
+                      address: apt.type === 'home' ? "123 Premium Residency, Indiranagar" : "HSR Paws Clinic, Sector 2",
+                      time: "Today, " + apt.time,
+                      reason: "General Consultation & Checkup",
+                      image: apt.image,
+                      distance: apt.type === 'home' ? "1.2 MILES AWAY" : ""
+                    }
+                  }
+                });
+              }}
               className="bg-white rounded-[24px] p-5 shadow-[0_10px_30px_rgba(155,40,245,0.08)] relative overflow-hidden cursor-pointer active:scale-[0.98] transition-all"
             >
               {isToday && activeTab === 'Active' && (
@@ -379,7 +450,26 @@ const VetSchedule = () => {
                   <Clock size={16} className="text-[#9b28f5]" weight="bold" /> {apt.time}
                 </div>
                 <button 
-                  onClick={apt.type === 'home' ? handleHomeVisitClick : handleClinicVisitClick}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(apt.type === 'home' ? "/vet/home-visit-details" : "/vet/clinic-visit-details", {
+                      state: {
+                        visit: {
+                          id: apt.id,
+                          petName: apt.petName,
+                          petBreed: apt.breed,
+                          petAge: "4 Years",
+                          ownerName: apt.ownerName,
+                          ownerPhone: apt.ownerPhone,
+                          address: apt.type === 'home' ? "123 Premium Residency, Indiranagar" : "HSR Paws Clinic, Sector 2",
+                          time: "Today, " + apt.time,
+                          reason: "General Consultation & Checkup",
+                          image: apt.image,
+                          distance: apt.type === 'home' ? "1.2 MILES AWAY" : ""
+                        }
+                      }
+                    });
+                  }}
                   className="bg-gradient-to-br from-[#ae41ff] to-[#8a14f5] text-white px-6 py-2.5 rounded-[20px] text-[13px] font-[800] shadow-[0_12px_24px_rgba(155,40,245,0.3)] active:scale-95 transition-all"
                 >
                   {apt.type === 'home' ? 'View Route' : 'View Details'}

@@ -1072,6 +1072,37 @@ const VetOnboarding = () => {
       // 2. Insert or Update Profile
       const existingVet = existingVp;
 
+      // Pre-generate AI biography for SEO and show zero loading states in profiles
+      let aiDesc = "";
+      try {
+        const genResponse = await fetch("/api/generate-vet-bio", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: `Dr. ${formData.fullName}`,
+            qualification: formData.qualification,
+            yearsExp: formData.yearsOfExperience || "0",
+            specializations: formData.specializations,
+          }),
+        });
+        if (genResponse.ok) {
+          const genData = await genResponse.json();
+          if (genData && genData.description) {
+            aiDesc = genData.description;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to pre-generate AI bio at onboarding:", err);
+      }
+
+      // Merge ai_description inside weeklyAvailability
+      const finalWeeklyAvailability = {
+        ...(weeklyAvailability || {}),
+        ...(aiDesc ? { ai_description: aiDesc } : {}),
+      };
+
       const upsertData = {
         user_id: uid,
         qualification: formData.qualification,
@@ -1113,7 +1144,7 @@ const VetOnboarding = () => {
         hospital_address: formData.hospitalAddress,
         hospital_pincode: formData.hospitalPincode,
         hospital_joining_proof_file: hospitalJoiningProofUrl,
-        weekly_availability: weeklyAvailability as any,
+        weekly_availability: finalWeeklyAvailability as any,
         emergency_available: formData.emergencyAvailable,
         weekend_availability: formData.weekendAvailability,
         support_24x7: formData.support24x7,
@@ -3368,74 +3399,7 @@ const VetOnboarding = () => {
                           </div>
                         </div>
 
-                        {isNightSlotEnabled && (
-                          <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col space-y-4 animate-fade-in text-slate-700">
-                            <div className="space-y-0.5">
-                              <h4 className="text-xs sm:text-sm font-extrabold text-[#8A1550] flex items-center gap-1.5 font-sans">
-                                <Moon className="w-4 h-4 text-pink-500" />
-                                <span>Night Surcharge{getNightSlotsText()}</span>
-                                <InfoTooltip message="An additional fee applied to late-night consultations to value your dedicated availability during off-hours." />
-                              </h4>
-                              <p className="text-[10px] text-slate-400 font-medium">Additional charges applied during selected late-hour availability</p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                              {/* In-clinic Custom Fee with Night Surcharge */}
-                              <div className="space-y-1 bg-[#F5F3FF]/30 p-2.5 rounded-2xl border border-[#E4E0FF]/60">
-                                <span className="text-[9px] text-[#4F46E5] font-extrabold uppercase tracking-wider block">In-clinic Surcharge</span>
-                                <div className="flex justify-between items-baseline">
-                                  <span className="font-extrabold text-sm sm:text-base text-[#1E293B]">₹{calculatedClinicSurchargeAmt}</span>
-                                </div>
-                              </div>
-
-                              {/* Home Visit Custom Fee with Night Surcharge */}
-                              <div className="space-y-1 bg-[#FFF3F7]/30 p-2.5 rounded-2xl border border-[#FFE0ED]/60">
-                                <span className="text-[9px] text-[#EC4899] font-extrabold uppercase tracking-wider block">Home Surcharge</span>
-                                <div className="flex justify-between items-baseline">
-                                  <span className="font-extrabold text-sm sm:text-base text-[#1E293B]">₹{calculatedHomeSurchargeAmt}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Payment Summary */}
-                            <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-100/80 space-y-3">
-                              <span className="text-[9px] font-extrabold text-[#8A1550] uppercase tracking-widest block border-b border-slate-200/60 pb-1">Payment Summary (Late-Hour)</span>
-                              <div className="flex flex-col sm:flex-row gap-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/60">
-                                <div className="space-y-1 sm:flex-1">
-                                  <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">In-Clinic Consultation</span>
-                                  <div className="flex justify-between text-[11px] sm:text-xs">
-                                    <span className="text-slate-500 font-semibold">Base Fee</span>
-                                    <span className="font-bold text-slate-700">₹{parsedClinicFee}</span>
-                                  </div>
-                                  <div className="flex justify-between text-[11px] sm:text-xs">
-                                    <span className="text-slate-500 font-semibold">Night Surcharge</span>
-                                    <span className="font-bold text-slate-700">+ ₹{calculatedClinicSurchargeAmt}</span>
-                                  </div>
-                                  <div className="flex justify-between text-[11px] sm:text-xs pt-1 border-t border-dashed border-slate-200/80 font-black text-[#4F46E5]">
-                                    <span>Total Price</span>
-                                    <span>₹{calculatedClinicTotal}</span>
-                                  </div>
-                                </div>
-
-                                <div className="space-y-1 pt-3 sm:pt-0 sm:pl-4 sm:flex-1">
-                                  <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Home Visit Consultation</span>
-                                  <div className="flex justify-between text-[11px] sm:text-xs">
-                                    <span className="text-slate-500 font-semibold">Base Fee</span>
-                                    <span className="font-bold text-slate-700">₹{parsedHomeFee}</span>
-                                  </div>
-                                  <div className="flex justify-between text-[11px] sm:text-xs">
-                                    <span className="text-slate-500 font-semibold">Night Surcharge</span>
-                                    <span className="font-bold text-slate-700">+ ₹{calculatedHomeSurchargeAmt}</span>
-                                  </div>
-                                  <div className="flex justify-between text-[11px] sm:text-xs pt-1 border-t border-dashed border-slate-200/80 font-black text-[#EC4899]">
-                                    <span>Total Price</span>
-                                    <span>₹{calculatedHomeTotal}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                        {/* Night surcharge section removed per requirement */}
                       </div>
                     </div>
 
@@ -4410,67 +4374,7 @@ const VetOnboarding = () => {
                                   </div>
                                 </div>
 
-                                {isNightSlotEnabled && (
-                                  <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col space-y-3.5 animate-fade-in text-slate-700 font-sans">
-                                    <div className="space-y-0.5">
-                                      <h4 className="text-xs sm:text-sm font-extrabold text-[#8A1550] flex items-center gap-1.5 font-sans">
-                                        <Moon className="w-4 h-4 text-pink-500" />
-                                        <span>Night Surcharge (Late-Hour Active)</span>
-                                      </h4>
-                                      <p className="text-[10px] text-slate-400 font-medium font-sans">Additional charges applied during late-hour slots (Night shift active)</p>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <div className="space-y-1 bg-[#F5F3FF]/30 p-2.5 rounded-2xl border border-[#E4E0FF]/60 font-sans">
-                                        <span className="text-[9px] text-[#4F46E5] font-extrabold uppercase tracking-wider block font-sans">In-clinic Surcharge</span>
-                                        <span className="font-extrabold text-sm sm:text-base text-[#1E293B]">₹{calculatedClinicSurchargeAmt}</span>
-                                      </div>
-
-                                      <div className="space-y-1 bg-[#FFF3F7]/30 p-2.5 rounded-2xl border border-[#FFE0ED]/60 font-sans">
-                                        <span className="text-[9px] text-[#EC4899] font-extrabold uppercase tracking-wider block font-sans">Home Surcharge</span>
-                                        <span className="font-extrabold text-sm sm:text-base text-[#1E293B]">₹{calculatedHomeSurchargeAmt}</span>
-                                      </div>
-                                    </div>
-
-                                    {/* Payment Summary */}
-                                    <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-100/80 space-y-3 font-sans">
-                                      <span className="text-[9px] font-extrabold text-[#8A1550] uppercase tracking-widest block border-b border-slate-200/60 pb-1">Payment Summary (Late-Hour)</span>
-                                      <div className="flex flex-col sm:flex-row gap-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/60">
-                                        <div className="space-y-1 sm:flex-1">
-                                          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">In-Clinic Consultation</span>
-                                          <div className="flex justify-between text-[11px] sm:text-xs">
-                                            <span className="text-slate-500 font-semibold">Base Fee</span>
-                                            <span className="font-bold text-slate-700">₹{parsedClinicFee}</span>
-                                          </div>
-                                          <div className="flex justify-between text-[11px] sm:text-xs">
-                                            <span className="text-slate-500 font-semibold">Night Surcharge</span>
-                                            <span className="font-bold text-slate-700">+ ₹{calculatedClinicSurchargeAmt}</span>
-                                          </div>
-                                          <div className="flex justify-between text-[11px] sm:text-xs pt-1 border-t border-dashed border-slate-200/80 font-black text-[#4F46E5]">
-                                            <span>Total Price</span>
-                                            <span>₹{calculatedClinicTotal}</span>
-                                          </div>
-                                        </div>
-
-                                        <div className="space-y-1 pt-3 sm:pt-0 sm:pl-4 sm:flex-1">
-                                          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Home Visit Consultation</span>
-                                          <div className="flex justify-between text-[11px] sm:text-xs">
-                                            <span className="text-slate-500 font-semibold">Base Fee</span>
-                                            <span className="font-bold text-slate-700">₹{parsedHomeFee}</span>
-                                          </div>
-                                          <div className="flex justify-between text-[11px] sm:text-xs">
-                                            <span className="text-slate-500 font-semibold">Night Surcharge</span>
-                                            <span className="font-bold text-slate-700">+ ₹{calculatedHomeSurchargeAmt}</span>
-                                          </div>
-                                          <div className="flex justify-between text-[11px] sm:text-xs pt-1 border-t border-dashed border-slate-200/80 font-black text-[#EC4899]">
-                                            <span>Total Price</span>
-                                            <span>₹{calculatedHomeTotal}</span>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
+                                {/* Night surcharge section removed per requirement */}
                               </div>
 
                               {/* F) Emergency Availability */}

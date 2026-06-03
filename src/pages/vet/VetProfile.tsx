@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { SafeImage } from "@/components/SafeImage";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 
 const VetProfile = () => {
   const navigate = useNavigate();
@@ -110,6 +111,9 @@ const VetProfile = () => {
             </div>
             {/* Verified Badge */}
             <div className="absolute bottom-1 right-2">
+              <VerifiedBadge className="w-8 h-8 rounded-full bg-white border-[3px] border-white shadow-md" />
+            </div>
+            <div className="hidden">
               <img 
                 alt="Verified Badge" 
                 className="w-7 h-7" 

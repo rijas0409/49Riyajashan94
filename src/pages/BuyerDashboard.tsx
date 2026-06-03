@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { MOCK_PETS, MOCK_BREEDERS } from "@/constants/mockData";
 import { SRUVO_LOGO_URL } from "@/constants/branding";
@@ -5,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "@/contexts/LocationContext";
-import { Heart, Search, ShoppingCart, MapPin, ShieldCheck, SlidersHorizontal, Plus, ChevronRight, Star } from "lucide-react";
+import { Heart, Search, ShoppingCart, MapPin, ShieldCheck, SlidersHorizontal, Plus, ChevronRight, Star, ChevronDown, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import BottomNavigation from "@/components/BottomNavigation";
 import HeaderProfileDropdown from "@/components/HeaderProfileDropdown";
@@ -16,6 +17,13 @@ import { InlineBanners } from "@/components/DynamicBannerRenderer";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import SplashScreen from "@/components/SplashScreen";
+import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // ─── Banner Carousel ───
 const FALLBACK_BANNERS = [
@@ -198,12 +206,21 @@ const CATEGORIES = [
 const BuyerDashboard = () => {
   const navigate = useNavigate();
   const { authReady, session, profile } = useAuth();
-  const { city: selectedCity } = useLocation();
+  const { city: selectedCity, setCity, cities: locationCities } = useLocation();
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
+  const [searchCity, setSearchCity] = useState("");
   const [pets, setPets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { totalWishlistCount, togglePetWishlist, isPetInWishlist } = useWishlist();
   const { cartCount } = useCart();
+
+  const filteredCities = useMemo(() => {
+    return locationCities.filter(city =>
+      city.name.toLowerCase().includes(searchCity.toLowerCase()) ||
+      city.state.toLowerCase().includes(searchCity.toLowerCase())
+    );
+  }, [locationCities, searchCity]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -331,13 +348,23 @@ const BuyerDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20 overflow-x-hidden">
+    <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-lg border-b border-border shadow-sm">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-1">
             <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
-            <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">Sruvo</span>
+            <div>
+              <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent block -mb-0.5">Sruvo</span>
+              <button 
+                onClick={() => setLocationModalOpen(true)} 
+                className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <MapPin className="w-3 h-3" />
+                <span>{selectedCity}</span>
+                <ChevronDown className="w-3 h-3" />
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button className="w-9 h-9 rounded-full bg-muted flex items-center justify-center relative" onClick={() => navigate("/wishlist")}>
@@ -538,6 +565,33 @@ const BuyerDashboard = () => {
 
       <InlineBanners placement="bottom" />
       <BottomNavigation variant="buyer" />
+
+      {/* Location Selector Modal */}
+      <Dialog open={locationModalOpen} onOpenChange={setLocationModalOpen}>
+        <DialogContent className="sm:max-w-md rounded-3xl p-0 overflow-hidden">
+          <DialogHeader className="p-4 pb-0">
+            <DialogTitle className="text-lg font-bold">Select Your City</DialogTitle>
+          </DialogHeader>
+          <div className="p-4 pt-2">
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input type="text" placeholder="Search city..." value={searchCity}
+                onChange={(e) => setSearchCity(e.target.value)}
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-muted text-sm outline-none" />
+            </div>
+            <div className="space-y-1 max-h-64 overflow-y-auto">
+              {filteredCities.map((c) => (
+                <button key={c.id}
+                  onClick={() => { setCity(c.name); setLocationModalOpen(false); setSearchCity(""); toast.success(`Location set to ${c.name}`); }}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl text-sm flex items-center justify-between ${selectedCity === c.name ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted"}`}>
+                  <div><p className="font-medium">{c.name}</p><p className="text-[11px] text-muted-foreground">{c.state}</p></div>
+                  {selectedCity === c.name && <Check className="w-4 h-4 text-primary" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

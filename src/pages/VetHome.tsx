@@ -12,11 +12,43 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import SplashScreen from "@/components/SplashScreen";
 
+interface DashboardAppointment {
+  id: string;
+  time: string;
+  name: string;
+  breed: string;
+  type: string;
+  image: string;
+  ownerName: string;
+  ownerPhone: string;
+  date: string;
+  status: string;
+}
+
+interface DbAppointmentRaw {
+  id: string;
+  appointment_date: string;
+  appointment_time?: string | null;
+  appointment_type?: string | null;
+  amount?: number | null;
+  status?: string | null;
+  pet_name?: string | null;
+  pet_type?: string | null;
+  pet_breed?: string | null;
+  user?: {
+    name?: string | null;
+    full_name?: string | null;
+    profile_photo?: string | null;
+    phone?: string | null;
+  } | null;
+}
+
 const VetDashboard = () => {
   const navigate = useNavigate();
   const { isLoading: guardLoading, showSpinner, user, profile, error: guardError } = useRoleGuard(["vet"], "/auth-vet", true);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
+  const [upcomingAppointments, setUpcomingAppointments] = useState<DashboardAppointment[]>([]);
 
   const fetchPendingCount = useCallback(async () => {
     if (!user) return;
@@ -33,16 +65,51 @@ const VetDashboard = () => {
     }
   }, [user]);
 
+  const fetchUpcoming = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('vet_appointments')
+        .select(`
+          *,
+          user:profiles!vet_appointments_user_id_fkey(name, full_name, profile_photo, phone)
+        `)
+        .eq('vet_id', user.id)
+        .in('status', ['pending', 'confirmed'])
+        .order('appointment_date', { ascending: true })
+        .limit(5);
+
+      if (!error && data) {
+        const mapped = (data as unknown[] as DbAppointmentRaw[]).map((apt: DbAppointmentRaw) => ({
+          id: apt.id,
+          time: apt.appointment_time || "11:30 AM",
+          name: apt.pet_name || "Luna",
+          breed: apt.pet_breed || "Golden Retriever",
+          type: apt.appointment_type || "clinic",
+          image: apt.user?.profile_photo || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=100&q=80",
+          ownerName: apt.user?.full_name || apt.user?.name || "Sarah Jenkins",
+          ownerPhone: apt.user?.phone || "+91 98765 43210",
+          date: apt.appointment_date,
+          status: apt.status
+        }));
+        setUpcomingAppointments(mapped);
+      }
+    } catch (err) {
+      console.error("Error fetching upcoming appointments:", err);
+    }
+  }, [user]);
+
   const fetchData = useCallback(async () => {
     try {
       await supabase.from("vet_profiles").select("*").eq("user_id", user?.id).maybeSingle();
       await fetchPendingCount();
+      await fetchUpcoming();
       setIsLoading(false);
     } catch (err) {
       console.error("Error fetching vet data:", err);
       setIsLoading(false);
     }
-  }, [user?.id, fetchPendingCount]);
+  }, [user?.id, fetchPendingCount, fetchUpcoming]);
 
   useEffect(() => {
     if (user && profile) {
@@ -63,16 +130,17 @@ const VetDashboard = () => {
             },
             () => {
               fetchPendingCount();
+              fetchUpcoming();
             }
           )
           .subscribe();
 
-        return () => {
+         return () => {
           supabase.removeChannel(channel);
         };
       }
     }
-  }, [user, profile, navigate, fetchData, fetchPendingCount]);
+  }, [user, profile, navigate, fetchData, fetchPendingCount, fetchUpcoming]);
 
   if (guardError) return <div className="min-h-screen flex items-center justify-center p-4 bg-[#f9f9fb]">{guardError}</div>;
 
@@ -265,7 +333,7 @@ const VetDashboard = () => {
               <div className="flex justify-between items-center mb-[18px]">
                 <h3 className="text-[17px] font-extrabold text-[#1a1a24]">Upcoming</h3>
                 <button 
-                  onClick={() => navigate("/vet/appointments")}
+                  onClick={() => navigate("/vet/schedule")}
                   className="text-[#a428ff] text-xs font-extrabold no-underline uppercase"
                 >
                   View All
@@ -273,62 +341,34 @@ const VetDashboard = () => {
               </div>
 
               <div className="flex flex-col gap-2.5">
-                {/* Highlighted Item */}
-                <div className="bg-white rounded-[22px] p-3.5 flex items-center shadow-[0_12px_35px_rgba(0,0,0,0.035)] border-none transition-all active:scale-[0.99] cursor-pointer" onClick={() => navigate("/vet/appointments")}>
-                  <div className="min-w-[55px] text-center pr-3.5 border-r-[1.5px] border-[#f0f0f5] flex-shrink-0">
-                    <strong className="block text-[13px] text-[#8f8f9d] font-bold mb-0.5">11:30</strong>
-                    <span className="text-[10.5px] text-[#b5b5c3] font-semibold">AM</span>
+                {upcomingAppointments.length === 0 ? (
+                  <div className="bg-white rounded-[22px] p-6 text-center shadow-[0_12px_35px_rgba(0,0,0,0.035)]">
+                    <p className="text-[14px] text-zinc-400 font-bold">No upcoming appointments.</p>
                   </div>
-                  <div className="flex items-center gap-3 grow pl-3.5 min-w-0">
-                    <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=100&q=80" alt="Bella" className="w-[38px] h-[38px] rounded-full object-cover flex-shrink-0" />
-                    <div className="min-w-0">
-                      <h5 className="text-[14.5px] font-extrabold text-[#1a1a24] mb-[3px] truncate">Bella</h5>
-                      <p className="text-[11.5px] text-[#8f8f9d] font-medium flex items-center gap-1 truncate uppercase">
-                        Vaccination • <Buildings size={14} weight="fill" className="inline-block" /> Clinic Visit
-                      </p>
-                    </div>
-                  </div>
-                  <CaretRight size={16} weight="bold" className="text-[#d1d1e0] flex-shrink-0" />
-                </div>
-
-                {/* Faded Items */}
-                {[
-                  { 
-                    time: "01:00", 
-                    ampm: "PM", 
-                    name: "Cooper", 
-                    type: "Ear Infection • ", 
-                    suffix: "Video Call",
-                    icon: <VideoCamera size={14} weight="fill" className="inline-block" />,
-                    img: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=100&q=80" 
-                  },
-                  { 
-                    time: "02:30", 
-                    ampm: "PM", 
-                    name: "Bruno", 
-                    type: "Skin Allergy • ", 
-                    suffix: "Home Visit",
-                    icon: <House size={14} weight="fill" className="inline-block" />,
-                    img: "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=100&q=80" 
-                  }
-                ].map((apt, idx) => (
-                  <div key={idx} className="bg-transparent rounded-[22px] p-3.5 flex items-center shadow-none opacity-60 grayscale-[30%] cursor-pointer" onClick={() => navigate("/vet/appointments")}>
-                    <div className="min-w-[55px] text-center pr-3.5 border-r-[1.5px] border-[#f0f0f5] flex-shrink-0">
-                      <strong className="block text-[13px] text-[#c4c4d4] font-bold mb-0.5">{apt.time}</strong>
-                      <span className="text-[10.5px] text-[#c4c4d4] font-semibold uppercase">{apt.ampm}</span>
-                    </div>
-                    <div className="flex items-center gap-3 grow pl-3.5 min-w-0">
-                      <img src={apt.img} alt={apt.name} className="w-[38px] h-[38px] rounded-full object-cover flex-shrink-0 opacity-50" />
-                      <div className="min-w-0">
-                        <h5 className="text-[14.5px] font-extrabold text-[#c4c4d4] mb-[3px] truncate">{apt.name}</h5>
-                        <p className="text-[11.5px] text-[#c4c4d4] font-medium flex items-center gap-1 truncate uppercase">
-                          {apt.type} {apt.icon} {apt.suffix}
-                        </p>
+                ) : (
+                  upcomingAppointments.map((apt) => (
+                    <div 
+                      key={apt.id} 
+                      className="bg-white rounded-[22px] p-3.5 flex items-center shadow-[0_12px_35px_rgba(0,0,0,0.035)] border-none transition-all active:scale-[0.99] cursor-pointer" 
+                      onClick={() => navigate("/vet/schedule")}
+                    >
+                      <div className="min-w-[55px] text-center pr-3.5 border-r-[1.5px] border-[#f0f0f5] flex-shrink-0">
+                        <strong className="block text-[13px] text-[#8f8f9d] font-bold mb-0.5">{apt.time.split(" ")[0]}</strong>
+                        <span className="text-[10.5px] text-[#b5b5c3] font-semibold uppercase">{apt.time.split(" ")[1] || "AM"}</span>
                       </div>
+                      <div className="flex items-center gap-3 grow pl-3.5 min-w-0">
+                        <img src={apt.image} alt={apt.name} className="w-[38px] h-[38px] rounded-full object-cover flex-shrink-0" />
+                        <div className="min-w-0">
+                          <h5 className="text-[14.5px] font-extrabold text-[#1a1a24] mb-[3px] truncate">{apt.name}</h5>
+                          <p className="text-[11.5px] text-[#8f8f9d] font-medium flex items-center gap-1 truncate uppercase">
+                            {apt.breed} • {apt.type === 'home' ? <House size={14} weight="fill" className="inline-block" /> : <Buildings size={14} weight="fill" className="inline-block" />} {apt.type} Visit
+                          </p>
+                        </div>
+                      </div>
+                      <CaretRight size={16} weight="bold" className="text-[#d1d1e0] flex-shrink-0" />
                     </div>
-                    <CaretRight size={16} weight="bold" className="text-[#c4c4d4] flex-shrink-0" />
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </section>
           </div>
