@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, Heart, Share2, Star, BadgeCheck, ChevronRight, MapPin,
   Stethoscope, Syringe, Scissors, Shield, Clock,
-  Dog, Cat, Bird, Rabbit, Fish, Loader2
+  Dog, Cat, Bird, Rabbit, Fish, Loader2, Globe
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -220,6 +220,8 @@ interface VetData {
   services: { icon: string; label: string }[];
   animals: { icon: string; label: string }[];
   qualification: string;
+  educationDetails?: any[];
+  preferredLanguage?: string;
   profileImage: string;
   verified: boolean;
   onlineFee: number;
@@ -227,6 +229,7 @@ interface VetData {
   consultationType: string;
   vetProfileId: string;
   weekly_availability?: unknown;
+  city: string;
 }
 
 const VetDoctorProfile = () => {
@@ -258,7 +261,7 @@ const VetDoctorProfile = () => {
         // Fetch vet_profiles with the given id
         const { data: vetProfile, error: vetError } = await supabase
           .from("vet_profiles")
-          .select("*, weekly_availability")
+          .select("*, weekly_availability, education_details, preferred_language")
           .eq("id", id)
           .single();
 
@@ -327,6 +330,8 @@ const VetDoctorProfile = () => {
           services,
           animals,
           qualification,
+          educationDetails: Array.isArray(vetProfile.education_details) ? vetProfile.education_details : [],
+          preferredLanguage: vetProfile.preferred_language || "",
           profileImage: profilePhoto,
           verified: vetProfile.verification_status === "verified",
           onlineFee: vetProfile.online_fee || 500,
@@ -334,6 +339,7 @@ const VetDoctorProfile = () => {
           consultationType: vetProfile.consultation_type || "both",
           vetProfileId: vetProfile.id,
           weekly_availability: vetProfile.weekly_availability,
+          city: vetProfile.city || "",
         });
       } catch (err) {
         console.error("Error fetching vet profile:", err);
@@ -487,6 +493,59 @@ const VetDoctorProfile = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <h1 className="text-lg font-bold text-foreground">{doctor.name}</h1>
+                
+                {/* Location Row */}
+                <div className="flex items-center gap-1.5 mt-0.5 text-slate-500">
+                  <MapPin className="w-3.5 h-3.5 shrink-0" />
+                  <span className="text-[13px] font-medium truncate">
+                    {(() => {
+                      if (!doctor.clinic || doctor.clinic.toLowerCase().includes("not provided")) {
+                        return doctor.city || "Location not available";
+                      }
+                      
+                      // Split by comma
+                      const parts = doctor.clinic.split(",").map(p => p.trim());
+                      
+                      // Pattern to identify city (usually near the end, but before PIN/State)
+                      // We'll use the city provided in the vet profile if available, otherwise try to extract
+                      const city = doctor.city || parts[parts.length - 2] || parts[parts.length - 1] || "";
+                      
+                      // Pattern to identify locality/sector
+                      const localityIdentifiers = ["sector", "phase", "block", "area", "locality", "colony", "extension", "enclave"];
+                      let locality = "";
+                      
+                      // Search from back to front but skipping city/pin
+                      for (let i = Math.max(0, parts.length - 2); i >= 0; i--) {
+                        const part = parts[i];
+                        const lower = part.toLowerCase();
+                        if (localityIdentifiers.some(id => lower.includes(id))) {
+                          locality = part;
+                          break;
+                        }
+                      }
+                      
+                      // Fallback for locality if no identifiers found (take middle part)
+                      if (!locality && parts.length > 2) {
+                        locality = parts[Math.floor(parts.length / 2)];
+                      } else if (!locality) {
+                        locality = parts[0];
+                      }
+                      
+                      // Clean: remove house numbers (digits + slash/hyphen at start)
+                      locality = locality.replace(new RegExp("^[\\d\\-/\\s,]+"), "").replace(/^[Nn]ear\s+/i, "").trim();
+
+                      if (locality && city && locality.toLowerCase() !== city.toLowerCase()) {
+                        // Check if locality is just a street number, if so use next part
+                        if (/^\d+$/.test(locality) && parts.length > 1) {
+                          return `${parts[1]}, ${city}`;
+                        }
+                        return `${locality}, ${city}`;
+                      }
+                      return city || locality || "Location not available";
+                    })()}
+                  </span>
+                </div>
+
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                   {status.isOnline ? (
                     <span className="flex items-center gap-1.5 bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full border border-green-500/20 text-[11px] font-bold tracking-wide">
@@ -590,22 +649,66 @@ const VetDoctorProfile = () => {
             </section>
           )}
 
+          {/* Languages Supported */}
+          {doctor.preferredLanguage && (
+            <section>
+              <h2 className="text-base font-bold text-foreground mb-3">Languages Spoken</h2>
+              <div className="flex flex-wrap gap-2">
+                {doctor.preferredLanguage.split(",").map(lang => lang.trim()).filter(Boolean).map((lang, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full">
+                    <Globe className="w-3.5 h-3.5 text-slate-500" />
+                    <span className="text-xs font-semibold text-slate-700">{lang}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Professional Qualifications */}
           <section>
             <h2 className="text-base font-bold text-foreground mb-3">Professional Qualifications</h2>
             <div className="space-y-3">
-              <div className="bg-card rounded-2xl p-4 shadow-sm border border-border flex items-start gap-3">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                  style={{ backgroundColor: "#F3F0FF" }}
-                >
-                  <BadgeCheck className="w-5 h-5" style={{ color: "#8E7CFF" }} />
+              {doctor.educationDetails && doctor.educationDetails.length > 0 ? (
+                doctor.educationDetails.map((edu, idx) => {
+                  if (!edu.qualification && !edu.institution) return null;
+                  return (
+                    <div key={idx} className="bg-card rounded-2xl p-4 shadow-sm border border-border flex items-start gap-4 transition-colors hover:bg-slate-50/50">
+                      <div
+                        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                        style={{ backgroundColor: "#F3F0FF" }}
+                      >
+                        <BadgeCheck className="w-6 h-6" style={{ color: "#8E7CFF" }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[15px] font-bold text-foreground leading-snug">{edu.qualification || "Qualified Professional"}</p>
+                        {edu.institution && (
+                          <p className="text-xs font-medium text-slate-600 mt-1 line-clamp-2">
+                            {edu.institution}
+                          </p>
+                        )}
+                        {edu.year && (
+                          <p className="text-[11px] font-semibold text-slate-400 mt-1 uppercase tracking-wider">
+                            Class of {edu.year}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="bg-card rounded-2xl p-4 shadow-sm border border-border flex items-start gap-3 transition-colors hover:bg-slate-50/50">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                    style={{ backgroundColor: "#F3F0FF" }}
+                  >
+                    <BadgeCheck className="w-5 h-5" style={{ color: "#8E7CFF" }} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{doctor.qualification}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Qualified Veterinary Professional</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-foreground">{doctor.qualification}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Qualified Veterinary Professional</p>
-                </div>
-              </div>
+              )}
             </div>
           </section>
         </div>

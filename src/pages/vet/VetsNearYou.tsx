@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useLocation as useGlobalLocation } from "@/contexts/LocationContext";
 import { MapPin, Star, GraduationCap, ChevronLeft, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,10 +23,8 @@ type VetRecord = {
 
 export default function VetsNearYou() {
   const { authReady } = useAuth();
-  const location = useLocation();
+  const { city: selectedCity } = useGlobalLocation();
   const navigate = useNavigate();
-  // Safe extraction
-  const selectedCity = (location.state?.city as string) || (location.state as any)?.location || "";
 
   const [vets, setVets] = useState<VetRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,7 +152,11 @@ export default function VetsNearYou() {
     
     if (sCity && sCity !== "all" && sCity !== "any") {
       const vCity = (vet.city || "").trim().toLowerCase();
-      matchesCity = !vCity ? true : (vCity.includes(sCity) || sCity.includes(vCity));
+      if (vCity) {
+        matchesCity = vCity.includes(sCity) || sCity.includes(vCity);
+      } else {
+        matchesCity = false; // Strictly filtering only docs with this city
+      }
     }
 
     // 2. Filter by search query

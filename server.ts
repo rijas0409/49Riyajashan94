@@ -65,7 +65,7 @@ USER'S LIFESTYLE:${lifestyleBlock}
 Based on real, factual breed-specific data and the user's lifestyle inputs, generate a care compatibility report. Be honest — if the pet is NOT a good match for the user's lifestyle, say so clearly. Consider space needs, exercise requirements, child-friendliness, time commitment, and realistic monthly costs for Indian market.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -125,7 +125,7 @@ Deep Dive should cover health, training, and grooming.
 Keep descriptions concise (max 2 sentences).`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -195,7 +195,7 @@ Highlights: ${highlights?.join(", ") || "N/A"}
 Keep descriptions concise (max 2 sentences).`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -255,14 +255,12 @@ Keep descriptions concise (max 2 sentences).`;
         specializations, 
         consultationType, 
         clinic, 
-        preferredLanguage,
-        support24x7,
-        emergencyAvailable
+        forceUpdate = false
       } = req.body;
 
       // 1. Initialize Supabase secure client if vetId is provided for caching
       let supabaseAdmin: any = null;
-      let vetProfile: any = null;
+      let existingBio = "";
 
       if (vetId) {
         const { createClient } = await import("@supabase/supabase-js");
@@ -270,7 +268,6 @@ Keep descriptions concise (max 2 sentences).`;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
         supabaseAdmin = createClient(supabaseUrl, supabaseKey);
 
-        // Fetch the profile first to see if it already has an ai_description in weekly_availability
         const { data, error: fetchErr } = await supabaseAdmin
           .from("vet_profiles")
           .select("weekly_availability")
@@ -278,84 +275,102 @@ Keep descriptions concise (max 2 sentences).`;
           .single();
 
         if (!fetchErr && data) {
-          vetProfile = data;
           const weeklyAvailability = data.weekly_availability as any;
-          if (weeklyAvailability && weeklyAvailability.ai_description) {
+          if (weeklyAvailability && weeklyAvailability.ai_description && !forceUpdate) {
             console.log(`[Server] Found cached AI description for vetId: ${vetId}`);
             return res.json({ description: weeklyAvailability.ai_description });
           }
+          existingBio = weeklyAvailability?.ai_description || "";
         }
       }
-
-      // 2. generate it using Gemini
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("GEMINI_API_KEY environment variable is required");
-      }
-      const ai = new GoogleGenAI({ apiKey });
-
-      const specList = Array.isArray(specializations) && specializations.length > 0 
-        ? specializations.join(", ") 
-        : "companion animals and small pets";
-
-      const prompt = `You are an expert veterinary copywriter and SEO specialist. 
-Generate a professional, warm, and highly engaging veterinary doctor biography.
-The description must be search-engine optimized (SEO), extremely clean, and perfectly crafted for a veterinarian's public booking profile.
-
-DOCTOR PROFILE DETAILS:
-- Name: ${name || "Qualified Vet"}
-- Qualification: ${qualification || "BVSc & AH"}
-- Years of Experience: ${yearsExp || "4"}+ years of dedicated experience
-- Specializations / Pets: ${specList}
-
-DEMO EXAMPLES FOR INSPIRATION:
-Example 1: "Dr. Anaya is a verified veterinarian with 4+ years of experience in companion animal care. She specializes in the diagnosis, treatment, and preventive healthcare of dogs, cats, birds, and small pets. Committed to delivering trusted and compassionate veterinary care."
-Example 2: "Dr. Kabir is a highly dedicated companion animal specialist with over 6 years of experience in veterinary medicine. He is passionate about preventive healthcare, veterinary diagnostics, and treating dogs, cats, and rabbits. Focused on providing gentle and reliable healthcare for your beloved family members."
-
-STRICT RULES:
-1. Limit the biography to exactly 3 to 4 lines of fluent text (no bullet points, no lists).
-2. DO NOT include any physical address, office/clinic location, phone numbers, or long list of collegiate degree qualifications. Keep the focus entirely on their compassion, expertise, years of experience, and clinical specializations.
-3. Use warm, trusted, and empathetic language. Do NOT use the exact same wording for every doctor. Vary the sentence structure and vocabulary to ensure each vet has a customized profile.
-4. Integrate search terms naturally (such as "veterinary companion care", "preventive medical diagnostics", "compassionate animal wellness", "trusted healthcare expert").
-5. Return the response as a single JSON object containing only a "description" key.`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              description: { type: Type.STRING }
-            },
-            required: ["description"]
-          }
-        }
-      });
 
       let generatedText = "";
-      if (response.text) {
-        let jsonString = response.text.trim();
-        if (jsonString.startsWith("```json")) {
-          jsonString = jsonString.replace(/^```json/, "").replace(/```$/, "").trim();
-        } else if (jsonString.startsWith("```")) {
-          jsonString = jsonString.replace(/^```/, "").replace(/```$/, "").trim();
+
+      try {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+          throw new Error("GEMINI_API_KEY environment variable is required");
         }
-        const parsed = JSON.parse(jsonString);
-        generatedText = parsed.description;
-      } else {
-        throw new Error("No response text from Gemini");
+        const ai = new GoogleGenAI({ apiKey });
+
+        const specList = Array.isArray(specializations) && specializations.length > 0 
+          ? specializations.join(", ") 
+          : "general veterinary care";
+
+        const prompt = `Generate a professional 'About Doctor' description for a veterinary profile.
+    
+REQUIREMENTS:
+- Length: Exactly 3 to 4 lines only. (Mandatory)
+- Language: Natural, human-written language suitable for a real veterinary profile.
+- Tone: Professional, trustworthy, and healthcare-focused.
+- Perspective: Third person.
+- Mention years of experience: naturally integrated (e.g., "With over 8 years of clinical experience...").
+- Content: Mention ONLY the animal types and consultation areas selected: ${specList}.
+- Focus areas: Practical veterinary care, diagnosis, treatment, preventive healthcare, wellness support, or nutrition guidance.
+- Simplicity: Keep content concise and easy to read on mobile devices.
+- LIMITATIONS: DO NOT mention education, degrees, clinic address, ratings, reviews, awards, or achievements.
+- NO MARKETING BUZZWORDS: Avoid words like "best", "world-class", "top-rated", "stellar", "unmatched", "passionate", etc.
+- UNIQUENESS: Do NOT use a template. Ensure this feels like a unique, handwritten summary for this specific doctor.
+
+DOCTOR DATA:
+- Name: ${name || "the veterinarian"}
+- Experience: ${yearsExp || "several"} years
+- Focus: ${specList}
+- Consultation: ${consultationType || "General"}
+
+Return the response as a single JSON object containing only a "description" key. Ensure the description is exactly 3-4 lines when displayed.`;
+
+        const response = await ai.models.generateContent({
+          model: "gemini-1.5-flash",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                description: { type: Type.STRING }
+              },
+              required: ["description"]
+            }
+          }
+        });
+
+        if (response.text) {
+          let jsonString = response.text.trim();
+          if (jsonString.startsWith("```json")) {
+            jsonString = jsonString.replace(/^```json/, "").replace(/```$/, "").trim();
+          } else if (jsonString.startsWith("```")) {
+            jsonString = jsonString.replace(/^```/, "").replace(/```$/, "").trim();
+          }
+          const parsed = JSON.parse(jsonString);
+          generatedText = parsed.description;
+        } else {
+          throw new Error("No response text from Gemini");
+        }
+
+        if (!generatedText) {
+          throw new Error("Gemini produced an empty description");
+        }
+      } catch (genErr: any) {
+        console.warn("[Server] Gemini vet bio generation failed, using fallback:", genErr.message);
+        const specText = Array.isArray(specializations) && specializations.length > 0 
+            ? specializations.join(" and ") 
+            : "pets";
+        generatedText = `${name && !name.includes("Dr") ? "Dr. " + name : name || "This veterinarian"} is a verified professional with ${yearsExp || "several"} years of experience in veterinary medicine. They focus on ${specText}, providing practical care, diagnostics, and wellness support to ensure the long-term health of animals. Their approach emphasizes preventive healthcare and reliable treatment for companions.`;
       }
 
-      if (!generatedText) {
-        throw new Error("Gemini produced an empty description");
-      }
-
-      // 3. Try to save the generated description back to Supabase in weekly_availability.ai_description if we have vetId
-      if (vetId && supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      // 3. Save the generated description back to Supabase if we have vetId
+      if (vetId && supabaseAdmin && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY)) {
         console.log(`[Server] Saving AI generated description to DB for vetId: ${vetId}.`);
-        const currentAvailability = (vetProfile?.weekly_availability as any) || {};
+        
+        // Fetch current data first to avoid overwriting other fields in weekly_availability
+        const { data: currentData } = await supabaseAdmin
+          .from("vet_profiles")
+          .select("weekly_availability")
+          .eq("id", vetId)
+          .single();
+
+        const currentAvailability = (currentData?.weekly_availability as any) || {};
         const updatedAvailability = { ...currentAvailability, ai_description: generatedText };
 
         const { error: updateErr } = await supabaseAdmin
@@ -368,8 +383,6 @@ STRICT RULES:
         } else {
           console.log(`[Server] Successfully persisted generated description for vetId: ${vetId}`);
         }
-      } else if (vetId) {
-         console.warn(`[Server] Skipped saving AI generated description to DB. Requires SUPABASE_SERVICE_ROLE_KEY.`);
       }
 
       res.json({ description: generatedText });

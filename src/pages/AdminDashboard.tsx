@@ -328,6 +328,36 @@ const AdminDashboard = () => {
       console.log("Approval successful for:", id);
       toast({ title: "Vet Approved Successfully" });
       
+      // Automatically trigger bio generation on first approval
+      const generateBio = async () => {
+        try {
+          // Fetch vet profile to get details for generation
+          const { data: vp } = await supabase.from("vet_profiles").select("*").eq("user_id", id).single();
+          const { data: prof } = await supabase.from("profiles").select("full_name, name").eq("id", id).single();
+          
+          if (vp) {
+            console.log("Triggering auto bio generation for vet:", id);
+            await fetch("/api/generate-vet-bio", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                vetId: vp.id,
+                name: `Dr. ${prof?.full_name || prof?.name || "Doctor"}`,
+                qualification: vp.qualification,
+                yearsExp: vp.years_of_experience,
+                specializations: vp.specializations,
+                consultationType: vp.consultation_type,
+                forceUpdate: true // Force generate fresh 
+              })
+            });
+          }
+        } catch (e) {
+          console.warn("Auto bio generation failed during approval:", e);
+        }
+      };
+      
+      generateBio();
+      
       // Force immediate refresh
       fetchData(true);
     } catch (err: any) {

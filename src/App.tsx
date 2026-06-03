@@ -66,6 +66,7 @@ import ConnectionReady from "./pages/vet/ConnectionReady";
 import ConsultationPlan from "./pages/vet/ConsultationPlan";
 import ConsultationSummary from "./pages/vet/ConsultationSummary";
 import ConsultationConfirmation from "./pages/vet/ConsultationConfirmation";
+import ClinicBookingConfirmation from "./pages/vet/ClinicBookingConfirmation";
 import DigitalPrescription from "./pages/vet/DigitalPrescription";
 import FindingVet from "./pages/vet/FindingVet";
 import InstantAnalyzing from "./pages/vet/InstantAnalyzing";
@@ -223,6 +224,7 @@ const App = () => (
                 <Route path="/vet/consultation-plan" element={<ConsultationPlan />} />
                 <Route path="/vet/consultation-summary" element={<ConsultationSummary />} />
                 <Route path="/vet/consultation-confirmation" element={<ConsultationConfirmation />} />
+                <Route path="/vet/clinic-booking-confirmation" element={<ClinicBookingConfirmation />} />
                 <Route path="/vet/analysis-summary" element={<ConsultationAnalysisSummary />} />
                 <Route path="/vet/digital-prescription" element={<DigitalPrescription />} />
                 <Route path="/vet/prescription" element={<DigitalPrescription />} />

@@ -68,6 +68,7 @@ interface RealVet {
   isActive: boolean;
   distance?: number;
   availability?: string;
+  address_combined?: string;
 }
 
 interface Clinic {
@@ -85,7 +86,7 @@ const matchCity = (vetAddress: string | null, selectedCity: string): boolean => 
   const normalizedCity = selectedCity.trim().toLowerCase();
   if (normalizedCity === "all" || normalizedCity === "") return true;
 
-  if (!vetAddress || vetAddress.trim() === "") return true;
+  if (!vetAddress || vetAddress.trim() === "") return false;
   
   const normalizedAddr = vetAddress.trim().toLowerCase();
   
@@ -236,18 +237,17 @@ const Vet = () => {
             isActive: vp?.is_active ?? true,
             distance: Math.floor(Math.random() * 20) + 1,
             availability: Math.random() > 0.5 ? "AVAILABLE NOW" : `NEXT: ${Math.floor(Math.random() * 5) + 1} PM`,
-            address: p?.address,
-            clinic_address: vp?.clinic_address
+            address_combined: `${vp?.clinic_address || ""} ${p?.address || ""} ${p?.city || ""} ${vp?.city || ""}`.trim()
           };
         });
 
       // Filtered by city for "Near You"
       const filteredVets = rawVetsArr.filter(vet => {
-        const addrMatch = matchCity(vet.address || null, location);
-        const clinicMatch = matchCity(vet.clinic_address || null, location);
-        const noLocationKnown = !vet.address && !vet.clinic_address;
-        
-        return addrMatch || clinicMatch || noLocationKnown || !location || location.toLowerCase() === "all" || location.toLowerCase() === "";
+        if (!location || location.toLowerCase() === "all" || location.toLowerCase() === "") {
+          return true;
+        }
+
+        return matchCity(vet.address_combined, location); // Strictly requiring a match
       });
 
       setRealVets(rawVetsArr);

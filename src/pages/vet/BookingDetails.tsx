@@ -295,66 +295,50 @@ const BookingDetails = () => {
   const clinicFee = Number(vet.online_fee !== undefined ? vet.online_fee : (vet.onlineFee !== undefined ? vet.onlineFee : (vet.fee || 500)));
   const homeFee = Number(vet.offline_fee !== undefined ? vet.offline_fee : (vet.offlineFee !== undefined ? vet.offlineFee : 800));
 
-  // Determine supply, demand, and night surcharge
+  // Determine dynamic demand and supply configuration for late night fee percentage
   const supplyAndDemand = useMemo(() => {
-    const rating = vet.rating || 4.5;
-    const experience = vet.experience || 5;
-
     const idHash = Array.from(vet.id || "vet").reduce((acc, char) => acc + char.charCodeAt(0), 0);
     
-    const supplyFactor = (idHash % 30) + 20; // 20 to 50
-    const demandFactor = Math.round((rating * 15) + (experience * 2) + (idHash % 15)); // 60 to 110
+    // Simulate active vets
+    const activeVets = 4;
     
-    let supplyStatus: "Low" | "Medium" | "High" = "Medium";
-    let demandStatus: "Low" | "Medium" | "High" = "Medium";
-    let surcharge = 150;
+    // Simulate booking requests from 2 to 35
+    const bookingRequestsOptions = [2, 4, 10, 30, (idHash % 25) + 2];
+    const bookingRequests = bookingRequestsOptions[idHash % bookingRequestsOptions.length];
     
-    if (supplyFactor <= 30) {
-      supplyStatus = "Low";
-    } else if (supplyFactor > 50) {
-      supplyStatus = "High";
-    } else {
-      supplyStatus = "Medium";
+    const ratio = bookingRequests / activeVets;
+
+    let surchargePercentage = 0.10; // Default 10%
+
+    // Calculate percentage based on ranges
+    if (ratio >= 7.5) { // Very High Demand (e.g. 30/4)
+      surchargePercentage = 0.12 + ((idHash % 3) / 100); // 12% - 14%
+    } else if (ratio >= 2.5) { // Moderately High (e.g. 10/4)
+      surchargePercentage = 0.11 + ((idHash % 2) / 100); // 11% - 12%
+    } else if (ratio >= 1.0) { // Balanced (e.g. 4/4)
+      surchargePercentage = 0.10 + ((idHash % 2) / 100); // 10% - 11%
+    } else { // Low Demand
+      surchargePercentage = 0.09 + ((idHash % 2) / 100); // 9% - 10%
     }
-    
-    if (demandFactor >= 85) {
-      demandStatus = "High";
-    } else if (demandFactor < 65) {
-      demandStatus = "Low";
-    } else {
-      demandStatus = "Medium";
-    }
-    
-    if (supplyStatus === "Low" && demandStatus === "High") {
-      surcharge = 320;
-    } else if (supplyStatus === "Low" || demandStatus === "High") {
-      surcharge = 240;
-    } else if (supplyStatus === "High" && demandStatus === "Low") {
-      surcharge = 60;
-    } else if (supplyStatus === "High" || demandStatus === "Low") {
-      surcharge = 110;
-    } else {
-      surcharge = 150;
-    }
-    
+
     return {
-      supply: supplyFactor,
-      demand: demandFactor,
-      supplyStatus,
-      demandStatus,
-      surcharge
+      activeVets,
+      bookingRequests,
+      surchargePercentage
     };
   }, [vet]);
 
-  const isNightSlotSelected = selectedSlot ? getSlotPeriod(selectedSlot) === "night" : false;
-
-  const appliedNightSurcharge = (hasNightZoneActive && isNightSlotSelected) ? supplyAndDemand.surcharge : 0;
+  const parsedNightMins = selectedSlot ? parseTimeToMins(selectedSlot) : 0;
+  const isNightSlotSelected = selectedSlot ? (parsedNightMins >= 0 && parsedNightMins < 360) : false;
 
   const fees = {
     clinic: { visit: clinicFee },
     home: { visit: homeFee },
   };
   const current = fees[visitType];
+  
+  const appliedNightSurcharge = (hasNightZoneActive && isNightSlotSelected) ? Math.round(current.visit * supplyAndDemand.surchargePercentage) : 0;
+  
   const platformFee = Math.round(current.visit * 0.26);
   const discount = selectedCoupon ? selectedCoupon.value : 0;
   const total = Math.max(0, current.visit + platformFee + appliedNightSurcharge - discount);
@@ -381,6 +365,23 @@ const BookingDetails = () => {
   const halfIndex = Math.ceil(allSlots.length / 2);
   const row1Slots = allSlots.slice(0, halfIndex);
   const row2Slots = allSlots.slice(halfIndex);
+
+  // Simplified availability check for the status badge
+  const availabilityStatus = useMemo(() => {
+    if (!weeklyAvailabilityObject) return { isOnline: true, label: "AVAILABLE" };
+    const now = new Date();
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+    const dayName = format(now, "EEE");
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dayData = (weeklyAvailabilityObject as any)[dayName];
+    if (dayData) {
+      const slots = extractRawSlots(dayData);
+      const futureSlots = slots.filter(s => parseTimeToMins(s.timeVal) > currentMins);
+      if (futureSlots.length > 0) return { isOnline: true, label: "AVAILABLE" };
+    }
+    return { isOnline: false, label: "OFFLINE" };
+  }, [weeklyAvailabilityObject]);
 
   const vetName = vet.name || "Doctor";
   const vetSpecialization = vet.specialization || "Veterinarian";
@@ -457,7 +458,7 @@ const BookingDetails = () => {
           <div className="grid grid-cols-3 gap-2 text-center border-t border-border pt-3">
             <div>
               <p className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Fee</p>
-              <p className="text-sm font-bold text-foreground">₹{clinicFee}<span className="text-xs font-normal text-muted-foreground">/session</span></p>
+              <p className="text-sm font-bold text-foreground">₹{current.visit}<span className="text-xs font-normal text-muted-foreground">/session</span></p>
             </div>
             <div>
               <p className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Experience</p>
@@ -465,7 +466,10 @@ const BookingDetails = () => {
             </div>
             <div>
               <p className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Status</p>
-              <p className="text-sm font-bold" style={{ color: '#22C55E' }}>AVAILABLE NOW</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1" style={{ color: availabilityStatus.isOnline ? '#22C55E' : '#94A3B8' }}>
+                <span className={`w-1.5 h-1.5 rounded-full ${availabilityStatus.isOnline ? 'bg-[#22C55E] animate-pulse' : 'bg-[#94A3B8]'}`}></span>
+                {availabilityStatus.label}
+              </p>
             </div>
           </div>
         </div>
@@ -574,7 +578,7 @@ const BookingDetails = () => {
                           disabled={isTopDisabled} 
                           onClick={() => setSelectedSlot(pair.top!)}
                           className="py-3 rounded-2xl text-[13px] sm:text-sm font-semibold transition-all border-2 text-center"
-                          style={isTopSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isTopDisabled ? { border: '2px dashed hsl(var(--border))', color: 'hsl(var(--muted-foreground))', opacity: 0.5, textDecoration: 'line-through' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}
+                          style={isTopSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isTopDisabled ? { border: '2px dotted hsl(var(--border))', color: 'hsl(var(--muted-foreground))', opacity: 0.35, textDecoration: 'line-through' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}
                         >
                           {pair.top}
                         </button>
@@ -589,7 +593,7 @@ const BookingDetails = () => {
                           disabled={isBottomDisabled} 
                           onClick={() => setSelectedSlot(pair.bottom!)}
                           className="py-3 rounded-2xl text-[13px] sm:text-sm font-semibold transition-all border-2 text-center"
-                          style={isBottomSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isBottomDisabled ? { border: '2px dashed hsl(var(--border))', color: 'hsl(var(--muted-foreground))', opacity: 0.5, textDecoration: 'line-through' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}
+                          style={isBottomSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isBottomDisabled ? { border: '2px dotted hsl(var(--border))', color: 'hsl(var(--muted-foreground))', opacity: 0.35, textDecoration: 'line-through' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}
                         >
                           {pair.bottom}
                         </button>
@@ -611,7 +615,7 @@ const BookingDetails = () => {
                 return (
                   <button key={slot} disabled={isDisabled} onClick={() => setSelectedSlot(slot)}
                     className="py-3 rounded-2xl text-[13px] sm:text-sm font-semibold transition-all border-2"
-                    style={isSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isDisabled ? { border: '2px dashed hsl(var(--border))', color: 'hsl(var(--muted-foreground))', opacity: 0.5, textDecoration: 'line-through' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}>
+                    style={isSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isDisabled ? { border: '2px dotted hsl(var(--border))', color: 'hsl(var(--muted-foreground))', opacity: 0.35, textDecoration: 'line-through' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}>
                     {slot}
                   </button>
                 );
@@ -1060,11 +1064,18 @@ const BookingDetails = () => {
                               console.error("Error inserting appointment:", insertErr);
                             }
 
-                            toast.success("Booking confirmed successfully!");
-                            navigate(visitType === "home" ? "/vet/home-visit-details" : "/vet/clinic-visit-details", { 
+                            toast.success("Payment successful! Requesting vet confirmation...");
+                            navigate("/vet/clinic-booking-confirmation", { 
                               state: { 
                                 visit: {
                                   id: realBookingId,
+                                  vet: {
+                                    name: veterinarian.name,
+                                    image: veterinarian.image,
+                                    specialization: veterinarian.specialization || "Veterinarian"
+                                  },
+                                  appointmentId: realBookingId,
+                                  visitType: visitType,
                                   petName: location.state?.petName || location.state?.selectedPet?.name || "Luna",
                                   petBreed: location.state?.selectedPet?.breed || "Golden Retriever • Female",
                                   petAge: "4 Years",

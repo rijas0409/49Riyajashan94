@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLocation, useNavigate } from "react-router-dom";
-import { MapPin, Star, GraduationCap, ChevronLeft, Award, Clock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useLocation as useGlobalLocation } from "@/contexts/LocationContext";
+import { MapPin, Star, GraduationCap, ChevronLeft, Award, Clock, ArrowLeft, Search, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type VetRecord = {
@@ -20,13 +21,12 @@ type VetRecord = {
 
 export default function AllSpecializedVets() {
   const { authReady } = useAuth();
-  const location = useLocation();
+  const { city: selectedCity } = useGlobalLocation();
   const navigate = useNavigate();
-  // Safe extraction
-  const selectedCity = (location.state?.city as string) || (location.state as any)?.location || "";
 
   const [vets, setVets] = useState<VetRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchVets = async () => {
     try {
@@ -151,44 +151,104 @@ export default function AllSpecializedVets() {
     };
   }, [authReady]);
 
+const matchCity = (vetAddress: string | null, selectedCity: string): boolean => {
+    if (!selectedCity) return true;
+    const normalizedCity = selectedCity.trim().toLowerCase();
+    if (normalizedCity === "all" || normalizedCity === "") return true;
+
+    if (!vetAddress || vetAddress.trim() === "") return false;
+    
+    const normalizedAddr = vetAddress.trim().toLowerCase();
+    
+    // Split address by commas or spaces and try to find the city
+    if (normalizedCity === "noida") {
+      if (normalizedAddr.includes("greater noida")) {
+        return false;
+      }
+      return normalizedAddr.includes("noida");
+    }
+
+    if (normalizedCity === "greater noida") {
+      return normalizedAddr.includes("greater noida");
+    }
+
+    // Handle Gurugram vs Gurgaon
+    if (normalizedCity.includes("gurgaon") || normalizedCity.includes("gurugram")) {
+      return normalizedAddr.includes("gurgaon") || normalizedAddr.includes("gurugram");
+    }
+
+    // Handle Bangalore vs Bengaluru
+    if (normalizedCity.includes("bangalore") || normalizedCity.includes("bengaluru")) {
+      return normalizedAddr.includes("bangalore") || normalizedAddr.includes("bengaluru");
+    }
+    
+    return normalizedAddr.includes(normalizedCity);
+  };
+
   // Robust Fuzzy Location Filter matching substrings both ways
   const filteredVets = vets.filter((vet) => {
-    const sCity = selectedCity.trim().toLowerCase();
-    if (!sCity || sCity === "all" || sCity === "any") return true;
+    const matchesCity = matchCity(vet.city, selectedCity);
 
-    const vCity = (vet.city || "").trim().toLowerCase();
-    
-    // If city is completely empty/unknown, decide if we want to show it. For now, let's show it so they aren't hidden by default
-    if (!vCity) return true;
+    let matchesSearch = true;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      matchesSearch = 
+        vet.name.toLowerCase().includes(q) || 
+        vet.specialty.toLowerCase().includes(q) || 
+        (vet.city || "").toLowerCase().includes(q);
+    }
 
-    // The core requested fuzzy matching capability
-    return vCity.includes(sCity) || sCity.includes(vCity);
+    return matchesCity && matchesSearch;
   });
 
   return (
-    <div className="min-h-screen bg-neutral-50 pb-20">
+    <div className="min-h-screen bg-[#F8F9FB] pb-10">
       {/* Header */}
-      <div className="bg-white px-4 pt-12 pb-4 shadow-sm sticky top-0 z-10">
-        <div className="flex items-center gap-3">
+      <div className="bg-white px-4 py-6 sticky top-0 z-50 shadow-sm">
+        <div className="flex items-center gap-4 mb-6">
           <button 
             onClick={() => navigate(-1)}
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors"
+            className="w-10 h-10 rounded-full bg-[#F1F1F1] flex items-center justify-center"
           >
-            <ChevronLeft className="w-6 h-6 text-neutral-700" />
+            <ArrowLeft className="w-5 h-5 text-[#151B32]" />
           </button>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold text-neutral-900">Specialized Vets</h1>
-            {selectedCity && selectedCity.toLowerCase() !== "all" && (
-              <p className="text-sm text-neutral-500 font-medium capitalize flex items-center gap-1 mt-1">
-                <MapPin className="w-3.5 h-3.5" />
-                {selectedCity}
-              </p>
-            )}
+          <div>
+            <h1 className="text-xl font-black text-[#151B32]">Specialized Vets</h1>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+              <MapPin className="w-3 h-3" />
+              <span>Searching in {selectedCity && selectedCity.toLowerCase() !== "all" ? selectedCity : "All locations"}</span>
+            </div>
           </div>
+        </div>
+
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input 
+              type="text"
+              placeholder="Search by doctor name or specialty"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-[#F1F5F9] rounded-2xl text-sm focus:outline-none border-none"
+            />
+          </div>
+          <button className="w-12 h-12 bg-[#F1F5F9] rounded-2xl flex items-center justify-center">
+            <Filter className="w-4 h-4 text-[#151B32]" />
+          </button>
         </div>
       </div>
 
-      <div className="p-4 max-w-3xl mx-auto space-y-4">
+      <div className="px-4 py-6 max-w-3xl mx-auto space-y-4">
+        {!loading && (
+          <div className="flex items-center justify-between mb-6 px-1">
+            <h2 className="text-[17px] font-extrabold text-[#151B32] uppercase tracking-wider">
+               Specialists
+            </h2>
+            <span className="text-xs font-bold text-muted-foreground bg-[#F1F5F9] px-2 py-0.5 rounded-full">
+              {filteredVets.length} FOUND
+            </span>
+          </div>
+        )}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
             <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
