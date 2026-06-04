@@ -65,7 +65,7 @@ USER'S LIFESTYLE:${lifestyleBlock}
 Based on real, factual breed-specific data and the user's lifestyle inputs, generate a care compatibility report. Be honest — if the pet is NOT a good match for the user's lifestyle, say so clearly. Consider space needs, exercise requirements, child-friendliness, time commitment, and realistic monthly costs for Indian market.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -125,7 +125,7 @@ Deep Dive should cover health, training, and grooming.
 Keep descriptions concise (max 2 sentences).`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -195,7 +195,7 @@ Highlights: ${highlights?.join(", ") || "N/A"}
 Keep descriptions concise (max 2 sentences).`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -264,7 +264,13 @@ Keep descriptions concise (max 2 sentences).`;
 
       if (vetId) {
         const { createClient } = await import("@supabase/supabase-js");
-        const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co";
+        let supabaseUrl = (process.env.VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co").trim();
+        try {
+          const urlObj = new URL(supabaseUrl);
+          supabaseUrl = urlObj.origin;
+        } catch (e) {
+          supabaseUrl = supabaseUrl.replace(/\/$/, "");
+        }
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
         supabaseAdmin = createClient(supabaseUrl, supabaseKey);
 
@@ -321,7 +327,7 @@ DOCTOR DATA:
 Return the response as a single JSON object containing only a "description" key. Ensure the description is exactly 3-4 lines when displayed.`;
 
         const response = await ai.models.generateContent({
-          model: "gemini-1.5-flash",
+          model: "gemini-3.5-flash",
           contents: prompt,
           config: {
             responseMimeType: "application/json",

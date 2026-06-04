@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, MoreHorizontal, Star, Briefcase, ThumbsUp, Clock, Hospital, Home, MessageSquare, ArrowRight, CheckCircle2, Moon, ChevronUp, ChevronDown, Gift, Percent, ChevronRight, Ticket, X, Wallet, Lock, Check, Shield, Calendar } from "lucide-react";
 import { format, addDays, startOfToday } from "date-fns";
@@ -82,7 +82,52 @@ const BookingDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { matchedVet, isDirectBooking: isDirectState } = location.state || {};
-  const [visitType, setVisitType] = useState<"clinic" | "home">("clinic");
+  
+  // Dynamic Real-time Consultation settings
+  const [dbVetData, setDbVetData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchLatestConsultationType = async () => {
+      if (matchedVet?.id) {
+        const { data, error } = await supabase
+          .from("vet_profiles")
+          .select("consultation_type, clinic_name, clinic_address, hospital_name, hospital_address")
+          .eq("id", matchedVet.id)
+          .maybeSingle();
+        if (data && !error) {
+          setDbVetData(data);
+          const typeStr = data.consultation_type || "";
+          
+          // Auto-select based on enabled types
+          const isClinic = typeStr.toLowerCase().includes("clinic");
+          const isHome = typeStr.toLowerCase().includes("home");
+          if (isClinic && !isHome) {
+            setVisitType("clinic");
+          } else if (!isClinic && isHome) {
+            setVisitType("home");
+          }
+        }
+      }
+    };
+    fetchLatestConsultationType();
+  }, [matchedVet?.id]);
+
+  const isClinicEnabled = useMemo(() => {
+    const typeStr = dbVetData?.consultation_type || matchedVet?.consultationType || matchedVet?.consultation_type || "clinic";
+    return typeStr.toLowerCase().includes("clinic");
+  }, [dbVetData, matchedVet]);
+
+  const isHomeEnabled = useMemo(() => {
+    const typeStr = dbVetData?.consultation_type || matchedVet?.consultationType || matchedVet?.consultation_type || "";
+    return typeStr.toLowerCase().includes("home");
+  }, [dbVetData, matchedVet]);
+
+  const [visitType, setVisitType] = useState<"clinic" | "home">(() => {
+    const typeStr = matchedVet?.consultationType || matchedVet?.consultation_type || "";
+    const isHomeStr = typeStr.toLowerCase().includes("home");
+    const isClinicStr = typeStr.toLowerCase().includes("clinic") || !typeStr;
+    return isClinicStr ? "clinic" : (isHomeStr ? "home" : "clinic");
+  });
 
   const today = useMemo(() => {
     const d = new Date();
@@ -121,8 +166,12 @@ const BookingDetails = () => {
   // Razorpay sandbox simulation states
   const [razorpayOpen, setRazorpayOpen] = useState(false);
   const [paymentStep, setPaymentStep] = useState<"payment_method" | "processing" | "confirming" | "accepted">("payment_method");
-  const [selectedPaymentOption, setSelectedPaymentOption] = useState<"upi" | "card" | "netbanking">("upi");
+  const [selectedPaymentOption, setSelectedPaymentOption] = useState<"upi" | "card" | "netbanking" | "wallet">("upi");
   const [simulatedUPIId, setSimulatedUPIId] = useState("jashan@okaxis");
+  const [simulatedCardNumber, setSimulatedCardNumber] = useState("4111 2222 3333 4444");
+  const [simulatedCardName, setSimulatedCardName] = useState("Jashan Pabla");
+  const [simulatedBank, setSimulatedBank] = useState("HDFC Bank");
+  const [simulatedWallet, setSimulatedWallet] = useState("Paytm Wallet");
 
   const vet = useMemo(() => matchedVet || {}, [matchedVet]);
 
@@ -491,7 +540,9 @@ const BookingDetails = () => {
             </div>
             <div>
               <p className="text-sm font-bold text-foreground">Immediate Availability</p>
-              <p className="text-xs text-muted-foreground">Available for Home Visit & Clinic Appointment.</p>
+              <p className="text-xs text-muted-foreground">
+                Available for {isClinicEnabled && isHomeEnabled ? 'Home Visit & Clinic Appointment' : (isClinicEnabled ? 'Clinic Appointment' : 'Home Visit')}.
+              </p>
             </div>
           </div>
         </div>
@@ -499,33 +550,37 @@ const BookingDetails = () => {
         {/* Visit Type */}
         <div>
           <h3 className="text-base font-bold text-foreground mb-3">Select Visit Type</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setVisitType("clinic")}
-              className={`relative flex flex-col items-center gap-2 py-5 rounded-2xl border-2 transition-all ${visitType === "clinic" ? "border-pink-400 bg-pink-50/30" : "border-slate-100 bg-white"}`}
-            >
-              {visitType === "clinic" && (
-                <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-pink-500 flex items-center justify-center">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                </div>
-              )}
-              <Hospital className="w-6 h-6 text-pink-500" />
-              <span className="text-sm font-bold text-foreground">Clinic Visit</span>
-              <span className="text-xs font-semibold" style={{ color: '#FF4D6D' }}>₹{clinicFee}</span>
-            </button>
-            <button
-              onClick={() => setVisitType("home")}
-              className={`relative flex flex-col items-center gap-2 py-5 rounded-2xl border-2 transition-all ${visitType === "home" ? "border-pink-400 bg-pink-50/30" : "border-slate-100 bg-white"}`}
-            >
-              {visitType === "home" && (
-                <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-pink-500 flex items-center justify-center">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                </div>
-              )}
-              <Home className="w-6 h-6 text-muted-foreground" />
-              <span className="text-sm font-bold text-foreground">Home Visit</span>
-              <span className="text-xs font-semibold text-muted-foreground">₹{homeFee}</span>
-            </button>
+          <div className={`grid gap-3 ${isClinicEnabled && isHomeEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {isClinicEnabled && (
+              <button
+                onClick={() => setVisitType("clinic")}
+                className={`relative flex flex-col items-center gap-2 py-5 rounded-2xl border-2 transition-all ${visitType === "clinic" ? "border-pink-400 bg-pink-50/30" : "border-slate-100 bg-white"}`}
+              >
+                {visitType === "clinic" && (
+                  <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-pink-500 flex items-center justify-center">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                  </div>
+                )}
+                <Hospital className="w-6 h-6 text-pink-500" />
+                <span className="text-sm font-bold text-foreground">Clinic Visit</span>
+                <span className="text-xs font-semibold" style={{ color: '#FF4D6D' }}>₹{clinicFee}</span>
+              </button>
+            )}
+            {isHomeEnabled && (
+              <button
+                onClick={() => setVisitType("home")}
+                className={`relative flex flex-col items-center gap-2 py-5 rounded-2xl border-2 transition-all ${visitType === "home" ? "border-pink-400 bg-pink-50/30" : "border-slate-100 bg-white"}`}
+              >
+                {visitType === "home" && (
+                  <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-pink-500 flex items-center justify-center">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                  </div>
+                )}
+                <Home className="w-6 h-6 text-muted-foreground" />
+                <span className="text-sm font-bold text-foreground">Home Visit</span>
+                <span className="text-xs font-semibold text-muted-foreground">₹{homeFee}</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -987,6 +1042,29 @@ const BookingDetails = () => {
                     </div>
                   </div>
 
+                  {/* Option 4: Wallets */}
+                  <div 
+                    onClick={() => setSelectedPaymentOption("wallet")}
+                    className={`p-4 border-2 rounded-2xl cursor-pointer flex items-center justify-between transition-all ${
+                      selectedPaymentOption === "wallet" ? "border-[#2280FF] bg-blue-50/40" : "border-slate-100 hover:border-blue-200"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-pink-50 flex items-center justify-center text-pink-600">
+                        <Wallet className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-slate-900">Digi Wallets</p>
+                        <p className="text-[10px] text-slate-400">Paytm, PhonePe, Amazon Pay</p>
+                      </div>
+                    </div>
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      selectedPaymentOption === "wallet" ? "bg-[#2280FF] border-[#2280FF]" : "border-gray-300"
+                    }`}>
+                      {selectedPaymentOption === "wallet" && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3.5} />}
+                    </div>
+                  </div>
+
                   {/* UPI Inputs prefilled precisely and cleanly for the user */}
                   {selectedPaymentOption === "upi" && (
                     <div className="mt-3 bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-2 animate-slide-down">
@@ -1001,8 +1079,117 @@ const BookingDetails = () => {
                     </div>
                   )}
 
+                  {/* Card customized inputs */}
+                  {selectedPaymentOption === "card" && (
+                    <div className="mt-3 bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-3 animate-slide-down">
+                      <label className="text-[10px] text-slate-400 font-black uppercase tracking-wider block">SIMULATED CARD DETAILS</label>
+                      <div className="space-y-2">
+                        <input 
+                          type="text" 
+                          value={simulatedCardNumber} 
+                          onChange={(e) => setSimulatedCardNumber(e.target.value)}
+                          className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#2280FF]"
+                          placeholder="Card Number (e.g. 4111 2222 3333 4444)"
+                        />
+                        <input 
+                          type="text" 
+                          value={simulatedCardName} 
+                          onChange={(e) => setSimulatedCardName(e.target.value)}
+                          className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#2280FF]"
+                          placeholder="Cardholder Name"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Net Banking simulated selector */}
+                  {selectedPaymentOption === "netbanking" && (
+                    <div className="mt-3 bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-2 animate-slide-down">
+                      <label className="text-[10px] text-slate-400 font-black uppercase tracking-wider block">CHOOSE PRE-SELECTED BANK</label>
+                      <select 
+                        value={simulatedBank} 
+                        onChange={(e) => setSimulatedBank(e.target.value)}
+                        className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#2280FF]"
+                      >
+                        <option value="HDFC Bank">HDFC Bank</option>
+                        <option value="State Bank of India">State Bank of India (SBI)</option>
+                        <option value="ICICI Bank">ICICI Bank</option>
+                        <option value="Axis Bank">Axis Bank</option>
+                        <option value="Kotak Mahindra Bank">Kotak Mahindra Bank</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Wallet Selection */}
+                  {selectedPaymentOption === "wallet" && (
+                    <div className="mt-3 bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-2 animate-slide-down">
+                      <label className="text-[10px] text-slate-400 font-black uppercase tracking-wider block">CHOOSE CUSTOM WALLET</label>
+                      <select 
+                        value={simulatedWallet} 
+                        onChange={(e) => setSimulatedWallet(e.target.value)}
+                        className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#2280FF]"
+                      >
+                        <option value="Paytm Wallet">Paytm Wallet</option>
+                        <option value="PhonePe Wallet">PhonePe Wallet</option>
+                        <option value="Amazon Pay Wallet">Amazon Pay Wallet</option>
+                        <option value="Mobikwik Wallet">Mobikwik Wallet</option>
+                      </select>
+                    </div>
+                  )}
+
                   <button 
-                    onClick={() => {
+                    onClick={async () => {
+                      // Real-time Database Verification on Frontend/Backend before initiating payment/booking
+                      try {
+                        const finalVetId = vet.id;
+                        if (!finalVetId) {
+                          toast.error("Invalid vet selected. Unable to complete booking.");
+                          return;
+                        }
+
+                        // Also fetch user_id for the appointment check
+                        const { data: dbVet, error: dbErr } = await supabase
+                          .from("vet_profiles")
+                          .select("consultation_type, user_id")
+                          .eq("id", finalVetId)
+                          .maybeSingle();
+
+                        if (dbErr || !dbVet) {
+                          toast.error("Could not verify vet status. Please try again.");
+                          return;
+                        }
+
+                        const allowed = (dbVet.consultation_type || "").toLowerCase();
+                        const selectedMatchesClinic = visitType === "clinic" && allowed.includes("clinic");
+                        const selectedMatchesHome = visitType === "home" && allowed.includes("home");
+
+                        if (!selectedMatchesClinic && !selectedMatchesHome) {
+                          toast.error(`Strict Booking Block: This vet does not accept ${visitType === "clinic" ? "Clinic Visits" : "Home Visits"} booking requests.`);
+                          return;
+                        }
+                        
+                        // Prevent slot locking collision immediately before accepting payment
+                        const appointmentDate = safeFormatSelectedDate("yyyy-MM-dd");
+                        const { data: existingAppts } = await supabase
+                            .from("vet_appointments")
+                            .select("id")
+                            .eq("vet_id", dbVet.user_id)
+                            .eq("appointment_date", appointmentDate)
+                            .eq("appointment_time", selectedSlot)
+                            .in("status", ["pending", "confirmed", "approved", "completed", "in_progress"]);
+                            
+                        if (existingAppts && existingAppts.length > 0) {
+                            toast.error("Slot already taken by another user just now! Please select another slot.");
+                            setRazorpayOpen(false);
+                            return;
+                        }
+
+                      } catch (err) {
+                        console.error("Verification error:", err);
+                        toast.error("Verification failed. Please try again.");
+                        return;
+                      }
+
                       // Trigger payment steps
                       setPaymentStep("processing");
                       setTimeout(() => {
@@ -1015,14 +1202,23 @@ const BookingDetails = () => {
 
                             let realBookingId = "SRV-84721";
                             try {
-                              // Get vet's profile user_id
-                              const { data: vp } = await supabase
-                                .from("vet_profiles")
-                                .select("user_id")
-                                .eq("id", vet.id)
-                                .single();
+                              // Get vet's profile user_id safely
+                              let vetUserId = vet.userId || vet.user_id;
+                              
+                              if (!vetUserId && vet.id) {
+                                const { data: vp } = await supabase
+                                  .from("vet_profiles")
+                                  .select("user_id")
+                                  .eq("id", vet.id)
+                                  .maybeSingle();
+                                if (vp?.user_id) {
+                                  vetUserId = vp.user_id;
+                                }
+                              }
 
-                              const vetUserId = vp?.user_id || "f9834ef6-778d-4384-8d17-6316fffa03b6";
+                              if (!vetUserId) {
+                                vetUserId = "f9834ef6-778d-4384-8d17-6316fffa03b6";
+                              }
 
                               // Get current authenticated user
                               const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -1036,6 +1232,41 @@ const BookingDetails = () => {
                               const petNameVal = location.state?.petName || location.state?.selectedPet?.name || "Luna";
                               const petTypeVal = location.state?.selectedPet?.type || "Dog";
                               const petBreedVal = location.state?.selectedPet?.breed || "Golden Retriever • Female";
+                              
+                              const bookingId = "BK-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+                              const paymentIdStr = "pay_rzp_" + Math.random().toString(36).substring(2, 16).toUpperCase();
+                              
+                              let displayMethodStr = "";
+                              if (selectedPaymentOption === "upi") {
+                                displayMethodStr = `UPI (${simulatedUPIId || "jashan@okaxis"})`;
+                              } else if (selectedPaymentOption === "card") {
+                                const trimmed = (simulatedCardNumber || "").replace(/\s/g, "");
+                                const last4 = trimmed.slice(-4) || "4444";
+                                displayMethodStr = `Card (Visa ending in ${last4})`;
+                              } else if (selectedPaymentOption === "netbanking") {
+                                displayMethodStr = `Net Banking (${simulatedBank})`;
+                              } else if (selectedPaymentOption === "wallet") {
+                                displayMethodStr = `Wallet (${simulatedWallet})`;
+                              } else {
+                                displayMethodStr = selectedPaymentOption.toUpperCase();
+                              }
+
+                              const paymentDetailsReal = {
+                                payment_id: paymentIdStr,
+                                payment_method: displayMethodStr,
+                                payment_method_raw: selectedPaymentOption,
+                                upi_id: simulatedUPIId || "jashan@okaxis",
+                                card_number: simulatedCardNumber,
+                                card_name: simulatedCardName,
+                                bank_name: simulatedBank,
+                                wallet_name: simulatedWallet,
+                                amount: amountVal,
+                                consultation_fee: current.visit,
+                                taxes: current.taxes,
+                                service_fee: current.serviceInfo,
+                                paid_at: new Date().toISOString(),
+                                bookingId: bookingId
+                              };
 
                               const { data: insertResult, error: insertError } = await supabase
                                 .from("vet_appointments")
@@ -1049,7 +1280,8 @@ const BookingDetails = () => {
                                   status: "pending",
                                   pet_name: petNameVal,
                                   pet_type: petTypeVal,
-                                  pet_breed: petBreedVal
+                                  pet_breed: petBreedVal,
+                                  consultation_notes: JSON.stringify(paymentDetailsReal)
                                 })
                                 .select()
                                 .single();
@@ -1060,19 +1292,61 @@ const BookingDetails = () => {
                                 console.log("Real appointment created:", insertResult);
                                 realBookingId = insertResult.id;
                               }
+
+                              // Create realistic Razorpay payment ID and save details to localStorage
+                              const paymentId = "pay_rzp_" + Math.random().toString(36).substring(2, 16).toUpperCase();
+                              let displayMethod = "";
+                              if (selectedPaymentOption === "upi") {
+                                displayMethod = `UPI (${simulatedUPIId || "jashan@okaxis"})`;
+                              } else if (selectedPaymentOption === "card") {
+                                const trimmed = (simulatedCardNumber || "").replace(/\s/g, "");
+                                const last4 = trimmed.slice(-4) || "4444";
+                                displayMethod = `Card (Visa ending in ${last4})`;
+                              } else if (selectedPaymentOption === "netbanking") {
+                                displayMethod = `Net Banking (${simulatedBank})`;
+                              } else if (selectedPaymentOption === "wallet") {
+                                displayMethod = `Wallet (${simulatedWallet})`;
+                              } else {
+                                displayMethod = selectedPaymentOption.toUpperCase();
+                              }
+
+                              const paymentDetails = {
+                                payment_id: paymentId,
+                                payment_method: displayMethod,
+                                payment_method_raw: selectedPaymentOption,
+                                upi_id: simulatedUPIId || "jashan@okaxis",
+                                card_number: simulatedCardNumber,
+                                card_name: simulatedCardName,
+                                bank_name: simulatedBank,
+                                wallet_name: simulatedWallet,
+                                amount: amountVal,
+                                consultation_fee: current.visit,
+                                night_surcharge: appliedNightSurcharge,
+                                platform_fee: platformFee,
+                                discount: discount,
+                                visit_type: visitType,
+                                time_display: safeFormatSelectedDate("dd MMM yyyy") + ", " + selectedSlot,
+                                created_at: new Date().toLocaleDateString("en-IN", { day: 'numeric', month: 'short' }) + ", " + new Date().toLocaleTimeString("en-IN", { hour: 'numeric', minute: '2-digit', hour12: true }),
+                                petName: petNameVal,
+                                petBreed: petBreedVal,
+                                petType: petTypeVal,
+                                address: visitType === "home" ? "123 Premium Residency, Indiranagar" : (dbVetData?.hospital_address || dbVetData?.clinic_address || dbVetData?.hospital_name || dbVetData?.clinic_name || "HSR Paws Clinic, Sector 2"),
+                              };
+                              localStorage.setItem(`payment_details_${realBookingId}`, JSON.stringify(paymentDetails));
                             } catch (insertErr) {
                               console.error("Error inserting appointment:", insertErr);
                             }
 
                             toast.success("Payment successful! Requesting vet confirmation...");
-                            navigate("/vet/clinic-booking-confirmation", { 
+                            navigate(`/vet/appointment-confirmation/${realBookingId}`, { 
+                              replace: true,
                               state: { 
                                 visit: {
                                   id: realBookingId,
                                   vet: {
-                                    name: veterinarian.name,
-                                    image: veterinarian.image,
-                                    specialization: veterinarian.specialization || "Veterinarian"
+                                    name: vetName,
+                                    image: vetImage,
+                                    specialization: vetSpecialization
                                   },
                                   appointmentId: realBookingId,
                                   visitType: visitType,
@@ -1081,7 +1355,7 @@ const BookingDetails = () => {
                                   petAge: "4 Years",
                                   ownerName: "Sarah Jenkins",
                                   ownerPhone: "+91 98765 43210",
-                                  address: visitType === "home" ? "123 Premium Residency, Indiranagar" : "HSR Paws Clinic, Sector 2",
+                                  address: visitType === "home" ? "123 Premium Residency, Indiranagar" : (dbVetData?.hospital_address || dbVetData?.clinic_address || dbVetData?.hospital_name || dbVetData?.clinic_name || "HSR Paws Clinic, Sector 2"),
                                   time: safeFormatSelectedDate("dd MMM yyyy") + ", " + selectedSlot,
                                   reason: "General Consultation & Checkup",
                                   image: "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",

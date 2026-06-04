@@ -149,7 +149,7 @@ const InstantAssessment = () => {
             <p className="text-sm font-bold text-foreground">AI Vet Assistant</p>
             <p className="text-xs font-bold tracking-widest uppercase" style={{ color: '#FF4D6D' }}>GUIDED DIAGNOSIS</p>
           </div>
-          <button onClick={() => navigate("/vet")} className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center">
+          <button onClick={() => navigate("/buyer/vet")} className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center">
             <X className="w-5 h-5 text-foreground" />
           </button>
         </div>

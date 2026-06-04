@@ -98,7 +98,7 @@ const Index = () => {
             <a href="#" className="text-[#7436c9] font-semibold border-b-2 border-[#7436c9] transition-all duration-300">Home</a>
             <a href="#" className="text-slate-600 hover:text-[#7436c9] font-medium transition-all duration-300">How It Works</a>
             <a href="#" className="text-slate-600 hover:text-[#7436c9] font-medium transition-all duration-300">Features</a>
-            <a href="/vet" className="text-slate-600 hover:text-[#7436c9] font-medium transition-all duration-300">For Vets</a>
+            <a href="/buyer/vet" className="text-slate-600 hover:text-[#7436c9] font-medium transition-all duration-300">For Vets</a>
           </div>
 
           <Button 

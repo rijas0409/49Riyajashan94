@@ -17,7 +17,7 @@ const ConnectionReady = () => {
     <div className="min-h-screen bg-background pb-24">
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg">
         <div className="flex items-center justify-between px-4 py-4">
-          <button onClick={() => navigate("/vet")} className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors">
+          <button onClick={() => navigate("/buyer/vet")} className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="text-center">

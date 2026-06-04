@@ -234,7 +234,7 @@ const ClinicBookingConfirmation = () => {
 
              <div className="w-full space-y-3">
                <button 
-                 onClick={() => navigate("/vet")}
+                 onClick={() => navigate("/buyer/vet")}
                  className="w-full py-4 bg-gray-900 text-white font-bold rounded-2xl flex items-center justify-center gap-2"
                >
                  Find Another Vet

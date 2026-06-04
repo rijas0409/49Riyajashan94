@@ -48,7 +48,7 @@ const ROUTE_SUGGESTIONS = [
   { route: "/buyer/home", label: "Buyer Home" },
   { route: "/buyer/shop", label: "Shop Page" },
   { route: "/cart", label: "Cart Page" },
-  { route: "/vet", label: "Vet Page" },
+  { route: "/buyer/vet", label: "Vet Page" },
   { route: "/buyer/home/pet/*", label: "All Pet Details" },
   { route: "/buyer/shop/product/*", label: "All Product Pages" },
   { route: "/profile-menu", label: "Profile Menu" },

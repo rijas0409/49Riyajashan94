@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { 
   ArrowLeft, MoreHorizontal, Moon, Shield, Copy, 
   CheckCircle2, Play, Calendar, Wallet, User, Home,
@@ -64,12 +64,13 @@ const PASSPORT_DATA = {
 const ClinicVisitDetails: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { appointmentId } = useParams();
 
   // Get state passed from payment/booking or use exact default details from custom layout
   const { visit: stateVisit } = (location.state as ClinicVisitDetailsState) || {};
 
-  const initialVisit = useMemo(() => ({
-    id: stateVisit?.id || "SRV-84721",
+  const [initialVisit, setInitialVisit] = useState({
+    id: stateVisit?.id || appointmentId || "SRV-84721",
     petName: stateVisit?.petName || "Luna",
     petBreed: stateVisit?.petBreed || "Golden Retriever",
     petAge: stateVisit?.petAge || "4 Years",
@@ -80,17 +81,72 @@ const ClinicVisitDetails: React.FC = () => {
     reason: stateVisit?.reason || "Luna has reduced appetite for last 2 days.",
     image: stateVisit?.image || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
     distance: "12 mins (4.2 miles)"
-  }), [stateVisit]);
+  });
+
+  useEffect(() => {
+    if (appointmentId && !stateVisit) {
+      const fetchApptData = async () => {
+        const { data, error } = await supabase
+          .from("vet_appointments")
+          .select("*, user:profiles!vet_appointments_user_id_fkey(*)")
+          .eq("id", appointmentId)
+          .single();
+        
+        if (!error && data) {
+          const newVisit = {
+            id: data.id,
+            petName: data.pet_name || "Pet",
+            petBreed: data.pet_breed || "Breed",
+            petAge: "4 Years",
+            ownerName: data.user?.full_name || data.user?.name || "Owner",
+            ownerPhone: data.user?.phone || "+91 98765 43210",
+            address: data.appointment_type === 'home' ? "123 Premium Residency, Indiranagar" : "HSR Paws Clinic, Sector 2",
+            time: `${data.appointment_date}, ${data.appointment_time}`,
+            reason: "General Consultation & Checkup",
+            image: data.user?.profile_photo || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
+            distance: data.appointment_type === 'home' ? "1.2 miles away" : "12 mins (4.2 miles)"
+          };
+          setInitialVisit(newVisit);
+          setCurrentVisitId(newVisit.id);
+        }
+      };
+      fetchApptData();
+    }
+  }, [appointmentId, stateVisit]);
 
   // Database and Real-time States
   const [currentVisitId, setCurrentVisitId] = useState<string>(initialVisit.id);
   const [dbVisit, setDbVisit] = useState<any>(null);
+  const [paymentDetails, setPaymentDetails] = useState<any>(null);
+
+  useEffect(() => {
+    const targetId = appointmentId || stateVisit?.id || "SRV-84721";
+    const localPayStr = localStorage.getItem(`payment_details_${targetId}`);
+    if (localPayStr) {
+      try {
+        const parsed = JSON.parse(localPayStr);
+        setPaymentDetails(parsed);
+        setInitialVisit(prev => ({
+          ...prev,
+          petName: parsed.petName || prev.petName,
+          petBreed: parsed.petBreed || prev.petBreed,
+          petAge: parsed.petAge || prev.petAge,
+          address: parsed.address || prev.address,
+          time: parsed.time_display || prev.time,
+        }));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, [appointmentId, stateVisit?.id]);
+
   const [vetProfileId, setVetProfileId] = useState<string | null>(null);
   const [doctorProfile, setDoctorProfile] = useState<any>(null);
 
   // View state controllers
   const [passportOverlayOpen, setPassportOverlayOpen] = useState(false);
   const [qrOverlayOpen, setQrOverlayOpen] = useState(false);
+  const [showUserQr, setShowUserQr] = useState(false);
   const [headerDropdownOpen, setHeaderDropdownOpen] = useState(false);
   const [helpScreenOpen, setHelpScreenOpen] = useState(false);
 
@@ -202,6 +258,14 @@ const ClinicVisitDetails: React.FC = () => {
           if (payload.new) {
             setDbVisit(payload.new as any);
             
+            // Redirect automatically if consultation started
+            if (payload.new.status === "in_progress") {
+               toast.success("Consultation Started! Proceeding...");
+               setTimeout(() => {
+                 navigate(`/vet/consultation-detail`, { state: { visitId: currentVisitId } });
+               }, 1000);
+            }
+
             if (payload.new.vet_id) {
               const { data: vetProf } = await supabase
                 .from("vet_profiles")
@@ -397,7 +461,7 @@ const ClinicVisitDetails: React.FC = () => {
   };
 
   // QR trigger simulates success
-  const handleSimulateQRSuccess = () => {
+  const handleSimulateQRSuccess = async () => {
     setQrOverlayOpen(false);
     toast.custom((t) => (
       <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xl flex items-center gap-3 animate-slide-in pointer-events-auto">
@@ -406,10 +470,23 @@ const ClinicVisitDetails: React.FC = () => {
         </div>
         <div>
           <p className="font-bold text-gray-900 text-sm">Consultation Started!</p>
-          <p className="text-xs text-slate-500 mt-0.5">Billing clock is now running.</p>
+          <p className="text-xs text-slate-500 mt-0.5">Verified securely.</p>
         </div>
       </div>
     ), { duration: 4000 });
+
+    if (currentVisitId && currentVisitId !== "SRV-84721") {
+      try {
+        await supabase.from("vet_appointments").update({ status: "in_progress" }).eq("id", currentVisitId);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    
+    // Redirect to final consultation view
+    setTimeout(() => {
+      navigate(`/vet/consultation-detail`, { state: { visitId: currentVisitId } });
+    }, 1200);
   };
 
   // Editing Chief Complaint
@@ -609,7 +686,7 @@ const ClinicVisitDetails: React.FC = () => {
         {/* Header bar */}
         <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md px-4 md:px-6 py-4 flex items-center justify-between border-b border-gray-150 shadow-sm animate-fade-in">
           <button 
-            onClick={() => navigate("/vet")}
+            onClick={() => navigate("/buyer/vet")}
             className="p-2 hover:bg-gray-100 rounded-full text-gray-800 transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-800" strokeWidth={2.5} />
@@ -805,8 +882,8 @@ const ClinicVisitDetails: React.FC = () => {
                     </svg>
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold">123 Pet Lane, Springfield</h2>
-                    <p className="text-gray-500 text-xs mt-0.5">Estimated arrival: <span className="text-[#ec4899] text-brand-pink font-semibold">12 mins</span> (4.2 miles)</p>
+                    <h2 className="text-lg font-bold">{doctorProfile?.hospital_address || doctorProfile?.clinic_address || doctorProfile?.hospital_name || doctorProfile?.clinic_name || dbVisit?.address || initialVisit.address}</h2>
+                    <p className="text-gray-500 text-xs mt-0.5">Estimated arrival: <span className="text-[#ec4899] text-brand-pink font-semibold">{initialVisit.distance.split('(')[0]}</span> {initialVisit.distance.includes('(') ? `(${initialVisit.distance.split('(')[1]}` : ''}</p>
                   </div>
                 </div>
                 <button 
@@ -1257,11 +1334,11 @@ const ClinicVisitDetails: React.FC = () => {
               <div className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-gray-600 font-medium">Consultation Fee</p>
-                  <p className="text-sm font-bold text-gray-800">₹499</p>
+                  <p className="text-sm font-bold text-gray-800">₹{paymentDetails?.consultation_fee || dbVisit?.amount || 499}</p>
                 </div>
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-gray-600 font-medium">Night Surcharge</p>
-                  <p className="text-sm font-bold text-gray-800">₹50</p>
+                  <p className="text-sm font-bold text-gray-800">₹{paymentDetails?.night_surcharge || 0}</p>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
@@ -1277,7 +1354,7 @@ const ClinicVisitDetails: React.FC = () => {
               <div className="flex items-center justify-between p-4">
                 <div>
                   <p className="text-xs text-gray-400 mb-0.5 font-bold uppercase tracking-wider">Total Paid</p>
-                  <p className="text-2xl font-black text-gray-900">₹549</p>
+                  <p className="text-2xl font-black text-gray-900">₹{paymentDetails?.amount || dbVisit?.amount || 549}</p>
                 </div>
                 <div className="flex items-center gap-1.5 bg-green-50 border border-green-100 text-green-700 text-xs font-black px-3.5 py-2 rounded-full shadow-inner">
                   <CheckCircle2 className="w-4 h-4 text-green-600" strokeWidth={2.5} />
@@ -1288,8 +1365,8 @@ const ClinicVisitDetails: React.FC = () => {
               {/* Bottom transaction receipt notes */}
               <div className="bg-gray-50 border-t border-gray-100 px-4 py-3.5 flex items-center gap-2">
                 <Wallet className="w-4 h-4 text-slate-400" />
-                <p className="text-xs text-slate-400">Paid via <span className="font-semibold text-gray-600">UPI · sarah@okicici</span></p>
-                <p className="ml-auto text-[10px] text-gray-400 font-mono">10 Jun, 1:48 PM</p>
+                <p className="text-xs text-slate-400">Paid via <span className="font-semibold text-gray-600">{paymentDetails?.payment_id ? `${paymentDetails.payment_method} · ID: ${paymentDetails.payment_id}` : (paymentDetails?.payment_method || "UPI · sarah@okicici")}</span></p>
+                <p className="ml-auto text-[10px] text-gray-400 font-mono">{paymentDetails?.created_at || (dbVisit?.created_at ? new Date(dbVisit.created_at).toLocaleDateString("en-IN") : "10 Jun, 1:48 PM")}</p>
               </div>
             </div>
           </section>
@@ -1299,24 +1376,63 @@ const ClinicVisitDetails: React.FC = () => {
 
         {/* ── STICKY ACTION BAR ── */}
         <div className="fixed bottom-0 left-0 right-0 w-full px-4 sm:px-6 lg:px-8 py-4 bg-white/80 backdrop-blur-md border-t border-gray-100 z-40 transition-all duration-300">
-          <button 
-            onClick={openQRScanner} 
-            className="w-full bg-brand-pink hover:bg-pink-600 bg-[#ec4899] hover:bg-[#db2777] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-pink-200 transition-all active:scale-[0.98]"
-          >
-            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
-            </svg>
-            Scan Vet's QR
-          </button>
-          <p className="text-center text-[11px] text-gray-400 mt-3 flex items-center justify-center gap-1">
-            <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
-              <path clipRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" fillRule="evenodd"/>
-            </svg>
-            Scan the veterinarian's QR code to begin your consultation.
-          </p>
+          {localStorage.getItem("sruvo_user_role") === "vet" ? (
+             <>
+               <button 
+                 onClick={openQRScanner} 
+                 className="w-full bg-brand-pink hover:bg-pink-600 bg-[#ec4899] hover:bg-[#db2777] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-pink-200 transition-all active:scale-[0.98]"
+               >
+                 <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
+                 </svg>
+                 Scan Client's QR
+               </button>
+               <p className="text-center text-[11px] text-gray-400 mt-3 flex items-center justify-center gap-1">
+                 <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                   <path clipRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" fillRule="evenodd"/>
+                 </svg>
+                 Scan the user's QR code to begin consultation.
+               </p>
+             </>
+          ) : (
+             <>
+               <button 
+                 onClick={() => setShowUserQr(true)} 
+                 className="w-full bg-[#151B32] hover:bg-neutral-800 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-neutral-200 transition-all active:scale-[0.98]"
+               >
+                 <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                 </svg>
+                 Verify with Vet (Generate QR)
+               </button>
+               <p className="text-center text-[11px] text-gray-400 mt-3 flex items-center justify-center gap-1">
+                 <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                   <path clipRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" fillRule="evenodd"/>
+                 </svg>
+                 Show this QR at the clinic.
+               </p>
+             </>
+          )}
         </div>
 
       </main>
+
+      {/* ═══════════════ BUYER GENERATED QR CODE OVERLAY ═══════════════ */}
+      {showUserQr && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }} onClick={() => setShowUserQr(false)}>
+           <div className="bg-white p-8 rounded-[32px] flex flex-col items-center justify-center max-w-[320px] w-full mx-auto" onClick={(e) => e.stopPropagation()}>
+             <h2 className="text-xl font-black text-[#151B32] mb-1">Check-in QR Code</h2>
+             <p className="text-xs text-neutral-500 mb-6 text-center">Ask the veterinarian to scan this QR code.</p>
+             <div className="p-4 bg-white border-2 border-neutral-100 rounded-2xl shadow-sm mb-6">
+               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${currentVisitId}`} alt="Generated QR Code" className="w-[200px] h-[200px] object-contain" />
+             </div>
+             
+             <button onClick={() => setShowUserQr(false)} className="w-full bg-neutral-100 text-neutral-700 py-3 rounded-xl font-bold active:scale-95 transition-transform">
+                Close Code
+             </button>
+           </div>
+        </div>
+      )}
 
       {/* ═══════════════ DETAILED HELP & SUPPORT VIEW OVERLAY ═══════════════ */}
       {helpScreenOpen && (

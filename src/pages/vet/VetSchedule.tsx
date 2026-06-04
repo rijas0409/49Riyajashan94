@@ -1,11 +1,14 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { format as formatDt } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { 
   CaretLeft, MagnifyingGlass, Bell, Clock, User, 
   CaretRight, CalendarDots, House, Wallet,
-  Buildings, Syringe, Timer, Stethoscope
+  Buildings, Syringe, Timer, Stethoscope,
+  Check, X
 } from "@phosphor-icons/react";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
+import { toast } from "sonner";
 import SplashScreen from "@/components/SplashScreen";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -53,7 +56,7 @@ const VetSchedule = () => {
   const { isLoading: guardLoading, showSpinner, user, profile } = useRoleGuard(["vet"], "/auth-vet", true);
   const today = useMemo(() => new Date(), []);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedDateId, setSelectedDateId] = useState(today.toISOString().split('T')[0]);
+  const [selectedDateId, setSelectedDateId] = useState(formatDt(today, "yyyy-MM-dd"));
   const [activeTab, setActiveTab] = useState<"Active" | "Upcoming" | "Cancelled" | "Done">("Active");
   const [appointments, setAppointments] = useState<ScheduleAppointment[]>([]);
   const [isDbLoading, setIsDbLoading] = useState(true);
@@ -72,7 +75,7 @@ const VetSchedule = () => {
       const now = new Date();
       setCurrentTime(now);
       // Auto-update today if date changes
-      if (now.toISOString().split('T')[0] !== today.toISOString().split('T')[0]) {
+      if (formatDt(now, "yyyy-MM-dd") !== formatDt(today, "yyyy-MM-dd")) {
         // This would require more complex state handling for 'today', 
         // but for demo it's fine as initialized.
       }
@@ -96,15 +99,15 @@ const VetSchedule = () => {
         day: d.toLocaleDateString("en-US", { weekday: "short" }),
         date: d.getDate(),
         fullDate: d,
-        id: d.toISOString().split('T')[0]
+        id: formatDt(d, "yyyy-MM-dd")
       });
     }
     return arr;
   }, [today]);
 
-  const isToday = selectedDateId === today.toISOString().split('T')[0];
-  const isPast = new Date(selectedDateId) < new Date(today.toISOString().split('T')[0]);
-  const isFuture = new Date(selectedDateId) > new Date(today.toISOString().split('T')[0]);
+  const isToday = selectedDateId === formatDt(today, "yyyy-MM-dd");
+  const isPast = new Date(selectedDateId) < new Date(formatDt(today, "yyyy-MM-dd"));
+  const isFuture = new Date(selectedDateId) > new Date(formatDt(today, "yyyy-MM-dd"));
 
   // Utility to check if a specific time is reached today
   const isTimeReached = (timeStr: string) => {
@@ -155,6 +158,15 @@ const VetSchedule = () => {
     if (!user?.id) return;
     try {
       setIsDbLoading(true);
+
+      // Get real-time consultation types from DB
+      const { data: vp } = await supabase
+        .from("vet_profiles")
+        .select("consultation_type")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const allowed = (vp?.consultation_type || "").toLowerCase();
+
       const { data, error } = await supabase
         .from("vet_appointments")
         .select(`
@@ -166,7 +178,16 @@ const VetSchedule = () => {
       if (error) {
         console.error("Error fetching real appointments:", error);
       } else if (data) {
-        const mapped = (data as unknown[] as DbAppointmentRaw[]).map((apt: DbAppointmentRaw) => ({
+        // Enforce real-time consultation type filter
+        const filteredData = data.filter(apt => {
+          const type = (apt.appointment_type || "").toLowerCase();
+          if (type === "clinic") return allowed.includes("clinic");
+          if (type === "home") return allowed.includes("home");
+          if (type === "video") return allowed.includes("video");
+          return false;
+        });
+
+        const mapped = (filteredData as unknown[] as DbAppointmentRaw[]).map((apt: DbAppointmentRaw) => ({
           id: apt.id,
           date: apt.appointment_date,
           type: apt.appointment_type || "clinic",
@@ -191,6 +212,23 @@ const VetSchedule = () => {
     }
   }, [user?.id]);
 
+  const updateAppointmentStatus = async (appointmentId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("vet_appointments")
+        .update({ status: newStatus })
+        .eq("id", appointmentId);
+
+      if (error) throw error;
+      
+      toast.success(`Appointment ${newStatus === "confirmed" ? "accepted" : "declined"}!`);
+      fetchAppointments();
+    } catch (e) {
+      console.error("Error updating appointment status:", e);
+      toast.error("Failed to update status. Please try again.");
+    }
+  };
+
   useEffect(() => {
     if (!user?.id) return;
     
@@ -213,8 +251,14 @@ const VetSchedule = () => {
       )
       .subscribe();
 
+    // Fallback polling to guarantee real-time synchronization in secondary windows
+    const pollInterval = setInterval(() => {
+      fetchAppointments();
+    }, 4000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
     };
   }, [user?.id, fetchAppointments]);
 
@@ -329,7 +373,7 @@ const VetSchedule = () => {
       {/* Date Picker */}
       <div ref={scrollContainerRef} className="flex px-5 gap-4 overflow-x-auto no-scrollbar pb-6 scroll-smooth pt-2">
         {dates.map((item) => {
-          const isRealToday = item.id === today.toISOString().split('T')[0];
+          const isRealToday = item.id === formatDt(today, "yyyy-MM-dd");
           const isSelected = selectedDateId === item.id;
           
           return (
@@ -396,10 +440,21 @@ const VetSchedule = () => {
             <div 
               key={apt.id}
               onClick={() => {
+                let currentBookingId = apt.id;
+                let parsedPaymentDetails = null;
+                if (apt.consultation_notes) {
+                  try {
+                    const notes = JSON.parse(apt.consultation_notes);
+                    if (notes.bookingId) currentBookingId = notes.bookingId;
+                    if (notes) parsedPaymentDetails = notes;
+                  } catch(e) {}
+                }
                 navigate(apt.type === 'home' ? "/vet/home-visit-details" : "/vet/clinic-visit-details", {
                   state: {
                     visit: {
                       id: apt.id,
+                      bookingId: currentBookingId,
+                      paymentDetails: parsedPaymentDetails,
                       petName: apt.petName,
                       petBreed: apt.breed,
                       petAge: "4 Years",
@@ -439,12 +494,56 @@ const VetSchedule = () => {
                 </div>
                 <div className="pt-1">
                   <h3 className="text-[18px] font-[800] text-[#1f1f2e] mb-0.5">{apt.petName}</h3>
-                  <div className="text-[11px] text-[#8d8d9c] font-[700] uppercase tracking-[0.5px] mb-1.5">{apt.breed}</div>
+                  <div className="text-[11px] text-[#8d8d9c] font-[700] uppercase tracking-[0.5px] mb-1.5 flex items-center gap-1.5">
+                    {apt.breed}
+                    {apt.consultation_notes && (() => {
+                       try {
+                         const notes = JSON.parse(apt.consultation_notes);
+                         if (notes.bookingId) return (
+                           <>
+                             <span className="w-1 h-1 rounded-full bg-[#8d8d9c]" />
+                             <span className="font-mono text-[#ae41ff]">{notes.bookingId}</span>
+                           </>
+                         );
+                       } catch(e){}
+                       return null;
+                    })()}
+                  </div>
                   <div className="text-[13px] text-[#8d8d9c] font-[600] flex items-center gap-1.5">
                     <User size={14} weight="bold" /> {apt.ownerName}
                   </div>
                 </div>
               </div>
+              
+              {apt.status === "pending" && (
+                <div className="mb-5 bg-orange-50 border border-orange-100 rounded-2xl p-4">
+                  <p className="text-[11px] font-black text-orange-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                    New Request - Awaiting your response
+                  </p>
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        updateAppointmentStatus(apt.id, "cancelled");
+                      }}
+                      className="flex-1 h-12 bg-white border border-gray-200 rounded-xl text-[13px] font-black text-[#8d8d9c] flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                    >
+                      <X size={15} weight="bold" /> Decline
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        updateAppointmentStatus(apt.id, "confirmed");
+                      }}
+                      className="flex-1 h-12 bg-[#12B76A] rounded-xl text-[13px] font-black text-white flex items-center justify-center gap-1.5 shadow-lg shadow-[#12B76A]/20 active:scale-95 transition-all"
+                    >
+                      <Check size={15} weight="bold" /> Accept
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 bg-[#f7f7fa] px-4 py-2.5 rounded-[20px] text-[13px] font-[800] text-[#1f1f2e]">
                   <Clock size={16} className="text-[#9b28f5]" weight="bold" /> {apt.time}

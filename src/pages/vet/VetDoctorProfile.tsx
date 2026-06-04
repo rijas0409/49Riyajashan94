@@ -3,7 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, Heart, Share2, Star, BadgeCheck, ChevronRight, MapPin,
   Stethoscope, Syringe, Scissors, Shield, Clock,
-  Dog, Cat, Bird, Rabbit, Fish, Loader2, Globe
+  Dog, Cat, Bird, Rabbit, Fish, Loader2, Globe,
+  Video, Home, Hospital
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -228,6 +229,7 @@ interface VetData {
   offlineFee: number;
   consultationType: string;
   vetProfileId: string;
+  userId: string;
   weekly_availability?: unknown;
   city: string;
 }
@@ -338,6 +340,7 @@ const VetDoctorProfile = () => {
           offlineFee: vetProfile.offline_fee || 800,
           consultationType: vetProfile.consultation_type || "both",
           vetProfileId: vetProfile.id,
+          userId: vetProfile.user_id,
           weekly_availability: vetProfile.weekly_availability,
           city: vetProfile.city || "",
         });
@@ -425,7 +428,7 @@ const VetDoctorProfile = () => {
       {/* Top bar - fixed on top of everything and slightly lowered */}
       <div className="fixed top-6 sm:top-12 left-4 right-4 flex justify-between z-50">
         <button 
-          onClick={() => navigate("/vet")} 
+          onClick={() => navigate("/buyer/vet")} 
           className="w-10 h-10 rounded-full bg-[#F3F0F9] flex items-center justify-center shadow-md active:scale-95 transition-all"
         >
           <ArrowLeft className="w-5 h-5 text-[#6B7280]" />
@@ -614,17 +617,21 @@ const VetDoctorProfile = () => {
                 <div className="h-3.5 bg-muted rounded w-9/12"></div>
               </div>
             ) : aiBio ? (
-              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line font-medium">
+              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line font-medium mb-4">
                 {aiBio}
               </p>
             ) : (
-              <p className="text-sm text-muted-foreground leading-relaxed font-medium">
+              <p className="text-sm text-muted-foreground leading-relaxed font-medium mb-4">
                 {doctor.name} is a qualified veterinary professional with {doctor.yearsExp}+ years of experience specializing in {doctor.specializations.join(", ") || "general veterinary care"}. 
-                {doctor.consultationType === "both" 
-                  ? " Available for both online and offline consultations."
-                  : doctor.consultationType === "online"
-                  ? " Available for online consultations."
-                  : " Available for clinic visits."}
+                {(() => {
+                  const types = [];
+                  const lower = (doctor.consultationType || "").toLowerCase();
+                  if (lower.includes("video")) types.push("Video consultations");
+                  if (lower.includes("clinic")) types.push("Clinic visits");
+                  if (lower.includes("home")) types.push("Home visits");
+                  if (types.length === 0) return "";
+                  return ` Available for ${types.join(", ")}.`;
+                })()}
               </p>
             )}
           </section>
@@ -721,6 +728,7 @@ const VetDoctorProfile = () => {
             state: { 
               matchedVet: doctor ? { 
                 id: doctor.vetProfileId, 
+                userId: doctor.userId,
                 name: doctor.name, 
                 specialization: doctor.title, 
                 image: doctor.profileImage, 
@@ -731,7 +739,9 @@ const VetDoctorProfile = () => {
                 offlineFee: doctor.offlineFee, 
                 qualification: doctor.qualification, 
                 clinicAddress: doctor.clinic,
-                weekly_availability: doctor.weekly_availability
+                weekly_availability: doctor.weekly_availability,
+                consultation_type: doctor.consultationType,
+                consultationType: doctor.consultationType
               } : undefined,
               isDirectBooking: true
             } 

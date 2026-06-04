@@ -186,7 +186,7 @@ const Bookings = () => {
             <p className="text-muted-foreground text-sm mb-6">
               {activeTab === "vet" ? "Your vet appointments will appear here" : "Your orders & appointments will appear here"}
             </p>
-            <Button onClick={() => navigate(activeTab === "vet" ? "/vet" : "/buyer/home")} className="rounded-2xl">
+            <Button onClick={() => navigate(activeTab === "vet" ? "/buyer/vet" : "/buyer/home")} className="rounded-2xl">
               {activeTab === "vet" ? "Book a Vet" : "Browse Pets"}
             </Button>
           </div>

@@ -43,7 +43,7 @@ const AIVetAssistant = () => {
           <p className="text-xs font-bold tracking-widest uppercase" style={{ color: '#FF4D6D' }}>PREMIUM CARE</p>
           <p className="text-sm font-bold text-foreground">AI Vet Assistant</p>
         </div>
-        <button onClick={() => navigate("/vet")} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
+        <button onClick={() => navigate("/buyer/vet")} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
           <X className="w-5 h-5 text-foreground" />
         </button>
       </header>
@@ -102,7 +102,7 @@ const AIVetAssistant = () => {
           <ArrowRight className="w-5 h-5" />
         </button>
         <button 
-          onClick={() => navigate("/vet")}
+          onClick={() => navigate("/buyer/vet")}
           className="w-full py-3 text-sm font-bold text-muted-foreground tracking-widest uppercase mt-2"
         >
           SKIP TO VET LIST

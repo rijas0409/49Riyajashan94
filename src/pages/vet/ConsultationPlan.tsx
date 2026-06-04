@@ -10,7 +10,7 @@ const ConsultationPlan = () => {
       {/* Header - Fixed */}
       <header className="flex-shrink-0 flex items-center justify-between px-4 pt-6 pb-2">
         <button 
-          onClick={() => navigate("/vet")}
+          onClick={() => navigate("/buyer/vet")}
           className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center"
         >
           <ArrowLeft className="w-5 h-5 text-foreground" />
@@ -20,7 +20,7 @@ const ConsultationPlan = () => {
           <p className="text-sm font-bold text-foreground">Consultation Plan</p>
         </div>
         <button 
-          onClick={() => navigate("/vet")}
+          onClick={() => navigate("/buyer/vet")}
           className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center"
         >
           <X className="w-5 h-5 text-foreground" />
@@ -125,7 +125,7 @@ const ConsultationPlan = () => {
           <ArrowRight className="w-5 h-5" />
         </button>
         <button 
-          onClick={() => navigate("/vet")}
+          onClick={() => navigate("/buyer/vet")}
           className="w-full py-3 text-sm font-bold text-muted-foreground tracking-widest uppercase mt-2"
         >
           SKIP TO VET LIST

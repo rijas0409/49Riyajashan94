@@ -163,7 +163,7 @@ const InstantAnalyzing = () => {
   }, [vetFound, matchedVet, navigate, assessmentData]);
 
   if (isFailed) {
-    return <NoVetFoundScreen onBack={() => navigate("/vet")} />;
+    return <NoVetFoundScreen onBack={() => navigate("/buyer/vet")} />;
   }
 
   return (

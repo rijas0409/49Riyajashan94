@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   { id: "home", icon: Home, label: "Home", path: "/buyer/home" },
   { id: "shop", icon: ShoppingBag, label: "Shop", path: "/buyer/shop" },
-  { id: "vet", icon: Stethoscope, label: "Vet", path: "/vet" },
-  { id: "profile", icon: User, label: "Profile", path: "/profile" },
+  { id: "vet", icon: Stethoscope, label: "Vet", path: "/buyer/vet" },
+  { id: "profile", icon: User, label: "Profile", path: "/buyer/profile" },
 ];
 
 interface BottomNavigationProps {

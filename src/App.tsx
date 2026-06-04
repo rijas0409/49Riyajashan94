@@ -83,6 +83,7 @@ import AllSpecializedVets from "./pages/vet/AllSpecializedVets";
 import ConsultationDetail from "./pages/vet/ConsultationDetail";
 import ConsultationAnalysisSummary from "./pages/vet/ConsultationAnalysisSummary";
 import HomeVisitDetails from "./pages/vet/HomeVisitDetails";
+import AppointmentConfirmation from "./pages/vet/AppointmentConfirmation";
 import ClinicVisitDetails from "./pages/vet/ClinicVisitDetails";
 import VideoCall from "./pages/vet/VideoCall";
 
@@ -169,9 +170,9 @@ const App = () => (
                 <Route path="/products-dashboard" element={<ProductsDashboard />} />
                 <Route path="/products-onboarding" element={<ProductsOnboarding />} />
                 <Route path="/products-pending-approval" element={<ProductsPendingApproval />} />
-                <Route path="/profile" element={<ProfileMenu />} />
-                <Route path="/profile-menu" element={<ProfileMenu />} />
-                <Route path="/profile-settings" element={<ProfileSettings />} />
+                <Route path="/buyer/profile" element={<ProfileMenu />} />
+                <Route path="/buyer/profile-menu" element={<ProfileMenu />} />
+                <Route path="/buyer/profile-settings" element={<ProfileSettings />} />
                 <Route path="/seller-dashboard" element={<SellerDashboard />} />
                 <Route path="/seller-onboarding" element={<SellerOnboarding />} />
                 <Route path="/seller-pending-approval" element={<SellerPendingApproval />} />
@@ -181,7 +182,8 @@ const App = () => (
                 <Route path="/buyer/shop" element={<Shop />} />
                 <Route path="/buyer/shop/:petShopType" element={<Shop />} />
                 <Route path="/buyer/shop/:petShopType/catalog" element={<Shop />} />
-                <Route path="/vet" element={<Vet />} />
+                <Route path="/vet" element={<Navigate to="/buyer/vet" replace />} />
+                <Route path="/buyer/vet" element={<Vet />} />
                 <Route path="/vet/home" element={<VetHome />} />
                 <Route path="/vet/schedule" element={<VetSchedule />} />
                 <Route path="/vet/earnings" element={<VetEarnings />} />
@@ -190,6 +192,8 @@ const App = () => (
                 <Route path="/vet/consultation-detail" element={<ConsultationDetail />} />
                 <Route path="/vet/home-visit-details" element={<HomeVisitDetails />} />
                 <Route path="/vet/clinic-visit-details" element={<ClinicVisitDetails />} />
+                <Route path="/vet/clinic-visit-details/:appointmentId" element={<ClinicVisitDetails />} />
+                <Route path="/vet/appointment-confirmation/:appointmentId" element={<AppointmentConfirmation />} />
                  <Route path="/vet-earnings" element={<Navigate to="/vet/earnings" replace />} />
                 <Route path="/vet-schedule" element={<Navigate to="/vet/schedule" replace />} />
                 <Route path="/vet/onboarding" element={

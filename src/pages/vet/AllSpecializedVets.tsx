@@ -17,6 +17,9 @@ type VetRecord = {
   city: string; // Combined from clinic_address and profile address
   verification_status: string;
   user_id: string;
+  vpCity?: string | null;
+  pCity?: string | null;
+  clinicAddress?: string | null;
 };
 
 export default function AllSpecializedVets() {
@@ -43,7 +46,9 @@ export default function AllSpecializedVets() {
           offline_fee,
           clinic_address,
           profile_photo,
-          verification_status
+          verification_status,
+          city,
+          consultation_type
         `)
         .in("verification_status", ["verified", "approved"])
         .eq("is_active", true);
@@ -104,6 +109,9 @@ export default function AllSpecializedVets() {
               image: photo || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=800&h=1200&fit=crop",
               city: addressStr,
               verification_status: vp.verification_status,
+              vpCity: vp.city,
+              pCity: profile?.city,
+              clinicAddress: vp.clinic_address
             };
           });
 
@@ -149,45 +157,97 @@ export default function AllSpecializedVets() {
       supabase.removeChannel(channel);
       clearInterval(pollInterval);
     };
-  }, [authReady]);
+  }, [authReady, selectedCity]);
 
-const matchCity = (vetAddress: string | null, selectedCity: string): boolean => {
-    if (!selectedCity) return true;
-    const normalizedCity = selectedCity.trim().toLowerCase();
-    if (normalizedCity === "all" || normalizedCity === "") return true;
+  // ... getDisplayLocation helper function ...
+const getDisplayLocation = (clinicAddress: string | null | undefined, city: string) => {
+  if (!clinicAddress || clinicAddress.toLowerCase().includes("not provided")) {
+    return city || "Location not available";
+  }
+  
+  // Split by comma
+  const parts = clinicAddress.split(",").map(p => p.trim());
+  
+  // Pattern to identify city (usually near the end, but before PIN/State)
+  const c = city || parts[parts.length - 2] || parts[parts.length - 1] || "";
+  
+  // Pattern to identify locality/sector
+  const localityIdentifiers = ["sector", "phase", "block", "area", "locality", "colony", "extension", "enclave"];
+  let locality = "";
+  
+  // Search from back to front but skipping city/pin
+  for (let i = Math.max(0, parts.length - 2); i >= 0; i--) {
+    const part = parts[i];
+    const lower = part.toLowerCase();
+    if (localityIdentifiers.some(id => lower.includes(id))) {
+      locality = part;
+      break;
+    }
+  }
+  
+  // Fallback for locality if no identifiers found (take middle part)
+  if (!locality && parts.length > 2) {
+    locality = parts[Math.floor(parts.length / 2)];
+  } else if (!locality) {
+    locality = parts[0];
+  }
+  
+  // Clean: remove house numbers (digits + slash/hyphen at start)
+  locality = locality.replace(new RegExp("^[\\d\\-/\\s,]+"), "").replace(/^[Nn]ear\s+/i, "").trim();
 
-    if (!vetAddress || vetAddress.trim() === "") return false;
-    
-    const normalizedAddr = vetAddress.trim().toLowerCase();
-    
-    // Split address by commas or spaces and try to find the city
-    if (normalizedCity === "noida") {
-      if (normalizedAddr.includes("greater noida")) {
-        return false;
+  if (locality && c && locality.toLowerCase() !== c.toLowerCase()) {
+    // Check if locality is just a street number, if so use next part
+    if (/^\d+$/.test(locality) && parts.length > 1) {
+      return `${parts[1]}, ${c}`;
+    }
+    return `${locality}, ${c}`;
+  }
+  return c || locality || "Location not available";
+};
+
+const matchCity = (vpCity: string | null, pCity: string | null, clinicAddress: string | null, selectedCity: string): boolean => {
+    if (!selectedCity) return false;
+    const sCity = selectedCity.trim().toLowerCase();
+    if (sCity === "" || sCity === "all") return true;
+
+    if (vpCity) {
+      const vc = vpCity.trim().toLowerCase();
+      if (vc === sCity) return true;
+      if ((sCity === "gurugram" || sCity === "gurgaon") && (vc === "gurugram" || vc === "gurgaon")) return true;
+      if ((sCity === "bengaluru" || sCity === "bangalore") && (vc === "bengaluru" || vc === "bangalore")) return true;
+      if (sCity === "noida" && vc === "greater noida") return false;
+      if (sCity === "greater noida" && vc === "noida") return false;
+      if (vc.includes(sCity) || sCity.includes(vc)) return true;
+    }
+
+    if (pCity) {
+      const pc = pCity.trim().toLowerCase();
+      if (pc === sCity) return true;
+      if ((sCity === "gurugram" || sCity === "gurgaon") && (pc === "gurugram" || pc === "gurgaon")) return true;
+      if ((sCity === "bengaluru" || sCity === "bangalore") && (pc === "bengaluru" || pc === "bangalore")) return true;
+      if (sCity === "noida" && pc === "greater noida") return false;
+      if (sCity === "greater noida" && pc === "noida") return false;
+      if (pc.includes(sCity) || sCity.includes(pc)) return true;
+    }
+
+    if (clinicAddress) {
+      const addr = clinicAddress.trim().toLowerCase();
+      if (sCity === "noida") {
+        if (addr.includes("greater noida")) return false;
+        return addr.includes("noida");
       }
-      return normalizedAddr.includes("noida");
+      if (sCity === "greater noida") return addr.includes("greater noida");
+      if (sCity === "gurugram" || sCity === "gurgaon") return addr.includes("gurugram") || addr.includes("gurgaon");
+      if (sCity === "bengaluru" || sCity === "bangalore") return addr.includes("bengaluru") || addr.includes("bangalore");
+      if (addr.includes(sCity)) return true;
     }
 
-    if (normalizedCity === "greater noida") {
-      return normalizedAddr.includes("greater noida");
-    }
-
-    // Handle Gurugram vs Gurgaon
-    if (normalizedCity.includes("gurgaon") || normalizedCity.includes("gurugram")) {
-      return normalizedAddr.includes("gurgaon") || normalizedAddr.includes("gurugram");
-    }
-
-    // Handle Bangalore vs Bengaluru
-    if (normalizedCity.includes("bangalore") || normalizedCity.includes("bengaluru")) {
-      return normalizedAddr.includes("bangalore") || normalizedAddr.includes("bengaluru");
-    }
-    
-    return normalizedAddr.includes(normalizedCity);
+    return false;
   };
 
   // Robust Fuzzy Location Filter matching substrings both ways
   const filteredVets = vets.filter((vet) => {
-    const matchesCity = matchCity(vet.city, selectedCity);
+    const matchesCity = matchCity(vet.vpCity || null, vet.pCity || null, vet.clinicAddress || null, selectedCity);
 
     let matchesSearch = true;
     if (searchQuery.trim()) {
@@ -261,10 +321,10 @@ const matchCity = (vetAddress: string | null, selectedCity: string): boolean => 
             </div>
             <h3 className="text-xl font-bold text-neutral-900 mb-2">No Specialists Found</h3>
             <p className="text-neutral-500 max-w-sm">
-              We couldn't find any specialized vets in <span className="font-semibold capitalize text-neutral-700">{selectedCity}</span> right now.
+              No vets available in this city yet.
             </p>
             <Button 
-              onClick={() => navigate("/vet")}
+              onClick={() => navigate("/buyer/vet")}
               variant="outline"
               className="mt-6 rounded-full font-bold px-6"
             >
@@ -297,19 +357,17 @@ const matchCity = (vetAddress: string | null, selectedCity: string): boolean => 
                     )}
                   </div>
                   
-                  <div className="flex items-center gap-1.5 text-primary mt-1">
-                    <GraduationCap className="w-4 h-4 shrink-0" />
-                    <span className="text-sm font-semibold truncate">{vet.specialty}</span>
+                  <div className="flex items-center gap-1.5 text-slate-500 font-medium mt-1">
+                    <MapPin className="w-4 h-4 shrink-0 text-primary" />
+                    <span className="text-sm font-semibold truncate text-neutral-800">
+                      {getDisplayLocation(vet.clinicAddress, vet.vpCity || vet.pCity || "")}
+                    </span>
                   </div>
                   
                   <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500 font-medium mt-2">
                     <span className="flex items-center gap-1 shrink-0">
                       <Award className="w-3.5 h-3.5" />
                       {vet.experience} Yrs Exp.
-                    </span>
-                    <span className="flex items-center gap-1 truncate max-w-[120px]">
-                      <MapPin className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">{vet.city || "Available"}</span>
                     </span>
                   </div>
                 </div>

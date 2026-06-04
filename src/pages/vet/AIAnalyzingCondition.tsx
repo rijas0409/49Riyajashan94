@@ -45,7 +45,7 @@ const AIAnalyzingCondition = () => {
         // 1. Fetch verified active vet_profiles first
         const { data: vetProfiles, error: vpErr } = await supabase
           .from("vet_profiles")
-          .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, qualification, clinic_address, weekly_availability")
+          .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, qualification, clinic_address, weekly_availability, consultation_type")
           .in("verification_status", ["verified", "approved"])
           .eq("is_active", true);
 
@@ -66,11 +66,20 @@ const AIAnalyzingCondition = () => {
 
           const pMap = new Map((profiles || []).map(p => [p.id, p]));
 
+          const searchMode = (assessmentData.selectedMode || "video").toLowerCase();
+
           const verifiedVets = vetProfiles
             .filter(vp => {
               const p = pMap.get(vp.user_id);
               // If profile exists, check if admin approved. If profile is missing, bypass check.
               if (p && !p.is_admin_approved) return false;
+
+              // Real-time Booking Assignment matching filter
+              const modes = (vp.consultation_type || "").toLowerCase();
+              if (searchMode.includes("clinic") && !modes.includes("clinic")) return false;
+              if (searchMode.includes("home") && !modes.includes("home")) return false;
+              if (searchMode.includes("video") && !modes.includes("video")) return false;
+
               return true;
             })
             .map(vp => {

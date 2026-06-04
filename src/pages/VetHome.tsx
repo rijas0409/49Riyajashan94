@@ -53,13 +53,31 @@ const VetDashboard = () => {
   const fetchPendingCount = useCallback(async () => {
     if (!user) return;
     try {
-      const { count, error } = await supabase
+      // Get real-time consultation types from DB
+      const { data: vp } = await supabase
+        .from("vet_profiles")
+        .select("consultation_type")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const allowed = (vp?.consultation_type || "").toLowerCase();
+
+      const { data, error } = await supabase
         .from('vet_appointments')
-        .select('*', { count: 'exact', head: true })
+        .select('*')
         .eq('vet_id', user.id)
         .eq('status', 'pending');
       
-      if (!error) setPendingCount(count || 0);
+      if (!error && data) {
+        // Enforce real-time consultation type filter
+        const filtered = data.filter(apt => {
+          const type = (apt.appointment_type || "").toLowerCase();
+          if (type === "clinic") return allowed.includes("clinic");
+          if (type === "home") return allowed.includes("home");
+          if (type === "video") return allowed.includes("video");
+          return false;
+        });
+        setPendingCount(filtered.length);
+      }
     } catch (err) {
       console.error("Error fetching pending count:", err);
     }
@@ -68,6 +86,14 @@ const VetDashboard = () => {
   const fetchUpcoming = useCallback(async () => {
     if (!user) return;
     try {
+      // Get real-time consultation types from DB
+      const { data: vp } = await supabase
+        .from("vet_profiles")
+        .select("consultation_type")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const allowed = (vp?.consultation_type || "").toLowerCase();
+
       const { data, error } = await supabase
         .from('vet_appointments')
         .select(`
@@ -77,10 +103,19 @@ const VetDashboard = () => {
         .eq('vet_id', user.id)
         .in('status', ['pending', 'confirmed'])
         .order('appointment_date', { ascending: true })
-        .limit(5);
+        .limit(20);
 
       if (!error && data) {
-        const mapped = (data as unknown[] as DbAppointmentRaw[]).map((apt: DbAppointmentRaw) => ({
+        // Enforce real-time consultation type filter
+        const filteredData = data.filter(apt => {
+          const type = (apt.appointment_type || "").toLowerCase();
+          if (type === "clinic") return allowed.includes("clinic");
+          if (type === "home") return allowed.includes("home");
+          if (type === "video") return allowed.includes("video");
+          return false;
+        });
+
+        const mapped = (filteredData as unknown[] as DbAppointmentRaw[]).map((apt: DbAppointmentRaw) => ({
           id: apt.id,
           time: apt.appointment_time || "11:30 AM",
           name: apt.pet_name || "Luna",
@@ -92,7 +127,7 @@ const VetDashboard = () => {
           date: apt.appointment_date,
           status: apt.status
         }));
-        setUpcomingAppointments(mapped);
+        setUpcomingAppointments(mapped.slice(0, 5));
       }
     } catch (err) {
       console.error("Error fetching upcoming appointments:", err);

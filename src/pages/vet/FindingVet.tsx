@@ -28,7 +28,7 @@ const FindingVet = () => {
           // 1. Fetch verified active vet_profiles first
           const { data: vetProfiles, error: vpErr } = await supabase
             .from("vet_profiles")
-            .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, weekly_availability")
+            .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, weekly_availability, consultation_type")
             .in("verification_status", ["verified", "approved"])
             .eq("is_active", true);
 
@@ -47,11 +47,20 @@ const FindingVet = () => {
 
             const pMap = new Map((profiles || []).map(p => [p.id, p]));
 
+            const searchMode = (stateData.visit || stateData.selectedMode || "video").toLowerCase();
+
             const verifiedVets = vetProfiles
               .filter(vp => {
                 const p = pMap.get(vp.user_id);
                 // If profile exists, check if admin approved. If profile is missing, bypass check.
                 if (p && !p.is_admin_approved) return false;
+
+                // Real-time Booking Assignment matching filter
+                const modes = (vp.consultation_type || "").toLowerCase();
+                if (searchMode.includes("clinic") && !modes.includes("clinic")) return false;
+                if (searchMode.includes("home") && !modes.includes("home")) return false;
+                if (searchMode.includes("video") && !modes.includes("video")) return false;
+
                 return true;
               })
               .map(vp => {
@@ -107,7 +116,7 @@ const FindingVet = () => {
     <div className="min-h-screen bg-background pb-24">
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg">
         <div className="flex items-center justify-between px-4 py-4">
-          <button onClick={() => navigate("/vet")} className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors">
+          <button onClick={() => navigate("/buyer/vet")} className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="text-center">
@@ -160,7 +169,7 @@ const FindingVet = () => {
           </div>
         </div>
 
-        <button onClick={() => navigate("/vet")} className="w-full bg-muted text-muted-foreground py-4 rounded-2xl font-semibold">
+        <button onClick={() => navigate("/buyer/vet")} className="w-full bg-muted text-muted-foreground py-4 rounded-2xl font-semibold">
           Cancel Search
         </button>
       </div>
