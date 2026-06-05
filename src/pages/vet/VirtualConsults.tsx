@@ -36,7 +36,7 @@ interface Consultation {
   ai_summary?: string;
 }
 
-const VideoConsultation = () => {
+const VirtualConsults = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isLoading: guardLoading, showSpinner } = useRoleGuard(["vet"], "/auth-vet", true);
@@ -395,17 +395,17 @@ const VideoConsultation = () => {
       <header className="sticky top-0 z-50 bg-[#f8f8fb]/80 backdrop-blur-md px-5 py-6 flex items-center justify-between">
         <button 
           onClick={() => navigate(-1)}
-          className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.03)] active:scale-95 transition-all text-[#131a2d]"
+          className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-[#1f1f2e] shadow-sm active:scale-95 transition-all"
         >
-          <CaretLeft size={24} weight="bold" />
+          <CaretLeft size={20} weight="bold" />
         </button>
-        <h1 className="text-[22px] font-extrabold flex-1 ml-4 text-[#131a2d] tracking-tight">Video Consultations</h1>
+        <h1 className="text-[22px] font-[800] text-[#1f1f2e] flex-grow ml-4">Virtual Consults</h1>
         <div className="flex gap-3">
-          <button className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.03)] active:scale-95 transition-all text-[#131a2d]">
-            <MagnifyingGlass size={22} weight="bold" />
+          <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-[#1f1f2e] shadow-sm active:scale-95 transition-all">
+            <MagnifyingGlass size={20} weight="bold" />
           </button>
-          <button className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.03)] active:scale-95 transition-all text-[#131a2d]">
-            <Faders size={22} weight="bold" />
+          <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-[#1f1f2e] shadow-sm active:scale-95 transition-all">
+            <Faders size={20} weight="bold" />
           </button>
         </div>
       </header>
@@ -578,4 +578,4 @@ const VideoConsultation = () => {
   );
 };
 
-export default VideoConsultation;
+export default VirtualConsults;

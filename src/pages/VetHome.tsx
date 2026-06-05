@@ -236,7 +236,7 @@ const VetDashboard = () => {
                 <p className="text-[13px] lg:text-sm font-medium opacity-95 mb-[22px] leading-[1.4]">You have {pendingCount} pending consultation<br className="sm:hidden" /> requests.</p>
                 <div className="flex items-center gap-2.5">
                   <button 
-                    onClick={() => navigate("/vet/video-consultation")}
+                    onClick={() => navigate("/vet/virtual-consults")}
                     className="bg-white text-[#a428ff] py-3.5 px-5 lg:px-8 rounded-[28px] font-bold text-[13px] border-none flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:scale-[0.98] transition-all"
                   >
                     <svg viewBox="4 4 16 16" xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px] fill-current">

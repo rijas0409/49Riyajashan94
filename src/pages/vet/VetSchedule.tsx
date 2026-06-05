@@ -169,40 +169,51 @@ const VetSchedule = () => {
 
       const { data, error } = await supabase
         .from("vet_appointments")
-        .select(`
-          *,
-          user:profiles!vet_appointments_user_id_fkey(name, full_name, profile_photo, phone)
-        `)
+        .select("*")
         .eq("vet_id", user.id);
       
       if (error) {
-        console.error("Error fetching real appointments:", error);
+        console.error("CRITICAL ERROR fetching real appointments:", error);
       } else if (data) {
-        // Enforce real-time consultation type filter
-        const filteredData = data.filter(apt => {
-          const type = (apt.appointment_type || "").toLowerCase();
-          if (type === "clinic") return allowed.includes("clinic");
-          if (type === "home") return allowed.includes("home");
-          if (type === "video") return allowed.includes("video");
-          return false;
-        });
+        console.log("CRITICAL INFO real appointments data:", data);
+        
+        // Fetch users manually to avoid foreign key relation errors with PostgREST
+        const userIds = [...new Set(data.map(apt => apt.user_id))];
+        let profilesMap: Record<string, any> = {};
+        
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, name, full_name, profile_photo, phone")
+            .in("id", userIds);
+            
+          if (profiles) {
+            profiles.forEach(p => {
+              profilesMap[p.id] = p;
+            });
+          }
+        }
 
-        const mapped = (filteredData as unknown[] as DbAppointmentRaw[]).map((apt: DbAppointmentRaw) => ({
-          id: apt.id,
-          date: apt.appointment_date,
-          type: apt.appointment_type || "clinic",
-          petName: apt.pet_name || "Luna",
-          breed: apt.pet_breed || (apt.pet_type ? `${apt.pet_type}` : "Dog"),
-          ownerName: apt.user?.full_name || apt.user?.name || "Sarah Jenkins",
-          ownerPhone: apt.user?.phone || "+91 98765 43210",
-          time: apt.appointment_time || "11:30 AM",
-          status: apt.status || "pending",
-          image: apt.user?.profile_photo || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80",
-          diagnosis: apt.diagnosis,
-          medicines: apt.medicines,
-          consultation_notes: apt.consultation_notes,
-          care_instructions: apt.care_instructions
-        }));
+        // Show all appointments for the vet. Do not hide booked appointments based on current consultation_type settings.
+        const mapped = data.map((apt: any) => {
+          const userProfile = profilesMap[apt.user_id] || {};
+          return {
+            id: apt.id,
+            date: apt.appointment_date,
+            type: apt.appointment_type || "clinic",
+            petName: apt.pet_name || "Luna",
+            breed: apt.pet_breed || (apt.pet_type ? `${apt.pet_type}` : "Dog"),
+            ownerName: userProfile.full_name || userProfile.name || "Sarah Jenkins",
+            ownerPhone: userProfile.phone || "+91 98765 43210",
+            time: apt.appointment_time || "11:30 AM",
+            status: apt.status || "pending",
+            image: userProfile.profile_photo || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80",
+            diagnosis: apt.diagnosis,
+            medicines: apt.medicines,
+            consultation_notes: apt.consultation_notes,
+            care_instructions: apt.care_instructions
+          };
+        });
         setAppointments(mapped);
       }
     } catch (e) {

@@ -240,7 +240,7 @@ const ClinicBookingConfirmation = () => {
                  Find Another Vet
                </button>
                <button 
-                 onClick={() => navigate("/vet/video-consultation")}
+                 onClick={() => navigate("/vet/virtual-consults")}
                  className="w-full py-4 bg-purple-50 text-purple-700 border border-purple-100 font-bold rounded-2xl flex items-center justify-center gap-2"
                >
                  <PhoneCall className="w-4 h-4" /> Instant Video Consultation

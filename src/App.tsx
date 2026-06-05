@@ -90,7 +90,7 @@ import VideoCall from "./pages/vet/VideoCall";
 import VetSchedule from "./pages/vet/VetSchedule";
 import VetEarnings from "./pages/vet/VetEarnings";
 import VetProfile from "./pages/vet/VetProfile";
-import VideoConsultation from "./pages/vet/VideoConsultation";
+import VirtualConsults from "./pages/vet/VirtualConsults";
 
 import React, { Component, ReactNode } from "react";
 
@@ -188,7 +188,7 @@ const App = () => (
                 <Route path="/vet/schedule" element={<VetSchedule />} />
                 <Route path="/vet/earnings" element={<VetEarnings />} />
                 <Route path="/vet/profile" element={<VetProfile />} />
-                <Route path="/vet/video-consultation" element={<VideoConsultation />} />
+                <Route path="/vet/virtual-consults" element={<VirtualConsults />} />
                 <Route path="/vet/consultation-detail" element={<ConsultationDetail />} />
                 <Route path="/vet/home-visit-details" element={<HomeVisitDetails />} />
                 <Route path="/vet/clinic-visit-details" element={<ClinicVisitDetails />} />
