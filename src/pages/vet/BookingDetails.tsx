@@ -1203,7 +1203,9 @@ const BookingDetails = () => {
                             let realBookingId = "SRV-84721";
                             try {
                               // Get vet's profile user_id safely
+                              console.log("DEBUG: vet object in BookingDetails:", vet);
                               let vetUserId = vet.userId || vet.user_id;
+                              console.log("DEBUG: vetUserId resolved to:", vetUserId);
                               
                               if (!vetUserId && vet.id) {
                                 const { data: vp } = await supabase
@@ -1216,13 +1218,13 @@ const BookingDetails = () => {
                                 }
                               }
 
-                              if (!vetUserId) {
-                                vetUserId = "f9834ef6-778d-4384-8d17-6316fffa03b6";
-                              }
-
                               // Get current authenticated user
                               const { data: { user: authUser } } = await supabase.auth.getUser();
-                              const userId = authUser?.id || "f9834ef6-778d-4384-8d17-6316fffa03b6";
+                              const userId = authUser?.id;
+
+                              if (!vetUserId || !userId) {
+                                throw new Error("Missing required IDs for appointment creation: vetUserId=" + vetUserId + ", userId=" + userId);
+                              }
 
                               const appointmentDate = safeFormatSelectedDate("yyyy-MM-dd");
                               const appointmentTime = selectedSlot || "11:30 AM";
@@ -1268,9 +1270,7 @@ const BookingDetails = () => {
                                 bookingId: bookingId
                               };
 
-                              const { data: insertResult, error: insertError } = await supabase
-                                .from("vet_appointments")
-                                .insert({
+                              const insertPayload = {
                                   vet_id: vetUserId,
                                   user_id: userId,
                                   appointment_date: appointmentDate,
@@ -1282,16 +1282,49 @@ const BookingDetails = () => {
                                   pet_type: petTypeVal,
                                   pet_breed: petBreedVal,
                                   consultation_notes: JSON.stringify(paymentDetailsReal)
-                                })
+                                };
+                              console.log("CRITICAL PIPELINE AUDIT LOG [BEFORE INSERT]:", {
+                                "auth.uid()": userId,
+                                "user_id": userId,
+                                "vet_id": vetUserId,
+                                "booking_id": bookingId,
+                                "insert_payload": insertPayload
+                              });
+
+                              const { data: insertResult, error: insertError } = await supabase
+                                .from("vet_appointments")
+                                .insert(insertPayload)
                                 .select()
                                 .single();
 
+                              console.log("CRITICAL PIPELINE AUDIT LOG [AFTER INSERT]:", {
+                                "insert_response_data": insertResult,
+                                "insert_response_error": insertError
+                              });
+
                               if (insertError) {
-                                console.error("Error creating real appointment:", insertError);
-                              } else if (insertResult) {
-                                console.log("Real appointment created:", insertResult);
-                                realBookingId = insertResult.id;
+                                console.error("CRITICAL PIPELINE INSERT FAILURE:", insertError);
+                                throw new Error(`Database insert failed: ${insertError.message} (code: ${insertError.code})`);
                               }
+
+                              if (!insertResult) {
+                                throw new Error("Database insert returned empty result without throw");
+                              }
+
+                              console.log("Real appointment successfully created:", insertResult);
+                              realBookingId = insertResult.id;
+
+                              // Immediately verify that we can query back this exact row
+                              const { data: verifiedRow, error: verifyError } = await supabase
+                                .from("vet_appointments")
+                                .select("id, user_id, vet_id, appointment_date, status")
+                                .eq("id", realBookingId)
+                                .single();
+
+                              console.log("CRITICAL PIPELINE AUDIT LOG [QUERY AFTER INSERT]:", {
+                                "verified_row": verifiedRow,
+                                "query_error": verifyError
+                              });
 
                               // Create realistic Razorpay payment ID and save details to localStorage
                               const paymentId = "pay_rzp_" + Math.random().toString(36).substring(2, 16).toUpperCase();
@@ -1333,8 +1366,11 @@ const BookingDetails = () => {
                                 address: visitType === "home" ? "123 Premium Residency, Indiranagar" : (dbVetData?.hospital_address || dbVetData?.clinic_address || dbVetData?.hospital_name || dbVetData?.clinic_name || "HSR Paws Clinic, Sector 2"),
                               };
                               localStorage.setItem(`payment_details_${realBookingId}`, JSON.stringify(paymentDetails));
-                            } catch (insertErr) {
-                              console.error("Error inserting appointment:", insertErr);
+                            } catch (insertErr: any) {
+                              console.error("FAIL LOUDLY: Error inserting appointment:", insertErr);
+                              toast.error(`Booking Failed: ${insertErr.message || insertErr}`);
+                              setPaymentStep(null); // Reset simulation state overlay so user is not stuck
+                              return; // ABORT REDIRECTION/SUCCESS TOAST COMPLETELY ON FAILURE
                             }
 
                             toast.success("Payment successful! Requesting vet confirmation...");
