@@ -127,7 +127,8 @@ export default function AppointmentConfirmation() {
     setShowSuccessOverlay(true);
     setTimeout(() => setProgressWidth(100), 100);
     setTimeout(() => {
-      navigate(`/vet/clinic-visit-details/${appointmentId}`, { replace: true });
+      const routeType = appointment?.appointment_type === "home" ? "home" : "clinic";
+      navigate(`/buyer/vet/${routeType}-visit-details/${appointmentId}`, { replace: true });
     }, 3500);
   };
 

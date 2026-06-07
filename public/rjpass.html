@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet"/>
+    
+    <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#d95191",
+                        "primary-container": "#fcebf3",
+                        "on-surface": "#412b36",
+                        "on-surface-variant": "#7c6872",
+                        "surface": "#fffbfe",
+                        "surface-container-low": "#fdf4f8",
+                        "surface-container-high": "#fbe7f0",
+                        "surface-container-highest": "#f7d3e3",
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .step-container { display: none; }
+        .step-container.active { 
+            display: block; 
+            animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .dropdown-menu {
+            transform: scale(0.95);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .dropdown-menu.open {
+            transform: scale(1);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        /* Custom Premium Animations for Step 4 */
+        .pulse-ring {
+            animation: modernPulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes modernPulse {
+            0%, 100% { transform: scale(1); opacity: 0.25; }
+            50% { transform: scale(1.08); opacity: 0.08; }
+        }
+        .shimmer-bg {
+            background: linear-gradient(90deg, #d95191 0%, #e56ba4 50%, #d95191 100%);
+            background-size: 200% 100%;
+            animation: shimmerMove 2s infinite linear;
+        }
+        @keyframes shimmerMove {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        
+        /* Animated Log Items */
+        .log-item-box {
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, margin 0.4s ease;
+            max-height: 80px; 
+            opacity: 1;
+            overflow: hidden;
+            margin-bottom: 8px; 
+        }
+        .log-item-box.completed-hide {
+            max-height: 0;
+            opacity: 0;
+            margin-bottom: 0;
+            pointer-events: none;
+        }
+
+        /* Dashboard Scrollbar Hide */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Modal Animation */
+        .modal-enter {
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Prevent Material Icon Text Flash */
+        body:not(.fonts-loaded) .material-symbols-outlined {
+            color: transparent !important;
+            user-select: none;
+        }
+    </style>
+    <script>
+        document.fonts.ready.then(function() {
+            document.body.classList.add('fonts-loaded');
+        });
+    </script>
+</head>
+
+<body class="bg-surface text-on-surface antialiased">
+
+    <nav class="flex items-center justify-between px-6 pt-5 pb-2 max-w-md mx-auto">
+        <button type="button" id="backBtn" class="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-low border border-surface-container-high hover:bg-primary-container/40 transition-all active:scale-95">
+            <span class="material-symbols-outlined text-on-surface text-xl">arrow_back_ios_new</span>
+        </button>
+        <div class="flex flex-col items-center">
+            <h2 class="font-bold text-lg text-on-surface" id="headerTitle">Basic Details</h2>
+        </div>
+        <div class="w-10"></div>
+    </nav>
+
+    <div id="progressBlock" class="px-[10%] w-full max-w-md mx-auto sticky top-0 bg-surface z-20 pb-4 space-y-1.5">
+        <div class="flex justify-end">
+            <span class="text-[11px] font-extrabold text-primary uppercase tracking-wider" id="stepText">Step 1 of 3</span>
+        </div>
+        <div class="w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
+            <div id="progressBar" class="bg-gradient-to-r from-primary to-[#e56ba4] h-full w-1/3 transition-all duration-500 ease-out"></div>
+        </div>
+    </div>
+
+    <main class="px-6 py-2 max-w-md mx-auto">
+        
+        <div id="step1" class="step-container active space-y-6">
+            <div class="space-y-1">
+                <h1 class="text-2xl font-extrabold tracking-tight">Meet Your Pet</h1>
+                <p class="text-on-surface-variant text-sm">Help us create a secure digital identity by adding a few basic details.</p>
+            </div>
+
+            <div class="flex flex-col items-center justify-center py-2">
+                <div class="relative group cursor-pointer" onclick="openCameraModal()">
+                    <div id="petPhotoPreview" class="w-28 h-28 rounded-full bg-surface-container-low border border-surface-container-highest flex items-center justify-center overflow-hidden shadow-inner relative">
+                        <span class="material-symbols-outlined text-primary/40 text-3xl">add_a_photo</span>
+                    </div>
+                    <button type="button" class="absolute bottom-0 right-0 w-9 h-9 bg-primary text-white rounded-full border-4 border-surface flex items-center justify-center shadow-md active:scale-90 transition-transform pointer-events-none">
+                        <span class="material-symbols-outlined text-xs">edit</span>
+                    </button>
+                </div>
+                <p class="mt-2 text-[10px] font-bold text-primary uppercase tracking-widest">Add Pet Photo</p>
+            </div>
+
+            <form class="space-y-5" onsubmit="event.preventDefault(); nextStep(2);">
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Pet's Name</label>
+                    <input type="text" placeholder="e.g. Buddy" class="w-full px-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5 relative">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Species</label>
+                        <button type="button" id="dropdownBtn" class="w-full px-4 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl outline-none flex items-center justify-between text-on-surface text-sm font-medium">
+                            <div class="flex items-center gap-2">
+                                <span id="selectedIcon" class="material-symbols-outlined text-primary text-lg">sound_detection_dog_barking</span>
+                                <span id="selectedText">Dogs</span>
+                            </div>
+                            <span class="material-symbols-outlined text-on-surface-variant text-lg" id="arrowIcon">expand_more</span>
+                        </button>
+                        <div id="dropdownMenu" class="dropdown-menu absolute left-0 top-[102%] w-full bg-white border border-surface-container-highest rounded-2xl shadow-xl z-50 py-1.5 overflow-hidden">
+                            <button type="button" onclick="selectSpecies('Dogs', 'sound_detection_dog_barking')" class="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-primary-container/40 text-on-surface text-sm font-medium">
+                                <span class="material-symbols-outlined text-primary text-xl">sound_detection_dog_barking</span> Dogs
+                            </button>
+                            <button type="button" onclick="selectSpecies('Cats', 'pets')" class="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-primary-container/40 text-on-surface text-sm font-medium">
+                                <span class="material-symbols-outlined text-primary text-xl">pets</span> Cats
+                            </button>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Gender</label>
+                        <div class="flex p-1 bg-surface-container-high rounded-2xl h-[50px] items-center">
+                            <button type="button" class="flex-1 h-full bg-white shadow-sm rounded-xl text-primary font-bold text-xs">Male</button>
+                            <button type="button" class="flex-1 h-full text-on-surface-variant font-medium text-xs">Female</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Breed (Optional)</label>
+                    <input type="text" placeholder="e.g. Golden Retriever" class="w-full px-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Date of Birth</label>
+                        <input type="date" class="w-full px-4 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl text-on-surface-variant text-sm outline-none">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Weight</label>
+                        <div class="relative flex items-center">
+                            <input type="number" step="0.1" placeholder="9.4" class="w-full pl-5 pr-12 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none">
+                            <span class="absolute right-4 text-xs font-bold text-on-surface-variant">kg</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" class="w-full py-4 bg-gradient-to-r from-primary to-[#e56ba4] text-white rounded-full font-bold text-lg shadow-[0_10px_25px_rgba(217,81,145,0.3)] active:scale-[0.98] transition-all">
+                        Continue
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div id="step2" class="step-container space-y-6">
+            <div class="space-y-1">
+                <h1 class="text-2xl font-extrabold tracking-tight">Medical History</h1>
+                <p class="text-on-surface-variant text-sm">Log vaccinations, allergies, and health conditions to complete the passport.</p>
+            </div>
+
+            <form class="space-y-6" onsubmit="event.preventDefault(); nextStep(3);">
+                
+                <div class="space-y-3">
+                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Vaccination Records</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center gap-3 p-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl cursor-pointer select-none accent-primary">
+                            <input type="checkbox" class="w-5 h-5 rounded-md border-surface-container-highest text-primary focus:ring-primary/20">
+                            <span class="text-sm font-semibold text-on-surface">Rabies</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl cursor-pointer select-none accent-primary">
+                            <input type="checkbox" class="w-5 h-5 rounded-md border-surface-container-highest text-primary focus:ring-primary/20">
+                            <span class="text-sm font-semibold text-on-surface">DHPP</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl cursor-pointer select-none accent-primary">
+                            <input type="checkbox" class="w-5 h-5 rounded-md border-surface-container-highest text-primary focus:ring-primary/20">
+                            <span class="text-sm font-semibold text-on-surface">FVRCP</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl cursor-pointer select-none accent-primary">
+                            <input type="checkbox" class="w-5 h-5 rounded-md border-surface-container-highest text-primary focus:ring-primary/20">
+                            <span class="text-sm font-semibold text-on-surface">Not Sure</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Last Vaccination Date</label>
+                    <input type="date" class="w-full px-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl outline-none focus:ring-2 focus:ring-primary/10 text-sm">
+                </div>
+
+                <div class="space-y-2 mt-4">
+                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Existing Health Conditions (Optional)</label>
+                    <div class="flex flex-wrap gap-2 p-1">
+                        <label class="cursor-pointer">
+                            <input type="checkbox" class="sr-only peer" name="conditions" value="skin">
+                            <div class="px-3.5 py-2 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs font-semibold text-on-surface-variant peer-checked:bg-primary-container peer-checked:text-primary peer-checked:border-primary transition-all">Skin Issues</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" class="sr-only peer" name="conditions" value="joints">
+                            <div class="px-3.5 py-2 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs font-semibold text-on-surface-variant peer-checked:bg-primary-container peer-checked:text-primary peer-checked:border-primary transition-all">Joint Problems</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" class="sr-only peer" name="conditions" value="heart">
+                            <div class="px-3.5 py-2 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs font-semibold text-on-surface-variant peer-checked:bg-primary-container peer-checked:text-primary peer-checked:border-primary transition-all">Heart Condition</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" class="sr-only peer" name="conditions" value="diabetes">
+                            <div class="px-3.5 py-2 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs font-semibold text-on-surface-variant peer-checked:bg-primary-container peer-checked:text-primary peer-checked:border-primary transition-all">Diabetes</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" class="sr-only peer" name="conditions" value="none">
+                            <div class="px-3.5 py-2 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs font-semibold text-on-surface-variant peer-checked:bg-primary-container peer-checked:text-primary peer-checked:border-primary transition-all">None</div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Known Allergies</label>
+                    <div class="relative flex items-center">
+                        <span class="material-symbols-outlined absolute left-4 text-on-surface-variant text-lg">warning</span>
+                        <input type="text" placeholder="e.g. Chicken, Penicillin, Dust, Pollen" class="w-full pl-11 pr-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl outline-none text-sm font-medium focus:ring-2 focus:ring-primary/10">
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Current Medications (Optional)</label>
+                    <div class="relative flex items-center">
+                        <span class="material-symbols-outlined absolute left-4 text-on-surface-variant text-lg">pill</span>
+                        <input type="text" placeholder="Enter medication names" class="w-full pl-11 pr-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl outline-none text-sm font-medium focus:ring-2 focus:ring-primary/10">
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Last Veterinary Visit</label>
+                    <input type="date" class="w-full px-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl outline-none focus:ring-2 focus:ring-primary/10 text-sm">
+                </div>
+
+                <div class="space-y-2 mt-4">
+                    <div class="flex items-center gap-2 ml-1">
+                        <label class="text-[13px] font-bold text-on-surface tracking-wide uppercase">HEALTH DOCUMENTS <span class="text-on-surface-variant normal-case text-xs font-normal">(Optional)</span></label>
+                    </div>
+                    <p class="text-[12px] text-on-surface-variant ml-1 mb-3">Upload health certificates, reports or prescriptions.</p>
+
+                    <div id="healthRecordsContainer" class="space-y-3 mb-3"></div>
+
+                    <button type="button" onclick="openHealthRecordModal()" class="w-full py-6 border-2 border-dashed border-primary/40 rounded-2xl flex flex-col items-center justify-center gap-1.5 bg-primary/5 hover:bg-primary/10 transition-colors">
+                        <span class="material-symbols-outlined text-primary text-4xl mb-1">add</span>
+                        <span class="text-[15px] font-bold text-primary">Add Health Record</span>
+                    </button>
+                    <p class="text-[11px] text-center text-on-surface-variant mt-2">You can add multiple health records.</p>
+                </div>
+
+                <div class="pt-6">
+                    <button type="submit" class="w-full py-4 bg-gradient-to-r from-primary to-[#e56ba4] text-white rounded-[20px] font-bold text-lg shadow-[0_10px_25px_rgba(217,81,145,0.3)] active:scale-[0.98] transition-all">
+                        Save and Continue
+                    </button>
+                    <div class="flex items-center justify-center gap-1.5 mt-4">
+                        <span class="material-symbols-outlined text-primary text-[15px]">lock</span>
+                        <p class="text-[11px] text-on-surface-variant font-medium">Your pet's data is 100% secure and private.</p>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div id="step3" class="step-container space-y-6">
+            <div class="space-y-1">
+                <h1 class="text-2xl font-extrabold tracking-tight">Security & Owner</h1>
+                <p class="text-on-surface-variant text-sm">Setup ownership contacts and microchip verification details for emergency backup.</p>
+            </div>
+
+            <form class="space-y-5" onsubmit="event.preventDefault(); nextStep(4);">
+                
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Owner's Full Name</label>
+                    <div class="relative flex items-center">
+                        <span class="material-symbols-outlined absolute left-4 text-on-surface-variant text-lg">person</span>
+                        <input type="text" placeholder="e.g. Jashanpreet Singh" class="w-full pl-11 pr-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm font-medium">
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Primary Phone Number</label>
+                    <div class="relative flex items-center">
+                        <span class="material-symbols-outlined absolute left-4 text-on-surface-variant text-lg">call</span>
+                        <input type="tel" placeholder="+91 XXXXX XXXXX" class="w-full pl-11 pr-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm font-medium">
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <div class="flex justify-between items-center ml-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase">Microchip Number (Optional)</label>
+                        <span class="text-[10px] font-bold text-primary bg-primary-container px-2 py-0.5 rounded-full uppercase tracking-wider">RFID Tag</span>
+                    </div>
+                    <div class="relative flex items-center">
+                        <span class="material-symbols-outlined absolute left-4 text-on-surface-variant text-lg">qr_code_scanner</span>
+                        <input type="text" placeholder="e.g. 900118000234123" class="w-full pl-11 pr-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm font-medium tracking-wide">
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-surface-container-high">
+                    <p class="text-xs font-black text-primary tracking-wider uppercase mb-3 flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-base">emergency_share</span> Emergency Backup Contact
+                    </p>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Contact Name</label>
+                            <input type="text" placeholder="e.g. Doctor / Friend" class="w-full px-4 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Emergency Phone</label>
+                            <input type="tel" placeholder="Backup number" class="w-full px-4 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" class="w-full py-4 bg-gradient-to-r from-primary to-[#e56ba4] text-white rounded-full font-bold text-lg shadow-[0_10px_25px_rgba(217,81,145,0.3)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 group">
+                        Complete Identity Setup
+                        <span class="material-symbols-outlined text-xl group-hover:translate-x-0.5 transition-transform">verified_user</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div id="step4" class="step-container space-y-6">
+            <div class="text-center space-y-2 mt-4">
+                <h1 class="text-2xl font-black tracking-tight" id="statusHeader">Securing Identity...</h1>
+                <p class="text-on-surface-variant text-sm" id="statusSubHeader">Please keep this screen open while we build your pet's official digital passport.</p>
+            </div>
+
+            <div id="generationProcessBlock" class="space-y-8">
+                <div class="flex items-center justify-center py-6 relative">
+                    <div class="absolute w-44 h-44 rounded-full bg-primary/10 pulse-ring"></div>
+                    <div class="absolute w-56 h-56 rounded-full bg-primary/5 pulse-ring" style="animation-delay: 1s;"></div>
+                    
+                    <div id="passportVisualBox" class="w-36 h-48 bg-gradient-to-br from-white to-surface-container-low border-2 border-surface-container-highest rounded-2xl shadow-xl flex flex-col justify-between p-4 relative overflow-hidden transition-all duration-700">
+                        <div id="laserScanner" class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-80" style="animation: scanEffect 3s ease-in-out infinite;"></div>
+                        <style>
+                            @keyframes scanEffect {
+                                0%, 100% { top: 0%; opacity: 0; }
+                                10%, 90% { opacity: 1; }
+                                50% { top: 100%; opacity: 1; }
+                            }
+                        </style>
+
+                        <div class="flex justify-between items-start">
+                            <div class="space-y-0.5">
+                                <div class="w-8 h-1.5 bg-primary/30 rounded-full"></div>
+                                <div class="w-12 h-1 bg-on-surface-variant/20 rounded-full"></div>
+                            </div>
+                            <span id="passportBadgeIcon" class="material-symbols-outlined text-primary text-xl animate-pulse">shield_with_heart</span>
+                        </div>
+
+                        <div class="flex justify-center items-center my-auto">
+                            <div id="passportCenterElement" class="w-16 h-16 rounded-full border-2 border-dashed border-primary/30 flex items-center justify-center bg-white transition-all duration-500">
+                                <span id="centerIcon" class="material-symbols-outlined text-primary/40 text-2xl animate-bounce" style="animation-duration: 2s;">badge</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+                                <div id="cardMiniProgress" class="h-full bg-primary transition-all duration-1000" style="width: 15%;"></div>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <div class="w-10 h-1 bg-on-surface-variant/30 rounded-full"></div>
+                                <div class="w-6 h-1 bg-on-surface-variant/20 rounded-full"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 bg-surface-container-low p-4 rounded-2xl border border-surface-container-high text-center">
+                    <div class="space-y-0.5">
+                        <p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Cryptographic Security</p>
+                        <p id="secLevelText" class="text-base font-extrabold text-primary">Initializing</p>
+                    </div>
+                    <div class="space-y-0.5 border-l border-surface-container-highest">
+                        <p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Generation Status</p>
+                        <p id="percentText" class="text-base font-extrabold text-on-surface">1%</p>
+                    </div>
+                </div>
+
+                <div class="px-2">
+                    <div class="flex justify-between items-center pr-1 mb-2.5">
+                        <p class="text-xs font-extrabold text-on-surface tracking-wide uppercase">System Ledger Logs</p>
+                        <div class="relative flex h-2.5 w-2.5" id="logGreenDot">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                        </div>
+                    </div>
+                    
+                    <div id="logsConsole" class="h-[100px] overflow-hidden text-xs text-on-surface-variant">
+                    </div>
+                </div>
+            </div>
+
+            <div id="finalPassportContainer" class="hidden w-full max-w-sm mx-auto transform scale-95 opacity-0 transition-all duration-700 ease-out mt-6">
+                <div class="bg-gradient-to-br from-[#1a1a24] to-[#3a2a32] p-1 rounded-[28px] shadow-2xl relative overflow-hidden group">
+                    <div class="absolute inset-0 bg-gradient-to-tr from-primary/0 via-white/20 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 rotate-45 transform -translate-x-full group-hover:translate-x-full ease-out"></div>
+                    
+                    <div class="bg-surface rounded-[24px] overflow-hidden flex flex-col relative z-10 h-full border border-surface-container-highest">
+                        
+                        <div class="bg-gradient-to-r from-primary to-[#e56ba4] px-5 py-4 flex justify-between items-center relative overflow-hidden">
+                            <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+                            
+                            <div class="relative z-10 text-white flex flex-col justify-center">
+                                <div class="flex items-center gap-1.5 mb-2 border-b border-white/20 pb-1.5 w-fit">
+                                    <span class="material-symbols-outlined text-white text-base">sound_detection_dog_barking</span>
+                                    <span class="text-sm font-black tracking-[0.2em] uppercase">Sruvo</span>
+                                </div>
+                                <p class="text-[8px] uppercase tracking-[0.2em] font-extrabold opacity-90">Republic of Sruvo</p>
+                                <p class="text-[19px] font-black tracking-wide leading-tight mt-0.5 shadow-sm">PET PASSPORT</p>
+                            </div>
+
+                            <div class="relative z-10 bg-white/20 p-2.5 rounded-2xl backdrop-blur-sm border border-white/20 shadow-inner flex items-center justify-center">
+                                <span class="material-symbols-outlined text-white text-[28px]">verified_user</span>
+                            </div>
+                        </div>
+                        
+                        <div class="p-6 bg-white space-y-5 relative">
+                            <span class="material-symbols-outlined absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[120px] text-surface-container-highest opacity-30 pointer-events-none">shield_with_heart</span>
+
+                            <div class="flex gap-4 items-center relative z-10">
+                                <div class="w-20 h-20 rounded-[18px] bg-surface-container-high border-2 border-primary/20 shadow-md flex items-center justify-center overflow-hidden shrink-0">
+                                    <img id="passportPetPhoto" src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80" alt="Pet Photo" class="w-full h-full object-cover">
+                                </div>
+                                <div class="space-y-1">
+                                    <h2 class="text-2xl font-black text-on-surface leading-none tracking-tight">Buddy</h2>
+                                    <p class="text-[11px] font-bold text-primary uppercase tracking-wider">Golden Retriever</p>
+                                    <p class="text-[11px] font-semibold text-on-surface-variant flex items-center gap-1.5 mt-1 bg-surface-container-low w-fit px-2 py-0.5 rounded-md border border-surface-container-highest">
+                                        <span class="material-symbols-outlined text-[14px] text-primary">male</span> Male • 9.4 kg
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-dashed border-surface-container-highest"></div>
+
+                            <div class="grid grid-cols-2 gap-y-4 gap-x-3 relative z-10">
+                                <div class="space-y-0.5">
+                                    <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Passport ID</p>
+                                    <p class="text-sm font-black text-on-surface font-mono bg-surface-container-low px-2 py-1 rounded-md border border-surface-container-highest w-fit">SRV-882-991</p>
+                                </div>
+                                <div class="space-y-0.5">
+                                    <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Date of Birth</p>
+                                    <p class="text-sm font-bold text-on-surface px-1">12 Oct 2022</p>
+                                </div>
+                                <div class="space-y-0.5">
+                                    <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Owner</p>
+                                    <p class="text-sm font-bold text-on-surface px-1 truncate">Jashanpreet Singh</p>
+                                </div>
+                                <div class="space-y-0.5">
+                                    <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Valid Till</p>
+                                    <p class="text-sm font-bold text-primary flex items-center gap-1 px-1">
+                                        <span class="material-symbols-outlined text-[14px]">all_inclusive</span> Lifetime
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-surface-container-low px-5 py-4 flex justify-between items-center border-t border-surface-container-highest relative z-10">
+                            <div class="space-y-1">
+                                <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Registry Status</p>
+                                <div class="flex items-center gap-1.5 bg-green-100 px-2 py-1 rounded-md border border-green-200 w-fit">
+                                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                                    <p class="text-[11px] font-extrabold text-green-700 tracking-wide uppercase">Active & Verified</p>
+                                </div>
+                            </div>
+                            <div class="w-14 h-14 bg-white rounded-xl border-2 border-surface-container-highest p-1 flex items-center justify-center shadow-sm relative group cursor-pointer hover:border-primary/50 transition-colors">
+                                <div class="absolute inset-0 bg-primary/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=sruvo.com/passport/SRV-882-991&color=d95191" alt="QR Code" class="w-full h-full object-contain rounded-md">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex flex-col gap-3 pb-6">
+                    <p class="text-center text-[12px] font-semibold text-on-surface-variant mb-1">Securely stored and accessible across Sruvo services.</p>
+                    <button type="button" onclick="nextStep(5)" class="w-full py-4 bg-primary text-white rounded-[20px] font-bold text-[15px] shadow-[0_8px_20px_rgba(217,81,145,0.3)] active:scale-[0.98] transition-all flex items-center justify-center gap-2.5">
+                        <span class="material-symbols-outlined text-lg">dashboard</span>
+                        Go to Dashboard
+                    </button>
+                    <button type="button" onclick="nextStep(6)" class="w-full py-4 bg-surface text-primary border border-surface-container-highest rounded-[20px] font-bold text-[15px] shadow-sm hover:bg-surface-container-low active:scale-[0.98] transition-all flex items-center justify-center gap-2.5">
+                        <span class="material-symbols-outlined text-lg">account_circle</span>
+                        View Pet Account
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="step5" class="step-container space-y-6 pb-8">
+            
+            <div class="flex justify-between items-center mt-2">
+                <div class="space-y-0.5">
+                    <h1 class="text-2xl font-extrabold tracking-tight">Pet Passport</h1>
+                    <p class="text-xs text-on-surface-variant font-medium">Digital Identity Center</p>
+                </div>
+                <div class="flex items-center gap-1.5 bg-green-50 px-2.5 py-1.5 rounded-lg border border-green-200">
+                    <span class="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></span>
+                    <p class="text-[10px] font-extrabold text-green-700 tracking-wide uppercase">Active & Verified</p>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-[#1a1a24] to-[#3a2a32] p-[2px] rounded-[22px] shadow-lg relative overflow-hidden group">
+                <div class="bg-surface rounded-[20px] overflow-hidden flex flex-col relative z-10 h-full border border-surface-container-highest">
+                    
+                    <div class="bg-gradient-to-r from-primary to-[#e56ba4] px-4 py-2.5 flex justify-between items-center text-white relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 w-16 h-16 bg-white/10 rounded-full blur-xl"></div>
+                        <div class="flex items-center gap-1.5 z-10">
+                            <span class="material-symbols-outlined text-white text-sm">sound_detection_dog_barking</span>
+                            <span class="text-[10px] font-black tracking-[0.2em] uppercase">Sruvo Passport</span>
+                        </div>
+                        <span class="material-symbols-outlined text-white/80 text-sm z-10">verified_user</span>
+                    </div>
+
+                    <div class="p-4 bg-white flex gap-4 items-center">
+                        <div class="w-16 h-16 rounded-2xl bg-surface-container-high border-2 border-primary/20 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                            <img id="dashboardPetPhoto" src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80" alt="Pet Photo" class="w-full h-full object-cover">
+                        </div>
+                        <div class="flex-1 space-y-1">
+                            <h2 class="text-xl font-black text-on-surface leading-none tracking-tight">Buddy</h2>
+                            <p class="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest font-mono bg-surface-container-low w-fit px-1.5 py-0.5 rounded border border-surface-container-highest">SRV-882-991</p>
+                        </div>
+                        <div class="w-12 h-12 bg-white rounded-xl border-2 border-surface-container-highest p-0.5 shrink-0 flex items-center justify-center">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=sruvo.com/passport/SRV-882-991&color=d95191" class="w-full h-full object-contain rounded-lg">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-3">
+                <button class="flex flex-col items-center gap-2 group">
+                    <div class="w-14 h-14 rounded-full bg-surface-container-low border border-surface-container-highest flex items-center justify-center text-primary group-hover:bg-primary-container/50 group-active:scale-95 transition-all">
+                        <span class="material-symbols-outlined">ios_share</span>
+                    </div>
+                    <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Share</span>
+                </button>
+                <button class="flex flex-col items-center gap-2 group">
+                    <div class="w-14 h-14 rounded-full bg-surface-container-low border border-surface-container-highest flex items-center justify-center text-primary group-hover:bg-primary-container/50 group-active:scale-95 transition-all">
+                        <span class="material-symbols-outlined">download</span>
+                    </div>
+                    <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">PDF</span>
+                </button>
+                <button class="flex flex-col items-center gap-2 group">
+                    <div class="w-14 h-14 rounded-full bg-surface-container-low border border-surface-container-highest flex items-center justify-center text-primary group-hover:bg-primary-container/50 group-active:scale-95 transition-all">
+                        <span class="material-symbols-outlined">qr_code_2</span>
+                    </div>
+                    <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">View QR</span>
+                </button>
+                <button class="flex flex-col items-center gap-2 group">
+                    <div class="w-14 h-14 rounded-full bg-surface-container-low border border-surface-container-highest flex items-center justify-center text-primary group-hover:bg-primary-container/50 group-active:scale-95 transition-all">
+                        <span class="material-symbols-outlined">edit_document</span>
+                    </div>
+                    <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Edit</span>
+                </button>
+            </div>
+
+            <div class="bg-surface-container-low rounded-2xl p-4 border border-surface-container-highest space-y-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="material-symbols-outlined text-on-surface-variant text-lg">info</span>
+                    <h3 class="text-xs font-black tracking-wide uppercase text-on-surface">Passport Information</h3>
+                </div>
+                <div class="bg-white rounded-xl border border-surface-container-highest divide-y divide-surface-container-highest">
+                    <div class="flex justify-between items-center p-3">
+                        <span class="text-xs font-bold text-on-surface-variant">Passport ID</span> 
+                        <span class="text-xs font-bold text-on-surface font-mono bg-surface-container-low px-1.5 py-0.5 rounded border border-surface-container-highest">SRV-882-991</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3">
+                        <span class="text-xs font-bold text-on-surface-variant">Verification Status</span> 
+                        <span class="text-xs font-black text-green-600 bg-green-50 px-2 py-0.5 rounded-md">Verified</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3">
+                        <span class="text-xs font-bold text-on-surface-variant">Issue Date</span> 
+                        <span class="text-xs font-bold text-on-surface" id="dashboardCreatedOn">08 Jun 2026</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3">
+                        <span class="text-xs font-bold text-on-surface-variant">Last Sync</span> 
+                        <span class="text-xs font-bold text-primary">Today, 10:42 AM</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-surface-container-low rounded-2xl p-4 border border-surface-container-highest space-y-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="material-symbols-outlined text-on-surface-variant text-lg">verified</span>
+                    <h3 class="text-xs font-black tracking-wide uppercase text-on-surface">Verification Log</h3>
+                </div>
+                <div class="space-y-2.5">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-green-500 text-base">check_circle</span>
+                        <span class="text-sm font-semibold text-on-surface">Ownership Verified</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-green-500 text-base">check_circle</span>
+                        <span class="text-sm font-semibold text-on-surface">Health Records Synced</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-green-500 text-base">check_circle</span>
+                        <span class="text-sm font-semibold text-on-surface">Vaccination Up-to-date</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-surface-container-low rounded-2xl p-4 border border-surface-container-highest space-y-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="material-symbols-outlined text-on-surface-variant text-lg">folder_open</span>
+                    <h3 class="text-xs font-black tracking-wide uppercase text-on-surface">Vault Documents</h3>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-surface-container-highest cursor-pointer hover:border-primary/30 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-primary/60">description</span>
+                            <span class="text-sm font-bold text-on-surface">Vaccination Certificate</span>
+                        </div>
+                        <span class="material-symbols-outlined text-on-surface-variant text-sm">chevron_right</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-surface-container-highest cursor-pointer hover:border-primary/30 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-primary/60">medical_information</span>
+                            <span class="text-sm font-bold text-on-surface">Medical History Log</span>
+                        </div>
+                        <span class="material-symbols-outlined text-on-surface-variant text-sm">chevron_right</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-[#fff1f2] rounded-2xl p-4 border border-[#ffe4e6] space-y-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="material-symbols-outlined text-red-500 text-lg animate-pulse">emergency</span>
+                    <h3 class="text-xs font-black tracking-wide uppercase text-red-600">Emergency Access</h3>
+                </div>
+                <div class="bg-white/60 rounded-xl p-3 border border-red-100 space-y-2">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-bold text-red-900/60 uppercase">Allergies</span> 
+                        <span class="text-sm font-bold text-red-600 text-right">Chicken, Penicillin</span>
+                    </div>
+                    <div class="border-t border-red-100"></div>
+                    <div class="flex justify-between items-start pt-1">
+                        <span class="text-xs font-bold text-red-900/60 uppercase">Conditions</span> 
+                        <span class="text-sm font-bold text-red-600 text-right">None Recorded</span>
+                    </div>
+                    <div class="border-t border-red-100"></div>
+                    <div class="flex justify-between items-start pt-1">
+                        <span class="text-xs font-bold text-red-900/60 uppercase">Backup Contact</span> 
+                        <span class="text-sm font-bold text-red-600 text-right">+91 98765 43210</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-2 pt-2 pb-6">
+                <h3 class="text-xs font-black tracking-wide uppercase text-on-surface mb-4 pl-1">Recent Activity</h3>
+                <div class="space-y-4 relative before:absolute before:inset-0 before:ml-[13px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-surface-container-highest before:to-transparent">
+                    
+                    <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                        <div class="flex items-center justify-center w-7 h-7 rounded-full border-4 border-surface bg-primary text-white shadow shrink-0 z-10">
+                            <span class="material-symbols-outlined text-[12px]">done</span>
+                        </div>
+                        <div class="w-[calc(100%-2.5rem)] pl-3">
+                            <p class="text-xs font-bold text-on-surface">Passport Created</p>
+                            <span class="text-[10px] font-medium text-on-surface-variant">Today, 10:42 AM</span>
+                        </div>
+                    </div>
+
+                    <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                        <div class="flex items-center justify-center w-7 h-7 rounded-full border-4 border-surface bg-surface-container-highest text-on-surface-variant shadow shrink-0 z-10">
+                            <span class="material-symbols-outlined text-[12px]">upload_file</span>
+                        </div>
+                        <div class="w-[calc(100%-2.5rem)] pl-3">
+                            <p class="text-xs font-bold text-on-surface">Documents Uploaded</p>
+                            <span class="text-[10px] font-medium text-on-surface-variant">Today, 10:40 AM</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="pt-2 sticky bottom-4 z-20">
+                <button type="button" onclick="nextStep(6)" class="w-full py-4 bg-primary text-white rounded-[20px] font-bold text-[15px] shadow-[0_8px_25px_rgba(217,81,145,0.3)] active:scale-[0.98] transition-all flex items-center justify-center gap-2.5">
+                    <span class="material-symbols-outlined text-lg">pets</span>
+                    Go to Pet Account
+                </button>
+            </div>
+
+        </div>
+
+        <div id="step6" class="step-container space-y-6 pb-8">
+            
+            <div class="bg-white p-6 rounded-[28px] border border-white shadow-[0_15px_40px_rgba(217,81,145,0.08)] relative overflow-hidden">
+                <div class="absolute -right-10 -top-10 w-48 h-48 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -left-10 -bottom-10 w-32 h-32 bg-gradient-to-tr from-[#e56ba4]/20 to-transparent rounded-full blur-2xl pointer-events-none"></div>
+                
+                <div class="flex items-center gap-5 relative z-10">
+                    <div class="w-24 h-24 rounded-full border-[3px] border-white shadow-[0_8px_20px_rgba(0,0,0,0.1)] overflow-hidden bg-surface-container-high shrink-0">
+                        <img id="petAccountPhoto" src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80" alt="Pet Profile" class="w-full h-full object-cover">
+                    </div>
+                    <div class="space-y-1">
+                        <h1 class="text-3xl font-black text-on-surface tracking-tight leading-none drop-shadow-sm">Buddy</h1>
+                        <p class="text-xs font-extrabold text-primary uppercase tracking-widest bg-primary/10 px-2 py-0.5 rounded-md w-fit">Golden Retriever</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3 mt-6 relative z-10">
+                    <div class="bg-surface/60 backdrop-blur-md rounded-2xl p-3 flex flex-col items-center justify-center border border-surface-container-highest shadow-sm">
+                        <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Age</span>
+                        <span class="text-[15px] font-black text-primary">3 Yrs</span>
+                    </div>
+                    <div class="bg-surface/60 backdrop-blur-md rounded-2xl p-3 flex flex-col items-center justify-center border border-surface-container-highest shadow-sm">
+                        <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Gender</span>
+                        <span class="text-[15px] font-black text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">male</span>Male</span>
+                    </div>
+                    <div class="bg-surface/60 backdrop-blur-md rounded-2xl p-3 flex flex-col items-center justify-center border border-surface-container-highest shadow-sm">
+                        <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Weight</span>
+                        <span class="text-[15px] font-black text-primary">9.4 kg</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-r from-primary to-[#e56ba4] rounded-2xl p-4 shadow-[0_8px_20px_rgba(217,81,145,0.25)] flex items-center justify-between cursor-pointer active:scale-95 transition-all">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm shadow-inner">
+                        <span class="material-symbols-outlined text-white text-xl">verified_user</span>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-black tracking-wide text-white uppercase">Passport Active</h3>
+                        <p class="text-[11px] font-mono text-white/80">ID: SRV-882-991</p>
+                    </div>
+                </div>
+                <span class="material-symbols-outlined text-white/70">chevron_right</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-surface-container-low rounded-2xl p-4 border border-surface-container-highest flex flex-col items-start gap-3 cursor-pointer hover:bg-surface-container-high transition-colors">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                        <span class="material-symbols-outlined text-base">monitor_heart</span>
+                    </div>
+                    <div class="space-y-0.5 w-full">
+                        <h3 class="text-xs font-black uppercase text-on-surface">Health Records</h3>
+                        <p class="text-[10px] font-medium text-on-surface-variant leading-tight">Vaccines, Allergies & Meds</p>
+                    </div>
+                </div>
+
+                <div class="bg-surface-container-low rounded-2xl p-4 border border-surface-container-highest flex flex-col items-start gap-3 cursor-pointer hover:bg-surface-container-high transition-colors">
+                    <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+                        <span class="material-symbols-outlined text-base">stethoscope</span>
+                    </div>
+                    <div class="space-y-0.5 w-full">
+                        <h3 class="text-xs font-black uppercase text-on-surface">Consultations</h3>
+                        <p class="text-[10px] font-medium text-on-surface-variant leading-tight">Past Vet Visits & Clinics</p>
+                    </div>
+                </div>
+                
+                <div class="bg-surface-container-low rounded-2xl p-4 border border-surface-container-highest flex flex-col items-start gap-3 cursor-pointer hover:bg-surface-container-high transition-colors">
+                    <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
+                        <span class="material-symbols-outlined text-base">medication</span>
+                    </div>
+                    <div class="space-y-0.5 w-full">
+                        <h3 class="text-xs font-black uppercase text-on-surface">Medicine Orders</h3>
+                        <p class="text-[10px] font-medium text-on-surface-variant leading-tight">Past Orders & Refills</p>
+                    </div>
+                </div>
+
+                <div class="bg-surface-container-low rounded-2xl p-4 border border-surface-container-highest flex flex-col items-start gap-3 cursor-pointer hover:bg-surface-container-high transition-colors">
+                    <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                        <span class="material-symbols-outlined text-base">topic</span>
+                    </div>
+                    <div class="space-y-0.5 w-full">
+                        <h3 class="text-xs font-black uppercase text-on-surface">Documents</h3>
+                        <p class="text-[10px] font-medium text-on-surface-variant leading-tight">Reports & Prescriptions</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-4 border border-indigo-100 relative overflow-hidden">
+                <div class="absolute right-0 top-0 opacity-10">
+                    <span class="material-symbols-outlined text-8xl text-indigo-500">auto_awesome</span>
+                </div>
+                <div class="flex items-center gap-2 mb-2 relative z-10">
+                    <span class="material-symbols-outlined text-indigo-600 text-lg">psychiatry</span>
+                    <h3 class="text-xs font-black tracking-wide uppercase text-indigo-900">Health Insights</h3>
+                    <span class="bg-indigo-600 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded ml-1">AI</span>
+                </div>
+                <p class="text-xs text-indigo-800/80 font-medium relative z-10">Buddy is due for his annual DHPP booster next month. Regular grooming is recommended for his coat type.</p>
+            </div>
+
+            <div class="space-y-3">
+                <h3 class="text-xs font-black tracking-wide uppercase text-on-surface pl-1">Upcoming Appointments</h3>
+                <div class="bg-white rounded-2xl p-3 border border-surface-container-highest shadow-sm flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center text-primary">
+                            <span class="material-symbols-outlined text-xl">calendar_month</span>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-on-surface">Annual Checkup</p>
+                            <p class="text-[10px] font-semibold text-on-surface-variant">Dr. Sharma Clinic • 24 Oct, 4:00 PM</p>
+                        </div>
+                    </div>
+                    <button class="w-8 h-8 rounded-full bg-primary-container text-primary flex items-center justify-center">
+                        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-surface-container-low rounded-2xl p-4 border border-surface-container-highest space-y-4">
+                <h3 class="text-xs font-black tracking-wide uppercase text-on-surface">Pet Timeline</h3>
+                
+                <div class="space-y-3 relative before:absolute before:inset-0 before:ml-[9px] before:-translate-x-px before:h-full before:w-[2px] before:bg-surface-container-highest">
+                    
+                    <div class="relative flex items-center gap-3 group">
+                        <div class="w-5 h-5 rounded-full border-[3px] border-surface bg-primary shrink-0 z-10"></div>
+                        <div>
+                            <p class="text-xs font-bold text-on-surface">Medicine Ordered</p>
+                            <p class="text-[10px] text-on-surface-variant">Yesterday, Delivered</p>
+                        </div>
+                    </div>
+
+                    <div class="relative flex items-center gap-3 group">
+                        <div class="w-5 h-5 rounded-full border-[3px] border-surface bg-surface-container-highest shrink-0 z-10"></div>
+                        <div>
+                            <p class="text-xs font-bold text-on-surface">Video Consultation</p>
+                            <p class="text-[10px] text-on-surface-variant">15 Sept 2022</p>
+                        </div>
+                    </div>
+
+                    <div class="relative flex items-center gap-3 group">
+                        <div class="w-5 h-5 rounded-full border-[3px] border-surface bg-surface-container-highest shrink-0 z-10"></div>
+                        <div>
+                            <p class="text-xs font-bold text-on-surface">Passport Created</p>
+                            <p class="text-[10px] text-on-surface-variant">12 Oct 2022</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-surface-container-highest divide-y divide-surface-container-highest overflow-hidden mt-4">
+                <button class="w-full flex items-center justify-between p-4 hover:bg-surface-container-low transition-colors">
+                    <div class="flex items-center gap-3 text-on-surface">
+                        <span class="material-symbols-outlined text-lg">edit</span>
+                        <span class="text-sm font-bold">Edit Pet Profile</span>
+                    </div>
+                    <span class="material-symbols-outlined text-on-surface-variant text-base">chevron_right</span>
+                </button>
+                <button class="w-full flex items-center justify-between p-4 hover:bg-red-50 transition-colors">
+                    <div class="flex items-center gap-3 text-red-500">
+                        <span class="material-symbols-outlined text-lg">delete</span>
+                        <span class="text-sm font-bold">Delete Pet Account</span>
+                    </div>
+                </button>
+            </div>
+
+        </div>
+
+    </main>
+
+    <div class="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none opacity-40">
+        <div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px]"></div>
+    </div>
+
+    <div id="healthRecordModal" class="fixed inset-0 z-[100] hidden bg-on-surface/50 backdrop-blur-sm flex items-end sm:items-center justify-center transition-opacity p-0 sm:p-4">
+        <div class="bg-surface w-full max-w-md rounded-t-[28px] sm:rounded-[28px] p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto no-scrollbar modal-enter">
+            
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold text-on-surface">Add Health Record</h3>
+                <button type="button" onclick="closeHealthRecordModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container-high transition-colors active:scale-95">
+                    <span class="material-symbols-outlined text-on-surface-variant text-sm">close</span>
+                </button>
+            </div>
+
+            <form id="healthRecordForm" class="space-y-5" onsubmit="event.preventDefault(); saveHealthRecord();">
+                
+                <div class="space-y-1">
+                    <label class="text-sm font-bold text-on-surface">Record Type</label>
+                    <div class="relative">
+                        <select id="hrType" required class="w-full px-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-medium appearance-none outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                            <option value="" disabled selected>Select Record Type</option>
+                            <option value="Vaccination Certificate">Vaccination Certificate</option>
+                            <option value="Prescription">Prescription</option>
+                            <option value="Lab Report">Lab Report</option>
+                            <option value="Surgical Record">Surgical Record</option>
+                        </select>
+                        <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-lg">expand_more</span>
+                    </div>
+                    <p class="text-[11px] text-on-surface-variant mt-1">Choose the type of record</p>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-sm font-bold text-on-surface">Category</label>
+                    <div class="relative">
+                        <select id="hrCategory" required class="w-full px-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-medium appearance-none outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                            <option value="" disabled selected>Select Category</option>
+                            <option value="Routine Checkup">Routine Checkup</option>
+                            <option value="Illness">Illness</option>
+                            <option value="Emergency">Emergency</option>
+                            <option value="Preventative">Preventative</option>
+                        </select>
+                        <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-lg">expand_more</span>
+                    </div>
+                    <p class="text-[11px] text-on-surface-variant mt-1">Choose the category that best fits this record</p>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-sm font-bold text-on-surface">Issue Date</label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary text-lg pointer-events-none">calendar_month</span>
+                        <input type="date" id="hrDate" required class="w-full pl-11 pr-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-medium outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                    </div>
+                    <p class="text-[11px] text-on-surface-variant mt-1">Date on the document</p>
+                </div>
+
+                <div class="space-y-1 pt-1">
+                    <label class="text-sm font-bold text-on-surface">Upload Document</label>
+                    <div class="w-full py-6 border-2 border-dashed border-primary/30 rounded-xl bg-primary/5 flex flex-col items-center justify-center cursor-pointer hover:bg-primary/10 transition-colors">
+                        <span class="material-symbols-outlined text-primary text-2xl mb-1">cloud_upload</span>
+                        <span class="text-[13px] font-bold text-primary mb-1">Upload File</span>
+                        <span class="text-[11px] font-medium text-on-surface-variant">PDF, JPG, PNG (Max. 10MB)</span>
+                    </div>
+                </div>
+
+                <div class="pt-4 pb-2">
+                    <button type="submit" class="w-full py-4 bg-primary text-white rounded-[16px] font-bold text-[15px] shadow-[0_8px_20px_rgba(217,81,145,0.25)] active:scale-[0.98] transition-all">
+                        Save Record
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="cameraModal" class="fixed inset-0 z-[200] hidden bg-black overflow-hidden flex flex-col">
+        <div class="absolute top-0 w-full p-6 z-50 flex justify-between pointer-events-none">
+            <div class="flex gap-3 pointer-events-auto">
+                <button type="button" onclick="flipCamera()" class="w-10 h-10 bg-black/50 text-white rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 active:scale-95 transition-all">
+                    <span class="material-symbols-outlined text-xl">flip_camera_ios</span>
+                </button>
+                <button type="button" id="flashBtn" onclick="toggleFlash()" class="w-10 h-10 bg-black/50 text-white rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 active:scale-95 transition-all" style="display: none;">
+                    <span id="flashIcon" class="material-symbols-outlined text-xl">flashlight_off</span>
+                </button>
+            </div>
+            <button type="button" onclick="closeCameraModal()" class="w-10 h-10 bg-black/50 text-white rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 pointer-events-auto active:scale-95 transition-all">
+                <span class="material-symbols-outlined text-xl">close</span>
+            </button>
+        </div>
+
+        <video id="cameraStream" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
+
+        <div class="absolute inset-0 pointer-events-none z-10 flex items-center justify-center overflow-hidden">
+            <div class="w-64 h-64 rounded-full relative shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] flex items-center justify-center">
+                
+                <div class="absolute inset-0 border-4 border-dashed border-white/60 rounded-full"></div>
+                
+                <div id="scanProgressDiv" class="absolute inset-0 border-4 border-dashed border-primary rounded-full transition-all duration-300 ease-out" style="-webkit-mask-image: conic-gradient(#000 0%, transparent 0%); mask-image: conic-gradient(#000 0%, transparent 0%);"></div>
+
+                <div id="cameraInstructionText" class="absolute -bottom-14 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full text-white text-xs font-bold tracking-wide flex items-center gap-2 whitespace-nowrap transition-all">
+                    <span class="material-symbols-outlined text-[16px]">pets</span> Align pet's face here
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute bottom-0 w-full p-10 z-50 flex justify-center pointer-events-none">
+            <button type="button" onclick="capturePhoto()" class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/30 pointer-events-auto active:scale-95 transition-all group shadow-xl">
+                <div class="w-16 h-16 bg-white rounded-full shadow-lg flex items-center justify-center group-active:scale-90 transition-all">
+                    <span class="material-symbols-outlined text-primary text-2xl">photo_camera</span>
+                </div>
+            </button>
+        </div>
+        <canvas id="photoCanvas" class="hidden"></canvas>
+    </div>
+
+    <script>
+        let currentStep = 1;
+        let intervalTracker = null; 
+        
+        // Load the AI model in background for faster performance
+        let objectDetector = null;
+        window.addEventListener('load', async () => {
+            try {
+                objectDetector = await cocoSsd.load();
+                console.log("AI Model Loaded Successfully");
+            } catch(e) {
+                console.error("Failed to load AI model", e);
+            }
+        });
+
+        function nextStep(step) {
+            document.getElementById(`step${currentStep}`).classList.remove('active');
+            currentStep = step;
+            document.getElementById(`step${currentStep}`).classList.add('active');
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            updateUI();
+
+            if(step === 4) {
+                runStep4Engine();
+            }
+        }
+
+        function updateUI() {
+            const bar = document.getElementById('progressBar');
+            const text = document.getElementById('stepText');
+            const title = document.getElementById('headerTitle');
+            const progBlock = document.getElementById('progressBlock');
+            
+            const percentage = (Math.min(currentStep, 3) / 3) * 100;
+            if(bar) bar.style.width = percentage + '%';
+            
+            if(currentStep <= 3) {
+                text.innerText = `Step ${currentStep} of 3`;
+            }
+
+            if(currentStep === 2) {
+                title.innerText = "Medical Logs";
+                progBlock.style.display = 'block'; 
+            } else if(currentStep === 3) {
+                title.innerText = "Owner Info";
+                progBlock.style.display = 'block'; 
+            } else if(currentStep === 4) {
+                title.innerText = "Generating Pet Passport";
+                progBlock.style.display = 'none';
+            } else if (currentStep === 5) {
+                title.innerText = "Passport Dashboard";
+                progBlock.style.display = 'none';
+            } else if (currentStep === 6) {
+                title.innerText = "Pet Account";
+                progBlock.style.display = 'none';
+            } else {
+                title.innerText = "Basic Details";
+                progBlock.style.display = 'block';
+            }
+        }
+
+        document.getElementById('backBtn').addEventListener('click', () => {
+            if (currentStep > 1) {
+                if(currentStep === 4 && intervalTracker) {
+                    clearInterval(intervalTracker);
+                }
+                
+                document.getElementById(`step${currentStep}`).classList.remove('active');
+                currentStep--;
+                document.getElementById(`step${currentStep}`).classList.add('active');
+                updateUI();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                window.parent.postMessage('close_pet_passport_flow', '*');
+            }
+        });
+
+        const dropdownBtn = document.getElementById('dropdownBtn');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+        const arrowIcon = document.getElementById('arrowIcon');
+
+        if(dropdownBtn) {
+            dropdownBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = dropdownMenu.classList.toggle('open');
+                arrowIcon.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+            });
+        }
+
+        function selectSpecies(name, iconName) {
+            document.getElementById('selectedText').innerText = name;
+            document.getElementById('selectedIcon').innerText = iconName;
+            dropdownMenu.classList.remove('open');
+            arrowIcon.style.transform = 'rotate(0deg)';
+        }
+
+        window.onclick = (e) => {
+            if(dropdownMenu && !dropdownMenu.contains(e.target) && !dropdownBtn.contains(e.target)) {
+                dropdownMenu.classList.remove('open');
+                arrowIcon.style.transform = 'rotate(0deg)';
+            }
+            
+            const modal = document.getElementById('healthRecordModal');
+            if (e.target === modal) {
+                closeHealthRecordModal();
+            }
+        };
+
+        // --- UPGRADED ACTUAL AI CAMERA MODAL LOGIC ---
+        let videoStream = null;
+        let currentFacingMode = 'environment';
+        let isFlashOn = false;
+        let detectionInterval = null;
+        let scanProgress = 0;
+
+        function openCameraModal() {
+            const modal = document.getElementById('cameraModal');
+            modal.classList.remove('hidden');
+            startCamera();
+        }
+
+        async function startCamera() {
+            const video = document.getElementById('cameraStream');
+            
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error("MediaDevices API not available.");
+                }
+                videoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: currentFacingMode }, 
+                    audio: false 
+                });
+                video.srcObject = videoStream;
+                
+                const track = videoStream.getVideoTracks()[0];
+                const flashBtn = document.getElementById('flashBtn');
+                
+                if (track.getCapabilities && track.getCapabilities().torch) {
+                    flashBtn.style.display = 'flex';
+                } else {
+                    flashBtn.style.display = 'none';
+                }
+                
+                isFlashOn = false;
+                updateFlashIcon();
+                startActualDetection(); // Uses actual AI instead of mock
+
+            } catch (err) {
+                console.error("Camera access error:", err);
+                try {
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        throw new Error("No camera support");
+                    }
+                    // Fallback without facingMode
+                    videoStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: true, 
+                        audio: false 
+                    });
+                    video.srcObject = videoStream;
+                    startActualDetection();
+                } catch (fallbackErr) {
+                    console.error("Fallback camera error:", fallbackErr);
+                    const instrText = document.getElementById('cameraInstructionText');
+                    if (instrText) {
+                        instrText.innerHTML = '<span class="material-symbols-outlined text-[16px]">error</span> Camera Access Denied';
+                        instrText.classList.add('text-red-400');
+                    }
+                }
+            }
+        }
+
+        function flipCamera() {
+            currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+            startCamera();
+        }
+
+        async function toggleFlash() {
+            if (!videoStream) return;
+            const track = videoStream.getVideoTracks()[0];
+            
+            if (track.getCapabilities && track.getCapabilities().torch) {
+                isFlashOn = !isFlashOn;
+                try {
+                    await track.applyConstraints({
+                        advanced: [{ torch: isFlashOn }]
+                    });
+                    updateFlashIcon();
+                } catch(e) {
+                    console.error("Error toggling flash:", e);
+                }
+            }
+        }
+
+        function updateFlashIcon() {
+            const icon = document.getElementById('flashIcon');
+            if(icon) {
+                icon.innerText = isFlashOn ? 'flashlight_on' : 'flashlight_off';
+                icon.classList.toggle('text-yellow-400', isFlashOn);
+            }
+        }
+
+        async function startActualDetection() {
+            scanProgress = 0;
+            const scanDiv = document.getElementById('scanProgressDiv');
+            const instructionText = document.getElementById('cameraInstructionText');
+            const video = document.getElementById('cameraStream');
+            
+            if(instructionText) {
+                if (!objectDetector) {
+                    instructionText.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">hourglass_empty</span> Loading AI Model...';
+                } else {
+                    instructionText.innerHTML = '<span class="material-symbols-outlined text-[16px]">pets</span> Align pet/user face here';
+                }
+                instructionText.classList.remove('text-green-400');
+            }
+            
+            if(scanDiv) {
+                scanDiv.style.maskImage = `conic-gradient(#000 0%, transparent 0%)`;
+                scanDiv.style.webkitMaskImage = `conic-gradient(#000 0%, transparent 0%)`;
+            }
+            
+            clearInterval(detectionInterval);
+            
+            // Wait for model if not loaded yet
+            if (!objectDetector) {
+                try {
+                    objectDetector = await cocoSsd.load();
+                    if(instructionText) instructionText.innerHTML = '<span class="material-symbols-outlined text-[16px]">pets</span> Align pet/user face here';
+                } catch(e) {
+                    if(instructionText) instructionText.innerHTML = '<span class="material-symbols-outlined text-[16px]">error</span> AI Load Failed';
+                    return;
+                }
+            }
+
+            // Real AI Detection loop
+            detectionInterval = setInterval(async () => {
+                if (video.readyState >= 2 && scanProgress < 100) {
+                    try {
+                        const predictions = await objectDetector.detect(video);
+                        // Check if it's a dog, cat, or human person
+                        const foundTarget = predictions.some(p => ['person', 'dog', 'cat'].includes(p.class));
+                        
+                        if (foundTarget) {
+                            scanProgress += 50; // Progress incredibly fast! Just 2 frames (~1 sec)
+                        } else {
+                            scanProgress = Math.max(0, scanProgress - 20); // Goes down if no face detected
+                        }
+                        
+                        if (scanProgress >= 100) {
+                            scanProgress = 100;
+                            clearInterval(detectionInterval);
+                            if(instructionText) {
+                                instructionText.innerHTML = '<span class="material-symbols-outlined text-[16px]">check_circle</span> Perfect Match!';
+                                instructionText.classList.add('text-green-400');
+                            }
+                        }
+                        
+                        if(scanDiv) {
+                            scanDiv.style.maskImage = `conic-gradient(#000 ${scanProgress}%, transparent ${scanProgress}%)`;
+                            scanDiv.style.webkitMaskImage = `conic-gradient(#000 ${scanProgress}%, transparent ${scanProgress}%)`;
+                        }
+                    } catch(e) {
+                        console.error("Detection error:", e);
+                    }
+                }
+            }, 500); // Check every half a second
+        }
+
+        function closeCameraModal() {
+            const modal = document.getElementById('cameraModal');
+            modal.classList.add('hidden');
+            clearInterval(detectionInterval);
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => {
+                    // Turn off flash safely before closing
+                    if(track.getCapabilities && track.getCapabilities().torch && isFlashOn) {
+                        track.applyConstraints({ advanced: [{ torch: false }] });
+                    }
+                    track.stop();
+                });
+                videoStream = null;
+            }
+        }
+
+        function capturePhoto() {
+            const video = document.getElementById('cameraStream');
+            const canvas = document.getElementById('photoCanvas');
+            const context = canvas.getContext('2d');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const photoDataUrl = canvas.toDataURL('image/jpeg');
+            
+            const previewContainer = document.getElementById('petPhotoPreview');
+            previewContainer.innerHTML = `<img src="${photoDataUrl}" class="w-full h-full object-cover" />`;
+            
+            const p1 = document.getElementById('passportPetPhoto');
+            if(p1) p1.src = photoDataUrl;
+            const p2 = document.getElementById('dashboardPetPhoto');
+            if(p2) p2.src = photoDataUrl;
+            const p3 = document.getElementById('petAccountPhoto');
+            if(p3) p3.src = photoDataUrl;
+
+            closeCameraModal();
+        }
+
+        // ---------------------------------------------
+
+        function openHealthRecordModal() {
+            const modal = document.getElementById('healthRecordModal');
+            modal.classList.remove('hidden');
+        }
+
+        function closeHealthRecordModal() {
+            const modal = document.getElementById('healthRecordModal');
+            modal.classList.add('hidden');
+            document.getElementById('healthRecordForm').reset();
+        }
+
+        function saveHealthRecord() {
+            const type = document.getElementById('hrType').value;
+            const category = document.getElementById('hrCategory').value;
+            const date = document.getElementById('hrDate').value;
+            
+            if(!type || !category || !date) return;
+
+            const container = document.getElementById('healthRecordsContainer');
+            
+            let icon = 'description';
+            if(type.includes('Vaccination')) icon = 'workspace_premium';
+            else if(type.includes('Prescription')) icon = 'prescriptions';
+            else if(type.includes('Lab')) icon = 'biotech';
+
+            const dateObj = new Date(date);
+            const formattedDate = dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+
+            const card = document.createElement('div');
+            card.className = "p-3.5 bg-white border border-surface-container-highest rounded-2xl shadow-sm space-y-2 animate-[fadeInUp_0.3s_ease-out]";
+            card.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                            <span class="material-symbols-outlined text-[16px]">${icon}</span>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-on-surface">${type}</p>
+                            <p class="text-[10px] font-medium text-on-surface-variant">${category} • ${formattedDate}</p>
+                        </div>
+                    </div>
+                    <button type="button" class="w-7 h-7 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant hover:text-red-500 hover:bg-red-50 transition-colors" onclick="this.parentElement.parentElement.remove()">
+                        <span class="material-symbols-outlined text-[14px]">delete</span>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between bg-surface-container-low border border-surface-container-high px-3 py-2 rounded-xl">
+                    <div class="flex items-center gap-2 truncate">
+                        <span class="material-symbols-outlined text-on-surface-variant text-sm">attach_file</span>
+                        <span class="text-[11px] font-medium text-on-surface truncate">Uploaded_Document.pdf</span>
+                    </div>
+                    <div class="flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded-md border border-green-200 shrink-0">
+                        <span class="material-symbols-outlined text-green-600 text-[12px] font-bold">check</span>
+                        <span class="text-[9px] font-black text-green-700 uppercase tracking-wide">Analysed</span>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(card);
+            closeHealthRecordModal();
+        }
+
+        function runStep4Engine() {
+            document.getElementById('progressBlock').style.display = 'none';
+            
+            const totalDuration = 94000; 
+            const startTime = Date.now();
+            
+            const systemLogsArray = [
+                { timePerc: 0, text: "Extracting basic profile identity and photo data...", sec: "SHA-256 Init" },
+                { timePerc: 10, text: "Formatting species and breed validation schemas...", sec: "Enforcing Rule V1" },
+                { timePerc: 22, text: "Encoding medical ledger and core vaccinations...", sec: "Immutable Stack" },
+                { timePerc: 35, text: "Securing known allergy and health condition logs...", sec: "AES-256 Block" },
+                { timePerc: 48, text: "Encrypting primary owner contact linkages...", sec: "Dual Node Lock" },
+                { timePerc: 60, text: "Verifying emergency backup contact vectors...", sec: "Vector Check" },
+                { timePerc: 72, text: "Assigning RFID microchip data to secure vault...", sec: "Sign-Off Verify" },
+                { timePerc: 85, text: "Decentralizing digital pet passport validation structure...", sec: "Polishing System" },
+                { timePerc: 95, text: "Passport identity compilation highly successful!", sec: "Secured & Live" }
+            ];
+
+            const logBox = document.getElementById('logsConsole');
+            logBox.innerHTML = ''; 
+            
+            systemLogsArray.forEach((log, index) => {
+                const logDiv = document.createElement('div');
+                logDiv.id = `logItem_${index}`;
+                logDiv.className = "log-item-box flex items-center gap-2 text-on-surface-variant/30 font-medium";
+                logDiv.innerHTML = `
+                    <span class="material-symbols-outlined text-sm" id="logIcon_${index}">radio_button_unchecked</span>
+                    <span>${log.text}</span>
+                `;
+                logBox.appendChild(logDiv);
+            });
+
+            let logIndex = 0;
+
+            intervalTracker = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                let progressPercentage = Math.floor((elapsed / totalDuration) * 100);
+                
+                if (progressPercentage >= 100) {
+                    progressPercentage = 100;
+                    clearInterval(intervalTracker);
+                    executeSuccessCompletionState();
+                }
+
+                const percentTextEl = document.getElementById('percentText');
+                const cardMiniProgressEl = document.getElementById('cardMiniProgress');
+                if(!percentTextEl || !cardMiniProgressEl) return;
+
+                percentTextEl.innerText = `${progressPercentage}%`;
+                cardMiniProgressEl.style.width = `${progressPercentage}%`;
+
+                if(logIndex < systemLogsArray.length && progressPercentage >= systemLogsArray[logIndex].timePerc) {
+                    
+                    if(logIndex > 0) {
+                        const prevIdx = logIndex - 1;
+                        const prevItem = document.getElementById(`logItem_${prevIdx}`);
+                        const prevIcon = document.getElementById(`logIcon_${prevIdx}`);
+                        
+                        if(prevItem && prevIcon) {
+                            prevItem.className = "log-item-box flex items-center gap-2 text-green-500 font-bold transition-colors duration-300";
+                            prevIcon.innerText = "check_circle";
+                            prevIcon.classList.remove('animate-spin');
+                            
+                            setTimeout(() => {
+                                if(prevItem) prevItem.classList.add('completed-hide');
+                            }, 600);
+                        }
+                    }
+
+                    const currItem = document.getElementById(`logItem_${logIndex}`);
+                    const currIcon = document.getElementById(`logIcon_${logIndex}`);
+                    
+                    if(currItem && currIcon) {
+                        currItem.className = "log-item-box flex items-center gap-2 text-primary font-bold transition-colors duration-300";
+                        currIcon.innerText = "progress_activity";
+                        currIcon.classList.add('animate-spin');
+                    }
+
+                    document.getElementById('secLevelText').innerText = systemLogsArray[logIndex].sec;
+                    logIndex++;
+                }
+            }, 300);
+        }
+
+        function executeSuccessCompletionState() {
+            document.getElementById('statusHeader').innerText = "Your Pet Passport is Ready!";
+            document.getElementById('statusHeader').className = "text-2xl font-black tracking-tight text-green-600 animate-bounce";
+            document.getElementById('statusSubHeader').innerText = "Your pet's official digital identity is secured and active.";
+            
+            const logGreenDot = document.getElementById('logGreenDot');
+            if(logGreenDot) {
+                logGreenDot.innerHTML = '<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>';
+            }
+
+            const genBlock = document.getElementById('generationProcessBlock');
+            if(genBlock) {
+                genBlock.style.display = "none";
+            }
+
+            const today = new Date();
+            const formattedDate = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+            const dashboardCreatedOn = document.getElementById('dashboardCreatedOn');
+            if(dashboardCreatedOn) dashboardCreatedOn.innerText = formattedDate;
+
+            const passportContainer = document.getElementById('finalPassportContainer');
+            if(passportContainer) {
+                passportContainer.classList.remove('hidden');
+                setTimeout(() => {
+                    passportContainer.classList.remove('scale-95', 'opacity-0');
+                    passportContainer.classList.add('scale-100', 'opacity-100');
+                }, 50);
+            }
+        }
+    </script>
+
+</body>
+</html>

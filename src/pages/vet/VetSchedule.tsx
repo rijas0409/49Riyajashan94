@@ -311,7 +311,7 @@ const VetSchedule = () => {
 
   const handleHomeVisitClick = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    navigate("/vet/home-visit-details", { 
+    navigate("/buyer/vet/home-visit-details", { 
       state: { 
         visit: {
           id: "HV-123",
@@ -331,7 +331,7 @@ const VetSchedule = () => {
 
   const handleClinicVisitClick = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    navigate("/vet/clinic-visit-details", { 
+    navigate("/buyer/vet/clinic-visit-details", { 
       state: { 
         visit: {
           id: "CV-124",
@@ -448,7 +448,7 @@ const VetSchedule = () => {
           </div>
         ) : (
           filteredAppointments.map((apt) => (
-            <div 
+              <div 
               key={apt.id}
               onClick={() => {
                 let currentBookingId = apt.id;
@@ -460,7 +460,7 @@ const VetSchedule = () => {
                     if (notes) parsedPaymentDetails = notes;
                   } catch(e) {}
                 }
-                navigate(apt.type === 'home' ? "/vet/home-visit-details" : "/vet/clinic-visit-details", {
+                navigate(apt.type === 'home' ? "/buyer/vet/home-visit-details" : "/buyer/vet/clinic-visit-details", {
                   state: {
                     visit: {
                       id: apt.id,
@@ -480,57 +480,62 @@ const VetSchedule = () => {
                   }
                 });
               }}
-              className="bg-white rounded-[24px] p-5 shadow-[0_10px_30px_rgba(155,40,245,0.08)] relative overflow-hidden cursor-pointer active:scale-[0.98] transition-all"
+              className="bg-white rounded-[36px] p-6 shadow-[0_12px_35px_rgba(0,0,0,0.03)] relative overflow-hidden cursor-pointer active:scale-[0.98] transition-all border border-gray-50/50"
             >
               {isToday && activeTab === 'Active' && (
-                <div className="absolute top-0 right-0 bg-[#d4f7e5] text-[#199450] px-3 py-1.5 rounded-bl-[12px] text-[10px] font-[800] tracking-[0.5px] flex items-center gap-1">
-                  <Timer size={12} weight="bold" className="animate-pulse" /> LIVE NOW
+                <div className="absolute top-0 right-0 bg-[#d4f7e5] text-[#199450] px-4 py-2 rounded-bl-[20px] rounded-tr-[36px] text-[11px] font-[700] tracking-[0.5px] flex items-center gap-1.5 uppercase">
+                  <Timer size={14} weight="bold" className="animate-pulse" /> LIVE NOW
                 </div>
               )}
               {activeTab === 'Done' && (
-                <div className="absolute top-0 right-0 bg-[#eef4ff] text-[#4b83ff] px-3 py-1.5 rounded-bl-[12px] text-[10px] font-[800] tracking-[0.5px] flex items-center gap-1 uppercase">
-                  Processed
+                <div className="absolute top-0 right-0 bg-[#eef4ff] text-[#4b83ff] px-4 py-2 rounded-bl-[20px] rounded-tr-[36px] text-[11px] font-[700] tracking-[0.5px] flex items-center gap-1.5 uppercase">
+                  PROCESSED
                 </div>
               )}
-              <div className="flex gap-4 mb-5">
-                <div className="relative">
+              {activeTab === 'Cancelled' && (
+                <div className="absolute top-0 right-0 bg-red-50 text-red-600 px-4 py-2 rounded-bl-[20px] rounded-tr-[36px] text-[11px] font-[700] tracking-[0.5px] flex items-center gap-1.5 uppercase">
+                  CANCELLED
+                </div>
+              )}
+
+              <div className="flex gap-4 mt-3">
+                <div className="relative w-[80px] h-[80px] flex-shrink-0">
                   <img 
                     src={apt.image} 
                     alt={apt.petName} 
-                    className="w-[60px] h-[60px] rounded-[16px] object-cover"
+                    className="w-full h-full rounded-[22px] object-cover"
                   />
-                  <div className="absolute -bottom-1 -right-1 w-[22px] h-[22px] bg-gradient-to-br from-[#ae41ff] to-[#8a14f5] border-2 border-white rounded-full flex items-center justify-center text-white">
-                    {apt.type === 'home' ? <House size={11} weight="bold" /> : <Buildings size={11} weight="bold" />}
+                  <div className="absolute -bottom-1 -right-1 w-[22px] h-[22px] bg-[#a428f0] border-[3px] border-white rounded-full flex items-center justify-center text-white">
+                    {apt.type === 'home' ? <House size={11} weight="fill" /> : <Buildings size={11} weight="fill" />}
                   </div>
                 </div>
-                <div className="pt-1">
-                  <h3 className="text-[18px] font-[800] text-[#1f1f2e] mb-0.5">{apt.petName}</h3>
-                  <div className="text-[11px] text-[#8d8d9c] font-[700] uppercase tracking-[0.5px] mb-1.5 flex items-center gap-1.5">
-                    {apt.breed}
-                    {apt.consultation_notes && (() => {
-                       try {
-                         const notes = JSON.parse(apt.consultation_notes);
-                         if (notes.bookingId) return (
-                           <>
-                             <span className="w-1 h-1 rounded-full bg-[#8d8d9c]" />
-                             <span className="font-mono text-[#ae41ff]">{notes.bookingId}</span>
-                           </>
-                         );
-                       } catch(e){}
-                       return null;
-                    })()}
+                <div className="flex flex-col justify-center">
+                  <h2 className="text-[24px] font-[700] text-[#1c1c24] leading-none mb-1">{apt.petName}</h2>
+                  <p className="text-[12px] text-[#92909e] font-[600] uppercase tracking-[0.5px] mb-2">{apt.breed}</p>
+                  
+                  <div className="text-[15px] text-[#4a4955] font-[500] flex items-center gap-2 mb-1">
+                    <User size={13} weight="fill" className="text-[#b0afb8]" /> {apt.ownerName}
                   </div>
-                  <div className="text-[13px] text-[#8d8d9c] font-[600] flex items-center gap-1.5">
-                    <User size={14} weight="bold" /> {apt.ownerName}
-                  </div>
+                  
+                  {apt.consultation_notes && (() => {
+                     try {
+                       const notes = JSON.parse(apt.consultation_notes);
+                       if (notes.bookingId) return (
+                         <div className="text-[12px] text-[#92909e] font-[500] flex items-center gap-1.5">
+                           <span className="text-[#d1d0d6] font-bold">#</span> ID: {notes.bookingId}
+                         </div>
+                       );
+                     } catch(e){}
+                     return null;
+                  })()}
                 </div>
               </div>
               
               {apt.status === "pending" && (
-                <div className="mb-5 bg-orange-50 border border-orange-100 rounded-2xl p-4">
-                  <p className="text-[11px] font-black text-orange-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                    New Request - Awaiting your response
+                <div className="mt-6 bg-[#fff6ed] border border-[#ffe0cc] rounded-[24px] p-4">
+                  <p className="text-[11px] font-[800] text-[#ea580c] uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#ea580c] animate-pulse" />
+                    New Request Pending
                   </p>
                   <div className="flex gap-3">
                     <button 
@@ -538,53 +543,55 @@ const VetSchedule = () => {
                         e.stopPropagation();
                         updateAppointmentStatus(apt.id, "cancelled");
                       }}
-                      className="flex-1 h-12 bg-white border border-gray-200 rounded-xl text-[13px] font-black text-[#8d8d9c] flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                      className="flex-1 py-3 bg-white border-2 border-gray-100 rounded-[20px] text-[14px] font-[700] text-[#92909e] shadow-sm active:scale-95 transition-all"
                     >
-                      <X size={15} weight="bold" /> Decline
+                      Decline
                     </button>
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
                         updateAppointmentStatus(apt.id, "confirmed");
                       }}
-                      className="flex-1 h-12 bg-[#12B76A] rounded-xl text-[13px] font-black text-white flex items-center justify-center gap-1.5 shadow-lg shadow-[#12B76A]/20 active:scale-95 transition-all"
+                      className="flex-1 py-3 bg-[#12B76A] rounded-[20px] text-[14px] font-[700] text-white shadow-[0_8px_20px_rgba(18,183,106,0.25)] active:scale-95 transition-all"
                     >
-                      <Check size={15} weight="bold" /> Accept
+                      Accept
                     </button>
                   </div>
                 </div>
               )}
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 bg-[#f7f7fa] px-4 py-2.5 rounded-[20px] text-[13px] font-[800] text-[#1f1f2e]">
-                  <Clock size={16} className="text-[#9b28f5]" weight="bold" /> {apt.time}
-                </div>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(apt.type === 'home' ? "/vet/home-visit-details" : "/vet/clinic-visit-details", {
-                      state: {
-                        visit: {
-                          id: apt.id,
-                          petName: apt.petName,
-                          petBreed: apt.breed,
-                          petAge: "4 Years",
-                          ownerName: apt.ownerName,
-                          ownerPhone: apt.ownerPhone,
-                          address: apt.type === 'home' ? "123 Premium Residency, Indiranagar" : "HSR Paws Clinic, Sector 2",
-                          time: "Today, " + apt.time,
-                          reason: "General Consultation & Checkup",
-                          image: apt.image,
-                          distance: apt.type === 'home' ? "1.2 MILES AWAY" : ""
+              {apt.status !== "pending" && (
+                <div className="flex justify-between items-center mt-6 gap-3">
+                  <div className="bg-[#f7f6f9] px-5 py-3.5 rounded-[30px] text-[16px] font-[700] text-[#1e1e24] flex items-center gap-2.5 w-fit">
+                    <Clock size={18} className="text-[#a428f0]" weight="fill" /> {apt.time}
+                  </div>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(apt.type === 'home' ? "/buyer/vet/home-visit-details" : "/buyer/vet/clinic-visit-details", {
+                        state: {
+                          visit: {
+                            id: apt.id,
+                            petName: apt.petName,
+                            petBreed: apt.breed,
+                            petAge: "4 Years",
+                            ownerName: apt.ownerName,
+                            ownerPhone: apt.ownerPhone,
+                            address: apt.type === 'home' ? "123 Premium Residency, Indiranagar" : "HSR Paws Clinic, Sector 2",
+                            time: "Today, " + apt.time,
+                            reason: "General Consultation & Checkup",
+                            image: apt.image,
+                            distance: apt.type === 'home' ? "1.2 MILES AWAY" : ""
+                          }
                         }
-                      }
-                    });
-                  }}
-                  className="bg-gradient-to-br from-[#ae41ff] to-[#8a14f5] text-white px-6 py-2.5 rounded-[20px] text-[13px] font-[800] shadow-[0_12px_24px_rgba(155,40,245,0.3)] active:scale-95 transition-all"
-                >
-                  {apt.type === 'home' ? 'View Route' : 'View Details'}
-                </button>
-              </div>
+                      });
+                    }}
+                    className="flex-1 bg-[#a428f0] text-white py-3.5 px-5 text-center rounded-[30px] text-[15px] font-[600] shadow-[0_8px_25px_rgba(164,40,240,0.3)] active:scale-95 transition-all"
+                  >
+                    {apt.type === 'home' ? 'View Route' : 'View Details'}
+                  </button>
+                </div>
+              )}
             </div>
           ))
         )}

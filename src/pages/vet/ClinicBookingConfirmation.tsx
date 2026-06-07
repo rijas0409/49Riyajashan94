@@ -37,7 +37,7 @@ const ClinicBookingConfirmation = () => {
         setCurrentStep(2);
         toast.success("Consultation Scheduled Successfully!");
         setTimeout(() => {
-          navigate(visitType === "home" ? "/vet/home-visit-details" : "/vet/clinic-visit-details", { 
+          navigate(visitType === "home" ? "/buyer/vet/home-visit-details" : "/buyer/vet/clinic-visit-details", { 
             state: location.state
           });
         }, 1500);
@@ -63,7 +63,7 @@ const ClinicBookingConfirmation = () => {
             toast.success("Appointment request accepted!");
             setCurrentStep(2);
             setTimeout(() => {
-               navigate(visitType === "home" ? "/vet/home-visit-details" : "/vet/clinic-visit-details", { 
+               navigate(visitType === "home" ? "/buyer/vet/home-visit-details" : "/buyer/vet/clinic-visit-details", { 
                  state: location.state
                });
             }, 1200);

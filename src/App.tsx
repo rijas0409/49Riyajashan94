@@ -39,6 +39,7 @@ import ProductsOnboarding from "./pages/ProductsOnboarding";
 import ProductsPendingApproval from "./pages/ProductsPendingApproval";
 import ProfileMenu from "./pages/ProfileMenu";
 import ProfileSettings from "./pages/ProfileSettings";
+import EmptyPetPassport from "./pages/EmptyPetPassport";
 import SellerDashboard from "./pages/SellerDashboard";
 import SellerOnboarding from "./pages/SellerOnboarding";
 import SellerPendingApproval from "./pages/SellerPendingApproval";
@@ -173,6 +174,7 @@ const App = () => (
                 <Route path="/buyer/profile" element={<ProfileMenu />} />
                 <Route path="/buyer/profile-menu" element={<ProfileMenu />} />
                 <Route path="/buyer/profile-settings" element={<ProfileSettings />} />
+                <Route path="/buyer/pet-passport" element={<EmptyPetPassport />} />
                 <Route path="/seller-dashboard" element={<SellerDashboard />} />
                 <Route path="/seller-onboarding" element={<SellerOnboarding />} />
                 <Route path="/seller-pending-approval" element={<SellerPendingApproval />} />
@@ -190,9 +192,9 @@ const App = () => (
                 <Route path="/vet/profile" element={<VetProfile />} />
                 <Route path="/vet/virtual-consults" element={<VirtualConsults />} />
                 <Route path="/vet/consultation-detail" element={<ConsultationDetail />} />
-                <Route path="/vet/home-visit-details" element={<HomeVisitDetails />} />
-                <Route path="/vet/clinic-visit-details" element={<ClinicVisitDetails />} />
-                <Route path="/vet/clinic-visit-details/:appointmentId" element={<ClinicVisitDetails />} />
+                <Route path="/buyer/vet/home-visit-details" element={<HomeVisitDetails />} />
+                <Route path="/buyer/vet/clinic-visit-details" element={<ClinicVisitDetails />} />
+                <Route path="/buyer/vet/clinic-visit-details/:appointmentId" element={<ClinicVisitDetails />} />
                 <Route path="/vet/appointment-confirmation/:appointmentId" element={<AppointmentConfirmation />} />
                  <Route path="/vet-earnings" element={<Navigate to="/vet/earnings" replace />} />
                 <Route path="/vet-schedule" element={<Navigate to="/vet/schedule" replace />} />
