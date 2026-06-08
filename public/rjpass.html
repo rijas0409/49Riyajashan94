@@ -109,6 +109,24 @@
             color: transparent !important;
             user-select: none;
         }
+
+        /* Custom styled Date Input matching form theme */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            filter: invert(41%) sepia(50%) saturate(1634%) hue-rotate(301deg) brightness(89%) contrast(92%);
+            padding: 4px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 0.8;
+            background-color: #fbe7f0;
+        }
+
+        /* Remove double dropdown arrows from selects that have appearance-none classes */
+        select.appearance-none {
+            background-image: none !important;
+        }
     </style>
     <script>
         document.fonts.ready.then(function() {
@@ -161,7 +179,7 @@
             <form class="space-y-5" onsubmit="event.preventDefault(); nextStep(2);">
                 <div class="space-y-1.5">
                     <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Pet's Name</label>
-                    <input type="text" placeholder="e.g. Buddy" class="w-full px-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none">
+                    <input type="text" id="petName" placeholder="e.g. Gabru" class="w-full px-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-on-surface font-semibold text-sm">
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -170,42 +188,113 @@
                         <button type="button" id="dropdownBtn" class="w-full px-4 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl outline-none flex items-center justify-between text-on-surface text-sm font-medium">
                             <div class="flex items-center gap-2">
                                 <span id="selectedIcon" class="material-symbols-outlined text-primary text-lg">sound_detection_dog_barking</span>
-                                <span id="selectedText">Dogs</span>
+                                <span id="selectedText">Dog</span>
                             </div>
                             <span class="material-symbols-outlined text-on-surface-variant text-lg" id="arrowIcon">expand_more</span>
                         </button>
                         <div id="dropdownMenu" class="dropdown-menu absolute left-0 top-[102%] w-full bg-white border border-surface-container-highest rounded-2xl shadow-xl z-50 py-1.5 overflow-hidden">
-                            <button type="button" onclick="selectSpecies('Dogs', 'sound_detection_dog_barking')" class="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-primary-container/40 text-on-surface text-sm font-medium">
-                                <span class="material-symbols-outlined text-primary text-xl">sound_detection_dog_barking</span> Dogs
+                            <button type="button" onclick="selectSpecies('Dog', 'sound_detection_dog_barking')" class="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-primary-container/40 text-on-surface text-sm font-medium">
+                                <span class="material-symbols-outlined text-primary text-xl">sound_detection_dog_barking</span> Dog
                             </button>
-                            <button type="button" onclick="selectSpecies('Cats', 'pets')" class="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-primary-container/40 text-on-surface text-sm font-medium">
-                                <span class="material-symbols-outlined text-primary text-xl">pets</span> Cats
+                            <button type="button" onclick="selectSpecies('Cat', 'pets')" class="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-primary-container/40 text-on-surface text-sm font-medium">
+                                <span class="material-symbols-outlined text-primary text-xl">pets</span> Cat
+                            </button>
+                            <button type="button" onclick="selectSpecies('Bird', 'flutter_dash')" class="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-primary-container/40 text-on-surface text-sm font-medium">
+                                <span class="material-symbols-outlined text-primary text-xl">flutter_dash</span> Bird
+                            </button>
+                            <button type="button" onclick="selectSpecies('Hamster', 'cruelty_free')" class="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-primary-container/40 text-on-surface text-sm font-medium">
+                                <span class="material-symbols-outlined text-primary text-xl">cruelty_free</span> Hamster
                             </button>
                         </div>
                     </div>
                     <div class="space-y-1.5">
                         <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Gender</label>
+                        <input type="hidden" id="petGender" value="Male">
                         <div class="flex p-1 bg-surface-container-high rounded-2xl h-[50px] items-center">
-                            <button type="button" class="flex-1 h-full bg-white shadow-sm rounded-xl text-primary font-bold text-xs">Male</button>
-                            <button type="button" class="flex-1 h-full text-on-surface-variant font-medium text-xs">Female</button>
+                            <button type="button" id="genderBtnMale" onclick="setGender('Male')" class="flex-1 h-full bg-white shadow-sm rounded-xl text-primary font-bold text-xs transition-all">Male</button>
+                            <button type="button" id="genderBtnFemale" onclick="setGender('Female')" class="flex-1 h-full text-on-surface-variant font-medium text-xs hover:bg-white/30 rounded-xl transition-all">Female</button>
                         </div>
                     </div>
                 </div>
 
-                <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Breed (Optional)</label>
-                    <input type="text" placeholder="e.g. Golden Retriever" class="w-full px-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none">
+                <div class="space-y-1.5 relative" id="breedContainer">
+                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Breed</label>
+                    <input type="text" id="petBreed" placeholder="e.g. Golden Retriever" autocomplete="off" onfocus="showBreedDropdown()" oninput="filterBreeds()" class="w-full px-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-on-surface font-semibold text-sm">
+                    <div id="breedDropdownMenu" class="hidden absolute left-0 top-[102%] w-full bg-white border border-surface-container-highest rounded-2xl shadow-xl z-50 py-1.5 max-h-[220px] overflow-y-auto">
+                        <!-- Dynamically filled buttons -->
+                    </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-1.5">
-                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Date of Birth</label>
-                        <input type="date" class="w-full px-4 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl text-on-surface-variant text-sm outline-none">
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Appearance</label>
+                    <input type="text" id="petAppearance" placeholder="Golden coat with white chest patch" class="w-full px-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-on-surface font-semibold text-sm">
+                </div>
+
+                <div class="grid grid-cols-10 gap-4">
+                    <div class="col-span-6 space-y-1.5 relative border-none" id="dobContainer">
+                        <div class="flex items-center justify-between ml-1 leading-none min-h-[22px]">
+                            <label class="text-xs font-bold text-on-surface tracking-wide uppercase">Age</label>
+                            <div class="flex rounded-lg bg-surface-container-high p-0.5 border border-surface-container-highest">
+                                <button type="button" id="ageTypeExact" onclick="setAgeType('exact')" class="px-2 py-0.5 text-[9px] font-black rounded-md bg-white shadow-xs text-primary transition-all uppercase tracking-wider">Exact</button>
+                                <button type="button" id="ageTypeApprox" onclick="setAgeType('approx')" class="px-2 py-0.5 text-[9px] font-black rounded-md text-on-surface-variant transition-all hover:bg-white/10 uppercase tracking-wider">Approx</button>
+                            </div>
+                        </div>
+                        <input type="hidden" id="petAgeType" value="exact">
+                        <input type="hidden" id="petDOB" value="">
+                        
+                        <!-- Exact Age View -->
+                        <div id="exactAgeWrapper" class="relative flex items-center">
+                            <button type="button" onclick="toggleDobCalendar()" id="dobBtn" class="w-full pl-11 pr-7 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-on-surface-variant text-sm font-medium flex items-center justify-between text-left h-[50px]">
+                                <span id="dobDisplayValue" class="truncate">Select Date of Birth</span>
+                                <span class="material-symbols-outlined text-on-surface-variant text-base cursor-pointer">expand_more</span>
+                            </button>
+                            <span class="material-symbols-outlined absolute left-4 text-primary text-lg pointer-events-none">calendar_today</span>
+                        </div>
+
+                        <!-- Approximate Age View -->
+                        <div id="approxAgeWrapper" class="hidden flex items-center gap-1.5 h-[50px]">
+                            <div class="relative flex-1 flex items-center">
+                                <input type="number" id="approxYears" placeholder="4" min="0" max="30" oninput="updateApproxDOB()" class="w-full pl-3 pr-8 py-3 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-on-surface font-semibold text-sm h-[50px]">
+                                <span class="absolute right-3 text-[11px] font-bold text-on-surface-variant pointer-events-none">Yrs</span>
+                            </div>
+                            <div class="relative flex-1 flex items-center">
+                                <input type="number" id="approxMonths" placeholder="9" min="0" max="12" oninput="if(parseInt(this.value, 10) > 12) this.value = 12; updateApproxDOB()" class="w-full pl-3 pr-8 py-3 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-on-surface font-semibold text-sm h-[50px]">
+                                <span class="absolute right-3 text-[11px] font-bold text-on-surface-variant pointer-events-none">Mos</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Custom Dob Calendar Dropdown -->
+                        <div id="dobCalendarDropdown" class="hidden absolute left-0 sm:left-auto sm:right-0 top-[102%] w-[280px] bg-white border border-surface-container-highest rounded-2xl shadow-xl z-50 p-4 font-sans animate-[fadeIn_0.15s_ease-out]">
+                            <div class="flex items-center justify-between mb-3 gap-1">
+                                <button type="button" onclick="prevMonth()" class="p-1 rounded-lg hover:bg-surface-container text-on-surface-variant transition-colors flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-lg font-bold">keyboard_arrow_left</span>
+                                </button>
+                                
+                                <div class="flex items-center gap-1 flex-1 justify-center">
+                                    <select id="calMonthSelect" onchange="changeCalMonth(this.value)" class="text-[11px] font-bold bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-lg px-1.5 py-1 outline-none border-none cursor-pointer duration-100">
+                                    </select>
+                                    
+                                    <select id="calYearSelect" onchange="changeCalYear(this.value)" class="text-[11px] font-bold bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-lg px-1.5 py-1 outline-none border-none cursor-pointer duration-100">
+                                    </select>
+                                </div>
+                                
+                                <button type="button" id="calNextBtn" onclick="nextMonth()" class="p-1 rounded-lg hover:bg-surface-container text-on-surface-variant transition-colors flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-lg font-bold">keyboard_arrow_right</span>
+                                </button>
+                            </div>
+                            
+                            <div class="grid grid-cols-7 gap-1 text-center text-[9px] font-black text-on-surface-variant/70 mb-1.5 uppercase tracking-wider font-mono">
+                                <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+                            </div>
+                            
+                            <div id="calDaysGrid" class="grid grid-cols-7 gap-1">
+                            </div>
+                        </div>
                     </div>
-                    <div class="space-y-1.5">
+                    <div class="col-span-4 space-y-1.5">
                         <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Weight</label>
                         <div class="relative flex items-center">
-                            <input type="number" step="0.1" placeholder="9.4" class="w-full pl-5 pr-12 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none">
+                            <input type="number" id="petWeight" step="0.1" placeholder="9.4" class="w-full pl-5 pr-12 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-on-surface font-semibold text-sm">
                             <span class="absolute right-4 text-xs font-bold text-on-surface-variant">kg</span>
                         </div>
                     </div>
@@ -255,7 +344,7 @@
                 </div>
 
                 <div class="space-y-2 mt-4">
-                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Existing Health Conditions (Optional)</label>
+                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Existing Health Conditions</label>
                     <div class="flex flex-wrap gap-2 p-1">
                         <label class="cursor-pointer">
                             <input type="checkbox" class="sr-only peer" name="conditions" value="skin">
@@ -289,7 +378,7 @@
                 </div>
 
                 <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Current Medications (Optional)</label>
+                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Current Medications <span class="text-[10px] font-semibold text-on-surface-variant/70 lowercase tracking-normal font-sans">(optional)</span></label>
                     <div class="relative flex items-center">
                         <span class="material-symbols-outlined absolute left-4 text-on-surface-variant text-lg">pill</span>
                         <input type="text" placeholder="Enter medication names" class="w-full pl-11 pr-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl outline-none text-sm font-medium focus:ring-2 focus:ring-primary/10">
@@ -302,36 +391,36 @@
                 </div>
 
                 <div class="space-y-2 mt-4">
-                    <div class="flex items-center gap-2 ml-1">
-                        <label class="text-[13px] font-bold text-on-surface tracking-wide uppercase">HEALTH DOCUMENTS <span class="text-on-surface-variant normal-case text-xs font-normal">(Optional)</span></label>
+                    <div class="flex items-center justify-between ml-1">
+                        <label class="text-[13px] font-bold text-on-surface tracking-wide uppercase">HEALTH DOCUMENTS</label>
+                        <button id="addRecordBtnSmall" type="button" onclick="openHealthRecordModal()" class="hidden py-1.5 px-3 border border-primary/30 rounded-full flex items-center gap-1 bg-primary/5 hover:bg-primary/10 transition-all text-xs font-bold text-primary animate-[fadeIn_0.2s_ease-out]">
+                            <span class="material-symbols-outlined text-primary text-sm font-bold">add</span>
+                            <span>Add</span>
+                        </button>
                     </div>
                     <p class="text-[12px] text-on-surface-variant ml-1 mb-3">Upload health certificates, reports or prescriptions.</p>
 
                     <div id="healthRecordsContainer" class="space-y-3 mb-3"></div>
 
-                    <button type="button" onclick="openHealthRecordModal()" class="w-full py-6 border-2 border-dashed border-primary/40 rounded-2xl flex flex-col items-center justify-center gap-1.5 bg-primary/5 hover:bg-primary/10 transition-colors">
+                    <button id="addRecordBtnBig" type="button" onclick="openHealthRecordModal()" class="w-full py-6 border-2 border-dashed border-primary/40 rounded-2xl flex flex-col items-center justify-center gap-1.5 bg-primary/5 hover:bg-primary/10 transition-colors">
                         <span class="material-symbols-outlined text-primary text-4xl mb-1">add</span>
                         <span class="text-[15px] font-bold text-primary">Add Health Record</span>
                     </button>
-                    <p class="text-[11px] text-center text-on-surface-variant mt-2">You can add multiple health records.</p>
+                    <p id="addRecordBtnBigDesc" class="text-[11px] text-center text-on-surface-variant mt-2">You can add multiple health records.</p>
                 </div>
 
                 <div class="pt-6">
                     <button type="submit" class="w-full py-4 bg-gradient-to-r from-primary to-[#e56ba4] text-white rounded-[20px] font-bold text-lg shadow-[0_10px_25px_rgba(217,81,145,0.3)] active:scale-[0.98] transition-all">
                         Save and Continue
                     </button>
-                    <div class="flex items-center justify-center gap-1.5 mt-4">
-                        <span class="material-symbols-outlined text-primary text-[15px]">lock</span>
-                        <p class="text-[11px] text-on-surface-variant font-medium">Your pet's data is 100% secure and private.</p>
-                    </div>
                 </div>
             </form>
         </div>
 
         <div id="step3" class="step-container space-y-6">
             <div class="space-y-1">
-                <h1 class="text-2xl font-extrabold tracking-tight">Security & Owner</h1>
-                <p class="text-on-surface-variant text-sm">Setup ownership contacts and microchip verification details for emergency backup.</p>
+                <h1 class="text-2xl font-extrabold tracking-tight">Owner & Emergency</h1>
+                <p class="text-on-surface-variant text-sm">Setup ownership contacts, emergency relations, and microchip verification details.</p>
             </div>
 
             <form class="space-y-5" onsubmit="event.preventDefault(); nextStep(4);">
@@ -340,7 +429,7 @@
                     <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Owner's Full Name</label>
                     <div class="relative flex items-center">
                         <span class="material-symbols-outlined absolute left-4 text-on-surface-variant text-lg">person</span>
-                        <input type="text" placeholder="e.g. Jashanpreet Singh" class="w-full pl-11 pr-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm font-medium">
+                        <input type="text" id="ownerName" placeholder="e.g. Rijas Pabla" class="w-full pl-11 pr-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm font-medium">
                     </div>
                 </div>
 
@@ -354,7 +443,7 @@
 
                 <div class="space-y-1.5">
                     <div class="flex justify-between items-center ml-1">
-                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase">Microchip Number (Optional)</label>
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase">Microchip Number <span class="text-[10px] font-semibold text-on-surface-variant/70 lowercase tracking-normal font-sans">(optional)</span></label>
                         <span class="text-[10px] font-bold text-primary bg-primary-container px-2 py-0.5 rounded-full uppercase tracking-wider">RFID Tag</span>
                     </div>
                     <div class="relative flex items-center">
@@ -363,19 +452,42 @@
                     </div>
                 </div>
 
-                <div class="pt-2 border-t border-surface-container-high">
+                 <div class="pt-2 border-t border-surface-container-high">
                     <p class="text-xs font-black text-primary tracking-wider uppercase mb-3 flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-base">emergency_share</span> Emergency Backup Contact
                     </p>
                     
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-1.5">
-                            <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Contact Name</label>
-                            <input type="text" placeholder="e.g. Doctor / Friend" class="w-full px-4 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm">
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-1.5">
+                                <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Contact Name</label>
+                                <input type="text" id="emergencyContactName" placeholder="e.g. Doctor / Friend" class="w-full px-4 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm font-medium">
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Emergency Phone</label>
+                                <input type="tel" id="emergencyPhone" placeholder="Backup number" class="w-full px-4 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm font-medium">
+                            </div>
                         </div>
-                        <div class="space-y-1.5">
-                            <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Emergency Phone</label>
-                            <input type="tel" placeholder="Backup number" class="w-full px-4 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm">
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="space-y-1.5">
+                                <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Relationship</label>
+                                <div class="relative">
+                                    <select id="emergencyRelation" onchange="toggleCustomRelation()" class="w-full px-4 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm font-medium pr-10 appearance-none text-on-surface">
+                                        <option value="Family Member">Family Member</option>
+                                        <option value="Friend">Friend</option>
+                                        <option value="Veterinarian">Veterinarian</option>
+                                        <option value="Co-owner">Co-owner</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                    <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-lg">expand_more</span>
+                                </div>
+                            </div>
+
+                            <div class="space-y-1.5 hidden" id="customRelationWrapper">
+                                <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Specify Relationship</label>
+                                <input type="text" id="customRelation" placeholder="e.g. Neighbor" class="w-full px-4 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm font-medium">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -385,6 +497,10 @@
                         Complete Identity Setup
                         <span class="material-symbols-outlined text-xl group-hover:translate-x-0.5 transition-transform">verified_user</span>
                     </button>
+                    <div class="flex items-center justify-center gap-1.5 mt-4">
+                        <span class="material-symbols-outlined text-primary text-[15px]">lock</span>
+                        <p class="text-[11px] text-on-surface-variant font-medium">Your pet's data is 100% secure and private.</p>
+                    </div>
                 </div>
             </form>
         </div>
@@ -492,34 +608,38 @@
                                     <img id="passportPetPhoto" src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80" alt="Pet Photo" class="w-full h-full object-cover">
                                 </div>
                                 <div class="space-y-1">
-                                    <h2 class="text-2xl font-black text-on-surface leading-none tracking-tight">Buddy</h2>
-                                    <p class="text-[11px] font-bold text-primary uppercase tracking-wider">Golden Retriever</p>
+                                    <h2 id="passPetName" class="text-2xl font-black text-on-surface leading-none tracking-tight">Buddy</h2>
+                                    <p id="passPetBreed" class="text-[11px] font-bold text-primary uppercase tracking-wider">Golden Retriever</p>
                                     <p class="text-[11px] font-semibold text-on-surface-variant flex items-center gap-1.5 mt-1 bg-surface-container-low w-fit px-2 py-0.5 rounded-md border border-surface-container-highest">
-                                        <span class="material-symbols-outlined text-[14px] text-primary">male</span> Male • 9.4 kg
+                                        <span id="passGenderIcon" class="material-symbols-outlined text-[14px] text-primary">male</span> <span id="passGenderText">Male</span> • <span id="passWeightText">9.4 kg</span>
                                     </p>
                                 </div>
                             </div>
 
-                            <div class="border-t border-dashed border-surface-container-highest"></div>
-
-                            <div class="grid grid-cols-2 gap-y-4 gap-x-3 relative z-10">
-                                <div class="space-y-0.5">
-                                    <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Passport ID</p>
-                                    <p class="text-sm font-black text-on-surface font-mono bg-surface-container-low px-2 py-1 rounded-md border border-surface-container-highest w-fit">SRV-882-991</p>
+                            <div class="border-t border-dashed border-surface-container-highest"></div>                            <div class="space-y-3.5 relative z-10">
+                                <div class="grid grid-cols-2 gap-y-3 gap-x-3">
+                                    <div class="space-y-0.5">
+                                        <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Passport ID</p>
+                                        <p class="text-sm font-black text-on-surface font-mono bg-surface-container-low px-2 py-1 rounded-md border border-surface-container-highest w-fit">SRV-882-991</p>
+                                    </div>
+                                    <div class="space-y-0.5">
+                                        <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Date of Birth</p>
+                                        <p id="passDOB" class="text-sm font-bold text-on-surface px-1">12 Oct 2022</p>
+                                    </div>
+                                    <div class="space-y-0.5">
+                                        <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Owner</p>
+                                        <p id="passOwner" class="text-sm font-bold text-on-surface px-1 truncate">Rijas Pabla</p>
+                                    </div>
+                                    <div class="space-y-0.5">
+                                        <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Valid Till</p>
+                                        <p class="text-sm font-bold text-primary flex items-center gap-1 px-1">
+                                            <span class="material-symbols-outlined text-[14px]">all_inclusive</span> Lifetime
+                                        </p>
+                                    </div>
                                 </div>
-                                <div class="space-y-0.5">
-                                    <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Date of Birth</p>
-                                    <p class="text-sm font-bold text-on-surface px-1">12 Oct 2022</p>
-                                </div>
-                                <div class="space-y-0.5">
-                                    <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Owner</p>
-                                    <p class="text-sm font-bold text-on-surface px-1 truncate">Jashanpreet Singh</p>
-                                </div>
-                                <div class="space-y-0.5">
-                                    <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Valid Till</p>
-                                    <p class="text-sm font-bold text-primary flex items-center gap-1 px-1">
-                                        <span class="material-symbols-outlined text-[14px]">all_inclusive</span> Lifetime
-                                    </p>
+                                <div class="space-y-0.5 border-t border-dashed border-surface-container-highest pt-2.5">
+                                    <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Appearance</p>
+                                    <p id="passAppearance" class="text-[11px] font-semibold text-on-surface px-1 italic">Golden coat with white chest patch</p>
                                 </div>
                             </div>
                         </div>
@@ -585,7 +705,7 @@
                             <img id="dashboardPetPhoto" src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80" alt="Pet Photo" class="w-full h-full object-cover">
                         </div>
                         <div class="flex-1 space-y-1">
-                            <h2 class="text-xl font-black text-on-surface leading-none tracking-tight">Buddy</h2>
+                            <h2 id="dashPetName" class="text-xl font-black text-on-surface leading-none tracking-tight">Buddy</h2>
                             <p class="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest font-mono bg-surface-container-low w-fit px-1.5 py-0.5 rounded border border-surface-container-highest">SRV-882-991</p>
                         </div>
                         <div class="w-12 h-12 bg-white rounded-xl border-2 border-surface-container-highest p-0.5 shrink-0 flex items-center justify-center">
@@ -760,24 +880,25 @@
                     <div class="w-24 h-24 rounded-full border-[3px] border-white shadow-[0_8px_20px_rgba(0,0,0,0.1)] overflow-hidden bg-surface-container-high shrink-0">
                         <img id="petAccountPhoto" src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80" alt="Pet Profile" class="w-full h-full object-cover">
                     </div>
-                    <div class="space-y-1">
-                        <h1 class="text-3xl font-black text-on-surface tracking-tight leading-none drop-shadow-sm">Buddy</h1>
-                        <p class="text-xs font-extrabold text-primary uppercase tracking-widest bg-primary/10 px-2 py-0.5 rounded-md w-fit">Golden Retriever</p>
+                    <div class="space-y-1.5 flex-1">
+                        <h1 id="accPetName" class="text-3xl font-black text-on-surface tracking-tight leading-none drop-shadow-sm">Buddy</h1>
+                        <p id="accPetBreed" class="text-xs font-extrabold text-primary uppercase tracking-widest bg-primary/10 px-2 py-0.5 rounded-md w-fit">Golden Retriever</p>
+                        <p id="accPetAppearance" class="text-[10px] text-on-surface-variant font-semibold italic mt-1 leading-tight">Golden coat with white chest patch</p>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-3 gap-3 mt-6 relative z-10">
                     <div class="bg-surface/60 backdrop-blur-md rounded-2xl p-3 flex flex-col items-center justify-center border border-surface-container-highest shadow-sm">
                         <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Age</span>
-                        <span class="text-[15px] font-black text-primary">3 Yrs</span>
+                        <span id="accAge" class="text-[15px] font-black text-primary">3 Yrs</span>
                     </div>
                     <div class="bg-surface/60 backdrop-blur-md rounded-2xl p-3 flex flex-col items-center justify-center border border-surface-container-highest shadow-sm">
                         <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Gender</span>
-                        <span class="text-[15px] font-black text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">male</span>Male</span>
+                        <span id="accGender" class="text-[15px] font-black text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">male</span>Male</span>
                     </div>
                     <div class="bg-surface/60 backdrop-blur-md rounded-2xl p-3 flex flex-col items-center justify-center border border-surface-container-highest shadow-sm">
                         <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Weight</span>
-                        <span class="text-[15px] font-black text-primary">9.4 kg</span>
+                        <span id="accWeight" class="text-[15px] font-black text-primary">9.4 kg</span>
                     </div>
                 </div>
             </div>
@@ -846,7 +967,7 @@
                     <h3 class="text-xs font-black tracking-wide uppercase text-indigo-900">Health Insights</h3>
                     <span class="bg-indigo-600 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded ml-1">AI</span>
                 </div>
-                <p class="text-xs text-indigo-800/80 font-medium relative z-10">Buddy is due for his annual DHPP booster next month. Regular grooming is recommended for his coat type.</p>
+                <p id="dashHealthInsights" class="text-xs text-indigo-800/80 font-medium relative z-10">Buddy is due for his annual DHPP booster next month. Regular grooming is recommended for his coat type.</p>
             </div>
 
             <div class="space-y-3">
@@ -937,48 +1058,175 @@
                 <div class="space-y-1">
                     <label class="text-sm font-bold text-on-surface">Record Type</label>
                     <div class="relative">
-                        <select id="hrType" required class="w-full px-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-medium appearance-none outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                        <select id="hrType" required onchange="handleRecordTypeChange()" class="w-full px-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold appearance-none outline-none focus:border-primary focus:ring-1 focus:ring-primary">
                             <option value="" disabled selected>Select Record Type</option>
-                            <option value="Vaccination Certificate">Vaccination Certificate</option>
+                            <option value="Vaccination">Vaccination</option>
                             <option value="Prescription">Prescription</option>
-                            <option value="Lab Report">Lab Report</option>
-                            <option value="Surgical Record">Surgical Record</option>
+                            <option value="Lab Test">Lab Test</option>
+                            <option value="Surgery">Surgery</option>
+                            <option value="Medical Condition">Medical Condition</option>
+                            <option value="Health Certificate">Health Certificate</option>
+                            <option value="Other">Other</option>
                         </select>
                         <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-lg">expand_more</span>
                     </div>
                     <p class="text-[11px] text-on-surface-variant mt-1">Choose the type of record</p>
                 </div>
 
-                <div class="space-y-1">
-                    <label class="text-sm font-bold text-on-surface">Category</label>
-                    <div class="relative">
-                        <select id="hrCategory" required class="w-full px-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-medium appearance-none outline-none focus:border-primary focus:ring-1 focus:ring-primary">
-                            <option value="" disabled selected>Select Category</option>
-                            <option value="Routine Checkup">Routine Checkup</option>
-                            <option value="Illness">Illness</option>
-                            <option value="Emergency">Emergency</option>
-                            <option value="Preventative">Preventative</option>
-                        </select>
-                        <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-lg">expand_more</span>
-                    </div>
-                    <p class="text-[11px] text-on-surface-variant mt-1">Choose the category that best fits this record</p>
+                <div id="customTypeWrapper" class="hidden space-y-1">
+                    <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Specify Record Type</label>
+                    <input type="text" id="hrCustomType" placeholder="e.g. Deworming Record" class="w-full px-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
                 </div>
 
-                <div class="space-y-1">
-                    <label class="text-sm font-bold text-on-surface">Issue Date</label>
-                    <div class="relative">
-                        <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary text-lg pointer-events-none">calendar_month</span>
-                        <input type="date" id="hrDate" required class="w-full pl-11 pr-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-medium outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                <!-- DYNAMIC FIELD GROUPS -->
+
+                <!-- 1. Vaccination Group -->
+                <div id="hrGroupVaccination" class="hidden space-y-4">
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Vaccine Name</label>
+                        <div class="relative">
+                            <select id="hrVaccineName" onchange="handleVaccineNameChange()" class="w-full px-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold appearance-none outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                                <option value="" disabled selected>Select Vaccine</option>
+                                <option value="Rabies">Rabies</option>
+                                <option value="DHPP">DHPP</option>
+                                <option value="Leptospirosis">Leptospirosis</option>
+                                <option value="Kennel Cough">Kennel Cough</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-lg">expand_more</span>
+                        </div>
                     </div>
-                    <p class="text-[11px] text-on-surface-variant mt-1">Date on the document</p>
+                    
+                    <div id="customVaccineWrapper" class="hidden space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Specify Vaccine Name</label>
+                        <input type="text" id="hrCustomVaccine" placeholder="e.g. Canine Distemper" class="w-full px-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Date Administered</label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary text-lg pointer-events-none">calendar_month</span>
+                            <input type="date" id="hrVaccineDate" class="w-full pl-11 pr-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Next Due Date <span class="text-[10px] font-semibold text-on-surface-variant/70 lowercase tracking-normal font-sans">(optional)</span></label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary text-lg pointer-events-none">event_upcoming</span>
+                            <input type="date" id="hrVaccineDueDate" class="w-full pl-11 pr-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Prescription Group -->
+                <div id="hrGroupPrescription" class="hidden space-y-4">
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Diagnosis / Reason</label>
+                        <input type="text" id="hrPrescriptionDiagnosis" placeholder="e.g. Ear Infection" class="w-full px-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Prescribed By</label>
+                        <input type="text" id="hrPrescriptionDoctor" placeholder="e.g. Dr. Jane Smith" class="w-full px-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Issue Date</label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary text-lg pointer-events-none">calendar_month</span>
+                            <input type="date" id="hrPrescriptionDate" class="w-full pl-11 pr-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Lab Test Group -->
+                <div id="hrGroupLab" class="hidden space-y-4">
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Test Name</label>
+                        <input type="text" id="hrLabTestName" placeholder="e.g. Complete Blood Count (CBC)" class="w-full px-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Test Date</label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary text-lg pointer-events-none">calendar_month</span>
+                            <input type="date" id="hrLabTestDate" class="w-full pl-11 pr-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Surgery Group -->
+                <div id="hrGroupSurgery" class="hidden space-y-4">
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Procedure Name</label>
+                        <input type="text" id="hrSurgeryProcedure" placeholder="e.g. Spay / Neuter Surgery" class="w-full px-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Surgery Date</label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary text-lg pointer-events-none">calendar_month</span>
+                            <input type="date" id="hrSurgeryDate" class="w-full pl-11 pr-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Medical Condition Group -->
+                <div id="hrGroupCondition" class="hidden space-y-4">
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Condition Name</label>
+                        <input type="text" id="hrConditionName" placeholder="e.g. Chronic Kidney Disease" class="w-full px-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Diagnosis Date</label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary text-lg pointer-events-none">calendar_month</span>
+                            <input type="date" id="hrConditionDate" class="w-full pl-11 pr-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. Health Certificate Group -->
+                <div id="hrGroupCertificate" class="hidden space-y-4">
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Certificate Title / Purpose</label>
+                        <input type="text" id="hrCertificateName" placeholder="e.g. Fit to Fly Certificate" class="w-full px-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Issue Date</label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary text-lg pointer-events-none">calendar_month</span>
+                            <input type="date" id="hrCertificateDate" class="w-full pl-11 pr-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. Other Group -->
+                <div id="hrGroupOther" class="hidden space-y-4">
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Record Description</label>
+                        <input type="text" id="hrOtherTitle" placeholder="e.g. Deworming treatment" class="w-full px-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Record Date</label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary text-lg pointer-events-none">calendar_month</span>
+                            <input type="date" id="hrOtherDate" class="w-full pl-11 pr-4 py-3.5 bg-white border border-surface-container-highest rounded-xl text-sm text-on-surface font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="space-y-1 pt-1">
                     <label class="text-sm font-bold text-on-surface">Upload Document</label>
-                    <div class="w-full py-6 border-2 border-dashed border-primary/30 rounded-xl bg-primary/5 flex flex-col items-center justify-center cursor-pointer hover:bg-primary/10 transition-colors">
-                        <span class="material-symbols-outlined text-primary text-2xl mb-1">cloud_upload</span>
-                        <span class="text-[13px] font-bold text-primary mb-1">Upload File</span>
-                        <span class="text-[11px] font-medium text-on-surface-variant">PDF, JPG, PNG (Max. 10MB)</span>
+                    <input type="file" id="hrFileInput" class="hidden" accept=".pdf,.png,.jpg,.jpeg">
+                    <div id="hrUploadArea" onclick="document.getElementById('hrFileInput').click()" class="w-full py-6 border-2 border-dashed border-primary/30 rounded-xl bg-primary/5 flex flex-col items-center justify-center cursor-pointer hover:bg-primary/10 transition-colors">
+                        <div id="hrUploadStateDefault" class="flex flex-col items-center justify-center text-center">
+                            <span class="material-symbols-outlined text-primary text-2xl mb-1">cloud_upload</span>
+                            <span class="text-[13px] font-bold text-primary mb-1">Upload File</span>
+                            <span class="text-[11px] font-medium text-on-surface-variant">PDF, JPG, PNG (Max. 10MB)</span>
+                        </div>
+                        <div id="hrUploadStateSelected" class="hidden flex flex-col items-center justify-center text-center px-4">
+                            <span class="material-symbols-outlined text-green-600 text-3xl mb-1">check_circle</span>
+                            <span id="hrSelectedFileName" class="text-[13px] font-extrabold text-on-surface max-w-[280px] truncate mb-1">Document.pdf</span>
+                            <span class="text-[11px] font-bold text-primary hover:underline">Change file</span>
+                        </div>
                     </div>
                 </div>
 
@@ -1122,17 +1370,143 @@
             });
         }
 
+        const breedDatabase = {
+            'Dog': [
+                'Labrador Retriever',
+                'Golden Retriever',
+                'German Shepherd',
+                'Beagle',
+                'Pug',
+                'Shih Tzu',
+                'Lhasa Apso',
+                'Rottweiler',
+                'Pitbull',
+                'American Bully',
+                'Doberman',
+                'Siberian Husky',
+                'Pomeranian',
+                'Dachshund',
+                'Indian Pariah',
+                'Cocker Spaniel',
+                'Great Dane'
+            ],
+            'Cat': [
+                'Persian Cat',
+                'British Shorthair',
+                'Maine Coon',
+                'Siamese Cat',
+                'Ragdoll',
+                'Russian Blue',
+                'Bengal Cat',
+                'Himalayan Cat',
+                'Domestic Shorthair',
+                'Domestic Longhair'
+            ],
+            'Bird': [
+                'Budgerigar (Budgie)',
+                'Cockatiel',
+                'Lovebird',
+                'Finch',
+                'Canary',
+                'African Grey Parrot',
+                'Sun Conure',
+                'Indian Ringneck Parakeet',
+                'Macaw',
+                'Eclectus Parrot'
+            ],
+            'Hamster': [
+                'Syrian Hamster',
+                'Winter White Hamster',
+                'Campbell\'s Dwarf Hamster',
+                'Roborovski Hamster',
+                'Chinese Hamster'
+            ]
+        };
+
+        function getBreedPlaceholder(species) {
+            if (species === 'Dog') return 'e.g. Golden Retriever';
+            if (species === 'Cat') return 'e.g. Persian Cat';
+            if (species === 'Bird') return 'e.g. Cockatiel';
+            if (species === 'Hamster') return 'e.g. Syrian Hamster';
+            return 'e.g. Golden Retriever';
+        }
+
         function selectSpecies(name, iconName) {
             document.getElementById('selectedText').innerText = name;
             document.getElementById('selectedIcon').innerText = iconName;
             dropdownMenu.classList.remove('open');
             arrowIcon.style.transform = 'rotate(0deg)';
+            
+            // Clear breed input on species change and update placeholder
+            const breedInput = document.getElementById('petBreed');
+            if(breedInput) {
+                breedInput.value = '';
+                breedInput.placeholder = getBreedPlaceholder(name);
+            }
+            // Hide breed dropdown
+            const breedMenu = document.getElementById('breedDropdownMenu');
+            if(breedMenu) breedMenu.classList.add('hidden');
+        }
+
+        function showBreedDropdown() {
+            const species = document.getElementById('selectedText').innerText.trim();
+            const list = breedDatabase[species] || [];
+            renderBreedOptions(list);
+        }
+
+        function filterBreeds() {
+            const species = document.getElementById('selectedText').innerText.trim();
+            const query = document.getElementById('petBreed').value.toLowerCase();
+            const list = breedDatabase[species] || [];
+            const filtered = list.filter(item => item.toLowerCase().includes(query));
+            renderBreedOptions(filtered);
+        }
+
+        function renderBreedOptions(list) {
+            const menu = document.getElementById('breedDropdownMenu');
+            if(!menu) return;
+            
+            if(list.length === 0) {
+                menu.classList.add('hidden');
+                return;
+            }
+            
+            menu.innerHTML = '';
+            list.forEach(breed => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = "w-full px-5 py-2.5 text-left hover:bg-primary-container/40 text-on-surface text-sm font-semibold transition-all duration-150 block text-ellipsis overflow-hidden";
+                btn.innerText = breed;
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    selectBreed(breed);
+                };
+                menu.appendChild(btn);
+            });
+            menu.classList.remove('hidden');
+        }
+
+        function selectBreed(breed) {
+            const breedInput = document.getElementById('petBreed');
+            if(breedInput) {
+                breedInput.value = breed;
+            }
+            const menu = document.getElementById('breedDropdownMenu');
+            if(menu) {
+                menu.classList.add('hidden');
+            }
         }
 
         window.onclick = (e) => {
             if(dropdownMenu && !dropdownMenu.contains(e.target) && !dropdownBtn.contains(e.target)) {
                 dropdownMenu.classList.remove('open');
                 arrowIcon.style.transform = 'rotate(0deg)';
+            }
+            
+            const breedMenu = document.getElementById('breedDropdownMenu');
+            const breedInput = document.getElementById('petBreed');
+            if(breedMenu && !breedMenu.contains(e.target) && e.target !== breedInput) {
+                breedMenu.classList.add('hidden');
             }
             
             const modal = document.getElementById('healthRecordModal');
@@ -1348,33 +1722,334 @@
 
         // ---------------------------------------------
 
+        let selectedFile = null;
+
+        function handleRecordTypeChange() {
+            const hrType = document.getElementById('hrType');
+            if (!hrType) return;
+            
+            const selectedType = hrType.value;
+            
+            // Hide all groups
+            const groups = [
+                'hrGroupVaccination',
+                'hrGroupPrescription',
+                'hrGroupLab',
+                'hrGroupSurgery',
+                'hrGroupCondition',
+                'hrGroupCertificate',
+                'hrGroupOther'
+            ];
+            groups.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+            
+            // Hide custom type wrapper
+            const customTypeWrapper = document.getElementById('customTypeWrapper');
+            if (customTypeWrapper) customTypeWrapper.classList.add('hidden');
+            
+            // Reset required attributes
+            const allInputs = [
+                'hrCustomType',
+                'hrVaccineName',
+                'hrVaccineDate',
+                'hrCustomVaccine',
+                'hrPrescriptionDiagnosis',
+                'hrPrescriptionDoctor',
+                'hrPrescriptionDate',
+                'hrLabTestName',
+                'hrLabTestDate',
+                'hrSurgeryProcedure',
+                'hrSurgeryDate',
+                'hrConditionName',
+                'hrConditionDate',
+                'hrCertificateName',
+                'hrCertificateDate',
+                'hrOtherTitle',
+                'hrOtherDate'
+            ];
+            allInputs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.required = false;
+            });
+            
+            // Show correct group and make inputs required where appropriate
+            if (selectedType === 'Vaccination') {
+                document.getElementById('hrGroupVaccination').classList.remove('hidden');
+                document.getElementById('hrVaccineName').required = true;
+                document.getElementById('hrVaccineDate').required = true;
+            } else if (selectedType === 'Prescription') {
+                document.getElementById('hrGroupPrescription').classList.remove('hidden');
+                document.getElementById('hrPrescriptionDiagnosis').required = true;
+                document.getElementById('hrPrescriptionDoctor').required = true;
+                document.getElementById('hrPrescriptionDate').required = true;
+            } else if (selectedType === 'Lab Test') {
+                document.getElementById('hrGroupLab').classList.remove('hidden');
+                document.getElementById('hrLabTestName').required = true;
+                document.getElementById('hrLabTestDate').required = true;
+            } else if (selectedType === 'Surgery') {
+                document.getElementById('hrGroupSurgery').classList.remove('hidden');
+                document.getElementById('hrSurgeryProcedure').required = true;
+                document.getElementById('hrSurgeryDate').required = true;
+            } else if (selectedType === 'Medical Condition') {
+                document.getElementById('hrGroupCondition').classList.remove('hidden');
+                document.getElementById('hrConditionName').required = true;
+                document.getElementById('hrConditionDate').required = true;
+            } else if (selectedType === 'Health Certificate') {
+                document.getElementById('hrGroupCertificate').classList.remove('hidden');
+                document.getElementById('hrCertificateName').required = true;
+                document.getElementById('hrCertificateDate').required = true;
+            } else if (selectedType === 'Other') {
+                if (customTypeWrapper) {
+                    customTypeWrapper.classList.remove('hidden');
+                    document.getElementById('hrCustomType').required = true;
+                }
+                document.getElementById('hrGroupOther').classList.remove('hidden');
+                document.getElementById('hrOtherTitle').required = true;
+                document.getElementById('hrOtherDate').required = true;
+            }
+        }
+
+        function handleVaccineNameChange() {
+            const vaccineSelect = document.getElementById('hrVaccineName');
+            const customVaccineWrapper = document.getElementById('customVaccineWrapper');
+            const customInput = document.getElementById('hrCustomVaccine');
+            
+            if (vaccineSelect && customVaccineWrapper) {
+                if (vaccineSelect.value === 'Other') {
+                    customVaccineWrapper.classList.remove('hidden');
+                    if (customInput) customInput.required = true;
+                } else {
+                    customVaccineWrapper.classList.add('hidden');
+                    if (customInput) {
+                        customInput.required = false;
+                        customInput.value = '';
+                    }
+                }
+            }
+        }
+
         function openHealthRecordModal() {
+            // Reset the form to make sure everything starts clean
+            document.getElementById('healthRecordForm').reset();
+            const groups = [
+                'hrGroupVaccination',
+                'hrGroupPrescription',
+                'hrGroupLab',
+                'hrGroupSurgery',
+                'hrGroupCondition',
+                'hrGroupCertificate',
+                'hrGroupOther',
+                'customTypeWrapper',
+                'customVaccineWrapper'
+            ];
+            groups.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
             const modal = document.getElementById('healthRecordModal');
-            modal.classList.remove('hidden');
+            if (modal) modal.classList.remove('hidden');
         }
 
         function closeHealthRecordModal() {
             const modal = document.getElementById('healthRecordModal');
             modal.classList.add('hidden');
             document.getElementById('healthRecordForm').reset();
+            
+            // Hide all dynamic wrappers/groups on form reset
+            const groups = [
+                'hrGroupVaccination',
+                'hrGroupPrescription',
+                'hrGroupLab',
+                'hrGroupSurgery',
+                'hrGroupCondition',
+                'hrGroupCertificate',
+                'hrGroupOther',
+                'customTypeWrapper',
+                'customVaccineWrapper'
+            ];
+            groups.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+            
+            // Reset upload area states
+            selectedFile = null;
+            const uploadStateDefault = document.getElementById('hrUploadStateDefault');
+            const uploadStateSelected = document.getElementById('hrUploadStateSelected');
+            const uploadArea = document.getElementById('hrUploadArea');
+            if (uploadStateDefault) uploadStateDefault.classList.remove('hidden');
+            if (uploadStateSelected) uploadStateSelected.classList.add('hidden');
+            if (uploadArea) {
+                uploadArea.className = "w-full py-6 border-2 border-dashed border-primary/30 rounded-xl bg-primary/5 flex flex-col items-center justify-center cursor-pointer hover:bg-primary/10 transition-colors";
+            }
+        }
+
+        function deleteHealthRecord(btn) {
+            const card = btn.closest('.p-3\\.5') || btn.parentElement.parentElement;
+            if (card) {
+                card.remove();
+                updateHealthRecordButtons();
+            }
+        }
+
+        function updateHealthRecordButtons() {
+            const container = document.getElementById('healthRecordsContainer');
+            const bigBtn = document.getElementById('addRecordBtnBig');
+            const bigBtnDesc = document.getElementById('addRecordBtnBigDesc');
+            const smallBtn = document.getElementById('addRecordBtnSmall');
+            
+            if (!container) return;
+
+            const hasRecords = container.children.length > 0;
+            if (hasRecords) {
+                if (bigBtn) bigBtn.classList.add('hidden');
+                if (bigBtnDesc) bigBtnDesc.classList.add('hidden');
+                if (smallBtn) smallBtn.classList.remove('hidden');
+            } else {
+                if (bigBtn) bigBtn.classList.remove('hidden');
+                if (bigBtnDesc) bigBtnDesc.classList.remove('hidden');
+                if (smallBtn) smallBtn.classList.add('hidden');
+            }
         }
 
         function saveHealthRecord() {
-            const type = document.getElementById('hrType').value;
-            const category = document.getElementById('hrCategory').value;
-            const date = document.getElementById('hrDate').value;
-            
-            if(!type || !category || !date) return;
+            const hrTypeSelect = document.getElementById('hrType');
+            if (!hrTypeSelect) return;
+            const type = hrTypeSelect.value;
+            if(!type) return;
+
+            let displayName = '';
+            let displaySub = '';
+            let dateVal = '';
+            let icon = 'description';
+
+            if (type === 'Vaccination') {
+                icon = 'vaccines';
+                const mainName = document.getElementById('hrVaccineName').value;
+                const custName = document.getElementById('hrCustomVaccine').value;
+                const finalVaccineName = mainName === 'Other' ? (custName || 'Other') : (mainName || 'Vaccine');
+                
+                dateVal = document.getElementById('hrVaccineDate').value;
+                const dueDateVal = document.getElementById('hrVaccineDueDate').value;
+                
+                displayName = `Vaccination: ${finalVaccineName}`;
+                
+                let dateStr = '';
+                if (dateVal) {
+                    const dateObj = new Date(dateVal);
+                    dateStr = `Administered: ${dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+                }
+                
+                let dueDateStr = '';
+                if (dueDateVal) {
+                    const dueObj = new Date(dueDateVal);
+                    dueDateStr = ` • Next Due: ${dueObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+                }
+                displaySub = `${dateStr}${dueDateStr}`;
+                
+            } else if (type === 'Prescription') {
+                icon = 'prescriptions';
+                const diagnosis = document.getElementById('hrPrescriptionDiagnosis').value || 'Reason';
+                const doctor = document.getElementById('hrPrescriptionDoctor').value || 'Doctor';
+                dateVal = document.getElementById('hrPrescriptionDate').value;
+                
+                displayName = `Prescription: ${diagnosis}`;
+                
+                let dateStr = '';
+                if (dateVal) {
+                    const dateObj = new Date(dateVal);
+                    dateStr = dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+                }
+                displaySub = `Prescribed by ${doctor} • ${dateStr}`;
+                
+            } else if (type === 'Lab Test') {
+                icon = 'biotech';
+                const testName = document.getElementById('hrLabTestName').value || 'Test';
+                dateVal = document.getElementById('hrLabTestDate').value;
+                
+                displayName = `Lab Test: ${testName}`;
+                
+                let dateStr = '';
+                if (dateVal) {
+                    const dateObj = new Date(dateVal);
+                    dateStr = dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+                }
+                displaySub = `Performed: ${dateStr}`;
+                
+            } else if (type === 'Surgery') {
+                icon = 'healing';
+                const procedure = document.getElementById('hrSurgeryProcedure').value || 'Procedure';
+                dateVal = document.getElementById('hrSurgeryDate').value;
+                
+                displayName = `Surgery: ${procedure}`;
+                
+                let dateStr = '';
+                if (dateVal) {
+                    const dateObj = new Date(dateVal);
+                    dateStr = dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+                }
+                displaySub = `Date: ${dateStr}`;
+                
+            } else if (type === 'Medical Condition') {
+                icon = 'emergency';
+                const condition = document.getElementById('hrConditionName').value || 'Condition';
+                dateVal = document.getElementById('hrConditionDate').value;
+                
+                displayName = `Condition: ${condition}`;
+                
+                let dateStr = '';
+                if (dateVal) {
+                    const dateObj = new Date(dateVal);
+                    dateStr = dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+                }
+                displaySub = `Diagnosed: ${dateStr}`;
+                
+            } else if (type === 'Health Certificate') {
+                icon = 'workspace_premium';
+                const cert = document.getElementById('hrCertificateName').value || 'Certificate';
+                dateVal = document.getElementById('hrCertificateDate').value;
+                
+                displayName = `Certificate: ${cert}`;
+                
+                let dateStr = '';
+                if (dateVal) {
+                    const dateObj = new Date(dateVal);
+                    dateStr = dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+                }
+                displaySub = `Issued: ${dateStr}`;
+                
+            } else if (type === 'Other') {
+                icon = 'description';
+                const customTypeName = document.getElementById('hrCustomType').value || 'Other Record';
+                const otherDetail = document.getElementById('hrOtherTitle').value || 'Detail';
+                dateVal = document.getElementById('hrOtherDate').value;
+                
+                displayName = `${customTypeName}: ${otherDetail}`;
+                
+                let dateStr = '';
+                if (dateVal) {
+                    const dateObj = new Date(dateVal);
+                    dateStr = dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+                }
+                displaySub = `Date: ${dateStr}`;
+            }
+
+            if(!dateVal) return; // Prevent submission if date is missing
 
             const container = document.getElementById('healthRecordsContainer');
-            
-            let icon = 'description';
-            if(type.includes('Vaccination')) icon = 'workspace_premium';
-            else if(type.includes('Prescription')) icon = 'prescriptions';
-            else if(type.includes('Lab')) icon = 'biotech';
+            if(!container) return;
 
-            const dateObj = new Date(date);
-            const formattedDate = dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+            // Detect and read filename
+            let filename = "Uploaded_Document.pdf";
+            if (selectedFile) {
+                filename = selectedFile.name;
+            } else {
+                const fileExt = type === 'Health Certificate' || type === 'Vaccination' ? 'jpg' : 'pdf';
+                const baseName = type.toLowerCase().replace(/\s+/g, '_');
+                filename = `${baseName}_record.${fileExt}`;
+            }
 
             const card = document.createElement('div');
             card.className = "p-3.5 bg-white border border-surface-container-highest rounded-2xl shadow-sm space-y-2 animate-[fadeInUp_0.3s_ease-out]";
@@ -1385,18 +2060,18 @@
                             <span class="material-symbols-outlined text-[16px]">${icon}</span>
                         </div>
                         <div>
-                            <p class="text-sm font-bold text-on-surface">${type}</p>
-                            <p class="text-[10px] font-medium text-on-surface-variant">${category} • ${formattedDate}</p>
+                            <p class="text-sm font-bold text-on-surface">${displayName}</p>
+                            <p class="text-[10px] font-medium text-on-surface-variant">${displaySub}</p>
                         </div>
                     </div>
-                    <button type="button" class="w-7 h-7 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant hover:text-red-500 hover:bg-red-50 transition-colors" onclick="this.parentElement.parentElement.remove()">
+                    <button type="button" class="w-7 h-7 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant hover:text-red-500 hover:bg-red-50 transition-colors" onclick="deleteHealthRecord(this)">
                         <span class="material-symbols-outlined text-[14px]">delete</span>
                     </button>
                 </div>
                 <div class="flex items-center justify-between bg-surface-container-low border border-surface-container-high px-3 py-2 rounded-xl">
                     <div class="flex items-center gap-2 truncate">
                         <span class="material-symbols-outlined text-on-surface-variant text-sm">attach_file</span>
-                        <span class="text-[11px] font-medium text-on-surface truncate">Uploaded_Document.pdf</span>
+                        <span class="text-[11px] font-medium text-on-surface truncate">${filename}</span>
                     </div>
                     <div class="flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded-md border border-green-200 shrink-0">
                         <span class="material-symbols-outlined text-green-600 text-[12px] font-bold">check</span>
@@ -1406,8 +2081,73 @@
             `;
             
             container.appendChild(card);
+            updateHealthRecordButtons();
             closeHealthRecordModal();
         }
+
+        // Initialize file upload events on DOM load
+        window.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('hrFileInput');
+            const uploadArea = document.getElementById('hrUploadArea');
+            const uploadStateDefault = document.getElementById('hrUploadStateDefault');
+            const uploadStateSelected = document.getElementById('hrUploadStateSelected');
+            const selectedFileNameSpan = document.getElementById('hrSelectedFileName');
+
+            if (fileInput) {
+                fileInput.addEventListener('change', function(e) {
+                    if(e.target.files && e.target.files[0]) {
+                        selectedFile = e.target.files[0];
+                        if (selectedFileNameSpan) selectedFileNameSpan.innerText = selectedFile.name;
+                        if (uploadStateDefault) uploadStateDefault.classList.add('hidden');
+                        if (uploadStateSelected) uploadStateSelected.classList.remove('hidden');
+                        if (uploadArea) {
+                            uploadArea.classList.remove('border-primary/30');
+                            uploadArea.classList.add('border-green-500/50', 'bg-green-50/20');
+                        }
+                    }
+                });
+            }
+
+            if (uploadArea) {
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    uploadArea.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        uploadArea.classList.add('border-primary', 'bg-primary/10');
+                    }, false);
+                });
+
+                ['dragleave', 'drop'].forEach(eventName => {
+                    uploadArea.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        uploadArea.classList.remove('border-primary', 'bg-primary/10');
+                    }, false);
+                });
+
+                uploadArea.addEventListener('drop', (e) => {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    if (files && files[0] && fileInput) {
+                        fileInput.files = files;
+                        const event = new Event('change', { bubbles: true });
+                        fileInput.dispatchEvent(event);
+                    }
+                }, false);
+            }
+
+            // Initialize custom calendar for Date of Birth
+            initCustomCalendar();
+
+            // Click outside handler to hide custom calendar dropdown
+            document.addEventListener('click', (e) => {
+                const container = document.getElementById('dobContainer');
+                const calDropdown = document.getElementById('dobCalendarDropdown');
+                if (container && calDropdown && !container.contains(e.target)) {
+                    calDropdown.classList.add('hidden');
+                }
+            });
+        });
 
         function runStep4Engine() {
             document.getElementById('progressBlock').style.display = 'none';
@@ -1493,6 +2233,331 @@
             }, 300);
         }
 
+        // Custom Calendar State and Methods
+        let activeCalMonth = new Date().getMonth();
+        let activeCalYear = new Date().getFullYear();
+        const todayDate = new Date();
+        const monthNames = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+
+        function initCustomCalendar() {
+            const yearSelect = document.getElementById('calYearSelect');
+            const monthSelect = document.getElementById('calMonthSelect');
+            if (!yearSelect || !monthSelect) return;
+            
+            // clear selects inside calendar
+            yearSelect.innerHTML = '';
+            monthSelect.innerHTML = '';
+            
+            // Populate years down from current year to 1990
+            const currentYear = new Date().getFullYear();
+            for (let y = currentYear; y >= 1990; y--) {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.innerText = y;
+                yearSelect.appendChild(opt);
+            }
+            
+            // Populate months
+            monthNames.forEach((m, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.innerText = m;
+                monthSelect.appendChild(opt);
+            });
+            
+            activeCalMonth = todayDate.getMonth();
+            activeCalYear = todayDate.getFullYear();
+            
+            renderCalDays();
+        }
+
+        function toggleDobCalendar() {
+            const calDropdown = document.getElementById('dobCalendarDropdown');
+            if (!calDropdown) return;
+            
+            if (calDropdown.classList.contains('hidden')) {
+                calDropdown.classList.remove('hidden');
+                renderCalDays();
+            } else {
+                calDropdown.classList.add('hidden');
+            }
+        }
+
+        function renderCalDays() {
+            const daysGrid = document.getElementById('calDaysGrid');
+            if (!daysGrid) return;
+            daysGrid.innerHTML = '';
+            
+            const firstDayIndex = new Date(activeCalYear, activeCalMonth, 1).getDay();
+            const daysInMonth = new Date(activeCalYear, activeCalMonth + 1, 0).getDate();
+            
+            const monthSelect = document.getElementById('calMonthSelect');
+            const yearSelect = document.getElementById('calYearSelect');
+            if (monthSelect) monthSelect.value = activeCalMonth;
+            if (yearSelect) yearSelect.value = activeCalYear;
+            
+            const nextBtn = document.getElementById('calNextBtn');
+            if (nextBtn) {
+                if (activeCalYear >= todayDate.getFullYear() && activeCalMonth >= todayDate.getMonth()) {
+                    nextBtn.disabled = true;
+                    nextBtn.classList.add('opacity-30', 'cursor-not-allowed');
+                } else {
+                    nextBtn.disabled = false;
+                    nextBtn.classList.remove('opacity-30', 'cursor-not-allowed');
+                }
+            }
+            
+            for (let i = 0; i < firstDayIndex; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = "h-8 w-8";
+                daysGrid.appendChild(emptyCell);
+            }
+            
+            const petDobVal = document.getElementById('petDOB').value;
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayBtn = document.createElement('button');
+                dayBtn.type = "button";
+                dayBtn.innerText = day;
+                
+                const pad = (n) => String(n).padStart(2, '0');
+                const cellDateStr = `${activeCalYear}-${pad(activeCalMonth + 1)}-${pad(day)}`;
+                
+                const isDayFuture = activeCalYear === todayDate.getFullYear() && activeCalMonth === todayDate.getMonth() && day > todayDate.getDate();
+                const isOverallFuture = activeCalYear > todayDate.getFullYear() || (activeCalYear === todayDate.getFullYear() && activeCalMonth > todayDate.getMonth());
+                const isDisabled = isDayFuture || isOverallFuture;
+                
+                const isSelected = petDobVal === cellDateStr;
+                const isToday = todayDate.getFullYear() === activeCalYear && todayDate.getMonth() === activeCalMonth && todayDate.getDate() === day;
+                
+                dayBtn.disabled = isDisabled;
+                
+                let btnClasses = "h-8 w-8 text-xs rounded-full flex items-center justify-center transition-all font-semibold font-mono ";
+                if (isSelected) {
+                    btnClasses += "bg-primary text-white shadow";
+                } else if (isDisabled) {
+                    btnClasses += "text-on-surface-variant/20 cursor-not-allowed";
+                } else if (isToday) {
+                    btnClasses += "border border-primary text-primary hover:bg-primary/5";
+                } else {
+                    btnClasses += "text-on-surface hover:bg-surface-container font-medium";
+                }
+                
+                dayBtn.className = btnClasses;
+                dayBtn.onclick = () => {
+                    selectCalendarDate(cellDateStr);
+                };
+                
+                daysGrid.appendChild(dayBtn);
+            }
+        }
+
+        function selectCalendarDate(dateStr) {
+            document.getElementById('petDOB').value = dateStr;
+            
+            const parts = dateStr.split("-");
+            const y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10) - 1;
+            const d = parseInt(parts[2], 10);
+            const monthShortNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            
+            const displayStr = `${d} ${monthShortNames[m]} ${y}`;
+            const textSpan = document.getElementById('dobDisplayValue');
+            if (textSpan) {
+                textSpan.innerText = displayStr;
+                textSpan.className = "text-on-surface text-sm font-semibold truncate";
+            }
+            
+            const calDropdown = document.getElementById('dobCalendarDropdown');
+            if (calDropdown) calDropdown.classList.add('hidden');
+        }
+
+        function prevMonth() {
+            if (activeCalMonth === 0) {
+                activeCalMonth = 11;
+                activeCalYear = Math.max(1990, activeCalYear - 1);
+            } else {
+                activeCalMonth--;
+            }
+            renderCalDays();
+        }
+        
+        function nextMonth() {
+            const now = new Date();
+            if (activeCalYear === now.getFullYear() && activeCalMonth === now.getMonth()) {
+                return;
+            }
+            if (activeCalMonth === 11) {
+                activeCalMonth = 0;
+                activeCalYear = Math.min(now.getFullYear(), activeCalYear + 1);
+            } else {
+                activeCalMonth++;
+            }
+            renderCalDays();
+        }
+        
+        function changeCalMonth(val) {
+            const m = parseInt(val, 10);
+            const now = new Date();
+            if (activeCalYear === now.getFullYear() && m > now.getMonth()) {
+                return;
+            }
+            activeCalMonth = m;
+            renderCalDays();
+        }
+        
+        function changeCalYear(val) {
+            const y = parseInt(val, 10);
+            const now = new Date();
+            activeCalYear = y;
+            if (y === now.getFullYear() && activeCalMonth > now.getMonth()) {
+                activeCalMonth = now.getMonth();
+            }
+            renderCalDays();
+        }
+
+        function toggleCustomRelation() {
+            const relationSelect = document.getElementById('emergencyRelation');
+            const customWrapper = document.getElementById('customRelationWrapper');
+            if (relationSelect && customWrapper) {
+                if (relationSelect.value === 'Other') {
+                    customWrapper.classList.remove('hidden');
+                } else {
+                    customWrapper.classList.add('hidden');
+                }
+            }
+        }
+
+        function setAgeType(type) {
+            const hiddenAgeType = document.getElementById('petAgeType');
+            if (hiddenAgeType) hiddenAgeType.value = type;
+
+            const exactBtn = document.getElementById('ageTypeExact');
+            const approxBtn = document.getElementById('ageTypeApprox');
+            const exactWrapper = document.getElementById('exactAgeWrapper');
+            const approxWrapper = document.getElementById('approxAgeWrapper');
+            const calDropdown = document.getElementById('dobCalendarDropdown');
+
+            if (type === 'exact') {
+                if (exactBtn) exactBtn.className = "px-2 py-0.5 text-[9px] font-black rounded-md bg-white shadow-xs text-primary transition-all uppercase tracking-wider";
+                if (approxBtn) approxBtn.className = "px-2 py-0.5 text-[9px] font-black rounded-md text-on-surface-variant transition-all hover:bg-white/10 uppercase tracking-wider";
+                
+                if (exactWrapper) exactWrapper.classList.remove('hidden');
+                if (approxWrapper) approxWrapper.classList.add('hidden');
+                
+                // Clear approx inputs
+                const yearsInput = document.getElementById('approxYears');
+                const monthsInput = document.getElementById('approxMonths');
+                if (yearsInput) yearsInput.value = '';
+                if (monthsInput) monthsInput.value = '';
+                
+                const petDobInput = document.getElementById('petDOB');
+                if (petDobInput && petDobInput.value) {
+                    selectCalendarDate(petDobInput.value);
+                } else {
+                    const textSpan = document.getElementById('dobDisplayValue');
+                    if (textSpan) {
+                        textSpan.innerText = "Select Date of Birth";
+                        textSpan.className = "truncate text-on-surface-variant text-sm font-medium";
+                    }
+                }
+            } else {
+                if (approxBtn) approxBtn.className = "px-2 py-0.5 text-[9px] font-black rounded-md bg-white shadow-xs text-primary transition-all uppercase tracking-wider";
+                if (exactBtn) exactBtn.className = "px-2 py-0.5 text-[9px] font-black rounded-md text-on-surface-variant transition-all hover:bg-white/10 uppercase tracking-wider";
+                
+                if (exactWrapper) exactWrapper.classList.add('hidden');
+                if (approxWrapper) approxWrapper.classList.remove('hidden');
+                if (calDropdown) calDropdown.classList.add('hidden');
+
+                updateApproxDOB();
+            }
+        }
+
+        function updateApproxDOB() {
+            const yearsInput = document.getElementById('approxYears');
+            const monthsInput = document.getElementById('approxMonths');
+            const petDobInput = document.getElementById('petDOB');
+            if (!yearsInput || !monthsInput || !petDobInput) return;
+
+            const years = parseInt(yearsInput.value, 10) || 0;
+            const months = parseInt(monthsInput.value, 10) || 0;
+
+            const targetDate = new Date();
+            targetDate.setFullYear(targetDate.getFullYear() - years);
+            targetDate.setMonth(targetDate.getMonth() - months);
+            
+            // Normalize day to make it clean
+            targetDate.setDate(1);
+
+            const pad = (n) => String(n).padStart(2, '0');
+            const dateStr = `${targetDate.getFullYear()}-${pad(targetDate.getMonth() + 1)}-${pad(targetDate.getDate())}`;
+            
+            petDobInput.value = dateStr;
+        }
+
+        function getAgeString(dobString) {
+            if (!dobString) return "3 Yrs";
+            const petAgeType = document.getElementById('petAgeType');
+            if (petAgeType && petAgeType.value === 'approx') {
+                const yearsInput = document.getElementById('approxYears');
+                const monthsInput = document.getElementById('approxMonths');
+                const yrs = parseInt(yearsInput ? yearsInput.value : '0', 10) || 0;
+                const mos = parseInt(monthsInput ? monthsInput.value : '0', 10) || 0;
+                if (yrs === 0 && mos > 0) return mos + (mos === 1 ? " Mo" : " Mos");
+                if (yrs > 0 && mos > 0) return `${yrs} Yr${yrs > 1 ? 's' : ''} ${mos} Mo${mos > 1 ? 's' : ''}`;
+                if (yrs > 0) return yrs + (yrs === 1 ? " Yr" : " Yrs");
+                return "0 Yrs";
+            }
+            const dob = new Date(dobString);
+            if (isNaN(dob.getTime())) return "3 Yrs";
+            const today = new Date();
+            let years = today.getFullYear() - dob.getFullYear();
+            let months = today.getMonth() - dob.getMonth();
+            if (months < 0 || (months === 0 && today.getDate() < dob.getDate())) {
+                years--;
+                months += 12;
+            }
+            if (years === 0) {
+                return months + (months === 1 ? " Mo" : " Mos");
+            }
+            if (years > 0 && months > 0) {
+                return `${years} Yr${years > 1 ? 's' : ''} ${months} Mo${months > 1 ? 's' : ''}`;
+            }
+            return years + (years === 1 ? " Yr" : " Yrs");
+        }
+
+        function getFormattedDOB(dobString) {
+            if (!dobString) return "12 Oct 2022";
+            const petAgeType = document.getElementById('petAgeType');
+            if (petAgeType && petAgeType.value === 'approx') {
+                const dob = new Date(dobString);
+                if (isNaN(dob.getTime())) return "Approximate";
+                return "~ " + dob.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+            }
+            const dob = new Date(dobString);
+            if (isNaN(dob.getTime())) return "12 Oct 2022";
+            return dob.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        function setGender(gender) {
+            const hiddenInput = document.getElementById('petGender');
+            if (hiddenInput) hiddenInput.value = gender;
+            
+            const maleBtn = document.getElementById('genderBtnMale');
+            const femaleBtn = document.getElementById('genderBtnFemale');
+            
+            if (gender === 'Male') {
+                if (maleBtn) maleBtn.className = "flex-1 h-full bg-white shadow-sm rounded-xl text-primary font-bold text-xs transition-colors duration-200";
+                if (femaleBtn) femaleBtn.className = "flex-1 h-full text-on-surface-variant font-medium text-xs transition-colors duration-200";
+            } else {
+                if (femaleBtn) femaleBtn.className = "flex-1 h-full bg-white shadow-sm rounded-xl text-primary font-bold text-xs transition-colors duration-200";
+                if (maleBtn) maleBtn.className = "flex-1 h-full text-on-surface-variant font-medium text-xs transition-colors duration-200";
+            }
+        }
+
         function executeSuccessCompletionState() {
             document.getElementById('statusHeader').innerText = "Your Pet Passport is Ready!";
             document.getElementById('statusHeader').className = "text-2xl font-black tracking-tight text-green-600 animate-bounce";
@@ -1513,6 +2578,81 @@
 
             const dashboardCreatedOn = document.getElementById('dashboardCreatedOn');
             if(dashboardCreatedOn) dashboardCreatedOn.innerText = formattedDate;
+
+            // Dynamically synchronize the custom details entered in the forms
+            const nameInput = document.getElementById('petName');
+            const breedInput = document.getElementById('petBreed');
+            const appearanceInput = document.getElementById('petAppearance');
+            const genderInput = document.getElementById('petGender');
+            const dobInput = document.getElementById('petDOB');
+            const weightInput = document.getElementById('petWeight');
+            const ownerInput = document.getElementById('ownerName');
+
+            const nameVal = (nameInput && nameInput.value.trim()) || 'Buddy';
+            const breedVal = (breedInput && breedInput.value.trim()) || 'Golden Retriever';
+            const appearanceVal = (appearanceInput && appearanceInput.value.trim()) || 'Golden coat with white chest patch';
+            const genderVal = (genderInput && genderInput.value) || 'Male';
+            const dobVal = dobInput ? dobInput.value : '';
+            const weightVal = (weightInput && weightInput.value.trim()) || '9.4';
+            const ownerVal = (ownerInput && ownerInput.value.trim()) || 'Rijas Pabla';
+
+            const genderIcon = genderVal.toLowerCase() === 'male' ? 'male' : 'female';
+
+            // 1. Passport Card Details
+            const passPetName = document.getElementById('passPetName');
+            if (passPetName) passPetName.innerText = nameVal;
+
+            const passPetBreed = document.getElementById('passPetBreed');
+            if (passPetBreed) passPetBreed.innerText = breedVal;
+
+            const passGenderIcon = document.getElementById('passGenderIcon');
+            if (passGenderIcon) passGenderIcon.innerText = genderIcon;
+
+            const passGenderText = document.getElementById('passGenderText');
+            if (passGenderText) passGenderText.innerText = genderVal;
+
+            const passWeightText = document.getElementById('passWeightText');
+            if (passWeightText) passWeightText.innerText = weightVal + ' kg';
+
+            const passDOB = document.getElementById('passDOB');
+            if (passDOB) passDOB.innerText = getFormattedDOB(dobVal);
+
+            const passOwner = document.getElementById('passOwner');
+            if (passOwner) passOwner.innerText = ownerVal;
+
+            const passAppearance = document.getElementById('passAppearance');
+            if (passAppearance) passAppearance.innerText = appearanceVal;
+
+            // 2. Dashboard Pet Card Name
+            const dashPetName = document.getElementById('dashPetName');
+            if (dashPetName) dashPetName.innerText = nameVal;
+
+            // 3. Pet Account Details
+            const accPetName = document.getElementById('accPetName');
+            if (accPetName) accPetName.innerText = nameVal;
+
+            const accPetBreed = document.getElementById('accPetBreed');
+            if (accPetBreed) accPetBreed.innerText = breedVal;
+
+            const accPetAppearance = document.getElementById('accPetAppearance');
+            if (accPetAppearance) accPetAppearance.innerText = appearanceVal;
+
+            const accAge = document.getElementById('accAge');
+            if (accAge) accAge.innerText = getAgeString(dobVal);
+
+            const accGender = document.getElementById('accGender');
+            if (accGender) {
+                accGender.innerHTML = `<span class="material-symbols-outlined text-[16px]">${genderIcon}</span>${genderVal}`;
+            }
+
+            const accWeight = document.getElementById('accWeight');
+            if (accWeight) accWeight.innerText = weightVal + ' kg';
+
+            // 4. Personalized AI Health Insights
+            const dashHealthInsights = document.getElementById('dashHealthInsights');
+            if (dashHealthInsights) {
+                dashHealthInsights.innerText = `${nameVal} is due for ${genderVal.toLowerCase() === 'male' ? 'his' : genderVal.toLowerCase() === 'female' ? 'her' : 'their'} annual DHPP booster next month. Regular grooming is highly recommended for ${genderVal.toLowerCase() === 'male' ? 'his' : genderVal.toLowerCase() === 'female' ? 'her' : 'their'} "${breedVal}" coat type.`;
+            }
 
             const passportContainer = document.getElementById('finalPassportContainer');
             if(passportContainer) {

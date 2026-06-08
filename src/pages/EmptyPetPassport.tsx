@@ -28,16 +28,17 @@ const EmptyPetPassport = () => {
         />
       </div>
 
-      <div className="bg-[#fffbfe] text-[#412b36] antialiased selection:bg-[#fcebf3] font-['Inter',_sans-serif] overflow-x-hidden min-h-screen">
-        <main className="min-h-[100dvh] flex items-center justify-center px-4 py-8">
-            <div className="w-full max-w-md mx-auto text-center space-y-10">
-                
-                {/* Back button */}
-                <div className="absolute top-6 left-6 text-left w-full max-w-md">
-                    <button onClick={() => navigate('/buyer/profile')} className="w-10 h-10 flex items-center justify-center bg-white shadow-sm border border-[#fcebf3] rounded-full text-[#7c6872] hover:text-[#d95191] transition-all">
-                        <ArrowLeft className="w-5 h-5" />
-                    </button>
-                </div>
+      <div className="bg-[#fffbfe] text-[#412b36] antialiased selection:bg-[#fcebf3] font-['Inter',_sans-serif] overflow-x-hidden min-h-screen relative">
+        <main className="min-h-[100dvh] flex items-center justify-center px-4 py-8 relative">
+            
+            {/* Back button */}
+            <div className="absolute top-6 left-4 text-left z-10">
+                <button onClick={() => navigate('/buyer/profile')} className="w-10 h-10 flex items-center justify-center bg-white shadow-sm border border-[#fcebf3] rounded-full text-[#7c6872] hover:text-[#d95191] transition-all">
+                    <ArrowLeft className="w-5 h-5" />
+                </button>
+            </div>
+
+            <div className="w-full max-w-md mx-auto text-center space-y-10 py-12">
 
                 <div className="relative flex justify-center mt-12">
                     <div className="absolute inset-0 bg-[#d95191]/10 blur-3xl -z-10 rounded-full scale-125"></div>
