@@ -8,7 +8,8 @@ async function startServer() {
   const PORT = 3000;
 
   // Set up JSON parsing with a limit for larger requests
-  app.use(express.json({ limit: "10mb" }));
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   // API Routes MUST go before Vite middlewares
   app.get("/api/health", (req, res) => {
