@@ -70,9 +70,9 @@ const EmptyPetPassport = () => {
                             </div>
                         </div>
 
-                        <div className="absolute -bottom-4 -right-4 w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center z-10 border border-[#fcebf3]">
-                            <div className="w-12 h-12 rounded-full bg-[#fcebf3] flex items-center justify-center">
-                                <span className="material-symbols-outlined text-[#d95191] text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>shield_with_heart</span>
+                        <div className="absolute -bottom-4 -right-4 w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center z-10 border border-primary-container">
+                            <div className="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center">
+                                <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>shield_with_heart</span>
                             </div>
                         </div>
                     </div>
