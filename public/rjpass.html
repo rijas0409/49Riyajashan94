@@ -3164,23 +3164,30 @@
                     healthRecords: Object.values(window.globalHealthRecords || {})
                 };
 
+                console.log("[DEBUG] Starting submitToDatabaseAndNext");
+
                 let passportId = backupPassportId;
 
                 console.group("Pet Passport Setup Request");
                 console.log("Endpoint: /api/pet-passport");
                 console.log("Method: POST");
                 console.log("Headers: { 'Content-Type': 'application/json' }");
-                console.log("Payload:", payload);
                 console.groupEnd();
 
                 try {
+                    console.log("[DEBUG] Before fetch('/api/pet-passport')");
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 sec timeout
+                    
                     const res = await fetch('/api/pet-passport', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify(payload),
+                        signal: controller.signal
                     });
-
-                    console.log("Response Status:", res.status);
+                    
+                    clearTimeout(timeoutId);
+                    console.log("[DEBUG] After fetch, Response Status:", res.status);
 
                     if (res.ok) {
                         const responseText = await res.text();

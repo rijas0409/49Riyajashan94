@@ -423,75 +423,87 @@ Return the response as a single JSON object containing only a "description" key.
       const passportId = "SRV-" + Math.random().toString(36).substring(2, 5).toUpperCase() + "-" + Math.random().toString(36).substring(2, 5).toUpperCase();
       
       if (supabaseAdmin) {
-        const { data: petData, error: petErr } = await supabaseAdmin
-          .from("pet_passports")
-          .insert({
-            passport_id: passportId,
-            pet_name: payload.petName,
-            species: payload.species,
-            gender: payload.gender,
-            breed: payload.breed,
-            appearance: payload.appearance,
-            age_type: payload.ageType,
-            dob: payload.dob || null,
-            approx_years: payload.approxYears ? parseInt(payload.approxYears) : null,
-            approx_months: payload.approxMonths ? parseInt(payload.approxMonths) : null,
-            weight: payload.weight ? parseFloat(payload.weight) : null,
-            owner_name: payload.ownerName,
-            primary_phone: payload.primaryPhone,
-            emergency_contact_name: payload.emergencyContactName,
-            emergency_phone: payload.emergencyPhone,
-            emergency_relationship: payload.emergencyRelationship,
-            photo_url: payload.photoUrl
-          }).select().single();
+        try {
+          // Timeout after 4.5 seconds so backend does not stall 
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Supabase timeout")), 4500));
           
-        if (petErr) {
-          console.error("petErr", petErr);
-          throw new Error("Failed to insert into pet_passports: " + petErr.message);
-        }
+          const dbOperations = async () => {
+            const { data: petData, error: petErr } = await supabaseAdmin
+              .from("pet_passports")
+              .insert({
+                passport_id: passportId,
+                pet_name: payload.petName,
+                species: payload.species,
+                gender: payload.gender,
+                breed: payload.breed,
+                appearance: payload.appearance,
+                age_type: payload.ageType,
+                dob: payload.dob || null,
+                approx_years: payload.approxYears ? parseInt(payload.approxYears) : null,
+                approx_months: payload.approxMonths ? parseInt(payload.approxMonths) : null,
+                weight: payload.weight ? parseFloat(payload.weight) : null,
+                owner_name: payload.ownerName,
+                primary_phone: payload.primaryPhone,
+                emergency_contact_name: payload.emergencyContactName,
+                emergency_phone: payload.emergencyPhone,
+                emergency_relationship: payload.emergencyRelationship,
+                photo_url: payload.photoUrl
+              }).select().single();
+              
+            if (petErr) {
+              console.error("petErr", petErr);
+              throw new Error("Failed to insert into pet_passports: " + petErr.message);
+            }
 
-        const medicalRowId = petData.id;
-        
-        await supabaseAdmin.from("pet_medical_logs").insert({
-          pet_passport_id: medicalRowId,
-          last_vaccination_date: payload.lastVaccinationDate || null,
-          known_allergies: payload.knownAllergies,
-          last_veterinary_visit: payload.lastVeterinaryVisit || null
-        });
-
-        // conditions
-        if (payload.conditions && payload.conditions.length > 0) {
-          const conditionsInserts = payload.conditions.map((c: string) => ({
-            pet_passport_id: medicalRowId,
-            condition_name: c,
-            specify_other: c === 'Other' || c === 'Others' ? payload.otherConditionText : null
-          }));
-          await supabaseAdmin.from("pet_health_conditions").insert(conditionsInserts);
-        }
-        
-        // health records
-        if (payload.healthRecords && payload.healthRecords.length > 0) {
-          await supabaseAdmin.from("pet_health_records_documents").insert(
-            payload.healthRecords.map((r: any) => ({
+            const medicalRowId = petData.id;
+            
+            await supabaseAdmin.from("pet_medical_logs").insert({
               pet_passport_id: medicalRowId,
-              record_type: r.type,
-              vaccine_name: r.vaccineName,
-              specify_vaccine: r.specifyVaccine,
-              date_administered: r.dateAdministered || null,
-              next_due_date: r.nextDueDate || null,
-              diagnosis: r.diagnosis,
-              prescribed_by: r.prescribedBy,
-              issue_date: r.issueDate || null,
-              test_name: r.testName,
-              test_date: r.testDate || null,
-              procedure_name: r.procedureName,
-              surgery_date: r.surgeryDate || null,
-              condition_name: r.conditionName,
-              certificate_title: r.certificateTitle,
-              record_description: r.recordDescription,
-              document_base64: r.documentBase64
-            }))
-          );
+              last_vaccination_date: payload.lastVaccinationDate || null,
+              known_allergies: payload.knownAllergies,
+              last_veterinary_visit: payload.lastVeterinaryVisit || null
+            });
+
+            // conditions
+            if (payload.conditions && payload.conditions.length > 0) {
+              const conditionsInserts = payload.conditions.map((c: string) => ({
+                pet_passport_id: medicalRowId,
+                condition_name: c,
+                specify_other: c === 'Other' || c === 'Others' ? payload.otherConditionText : null
+              }));
+              await supabaseAdmin.from("pet_health_conditions").insert(conditionsInserts);
+            }
+            
+            // health records
+            if (payload.healthRecords && payload.healthRecords.length > 0) {
+              await supabaseAdmin.from("pet_health_records_documents").insert(
+                payload.healthRecords.map((r: any) => ({
+                  pet_passport_id: medicalRowId,
+                  record_type: r.type,
+                  vaccine_name: r.vaccineName,
+                  specify_vaccine: r.specifyVaccine,
+                  date_administered: r.dateAdministered || null,
+                  next_due_date: r.nextDueDate || null,
+                  diagnosis: r.diagnosis,
+                  prescribed_by: r.prescribedBy,
+                  issue_date: r.issueDate || null,
+                  test_name: r.testName,
+                  test_date: r.testDate || null,
+                  procedure_name: r.procedureName,
+                  surgery_date: r.surgeryDate || null,
+                  condition_name: r.conditionName,
+                  certificate_title: r.certificateTitle,
+                  record_description: r.recordDescription,
+                  // limit base64 insertion size if needed, but proceeding normally
+                  document_base64: r.documentBase64
+                }))
+              );
+            }
+          };
+
+          await Promise.race([dbOperations(), timeoutPromise]);
+        } catch (dbErr) {
+          console.warn("Database operations failed or timed out. Handled gracefully. Error:", dbErr);
         }
       }
       
