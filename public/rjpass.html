@@ -709,10 +709,10 @@
                         </div>
                         <div class="flex-1 space-y-1">
                             <h2 id="dashPetName" class="text-xl font-black text-on-surface leading-none tracking-tight">Buddy</h2>
-                            <p class="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest font-mono bg-surface-container-low w-fit px-1.5 py-0.5 rounded border border-surface-container-highest">SRV-882-991</p>
+                            <p id="dashPassportId" class="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest font-mono bg-surface-container-low w-fit px-1.5 py-0.5 rounded border border-surface-container-highest">SRV-882-991</p>
                         </div>
                         <div class="w-12 h-12 bg-white rounded-xl border-2 border-surface-container-highest p-0.5 shrink-0 flex items-center justify-center">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://sruvoindia.vercel.app/passport/SRV-882-991&color=d95191" class="w-full h-full object-contain rounded-lg">
+                            <img id="dashCardQRCodeImg" src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://sruvoindia.vercel.app/passport/SRV-882-991&color=d95191" class="w-full h-full object-contain rounded-lg" alt="QR Code">
                         </div>
                     </div>
                 </div>
@@ -822,17 +822,17 @@
                 <div class="bg-white/60 rounded-xl p-3 border border-red-100 space-y-2">
                     <div class="flex justify-between items-start">
                         <span class="text-xs font-bold text-red-900/60 uppercase">Allergies</span> 
-                        <span class="text-sm font-bold text-red-600 text-right">Chicken, Penicillin</span>
+                        <span id="dashAllergies" class="text-sm font-bold text-red-600 text-right">Chicken, Penicillin</span>
                     </div>
                     <div class="border-t border-red-100"></div>
                     <div class="flex justify-between items-start pt-1">
                         <span class="text-xs font-bold text-red-900/60 uppercase">Conditions</span> 
-                        <span class="text-sm font-bold text-red-600 text-right">None Recorded</span>
+                        <span id="dashConditions" class="text-sm font-bold text-red-600 text-right">None Recorded</span>
                     </div>
                     <div class="border-t border-red-100"></div>
                     <div class="flex justify-between items-start pt-1">
                         <span class="text-xs font-bold text-red-900/60 uppercase">Backup Contact</span> 
-                        <span class="text-sm font-bold text-red-600 text-right">+91 98765 43210</span>
+                        <span id="dashEmergencyPhone" class="text-sm font-bold text-red-600 text-right">+91 98765 43210</span>
                     </div>
                 </div>
             </div>
@@ -1335,7 +1335,7 @@
             }
 
             const passportId = payload.passport_id || payload.passportId || 'SRV-882-991';
-            
+
             // Passport IDs
             const topId = document.getElementById('finalPassportIdTop');
             if (topId) topId.innerText = passportId;
@@ -1353,12 +1353,91 @@
             if (petPhoto && (payload.photo_url || payload.photoUrl)) {
                 petPhoto.src = payload.photo_url || payload.photoUrl;
             }
+
+            // Dashboard Details (Step 5)
+            const dashPetName = document.getElementById('dashPetName');
+            if (dashPetName) dashPetName.innerText = payload.pet_name || payload.petName || 'Buddy';
+
+            const dashboardPetPhoto = document.getElementById('dashboardPetPhoto');
+            if (dashboardPetPhoto && (payload.photo_url || payload.photoUrl)) {
+                dashboardPetPhoto.src = payload.photo_url || payload.photoUrl;
+            }
+
+            const dashPassportId = document.getElementById('dashPassportId');
+            if (dashPassportId) dashPassportId.innerText = passportId;
+
+            const dashCardQRCodeImg = document.getElementById('dashCardQRCodeImg');
+            if (dashCardQRCodeImg) {
+                dashCardQRCodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://sruvoindia.vercel.app/passport/${passportId}&color=d95191`;
+            }
+
+            const dashboardCreatedOn = document.getElementById('dashboardCreatedOn');
+            if (dashboardCreatedOn) {
+                const createdDate = payload.created_at || payload.createdAt;
+                dashboardCreatedOn.innerText = createdDate ? formatDateString(createdDate) : formatDateString(new Date());
+            }
+
+            // Emergency layout details
+            const dashAllergies = document.getElementById('dashAllergies');
+            if (dashAllergies) {
+                dashAllergies.innerText = payload.known_allergies || payload.knownAllergies || 'None';
+            }
+            const dashConditions = document.getElementById('dashConditions');
+            if (dashConditions) {
+                dashConditions.innerText = 'None Recorded';
+            }
+            const dashEmergencyPhone = document.getElementById('dashEmergencyPhone');
+            if (dashEmergencyPhone) {
+                dashEmergencyPhone.innerText = payload.emergency_phone || payload.emergencyPhone || '+91 98765 43210';
+            }
+
+            // Pet Account Details (Step 6)
+            const accPetName = document.getElementById('accPetName');
+            if (accPetName) accPetName.innerText = payload.pet_name || payload.petName || 'Buddy';
+
+            const accPetBreed = document.getElementById('accPetBreed');
+            if (accPetBreed) accPetBreed.innerText = payload.breed || 'Golden Retriever';
+
+            const accPetAppearance = document.getElementById('accPetAppearance');
+            if (accPetAppearance) accPetAppearance.innerText = payload.appearance || 'Golden coat';
+
+            const accAge = document.getElementById('accAge');
+            if (accAge) {
+                accAge.innerText = typeof getAgeString === 'function' ? getAgeString(dob_val) : 'N/A';
+            }
+
+            const accGender = document.getElementById('accGender');
+            if (accGender) {
+                const gIcon = (genderTxt.toLowerCase() === 'female' || genderTxt.toLowerCase() === 'girl' || genderTxt.toLowerCase() === 'queen') ? 'female' : 'male';
+                accGender.innerHTML = `<span class="material-symbols-outlined text-[16px]">${gIcon}</span>${genderTxt}`;
+            }
+
+            const accWeight = document.getElementById('accWeight');
+            if (accWeight) accWeight.innerText = (payload.weight || '9.4') + ' kg';
+
+            const petAccountPhoto = document.getElementById('petAccountPhoto');
+            if (petAccountPhoto && (payload.photo_url || payload.photoUrl)) {
+                petAccountPhoto.src = payload.photo_url || payload.photoUrl;
+            }
+
+            // Personalized AI Health Insights text
+            const dashHealthInsights = document.getElementById('dashHealthInsights');
+            if (dashHealthInsights) {
+                const nameVal = payload.pet_name || payload.petName || 'Buddy';
+                const genderVal = payload.gender || 'Male';
+                const breedVal = payload.breed || 'Golden Retriever';
+                dashHealthInsights.innerText = `${nameVal} is due for ${genderVal.toLowerCase() === 'male' ? 'his' : genderVal.toLowerCase() === 'female' ? 'her' : 'their'} annual DHPP booster next month. Regular grooming is highly recommended for ${genderVal.toLowerCase() === 'male' ? 'his' : genderVal.toLowerCase() === 'female' ? 'her' : 'their'} "${breedVal}" coat type.`;
+            }
         }
 
         window.addEventListener('load', async () => {
             try {
-                objectDetector = await cocoSsd.load();
-                console.log("AI Model Loaded Successfully");
+                if (typeof cocoSsd !== 'undefined') {
+                    objectDetector = await cocoSsd.load();
+                    console.log("AI Model Loaded Successfully");
+                } else {
+                    console.warn("cocoSsd undefined on window");
+                }
             } catch(e) {
                 console.error("Failed to load AI model", e);
             }
