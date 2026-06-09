@@ -9,7 +9,7 @@ const PublicPetPassport: React.FC = () => {
 
   useEffect(() => {
     if (id) {
-      setIframeSrc(`/rjpass.html?id=${encodeURIComponent(id)}`);
+      setIframeSrc(`/rjpass.html?id=${encodeURIComponent(id)}&visitor=true`);
     } else {
       setIframeSrc('/mypassport.html');
     }
