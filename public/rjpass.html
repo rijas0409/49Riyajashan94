@@ -657,7 +657,7 @@
                             </div>
                             <div class="w-14 h-14 bg-white rounded-xl border-2 border-surface-container-highest p-1 flex items-center justify-center shadow-sm relative group cursor-pointer hover:border-primary/50 transition-colors">
                                 <div class="absolute inset-0 bg-primary/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                <img id="passportQRCodeImg" src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=sruvo.com/passport/SRV-882-991&color=d95191" alt="QR Code" class="w-full h-full object-contain rounded-md">
+                                <img id="passportQRCodeImg" src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://sruvoindia.vercel.app/passport/SRV-882-991&color=d95191" alt="QR Code" class="w-full h-full object-contain rounded-md">
                             </div>
                         </div>
                     </div>
@@ -712,7 +712,7 @@
                             <p class="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest font-mono bg-surface-container-low w-fit px-1.5 py-0.5 rounded border border-surface-container-highest">SRV-882-991</p>
                         </div>
                         <div class="w-12 h-12 bg-white rounded-xl border-2 border-surface-container-highest p-0.5 shrink-0 flex items-center justify-center">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=sruvo.com/passport/SRV-882-991&color=d95191" class="w-full h-full object-contain rounded-lg">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://sruvoindia.vercel.app/passport/SRV-882-991&color=d95191" class="w-full h-full object-contain rounded-lg">
                         </div>
                     </div>
                 </div>
@@ -1290,12 +1290,119 @@
         
         // Load the AI model in background for faster performance
         let objectDetector = null;
+
+        function formatDateString(dateStr) {
+            if (!dateStr) return '';
+            try {
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return dateStr;
+                const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+            } catch(e) {
+                return dateStr;
+            }
+        }
+
+        function loadPassportDataIntoUI(payload) {
+            if (!payload) return;
+            // Basic Details
+            const petName_el = document.getElementById('passPetName');
+            if (petName_el) petName_el.innerText = payload.pet_name || payload.petName || 'Buddy';
+            
+            const breed_el = document.getElementById('passPetBreed');
+            if (breed_el) breed_el.innerText = payload.breed || 'Golden Retriever';
+            
+            const dob_val = payload.dob;
+            const db_el = document.getElementById('passDOB');
+            if (db_el) db_el.innerText = formatDateString(dob_val) || '12 Oct 2022';
+            
+            const ow_el = document.getElementById('passOwner');
+            if (ow_el) ow_el.innerText = payload.owner_name || payload.ownerName || 'Rijas Pabla';
+            
+            const app_el = document.getElementById('passAppearance');
+            if (app_el) app_el.innerText = payload.appearance || 'Golden coat';
+
+            const weight_el = document.getElementById('passWeightText');
+            if (weight_el) weight_el.innerText = (payload.weight || '9.4') + ' kg';
+
+            const genderTxt = payload.gender || 'Male';
+            const gender_el = document.getElementById('passGenderText');
+            if (gender_el) gender_el.innerText = genderTxt;
+
+            const genderIcon = document.getElementById('passGenderIcon');
+            if (genderIcon) {
+                genderIcon.innerText = (genderTxt.toLowerCase() === 'female' || genderTxt.toLowerCase() === 'girl' || genderTxt.toLowerCase() === 'queen') ? 'female' : 'male';
+            }
+
+            const passportId = payload.passport_id || payload.passportId || 'SRV-882-991';
+            
+            // Passport IDs
+            const topId = document.getElementById('finalPassportIdTop');
+            if (topId) topId.innerText = passportId;
+            const botId = document.getElementById('finalPassportIdBottom');
+            if (botId) botId.innerText = passportId;
+            
+            // QR Codes
+            const qrImg = document.getElementById('passportQRCodeImg');
+            if (qrImg) {
+                qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://sruvoindia.vercel.app/passport/${passportId}&color=d95191`;
+            }
+
+            // Photo
+            const petPhoto = document.getElementById('passportPetPhoto');
+            if (petPhoto && (payload.photo_url || payload.photoUrl)) {
+                petPhoto.src = payload.photo_url || payload.photoUrl;
+            }
+        }
+
         window.addEventListener('load', async () => {
             try {
                 objectDetector = await cocoSsd.load();
                 console.log("AI Model Loaded Successfully");
             } catch(e) {
                 console.error("Failed to load AI model", e);
+            }
+
+            // Check for direct passport loading via query parameter "id"
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const passportId = urlParams.get('id');
+                if (passportId) {
+                    console.log("[DEBUG] Found passport target ID in query parameter:", passportId);
+                    
+                    // Immediately transition step state to step 5 (Dashboard) to avoid flicker
+                    document.getElementById(`step${currentStep}`).classList.remove('active');
+                    currentStep = 5;
+                    document.getElementById(`step${currentStep}`).classList.add('active');
+                    updateUI();
+                    
+                    // Fetch details
+                    const res = await fetch(`/api/pet-passport?id=${encodeURIComponent(passportId)}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        console.log("[DEBUG] Successfully fetched passport data from backend:", data);
+                        loadPassportDataIntoUI(data.pet || data);
+                    } else {
+                        console.warn("[DEBUG] Backend fetch was not successful. Using local storage lookup.");
+                        const backup = localStorage.getItem('lastSavedPassportData');
+                        if (backup) {
+                            const parsed = JSON.parse(backup);
+                            if (parsed.passportId === passportId) {
+                                loadPassportDataIntoUI(parsed);
+                            }
+                        }
+                    }
+                    
+                    // Ensure final container is visible in Step 5
+                    const finCont = document.getElementById('finalPassportContainer');
+                    if (finCont) {
+                        finCont.classList.remove('hidden');
+                        finCont.style.opacity = '1';
+                        finCont.style.transform = 'scale(1)';
+                    }
+                }
+            } catch(err) {
+                console.error("Error loading direct passport ID:", err);
             }
         });
 
@@ -1348,6 +1455,11 @@
         }
 
         document.getElementById('backBtn').addEventListener('click', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('id')) {
+                window.parent.postMessage('close_pet_passport_flow', '*');
+                return;
+            }
             if (currentStep > 1) {
                 if(currentStep === 4 && intervalTracker) {
                     cancelAnimationFrame(intervalTracker);
@@ -3227,7 +3339,7 @@
                 // Generate QR Code dynamically
                 const qrImg = document.getElementById('passportQRCodeImg');
                 if (qrImg) {
-                    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=sruvo.com/passport/${passportId}&color=d95191`;
+                    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://sruvoindia.vercel.app/passport/${passportId}&color=d95191`;
                 }
 
                 nextStep(4);
@@ -3240,7 +3352,7 @@
 
                 const qrImg = document.getElementById('passportQRCodeImg');
                 if (qrImg) {
-                    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=sruvo.com/passport/${backupPassportId}&color=d95191`;
+                    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://sruvoindia.vercel.app/passport/${backupPassportId}&color=d95191`;
                 }
                 nextStep(4);
             } finally {

@@ -272,7 +272,7 @@ Keep descriptions concise (max 2 sentences).`;
         } catch (e) {
           supabaseUrl = supabaseUrl.replace(/\/$/, "");
         }
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
         supabaseAdmin = createClient(supabaseUrl, supabaseKey);
 
         const { data, error: fetchErr } = await supabaseAdmin
@@ -367,7 +367,7 @@ Return the response as a single JSON object containing only a "description" key.
       }
 
       // 3. Save the generated description back to Supabase if we have vetId
-      if (vetId && supabaseAdmin && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY)) {
+      if (vetId && supabaseAdmin && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY)) {
         console.log(`[Server] Saving AI generated description to DB for vetId: ${vetId}.`);
         
         // Fetch current data first to avoid overwriting other fields in weekly_availability
@@ -400,6 +400,77 @@ Return the response as a single JSON object containing only a "description" key.
     }
   });
 
+  // End Point: Pet Passport Fetch
+  app.get("/api/pet-passport", async (req, res) => {
+    try {
+      let supabaseAdmin: any = null;
+      try {
+        const { createClient } = await import("@supabase/supabase-js");
+        let supabaseUrl = (process.env.VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co").trim();
+        try {
+          const urlObj = new URL(supabaseUrl);
+          supabaseUrl = urlObj.origin;
+        } catch (e) {
+          supabaseUrl = supabaseUrl.replace(/\/$/, "");
+        }
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+        supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+      } catch (err) {
+        console.warn("Could not init supabaseAdmin on server", err);
+      }
+
+      if (!supabaseAdmin) {
+        return res.status(500).json({ error: "Supabase client not initialized" });
+      }
+
+      const passportId = req.query.id as string;
+      if (!passportId) {
+        const { data, error } = await supabaseAdmin
+          .from("pet_passports")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        return res.json(data || []);
+      }
+
+      const { data: pet, error: petErr } = await supabaseAdmin
+        .from("pet_passports")
+        .select("*")
+        .eq("passport_id", passportId)
+        .single();
+
+      if (petErr || !pet) {
+        return res.status(404).json({ error: "Passport not found" });
+      }
+
+      const { data: medical } = await supabaseAdmin
+        .from("pet_medical_logs")
+        .select("*")
+        .eq("pet_passport_id", pet.id)
+        .single();
+
+      const { data: conditions } = await supabaseAdmin
+        .from("pet_health_conditions")
+        .select("*")
+        .eq("pet_passport_id", pet.id);
+
+      const { data: healthRecords } = await supabaseAdmin
+        .from("pet_health_records_documents")
+        .select("*")
+        .eq("pet_passport_id", pet.id);
+
+      return res.json({
+        pet,
+        medical,
+        conditions,
+        healthRecords
+      });
+    } catch (err: any) {
+      console.error("Error fetching passport details:", err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   // End Point: Pet Passport Generation & Sync
   app.post("/api/pet-passport", async (req, res) => {
     try {
@@ -414,7 +485,7 @@ Return the response as a single JSON object containing only a "description" key.
         } catch (e) {
           supabaseUrl = supabaseUrl.replace(/\/$/, "");
         }
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
         supabaseAdmin = createClient(supabaseUrl, supabaseKey);
       } catch (err) {
         console.warn("Could not init supabaseAdmin on server", err);

@@ -1,35 +1,120 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Fingerprint, QrCode, Shield, PlusCircle, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Fingerprint, QrCode, Shield, PlusCircle, ShieldCheck, Heart, Sparkles, Loader2 } from 'lucide-react';
+import { supabase } from '../integrations/supabase/client';
 
 const EmptyPetPassport = () => {
   const navigate = useNavigate();
   const [showFlow, setShowFlow] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [passports, setPassports] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchPassports = async () => {
+    try {
+      setLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      let fetchedPassports: any[] = [];
+      const { data, error } = await supabase
+        .from('pet_passports')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        fetchedPassports = data;
+      } else {
+        console.warn("Supabase query error (possibly permission or empty):", error);
+      }
+
+      // Merge with localStorage cached backup to always ensure user sees their passport after submission
+      const localBackup = localStorage.getItem('lastSavedPassportData');
+      if (localBackup) {
+        try {
+          const parsed = JSON.parse(localBackup);
+          if (parsed && parsed.passportId) {
+            const localPassport = {
+              id: parsed.passportId,
+              passport_id: parsed.passportId,
+              pet_name: parsed.petName,
+              species: parsed.species,
+              breed: parsed.breed,
+              gender: parsed.gender,
+              weight: parsed.weight,
+              dob: parsed.dob,
+              owner_name: parsed.ownerName,
+              photo_url: parsed.photoUrl,
+              is_local_fallback: true
+            };
+            
+            // Add to list if it doesn't already exist from database query
+            if (!fetchedPassports.some(p => p.passport_id === parsed.passportId)) {
+              fetchedPassports = [localPassport, ...fetchedPassports];
+            }
+          }
+        } catch (e) {
+          console.warn("Could not parse localBackup", e);
+        }
+      }
+
+      setPassports(fetchedPassports);
+    } catch (err) {
+      console.error("Failed to fetch passports:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
+    fetchPassports();
+
     const handleMessage = (event: MessageEvent) => {
       if (event.data === 'close_pet_passport_flow') {
         setShowFlow(false);
+        setSelectedId(null);
+        fetchPassports();
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
+  const handleOpenPassport = (id: string) => {
+    setSelectedId(id);
+    setShowFlow(true);
+  };
+
+  const handleAddNewPet = () => {
+    setSelectedId(null);
+    setShowFlow(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-[#fffbfe] text-[#412b36] min-h-screen flex flex-col items-center justify-center space-y-4">
+        <Loader2 className="w-10 h-10 animate-spin text-[#d95191]" />
+        <p className="text-sm font-semibold tracking-wide text-[#7c6872] uppercase animate-pulse">Syncing Sruvo Ledger...</p>
+      </div>
+    );
+  }
+
   return (
     <>
-      {/* Background iframe to avoid load latency, shown when showFlow is true */}
+      {/* Background iframe, shown when showFlow is true */}
       <div className={`fixed inset-0 z-[9999] bg-[#fffbfe] transition-opacity duration-300 ${showFlow ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        <iframe 
-          src="/rjpass.html" 
-          className="w-full h-full border-0" 
-          allow="camera *; microphone *; autoplay *"
-          title="Pet Passport Flow"
-        />
+        {showFlow && (
+          <iframe 
+            src={selectedId ? `/rjpass.html?id=${encodeURIComponent(selectedId)}` : "/rjpass.html"} 
+            className="w-full h-full border-0" 
+            allow="camera *; microphone *; autoplay *"
+            title="Pet Passport Flow"
+          />
+        )}
       </div>
 
       <div className="bg-[#fffbfe] text-[#412b36] antialiased selection:bg-[#fcebf3] font-['Inter',_sans-serif] overflow-x-hidden min-h-screen relative">
-        <main className="min-h-[100dvh] flex items-center justify-center px-4 py-8 relative">
+        <main className="min-h-[100dvh] flex flex-col px-4 py-8 pb-20 relative">
             
             {/* Back button */}
             <div className="absolute top-6 left-4 text-left z-10">
@@ -38,8 +123,9 @@ const EmptyPetPassport = () => {
                 </button>
             </div>
 
-            <div className="w-full max-w-md mx-auto text-center space-y-10 py-12">
-
+            {passports.length === 0 ? (
+              // Empty State (Original Screen styled identically)
+              <div className="w-full max-w-md mx-auto text-center space-y-10 py-12 flex-1 flex flex-col justify-center">
                 <div className="relative flex justify-center mt-12">
                     <div className="absolute inset-0 bg-[#d95191]/10 blur-3xl -z-10 rounded-full scale-125"></div>
                     
@@ -70,8 +156,8 @@ const EmptyPetPassport = () => {
                             </div>
                         </div>
 
-                        <div className="absolute -bottom-4 -right-4 w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center z-10 border border-primary-container">
-                            <div className="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center">
+                        <div className="absolute -bottom-4 -right-4 w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center z-10 border border-[#fce8f4]">
+                            <div className="w-12 h-12 rounded-full bg-[#fdf4f8] flex items-center justify-center">
                                 <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>shield_with_heart</span>
                             </div>
                         </div>
@@ -88,7 +174,7 @@ const EmptyPetPassport = () => {
                 </div>
 
                 <div className="flex flex-col items-center gap-5">
-                    <button onClick={() => setShowFlow(true)} className="w-full sm:w-auto group relative flex items-center justify-center gap-3 px-10 py-4 bg-gradient-to-r from-[#d95191] to-[#e56ba4] text-white rounded-full font-bold text-lg shadow-[0_10px_25px_rgba(217,81,145,0.3)] active:scale-95 transition-all">
+                    <button onClick={handleAddNewPet} className="w-full sm:w-auto group relative flex items-center justify-center gap-3 px-10 py-4 bg-gradient-to-r from-[#d95191] to-[#e56ba4] text-white rounded-full font-bold text-lg shadow-[0_10px_25px_rgba(217,81,145,0.3)] active:scale-95 transition-all">
                         <PlusCircle className="w-6 h-6" />
                         Add Your First Pet
                     </button>
@@ -98,7 +184,81 @@ const EmptyPetPassport = () => {
                         <span className="text-[10px] font-bold text-[#7c6872] tracking-wider uppercase">Secure Storage</span>
                     </div>
                 </div>
-            </div>
+              </div>
+            ) : (
+              // List state (My Passports)
+              <div className="w-full max-w-md mx-auto space-y-6 pt-16">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-[#d95191]">
+                    <Sparkles className="w-5 h-5 animate-pulse" />
+                    <span className="text-xs font-black tracking-wider uppercase">Sruvo Identity</span>
+                  </div>
+                  <h1 className="text-3xl font-black tracking-tight text-[#412b36]">My Passports</h1>
+                  <p className="text-[#7c6872] text-sm">Secure digital certificates for your loved ones.</p>
+                </div>
+
+                <div className="space-y-4">
+                  {passports.map((pass) => (
+                    <div 
+                      key={pass.passport_id} 
+                      onClick={() => handleOpenPassport(pass.passport_id)}
+                      className="bg-white rounded-[24px] p-5 border border-[#fcf0f5] shadow-[0_10px_30px_rgba(236,72,153,0.04)] hover:shadow-[0_15px_40px_rgba(236,72,153,0.08)] hover:border-[#fbe7f0] active:scale-[0.99] transition-all cursor-pointer relative overflow-hidden group"
+                    >
+                      {/* Gradient Ambient Accent */}
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#fbe7f0]/40 to-transparent rounded-bl-full pointer-events-none transition-all duration-500 group-hover:scale-110"></div>
+                      
+                      <div className="flex gap-4 items-center">
+                        <div className="w-16 h-16 rounded-[16px] bg-gradient-to-br from-[#fcf0f5] to-[#fbe7f0] border border-[#fbe7f0] flex items-center justify-center overflow-hidden shrink-0 shadow-inner relative">
+                          {pass.photo_url ? (
+                            <img src={pass.photo_url} alt={pass.pet_name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="material-symbols-outlined text-[#d95191] text-3xl font-light">pets</span>
+                          )}
+                        </div>
+
+                        <div className="flex-1 space-y-1 min-w-0">
+                          <div className="flex justify-between items-start gap-1">
+                            <h2 className="text-xl font-black text-[#412b36] truncate leading-none pt-0.5">{pass.pet_name}</h2>
+                            <div className="flex items-center gap-1.5 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                              <p className="text-[8px] font-black text-green-700 tracking-wider uppercase">Active</p>
+                            </div>
+                          </div>
+                          
+                          <p className="text-[#d95191] text-xs font-bold uppercase tracking-wider">{pass.breed || pass.species || 'Companion'}</p>
+                          
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="text-[10px] font-bold text-[#7c6872] uppercase bg-[#fdf4f8] border border-[#fcebf3] px-2 py-0.5 rounded-md font-mono tracking-wide">
+                              {pass.passport_id}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-[#fdf4f8] flex justify-between items-center text-xs font-bold text-[#7c6872]">
+                        <div className="flex items-center gap-1">
+                          <Heart className="w-3.5 h-3.5 text-[#d95191]" />
+                          <span>{pass.owner_name}</span>
+                        </div>
+                        <span className="text-[#d95191] group-hover:translate-x-1 transition-transform flex items-center gap-0.5">
+                          Open Dashboard &rarr;
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-4">
+                  <button 
+                    onClick={handleAddNewPet} 
+                    className="w-full py-4 bg-gradient-to-r from-[#d95191] to-[#e56ba4] text-white rounded-3xl font-bold text-[15px] shadow-[0_8px_20px_rgba(217,81,145,0.2)] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  >
+                    <PlusCircle className="w-5 h-5" />
+                    Secure Another Pet Passport
+                  </button>
+                </div>
+              </div>
+            )}
         </main>
 
         <div className="fixed top-0 left-0 w-full h-full -z-20 pointer-events-none">
