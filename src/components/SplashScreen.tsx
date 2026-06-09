@@ -4,46 +4,30 @@ interface SplashScreenProps {
   message?: string;
 }
 
-const SplashScreen = ({ message = "Initializing Sruvo..." }: SplashScreenProps) => {
+const SplashScreen = ({ message }: SplashScreenProps) => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white fixed inset-0 z-[9999]">
-      <div className="flex flex-col items-center gap-6">
-        <div className="relative">
-          <div className="w-24 h-24 flex items-center justify-center logo-bounce bg-white rounded-3xl shadow-[0_12px_40px_-12px_rgba(183,132,230,0.4)] border border-purple-50/50 p-4">
-            <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-full h-full object-contain" />
-          </div>
-          <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-[#F472D0] rounded-full flex items-center justify-center shadow-lg border-2 border-white animate-pulse">
-            <div className="w-3 h-3 bg-white rounded-full" />
-          </div>
-        </div>
-        <div className="flex flex-col items-center gap-1">
-          <div className="text-3xl font-bold tracking-tight text-[#151B32]">Sruvo</div>
-          <div className="text-[10px] font-bold text-[#F472D0] uppercase tracking-[0.3em] opacity-80">Premium Pet Care</div>
-        </div>
-        
-        <div className="flex gap-2 mt-4">
-          <div className="w-2 h-2 rounded-full bg-[#B784E6]/20 animate-loading-dot-1"></div>
-          <div className="w-2 h-2 rounded-full bg-[#B784E6]/20 animate-loading-dot-2"></div>
-          <div className="w-2 h-2 rounded-full bg-[#B784E6]/20 animate-loading-dot-3"></div>
-        </div>
-        
-        {message && <p className="text-[11px] font-medium text-muted-foreground mt-2 tracking-wide opacity-60 italic">{message}</p>}
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#ffffff', color: '#1e293b', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', zIndex: 9999 }}>
+      <div className="logo-pulse" style={{ width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px' }}>
+        <img src={SRUVO_LOGO_URL} alt="Sruvo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
       </div>
+      <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', color: '#151B32', marginBottom: '8px' }}>Sruvo</div>
+      <div style={{ marginTop: '8px', display: 'flex', gap: '6px' }}>
+        <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#cbd5e1', animation: 'pulse-dot 1.5s infinite ease-in-out', animationDelay: '0s' }}></div>
+        <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#cbd5e1', animation: 'pulse-dot 1.5s infinite ease-in-out', animationDelay: '0.2s' }}></div>
+        <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#cbd5e1', animation: 'pulse-dot 1.5s infinite ease-in-out', animationDelay: '0.4s' }}></div>
+      </div>
+      {message && <div style={{ marginTop: '16px', fontSize: '14px', color: '#64748b', fontStyle: 'italic' }}>{message}</div>}
       <style>{`
-        .logo-bounce {
-          animation: logo-bounce 2s ease-in-out infinite;
+        @keyframes glow {
+          0% { filter: drop-shadow(0 0 10px rgba(183, 132, 230, 0.4)); transform: scale(0.98); }
+          50% { filter: drop-shadow(0 0 20px rgba(183, 132, 230, 0.7)); transform: scale(1.02); }
+          100% { filter: drop-shadow(0 0 10px rgba(183, 132, 230, 0.4)); transform: scale(0.98); }
         }
-        @keyframes logo-bounce {
-          0%, 100% { transform: translateY(0) scale(1); }
-          50% { transform: translateY(-10px) scale(1.05); }
+        @keyframes pulse-dot {
+          0%, 100% { transform: scale(0.8); opacity: 0.5; }
+          50% { transform: scale(1.2); opacity: 1; background-color: #B784E6; }
         }
-        @keyframes loading-dot {
-          0%, 100% { transform: scale(1); background-color: rgba(183, 132, 230, 0.2); }
-          50% { transform: scale(1.5); background-color: #B784E6; }
-        }
-        .animate-loading-dot-1 { animation: loading-dot 1s infinite 0s; }
-        .animate-loading-dot-2 { animation: loading-dot 1s infinite 0.2s; }
-        .animate-loading-dot-3 { animation: loading-dot 1s infinite 0.4s; }
+        .logo-pulse { animation: glow 2.5s ease-in-out infinite; }
       `}</style>
     </div>
   );
