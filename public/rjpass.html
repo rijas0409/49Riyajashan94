@@ -542,7 +542,7 @@
 
                         <div class="space-y-1.5">
                             <div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
-                                <div id="cardMiniProgress" class="h-full bg-primary transition-all duration-1000" style="width: 15%;"></div>
+                                <div id="cardMiniProgress" class="h-full bg-primary transition-all duration-300" style="width: 0%;"></div>
                             </div>
                             <div class="flex justify-between items-center">
                                 <div class="w-10 h-1 bg-on-surface-variant/30 rounded-full"></div>
@@ -588,7 +588,7 @@
                             
                             <div class="relative z-10 text-white flex flex-col justify-center">
                                 <div class="flex items-center gap-1.5 mb-2 border-b border-white/20 pb-1.5 w-fit">
-                                    <img src="sruvo-logo.png" alt="Sruvo Logo" class="w-12 h-12 object-contain drop-shadow-sm" />
+                                    <img src="/sruvo-logo.png" alt="Sruvo Logo" class="w-12 h-12 object-contain drop-shadow-sm" />
                                     <span class="text-base font-black tracking-[0.2em] uppercase mt-1">Sruvo</span>
                                 </div>
                                 <p class="text-[8px] uppercase tracking-[0.2em] font-extrabold opacity-90">Republic of Sruvo</p>
@@ -694,7 +694,7 @@
                     <div class="bg-gradient-to-r from-primary to-[#e56ba4] px-4 py-2.5 flex justify-between items-center text-white relative overflow-hidden">
                         <div class="absolute -right-4 -top-4 w-16 h-16 bg-white/10 rounded-full blur-xl"></div>
                         <div class="flex items-center gap-1.5 z-10">
-                            <img src="sruvo-logo.png" alt="Sruvo Logo" class="w-[33px] h-[33px] object-contain drop-shadow-sm" />
+                            <img src="/sruvo-logo.png" alt="Sruvo Logo" class="w-[33px] h-[33px] object-contain drop-shadow-sm" />
                             <span class="text-xs font-black tracking-[0.2em] uppercase mt-0.5">Sruvo Passport</span>
                         </div>
                         <span class="material-symbols-outlined text-white/80 text-sm z-10">verified_user</span>
@@ -2156,15 +2156,26 @@
             const startTime = Date.now();
             
             const systemLogsArray = [
-                { timePerc: 0, text: "Extracting basic profile identity and photo data...", sec: "SHA-256 Init" },
-                { timePerc: 10, text: "Formatting species and breed validation schemas...", sec: "Enforcing Rule V1" },
-                { timePerc: 22, text: "Encoding medical ledger and core vaccinations...", sec: "Immutable Stack" },
-                { timePerc: 35, text: "Securing known allergy and health condition logs...", sec: "AES-256 Block" },
-                { timePerc: 48, text: "Encrypting primary owner contact linkages...", sec: "Dual Node Lock" },
-                { timePerc: 60, text: "Verifying emergency backup contact vectors...", sec: "Vector Check" },
-                { timePerc: 72, text: "Assigning RFID microchip data to secure vault...", sec: "Sign-Off Verify" },
-                { timePerc: 85, text: "Decentralizing digital pet passport validation structure...", sec: "Polishing System" },
-                { timePerc: 95, text: "Passport identity compilation highly successful!", sec: "Secured & Live" }
+                { timePerc: 0, text: "Initializing secure passport container...", sec: "SHA-256 Init" },
+                { timePerc: 5, text: "Extracting basic profile details (Name, Species)...", sec: "Parsing Info" },
+                { timePerc: 10, text: "Optimizing profile photo for biometric identification...", sec: "BIO-Scan V1" },
+                { timePerc: 15, text: "Formatting species and breed validation schemas...", sec: "Enforcing Rules" },
+                { timePerc: 20, text: "Analyzing gender and age specifications...", sec: "Data Standard" },
+                { timePerc: 25, text: "Encoding medical ledger and core vaccinations...", sec: "Ledger Stack" },
+                { timePerc: 31, text: "Verifying immunizations against global vet standards...", sec: "Compliance" },
+                { timePerc: 37, text: "Securing known allergy logs to secure ledger...", sec: "AES-256 Lock" },
+                { timePerc: 43, text: "Hashing raw medication guidelines...", sec: "Pill ID Hash" },
+                { timePerc: 49, text: "Integrating owner primary contact vectors...", sec: "Contact Bound" },
+                { timePerc: 55, text: "Enforcing dual-factor physical address verification...", sec: "Loc Verified" },
+                { timePerc: 61, text: "Verifying secondary caregiver backup links...", sec: "Backup Safe" },
+                { timePerc: 67, text: "Binding emergency phone channels...", sec: "Emergency Lock" },
+                { timePerc: 73, text: "Validating RFID microchip format standard...", sec: "RFID Validate" },
+                { timePerc: 79, text: "Deploying microchip token to decentralized registry...", sec: "Token Vault" },
+                { timePerc: 85, text: "Compiling identity QR link endpoint...", sec: "QR Generator" },
+                { timePerc: 90, text: "Generating custom passport unique serial ID...", sec: "ID Registry" },
+                { timePerc: 94, text: "Assembling final encrypted security blocks...", sec: "Polish System" },
+                { timePerc: 97, text: "Applying official Sruvo digital signature...", sec: "System Signed" },
+                { timePerc: 100, text: "Passport identity compilation highly successful!", sec: "Secured & Live" }
             ];
 
             const logBox = document.getElementById('logsConsole');
@@ -2198,7 +2209,8 @@
                 if(!percentTextEl || !cardMiniProgressEl) return;
 
                 percentTextEl.innerText = `${progressPercentage}%`;
-                cardMiniProgressEl.style.width = `${progressPercentage}%`;
+                // Use smooth, float-based precision for the visual progress bar width
+                cardMiniProgressEl.style.width = `${Math.min(100, (elapsed / totalDuration) * 100)}%`;
 
                 if(logIndex < systemLogsArray.length && progressPercentage >= systemLogsArray[logIndex].timePerc) {
                     
