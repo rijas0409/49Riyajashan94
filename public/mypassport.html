@@ -197,14 +197,15 @@
                     const petName = p.pet_name || p.petName || 'Buddy';
                     const breed = p.breed || p.species || 'Golden Retriever';
                     const gender = p.gender || 'Male';
-                    const weight = p.weight ? `${p.weight} kg` : 'N/A';
+                    const weight = p.weight ? (p.weight.toString().includes('kg') ? p.weight : `${p.weight} kg`) : 'N/A';
                     const dob = formatDateString(p.dob);
                     const ownerName = p.owner_name || p.ownerName || 'Rijas Pabla';
                     const photoUrl = p.photo_url || p.photoUrl || "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80";
+                    const appearance = p.appearance || 'Golden coat with white chest patch';
 
                     const cardHtml = `
                         <div onclick="openPassportDetails('${passportId}')" class="snap-start shrink-0 w-[85vw] max-w-[320px] flex flex-col justify-stretch cursor-pointer select-none">
-                            <div class="bg-gradient-to-br from-[#1a1a24] to-[#3a2a32] p-1 rounded-[28px] shadow-xl relative overflow-hidden group h-full min-h-[380px] flex flex-col">
+                            <div class="bg-gradient-to-br from-[#1a1a24] to-[#3a2a32] p-1 rounded-[28px] shadow-2xl relative overflow-hidden group h-full min-h-[380px] flex flex-col">
                                 <div class="absolute inset-0 bg-gradient-to-tr from-primary/0 via-white/20 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 rotate-45 transform -translate-x-full group-hover:translate-x-full ease-out"></div>
                                 
                                 <div class="bg-surface rounded-[24px] overflow-hidden flex flex-col relative z-10 h-full border border-surface-container-highest">
@@ -212,8 +213,8 @@
                                         <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
                                         <div class="relative z-10 text-white flex flex-col justify-center">
                                             <div class="flex items-center gap-1.5 mb-2 border-b border-white/20 pb-1.5 w-fit">
-                                                <span class="material-symbols-outlined text-white text-base">sound_detection_dog_barking</span>
-                                                <span class="text-sm font-black tracking-[0.2em] uppercase">Sruvo</span>
+                                                <img src="/sruvologo.png" alt="Sruvo Logo" class="w-12 h-12 object-contain drop-shadow-sm" />
+                                                <span class="text-base font-black tracking-[0.2em] uppercase mt-1 flex items-center">Sruvo</span>
                                             </div>
                                             <p class="text-[8px] uppercase tracking-[0.2em] font-extrabold opacity-90">Republic of Sruvo</p>
                                             <p class="text-[19px] font-black tracking-wide leading-tight mt-0.5 shadow-sm">PET PASSPORT</p>
@@ -223,7 +224,7 @@
                                         </div>
                                     </div>
                                     
-                                    <div class="p-5 bg-white space-y-4 relative flex-1">
+                                    <div class="p-6 bg-white space-y-5 relative flex-1 animate-fadeInUp">
                                         <span class="material-symbols-outlined absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[120px] text-surface-container-highest opacity-30 pointer-events-none">shield_with_heart</span>
 
                                         <div class="flex gap-4 items-center relative z-10">
@@ -241,29 +242,35 @@
 
                                         <div class="border-t border-dashed border-surface-container-highest"></div>
 
-                                        <div class="grid grid-cols-2 gap-y-4 gap-x-3 relative z-10">
-                                            <div class="space-y-0.5">
-                                                <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Passport ID</p>
-                                                <p class="text-xs font-black text-on-surface font-mono bg-surface-container-low px-2 py-1 rounded-md border border-surface-container-highest w-fit">${passportId}</p>
+                                        <div class="space-y-3.5 relative z-10">
+                                            <div class="grid grid-cols-2 gap-y-3 gap-x-3">
+                                                <div class="space-y-0.5">
+                                                    <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Passport ID</p>
+                                                    <p class="text-sm font-black text-on-surface font-mono bg-surface-container-low px-2 py-1 rounded-md border border-surface-container-highest w-fit">${passportId}</p>
+                                                </div>
+                                                <div class="space-y-0.5">
+                                                    <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Date of Birth</p>
+                                                    <p class="text-sm font-bold text-on-surface px-1">${dob}</p>
+                                                </div>
+                                                <div class="space-y-0.5">
+                                                    <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Owner</p>
+                                                    <p class="text-sm font-bold text-on-surface px-1 truncate max-w-[120px] font-medium">${ownerName}</p>
+                                                </div>
+                                                <div class="space-y-0.5">
+                                                    <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Valid Till</p>
+                                                    <p class="text-sm font-bold text-primary flex items-center gap-1 px-1">
+                                                        <span class="material-symbols-outlined text-[14px]">all_inclusive</span> Lifetime
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div class="space-y-0.5">
-                                                <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Date of Birth</p>
-                                                <p class="text-sm font-bold text-on-surface px-1">${dob}</p>
-                                            </div>
-                                            <div class="space-y-0.5">
-                                                <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Owner</p>
-                                                <p class="text-sm font-bold text-on-surface px-1 truncate max-w-[120px] font-medium">${ownerName}</p>
-                                            </div>
-                                            <div class="space-y-0.5">
-                                                <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Valid Till</p>
-                                                <p class="text-sm font-bold text-primary flex items-center gap-1 px-1">
-                                                    <span class="material-symbols-outlined text-[14px]">all_inclusive</span> Lifetime
-                                                </p>
+                                            <div class="space-y-0.5 border-t border-dashed border-surface-container-highest pt-2.5">
+                                                <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Appearance</p>
+                                                <p class="text-[11px] font-semibold text-on-surface px-1 italic">${appearance}</p>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div class="bg-surface-container-low px-5 py-3 flex justify-between items-center border-t border-surface-container-highest relative z-10">
+                                    <div class="bg-surface-container-low px-5 py-4 flex justify-between items-center border-t border-surface-container-highest relative z-10">
                                         <div class="space-y-1">
                                             <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Registry Status</p>
                                             <div class="flex items-center gap-1.5 bg-green-100 px-2 py-1 rounded-md border border-green-200 w-fit">
@@ -271,7 +278,8 @@
                                                 <p class="text-[11px] font-extrabold text-green-700 tracking-wide uppercase">Active & Verified</p>
                                             </div>
                                         </div>
-                                        <div class="w-12 h-12 bg-white rounded-xl border-2 border-surface-container-highest p-1 flex items-center justify-center shadow-sm relative group cursor-pointer hover:border-primary/50 transition-colors">
+                                        <div class="w-14 h-14 bg-white rounded-xl border-2 border-surface-container-highest p-1 flex items-center justify-center shadow-sm relative group cursor-pointer hover:border-primary/50 transition-colors">
+                                            <div class="absolute inset-0 bg-primary/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                             <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://sruvoindia.vercel.app/passport/${passportId}&color=d95191" alt="QR Code" class="w-full h-full object-contain rounded-md" referrerPolicy="no-referrer">
                                         </div>
                                     </div>
