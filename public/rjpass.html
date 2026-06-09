@@ -535,8 +535,8 @@
                         </div>
 
                         <div class="flex justify-center items-center my-auto">
-                            <div id="passportCenterElement" class="w-16 h-16 rounded-full border-2 border-dashed border-primary/30 flex items-center justify-center bg-white transition-all duration-500">
-                                <span id="centerIcon" class="material-symbols-outlined text-primary/40 text-2xl animate-bounce" style="animation-duration: 2s;">badge</span>
+                            <div id="passportCenterElement" class="w-16 h-16 rounded-full border-2 border-dashed border-primary/30 flex items-center justify-center bg-white transition-all duration-500 overflow-hidden">
+                                <img src="/sruvologo.png" id="centerIcon" alt="Sruvo Logo" class="w-10 h-10 object-contain drop-shadow-sm animate-bounce" style="animation-duration: 2s;" />
                             </div>
                         </div>
 
@@ -2243,7 +2243,7 @@
                 // Use smooth, float-based precision for the visual progress bar width
                 cardMiniProgressEl.style.width = `${Math.min(100, (elapsed / totalDuration) * 100)}%`;
 
-                if(logIndex < systemLogsArray.length && progressPercentage >= systemLogsArray[logIndex].timePerc) {
+                while(logIndex < systemLogsArray.length && progressPercentage >= systemLogsArray[logIndex].timePerc) {
                     
                     if(logIndex > 0) {
                         const prevIdx = logIndex - 1;
@@ -2273,7 +2273,7 @@
                     document.getElementById('secLevelText').innerText = systemLogsArray[logIndex].sec;
                     logIndex++;
                 }
-            }, 150);
+            }, 60);
         }
 
         // Custom Calendar State and Methods
