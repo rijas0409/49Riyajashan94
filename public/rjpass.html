@@ -1345,7 +1345,7 @@
         document.getElementById('backBtn').addEventListener('click', () => {
             if (currentStep > 1) {
                 if(currentStep === 4 && intervalTracker) {
-                    clearInterval(intervalTracker);
+                    cancelAnimationFrame(intervalTracker);
                 }
                 
                 document.getElementById(`step${currentStep}`).classList.remove('active');
@@ -2193,8 +2193,9 @@
             });
 
             let logIndex = 0;
+            let lastUpdate = 0;
 
-            intervalTracker = setInterval(() => {
+            function updateProgress() {
                 const elapsed = Date.now() - startTime;
                 let progressPercentage = Math.floor((elapsed / totalDuration) * 100);
                 
@@ -2206,7 +2207,6 @@
                     progressPercentage = 100;
                     percentTextEl.innerText = "100%";
                     cardMiniProgressEl.style.width = "100%";
-                    clearInterval(intervalTracker);
                     
                     // Mark all previous items as completed/hidden if they weren't already
                     for (let i = 0; i < systemLogsArray.length - 1; i++) {
@@ -2239,7 +2239,12 @@
                     return;
                 }
 
-                percentTextEl.innerText = `${progressPercentage}%`;
+                // Throttle text updates but keep width smooth
+                if (Date.now() - lastUpdate > 100) {
+                    percentTextEl.innerText = `${progressPercentage}%`;
+                    lastUpdate = Date.now();
+                }
+                
                 // Use smooth, float-based precision for the visual progress bar width
                 cardMiniProgressEl.style.width = `${Math.min(100, (elapsed / totalDuration) * 100)}%`;
 
@@ -2273,7 +2278,11 @@
                     document.getElementById('secLevelText').innerText = systemLogsArray[logIndex].sec;
                     logIndex++;
                 }
-            }, 60);
+
+                intervalTracker = requestAnimationFrame(updateProgress);
+            }
+
+            intervalTracker = requestAnimationFrame(updateProgress);
         }
 
         // Custom Calendar State and Methods
