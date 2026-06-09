@@ -2198,15 +2198,46 @@
                 const elapsed = Date.now() - startTime;
                 let progressPercentage = Math.floor((elapsed / totalDuration) * 100);
                 
-                if (progressPercentage >= 100) {
-                    progressPercentage = 100;
-                    clearInterval(intervalTracker);
-                    executeSuccessCompletionState();
-                }
-
                 const percentTextEl = document.getElementById('percentText');
                 const cardMiniProgressEl = document.getElementById('cardMiniProgress');
                 if(!percentTextEl || !cardMiniProgressEl) return;
+
+                if (progressPercentage >= 100) {
+                    progressPercentage = 100;
+                    percentTextEl.innerText = "100%";
+                    cardMiniProgressEl.style.width = "100%";
+                    clearInterval(intervalTracker);
+                    
+                    // Mark all previous items as completed/hidden if they weren't already
+                    for (let i = 0; i < systemLogsArray.length - 1; i++) {
+                        const item = document.getElementById(`logItem_${i}`);
+                        const icon = document.getElementById(`logIcon_${i}`);
+                        if (item && icon) {
+                            item.className = "log-item-box flex items-center gap-2 text-green-500 font-bold transition-colors duration-300 completed-hide";
+                            icon.innerText = "check_circle";
+                            icon.classList.remove('animate-spin');
+                        }
+                    }
+                    
+                    // Show final log item beautifully as highly successful and completed
+                    const finalIdx = systemLogsArray.length - 1;
+                    const finalItem = document.getElementById(`logItem_${finalIdx}`);
+                    const finalIcon = document.getElementById(`logIcon_${finalIdx}`);
+                    if (finalItem && finalIcon) {
+                        finalItem.className = "log-item-box flex items-center gap-2 text-green-500 font-bold transition-colors duration-300";
+                        finalIcon.innerText = "check_circle";
+                        finalIcon.classList.remove('animate-spin');
+                    }
+                    
+                    const secLevelText = document.getElementById('secLevelText');
+                    if (secLevelText) secLevelText.innerText = "Secured & Live";
+                    
+                    // Wait exactly 2 seconds (2000ms) with the final successful state showing before loading the passport
+                    setTimeout(() => {
+                        executeSuccessCompletionState();
+                    }, 2000);
+                    return;
+                }
 
                 percentTextEl.innerText = `${progressPercentage}%`;
                 // Use smooth, float-based precision for the visual progress bar width
