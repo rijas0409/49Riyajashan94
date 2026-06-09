@@ -174,6 +174,8 @@
                     </button>
                 </div>
                 <p class="mt-2 text-[10px] font-bold text-primary uppercase tracking-widest">Add Pet Photo</p>
+                <button type="button" onclick="document.getElementById('petPhotoFileInput').click(); event.stopPropagation();" class="text-[11px] font-bold text-primary/70 hover:text-primary hover:underline mt-1">Or Upload Image</button>
+                <input type="file" id="petPhotoFileInput" class="hidden" accept="image/*">
             </div>
 
             <form class="space-y-5" onsubmit="event.preventDefault(); nextStep(2);">
@@ -301,7 +303,7 @@
                 </div>
 
                 <div class="pt-4">
-                    <button type="submit" class="w-full py-4 bg-gradient-to-r from-primary to-[#e56ba4] text-white rounded-full font-bold text-lg shadow-[0_10px_25px_rgba(217,81,145,0.3)] active:scale-[0.98] transition-all">
+                    <button type="submit" id="step1ContinueBtn" class="w-full py-4 bg-gradient-to-r from-primary to-[#e56ba4] text-white rounded-full font-bold text-lg shadow-[0_10px_25px_rgba(217,81,145,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none active:scale-[0.98] transition-all">
                         Continue
                     </button>
                 </div>
@@ -318,54 +320,55 @@
                 
                 <div class="space-y-3">
                     <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Vaccination Records</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="flex items-center gap-3 p-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl cursor-pointer select-none accent-primary">
-                            <input type="checkbox" class="w-5 h-5 rounded-md border-surface-container-highest text-primary focus:ring-primary/20">
-                            <span class="text-sm font-semibold text-on-surface">Rabies</span>
-                        </label>
-                        <label class="flex items-center gap-3 p-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl cursor-pointer select-none accent-primary">
-                            <input type="checkbox" class="w-5 h-5 rounded-md border-surface-container-highest text-primary focus:ring-primary/20">
-                            <span class="text-sm font-semibold text-on-surface">DHPP</span>
-                        </label>
-                        <label class="flex items-center gap-3 p-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl cursor-pointer select-none accent-primary">
-                            <input type="checkbox" class="w-5 h-5 rounded-md border-surface-container-highest text-primary focus:ring-primary/20">
-                            <span class="text-sm font-semibold text-on-surface">FVRCP</span>
-                        </label>
-                        <label class="flex items-center gap-3 p-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl cursor-pointer select-none accent-primary">
-                            <input type="checkbox" class="w-5 h-5 rounded-md border-surface-container-highest text-primary focus:ring-primary/20">
-                            <span class="text-sm font-semibold text-on-surface">Not Sure</span>
-                        </label>
+                    <div id="vaccinationContainer" class="grid grid-cols-2 gap-2">
+                        <!-- Will be populated dynamically based on species -->
+                    </div>
+                    <div id="otherVaccineInputWrapper" class="hidden mt-3 space-y-1.5 transition-all">
+                        <label class="text-[11px] font-bold text-on-surface-variant tracking-wide uppercase ml-1">Specify Other Vaccine</label>
+                        <input type="text" id="otherVaccineInput" placeholder="Specify vaccine name" class="w-full px-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl outline-none focus:ring-2 focus:ring-primary/10 text-sm font-medium">
                     </div>
                 </div>
 
                 <div class="space-y-1.5">
                     <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Last Vaccination Date</label>
-                    <input type="date" class="w-full px-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl outline-none focus:ring-2 focus:ring-primary/10 text-sm">
+                    <input type="date" id="lastVaccinationDate" class="w-full px-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl outline-none focus:ring-2 focus:ring-primary/10 text-sm">
                 </div>
 
                 <div class="space-y-2 mt-4">
                     <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Existing Health Conditions</label>
                     <div class="flex flex-wrap gap-2 p-1">
                         <label class="cursor-pointer">
-                            <input type="checkbox" class="sr-only peer" name="conditions" value="skin">
+                            <input type="checkbox" class="sr-only peer" name="conditions" value="skin" onchange="handleConditionsChange(this)">
                             <div class="px-3.5 py-2 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs font-semibold text-on-surface-variant peer-checked:bg-primary-container peer-checked:text-primary peer-checked:border-primary transition-all">Skin Issues</div>
                         </label>
                         <label class="cursor-pointer">
-                            <input type="checkbox" class="sr-only peer" name="conditions" value="joints">
+                            <input type="checkbox" class="sr-only peer" name="conditions" value="joints" onchange="handleConditionsChange(this)">
                             <div class="px-3.5 py-2 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs font-semibold text-on-surface-variant peer-checked:bg-primary-container peer-checked:text-primary peer-checked:border-primary transition-all">Joint Problems</div>
                         </label>
                         <label class="cursor-pointer">
-                            <input type="checkbox" class="sr-only peer" name="conditions" value="heart">
-                            <div class="px-3.5 py-2 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs font-semibold text-on-surface-variant peer-checked:bg-primary-container peer-checked:text-primary peer-checked:border-primary transition-all">Heart Condition</div>
-                        </label>
-                        <label class="cursor-pointer">
-                            <input type="checkbox" class="sr-only peer" name="conditions" value="diabetes">
+                            <input type="checkbox" class="sr-only peer" name="conditions" value="diabetes" onchange="handleConditionsChange(this)">
                             <div class="px-3.5 py-2 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs font-semibold text-on-surface-variant peer-checked:bg-primary-container peer-checked:text-primary peer-checked:border-primary transition-all">Diabetes</div>
                         </label>
                         <label class="cursor-pointer">
-                            <input type="checkbox" class="sr-only peer" name="conditions" value="none">
+                            <input type="checkbox" class="sr-only peer" name="conditions" value="heart" onchange="handleConditionsChange(this)">
+                            <div class="px-3.5 py-2 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs font-semibold text-on-surface-variant peer-checked:bg-primary-container peer-checked:text-primary peer-checked:border-primary transition-all">Heart Condition</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" class="sr-only peer" name="conditions" value="digestive" onchange="handleConditionsChange(this)">
+                            <div class="px-3.5 py-2 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs font-semibold text-on-surface-variant peer-checked:bg-primary-container peer-checked:text-primary peer-checked:border-primary transition-all">Digestive Issues</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" class="sr-only peer" name="conditions" value="other" id="conditionOther" onchange="handleConditionsChange(this)">
+                            <div class="px-3.5 py-2 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs font-semibold text-on-surface-variant peer-checked:bg-primary-container peer-checked:text-primary peer-checked:border-primary transition-all">Other</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" class="sr-only peer" name="conditions" value="none" onchange="handleConditionsChange(this)">
                             <div class="px-3.5 py-2 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs font-semibold text-on-surface-variant peer-checked:bg-primary-container peer-checked:text-primary peer-checked:border-primary transition-all">None</div>
                         </label>
+                    </div>
+                    <div id="otherConditionInputWrapper" class="hidden mt-3 space-y-1.5 transition-all">
+                        <label class="text-[11px] font-bold text-on-surface-variant tracking-wide uppercase ml-1">Specify Other Condition</label>
+                        <input type="text" id="otherConditionInput" placeholder="Specify your pet's health condition" class="w-full px-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl outline-none focus:ring-2 focus:ring-primary/10 text-sm font-medium">
                     </div>
                 </div>
 
@@ -373,7 +376,7 @@
                     <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Known Allergies</label>
                     <div class="relative flex items-center">
                         <span class="material-symbols-outlined absolute left-4 text-on-surface-variant text-lg">warning</span>
-                        <input type="text" placeholder="e.g. Chicken, Penicillin, Dust, Pollen" class="w-full pl-11 pr-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl outline-none text-sm font-medium focus:ring-2 focus:ring-primary/10">
+                        <input type="text" id="knownAllergies" placeholder="e.g. Chicken, Penicillin, Dust, Pollen" class="w-full pl-11 pr-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl outline-none text-sm font-medium focus:ring-2 focus:ring-primary/10">
                     </div>
                 </div>
 
@@ -387,7 +390,7 @@
 
                 <div class="space-y-1.5">
                     <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Last Veterinary Visit</label>
-                    <input type="date" class="w-full px-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl outline-none focus:ring-2 focus:ring-primary/10 text-sm">
+                    <input type="date" id="lastVeterinaryVisit" class="w-full px-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl outline-none focus:ring-2 focus:ring-primary/10 text-sm">
                 </div>
 
                 <div class="space-y-2 mt-4">
@@ -410,7 +413,7 @@
                 </div>
 
                 <div class="pt-6">
-                    <button type="submit" class="w-full py-4 bg-gradient-to-r from-primary to-[#e56ba4] text-white rounded-[20px] font-bold text-lg shadow-[0_10px_25px_rgba(217,81,145,0.3)] active:scale-[0.98] transition-all">
+                    <button type="submit" id="step2ContinueBtn" class="w-full py-4 bg-gradient-to-r from-primary to-[#e56ba4] text-white rounded-[20px] font-bold text-lg shadow-[0_10px_25px_rgba(217,81,145,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none active:scale-[0.98] transition-all">
                         Save and Continue
                     </button>
                 </div>
@@ -423,7 +426,7 @@
                 <p class="text-on-surface-variant text-sm">Setup ownership contacts, emergency relations, and microchip verification details.</p>
             </div>
 
-            <form class="space-y-5" onsubmit="event.preventDefault(); nextStep(4);">
+            <form class="space-y-5" onsubmit="event.preventDefault(); submitToDatabaseAndNext();">
                 
                 <div class="space-y-1.5">
                     <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Owner's Full Name</label>
@@ -437,7 +440,7 @@
                     <label class="text-xs font-bold text-on-surface tracking-wide uppercase ml-1">Primary Phone Number</label>
                     <div class="relative flex items-center">
                         <span class="material-symbols-outlined absolute left-4 text-on-surface-variant text-lg">call</span>
-                        <input type="tel" placeholder="+91 XXXXX XXXXX" class="w-full pl-11 pr-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm font-medium">
+                        <input type="tel" id="primaryPhone" placeholder="+91 XXXXX XXXXX" class="w-full pl-11 pr-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm font-medium">
                     </div>
                 </div>
 
@@ -493,7 +496,7 @@
                 </div>
 
                 <div class="pt-4">
-                    <button type="submit" class="w-full py-4 bg-gradient-to-r from-primary to-[#e56ba4] text-white rounded-full font-bold text-lg shadow-[0_10px_25px_rgba(217,81,145,0.3)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 group">
+                    <button type="submit" id="step3ContinueBtn" class="w-full py-4 bg-gradient-to-r from-primary to-[#e56ba4] text-white rounded-full font-bold text-lg shadow-[0_10px_25px_rgba(217,81,145,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none active:scale-[0.98] transition-all flex items-center justify-center gap-2 group">
                         Complete Identity Setup
                         <span class="material-symbols-outlined text-xl group-hover:translate-x-0.5 transition-transform">verified_user</span>
                     </button>
@@ -620,7 +623,7 @@
                                 <div class="grid grid-cols-2 gap-y-3 gap-x-3">
                                     <div class="space-y-0.5">
                                         <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Passport ID</p>
-                                        <p class="text-sm font-black text-on-surface font-mono bg-surface-container-low px-2 py-1 rounded-md border border-surface-container-highest w-fit">SRV-882-991</p>
+                                        <p id="finalPassportIdTop" class="text-sm font-black text-on-surface font-mono bg-surface-container-low px-2 py-1 rounded-md border border-surface-container-highest w-fit">SRV-882-991</p>
                                     </div>
                                     <div class="space-y-0.5">
                                         <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Date of Birth</p>
@@ -654,7 +657,7 @@
                             </div>
                             <div class="w-14 h-14 bg-white rounded-xl border-2 border-surface-container-highest p-1 flex items-center justify-center shadow-sm relative group cursor-pointer hover:border-primary/50 transition-colors">
                                 <div class="absolute inset-0 bg-primary/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=sruvo.com/passport/SRV-882-991&color=d95191" alt="QR Code" class="w-full h-full object-contain rounded-md">
+                                <img id="passportQRCodeImg" src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=sruvo.com/passport/SRV-882-991&color=d95191" alt="QR Code" class="w-full h-full object-contain rounded-md">
                             </div>
                         </div>
                     </div>
@@ -750,7 +753,7 @@
                 <div class="bg-white rounded-xl border border-surface-container-highest divide-y divide-surface-container-highest">
                     <div class="flex justify-between items-center p-3">
                         <span class="text-xs font-bold text-on-surface-variant">Passport ID</span> 
-                        <span class="text-xs font-bold text-on-surface font-mono bg-surface-container-low px-1.5 py-0.5 rounded border border-surface-container-highest">SRV-882-991</span>
+                        <span id="finalPassportIdBottom" class="text-xs font-bold text-on-surface font-mono bg-surface-container-low px-1.5 py-0.5 rounded border border-surface-container-highest">SRV-882-991</span>
                     </div>
                     <div class="flex justify-between items-center p-3">
                         <span class="text-xs font-bold text-on-surface-variant">Verification Status</span> 
@@ -1230,6 +1233,8 @@
                     </div>
                 </div>
 
+                <div id="hrModalError" class="hidden text-xs font-bold text-red-500 mt-2 text-center"></div>
+
                 <div class="pt-4 pb-2">
                     <button type="submit" class="w-full py-4 bg-primary text-white rounded-[16px] font-bold text-[15px] shadow-[0_8px_20px_rgba(217,81,145,0.25)] active:scale-[0.98] transition-all">
                         Save Record
@@ -1446,6 +1451,10 @@
             // Hide breed dropdown
             const breedMenu = document.getElementById('breedDropdownMenu');
             if(breedMenu) breedMenu.classList.add('hidden');
+
+            // Update vaccination records dynamically based on selected species
+            updateVaccines(name);
+            updateModalVaccines(name);
         }
 
         function showBreedDropdown() {
@@ -1717,12 +1726,16 @@
             const p3 = document.getElementById('petAccountPhoto');
             if(p3) p3.src = photoDataUrl;
 
+            hasPetPhoto = true;
+            updateContinueButtonsState();
+
             closeCameraModal();
         }
 
         // ---------------------------------------------
 
         let selectedFile = null;
+        let hasPetPhoto = false;
 
         function handleRecordTypeChange() {
             const hrType = document.getElementById('hrType');
@@ -1817,7 +1830,7 @@
             const customInput = document.getElementById('hrCustomVaccine');
             
             if (vaccineSelect && customVaccineWrapper) {
-                if (vaccineSelect.value === 'Other') {
+                if (vaccineSelect.value === 'Other' || vaccineSelect.value === 'Others') {
                     customVaccineWrapper.classList.remove('hidden');
                     if (customInput) customInput.required = true;
                 } else {
@@ -1848,6 +1861,28 @@
                 const el = document.getElementById(id);
                 if (el) el.classList.add('hidden');
             });
+            
+            // Clear any modal errors
+            const errorEl = document.getElementById('hrModalError');
+            if (errorEl) {
+                errorEl.innerText = '';
+                errorEl.classList.add('hidden');
+            }
+            
+            // Clear file state
+            selectedFile = null;
+            const fileInput = document.getElementById('hrFileInput');
+            if (fileInput) fileInput.value = '';
+            
+            const uploadStateDefault = document.getElementById('hrUploadStateDefault');
+            const uploadStateSelected = document.getElementById('hrUploadStateSelected');
+            const uploadArea = document.getElementById('hrUploadArea');
+            if (uploadStateDefault) uploadStateDefault.classList.remove('hidden');
+            if (uploadStateSelected) uploadStateSelected.classList.add('hidden');
+            if (uploadArea) {
+                uploadArea.className = "w-full py-6 border-2 border-dashed border-primary/30 rounded-xl bg-primary/5 flex flex-col items-center justify-center cursor-pointer hover:bg-primary/10 transition-colors";
+            }
+
             const modal = document.getElementById('healthRecordModal');
             if (modal) modal.classList.remove('hidden');
         }
@@ -1874,8 +1909,17 @@
                 if (el) el.classList.add('hidden');
             });
             
+            const errorEl = document.getElementById('hrModalError');
+            if (errorEl) {
+                errorEl.innerText = '';
+                errorEl.classList.add('hidden');
+            }
+
             // Reset upload area states
             selectedFile = null;
+            const fileInput = document.getElementById('hrFileInput');
+            if (fileInput) fileInput.value = '';
+            
             const uploadStateDefault = document.getElementById('hrUploadStateDefault');
             const uploadStateSelected = document.getElementById('hrUploadStateSelected');
             const uploadArea = document.getElementById('hrUploadArea');
@@ -1886,11 +1930,15 @@
             }
         }
 
-        function deleteHealthRecord(btn) {
+        function deleteHealthRecord(btn, hrId) {
             const card = btn.closest('.p-3\\.5') || btn.parentElement.parentElement;
             if (card) {
                 card.remove();
+                if (window.globalHealthRecords && hrId) {
+                    delete window.globalHealthRecords[hrId];
+                }
                 updateHealthRecordButtons();
+                updateContinueButtonsState();
             }
         }
 
@@ -1920,6 +1968,20 @@
             const type = hrTypeSelect.value;
             if(!type) return;
 
+            // Enforce upload document is mandatory
+            const errorEl = document.getElementById('hrModalError');
+            if (!selectedFile) {
+                if (errorEl) {
+                    errorEl.innerText = "Please upload a document to save this record.";
+                    errorEl.classList.remove('hidden');
+                }
+                return;
+            } else {
+                if (errorEl) {
+                    errorEl.classList.add('hidden');
+                }
+            }
+
             let displayName = '';
             let displaySub = '';
             let dateVal = '';
@@ -1929,7 +1991,7 @@
                 icon = 'vaccines';
                 const mainName = document.getElementById('hrVaccineName').value;
                 const custName = document.getElementById('hrCustomVaccine').value;
-                const finalVaccineName = mainName === 'Other' ? (custName || 'Other') : (mainName || 'Vaccine');
+                const finalVaccineName = (mainName === 'Other' || mainName === 'Others') ? (custName || 'Other') : (mainName || 'Vaccine');
                 
                 dateVal = document.getElementById('hrVaccineDate').value;
                 const dueDateVal = document.getElementById('hrVaccineDueDate').value;
@@ -2052,6 +2114,8 @@
             }
 
             const card = document.createElement('div');
+            const recordId = 'hr_' + Date.now();
+            card.id = recordId;
             card.className = "p-3.5 bg-white border border-surface-container-highest rounded-2xl shadow-sm space-y-2 animate-[fadeInUp_0.3s_ease-out]";
             card.innerHTML = `
                 <div class="flex items-center justify-between">
@@ -2064,7 +2128,7 @@
                             <p class="text-[10px] font-medium text-on-surface-variant">${displaySub}</p>
                         </div>
                     </div>
-                    <button type="button" class="w-7 h-7 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant hover:text-red-500 hover:bg-red-50 transition-colors" onclick="deleteHealthRecord(this)">
+                    <button type="button" class="w-7 h-7 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant hover:text-red-500 hover:bg-red-50 transition-colors" onclick="deleteHealthRecord(this, '${recordId}')">
                         <span class="material-symbols-outlined text-[14px]">delete</span>
                     </button>
                 </div>
@@ -2080,9 +2144,39 @@
                 </div>
             `;
             
+            window.globalHealthRecords = window.globalHealthRecords || {};
+            let recordData = {
+                type,
+                vaccineName: document.getElementById('hrVaccineName')?.value,
+                specifyVaccine: document.getElementById('hrCustomVaccine')?.value,
+                dateAdministered: document.getElementById('hrVaccineDate')?.value,
+                nextDueDate: document.getElementById('hrVaccineDueDate')?.value,
+                diagnosis: document.getElementById('hrDiagnosis')?.value,
+                prescribedBy: document.getElementById('hrPrescribedBy')?.value,
+                issueDate: document.getElementById('hrIssueDate')?.value,
+                testName: document.getElementById('hrTestName')?.value,
+                testDate: document.getElementById('hrTestDate')?.value,
+                procedureName: document.getElementById('hrProcedureName')?.value,
+                surgeryDate: document.getElementById('hrSurgeryDate')?.value,
+                conditionName: document.getElementById('hrConditionName')?.value,
+                certificateTitle: document.getElementById('hrCertTitle')?.value,
+                recordDescription: document.getElementById('hrDesc')?.value,
+            };
+            if (selectedFile) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    recordData.documentBase64 = e.target.result;
+                    window.globalHealthRecords[recordId] = recordData;
+                };
+                reader.readAsDataURL(selectedFile);
+            } else {
+                window.globalHealthRecords[recordId] = recordData;
+            }
+
             container.appendChild(card);
             updateHealthRecordButtons();
             closeHealthRecordModal();
+            updateContinueButtonsState();
         }
 
         // Initialize file upload events on DOM load
@@ -2147,7 +2241,322 @@
                     calDropdown.classList.add('hidden');
                 }
             });
+
+            // Set initial vaccines default for 'Dog'
+            updateVaccines('Dog');
+            updateModalVaccines('Dog');
+
+            // Pet photo file input handling
+            const petPhotoFileInput = document.getElementById('petPhotoFileInput');
+            if (petPhotoFileInput) {
+                petPhotoFileInput.addEventListener('change', function(e) {
+                    if (e.target.files && e.target.files[0]) {
+                        const file = e.target.files[0];
+                        const reader = new FileReader();
+                        reader.onload = function(evt) {
+                            const photoDataUrl = evt.target.result;
+                            const previewContainer = document.getElementById('petPhotoPreview');
+                            if (previewContainer) {
+                                previewContainer.innerHTML = `<img src="${photoDataUrl}" class="w-full h-full object-cover" />`;
+                            }
+                            const p1 = document.getElementById('passportPetPhoto');
+                            if(p1) p1.src = photoDataUrl;
+                            const p2 = document.getElementById('dashboardPetPhoto');
+                            if(p2) p2.src = photoDataUrl;
+                            const p3 = document.getElementById('petAccountPhoto');
+                            if(p3) p3.src = photoDataUrl;
+
+                            hasPetPhoto = true;
+                            updateContinueButtonsState();
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+
+            // Listen to global changes to instantly validate and update continue buttons
+            document.addEventListener('input', updateContinueButtonsState);
+            document.addEventListener('change', updateContinueButtonsState);
+            
+            // Initial call to set correct disabled/enabled state of buttons
+            updateContinueButtonsState();
         });
+
+        function updateContinueButtonsState() {
+            // --- Step 1 Validation ---
+            const petNameVal = document.getElementById('petName')?.value?.trim();
+            const breedVal = document.getElementById('petBreed')?.value?.trim();
+            const appearanceVal = document.getElementById('petAppearance')?.value?.trim();
+            const ageType = document.getElementById('petAgeType')?.value || 'exact';
+            
+            let isStep1Valid = true;
+            
+            // 1. Photo is uploaded/captured
+            if (!hasPetPhoto) {
+                isStep1Valid = false;
+            }
+            // 2. Pet Name
+            if (!petNameVal) {
+                isStep1Valid = false;
+            }
+            // 3. Breed
+            if (!breedVal) {
+                isStep1Valid = false;
+            }
+            // 4. Appearance
+            if (!appearanceVal) {
+                isStep1Valid = false;
+            }
+            // 5. Age
+            if (ageType === 'exact') {
+                const dobVal = document.getElementById('petDOB')?.value;
+                if (!dobVal) {
+                    isStep1Valid = false;
+                }
+            } else {
+                const yrsVal = parseInt(document.getElementById('approxYears')?.value || '0', 10) || 0;
+                const mosVal = parseInt(document.getElementById('approxMonths')?.value || '0', 10) || 0;
+                if (yrsVal <= 0 && mosVal <= 0) {
+                    isStep1Valid = false;
+                }
+            }
+
+            const step1Btn = document.getElementById('step1ContinueBtn');
+            if (step1Btn) {
+                step1Btn.disabled = !isStep1Valid;
+            }
+
+            // --- Step 2 Validation ---
+            let isStep2Valid = true;
+
+            // 1. Vaccination Records checked
+            const checkedVaccines = document.querySelectorAll('input[name="vaccines"]:checked');
+            if (checkedVaccines.length === 0) {
+                isStep2Valid = false;
+            } else {
+                const hasOtherVaccine = Array.from(checkedVaccines).some(cb => cb.value.toLowerCase() === 'other' || cb.value.toLowerCase() === 'others');
+                if (hasOtherVaccine) {
+                    const otherVacVal = document.getElementById('otherVaccineInput')?.value?.trim();
+                    if (!otherVacVal) {
+                        isStep2Valid = false;
+                    }
+                }
+            }
+
+            // 2. Last Vaccination Date
+            const lvdVal = document.getElementById('lastVaccinationDate')?.value;
+            if (!lvdVal) {
+                isStep2Valid = false;
+            }
+
+            // 3. Existing Health Conditions checked
+            const checkedConditions = document.querySelectorAll('input[name="conditions"]:checked');
+            if (checkedConditions.length === 0) {
+                isStep2Valid = false;
+            } else {
+                const hasOtherCondition = Array.from(checkedConditions).some(cb => cb.value.toLowerCase() === 'other' || cb.value.toLowerCase() === 'others');
+                if (hasOtherCondition) {
+                    const otherCondVal = document.getElementById('otherConditionInput')?.value?.trim();
+                    if (!otherCondVal) {
+                        isStep2Valid = false;
+                    }
+                }
+            }
+
+            // 4. Known Allergies
+            const allergiesVal = document.getElementById('knownAllergies')?.value?.trim();
+            if (!allergiesVal) {
+                isStep2Valid = false;
+            }
+
+            // 5. Last Veterinary Visit
+            const lvvVal = document.getElementById('lastVeterinaryVisit')?.value;
+            if (!lvvVal) {
+                isStep2Valid = false;
+            }
+
+            // 6. Health Documents (at least one uploaded medical record)
+            const recordsContainer = document.getElementById('healthRecordsContainer');
+            const recordCount = recordsContainer?.children?.length || 0;
+            if (recordCount === 0) {
+                isStep2Valid = false;
+            }
+
+            const step2Btn = document.getElementById('step2ContinueBtn');
+            if (step2Btn) {
+                step2Btn.disabled = !isStep2Valid;
+            }
+
+            // --- Step 3 Validation ---
+            let isStep3Valid = true;
+
+            // 1. Owner Name
+            const ownerNameVal = document.getElementById('ownerName')?.value?.trim();
+            if (!ownerNameVal) {
+                isStep3Valid = false;
+            }
+
+            // 2. Primary Phone Number
+            const primaryPhoneVal = document.getElementById('primaryPhone')?.value?.trim();
+            if (!primaryPhoneVal) {
+                isStep3Valid = false;
+            }
+
+            // 3. Emergency Backup Contact Name
+            const emNameVal = document.getElementById('emergencyContactName')?.value?.trim();
+            if (!emNameVal) {
+                isStep3Valid = false;
+            }
+
+            // 4. Emergency Backup Phone Number
+            const emPhoneVal = document.getElementById('emergencyPhone')?.value?.trim();
+            if (!emPhoneVal) {
+                isStep3Valid = false;
+            }
+
+            // 5. Relationship select
+            const emRelationVal = document.getElementById('emergencyRelation')?.value;
+            if (emRelationVal === 'Other') {
+                const customRelVal = document.getElementById('customRelation')?.value?.trim();
+                if (!customRelVal) {
+                    isStep3Valid = false;
+                }
+            }
+
+            const step3Btn = document.getElementById('step3ContinueBtn');
+            if (step3Btn) {
+                step3Btn.disabled = !isStep3Valid;
+            }
+        }
+
+        const vaccineDatabase = {
+            'Dog': ['Rabies', 'DHPP', 'Other', 'Not Sure'],
+            'Cat': ['Rabies', 'FVRCP', 'Other', 'Not Sure'],
+            'Bird': ['Avian Vaccine', 'Other', 'Not Sure'],
+            'Hamster': ['Other', 'Not Sure']
+        };
+
+        const modalVaccineDatabase = {
+            'Dog': ['Rabies', 'DHPP', 'Leptospirosis', 'Kennel Cough (Bordetella)', 'Canine Influenza', 'Others', 'Not Sure'],
+            'Cat': ['Rabies', 'FVRCP', 'FeLV', 'Chlamydia', 'Others', 'Not Sure'],
+            'Bird': ['Avian Vaccine', 'Others', 'Not Sure'],
+            'Hamster': ['Others', 'Not Sure']
+        };
+
+        function updateModalVaccines(species) {
+            const selectEl = document.getElementById('hrVaccineName');
+            if (!selectEl) return;
+
+            const list = modalVaccineDatabase[species] || modalVaccineDatabase['Dog'];
+            
+            selectEl.innerHTML = '<option value="" disabled selected>Select Vaccine</option>';
+            
+            list.forEach(vac => {
+                const opt = document.createElement('option');
+                opt.value = vac;
+                opt.innerText = vac;
+                selectEl.appendChild(opt);
+            });
+
+            const customVaccineWrapper = document.getElementById('customVaccineWrapper');
+            const customInput = document.getElementById('hrCustomVaccine');
+            if (customVaccineWrapper) customVaccineWrapper.classList.add('hidden');
+            if (customInput) {
+                customInput.required = false;
+                customInput.value = '';
+            }
+        }
+
+        function updateVaccines(species) {
+            const container = document.getElementById('vaccinationContainer');
+            if (!container) return;
+
+            const vaccines = vaccineDatabase[species] || ['Rabies', 'DHPP', 'Other', 'Not Sure'];
+            container.innerHTML = '';
+
+            vaccines.forEach(vac => {
+                const label = document.createElement('label');
+                label.className = "flex items-center gap-3 p-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl cursor-pointer select-none accent-primary transition-all duration-150";
+                
+                label.innerHTML = `
+                    <input type="checkbox" name="vaccines" value="${vac}" onchange="handleVaccinesChange(this)" class="w-5 h-5 rounded-md border-surface-container-highest text-primary focus:ring-primary/20">
+                    <span class="text-sm font-semibold text-on-surface">${vac}</span>
+                `;
+                container.appendChild(label);
+            });
+
+            // Hide specify other input initially
+            const otherWrapper = document.getElementById('otherVaccineInputWrapper');
+            if (otherWrapper) {
+                otherWrapper.classList.add('hidden');
+                const otherInput = document.getElementById('otherVaccineInput');
+                if (otherInput) otherInput.value = '';
+            }
+        }
+
+        function handleVaccinesChange(element) {
+            if (element.value === "Not Sure") {
+                if (element.checked) {
+                    const checkboxes = document.querySelectorAll('input[name="vaccines"]');
+                    checkboxes.forEach(cb => {
+                        if (cb.value !== "Not Sure") {
+                            cb.checked = false;
+                        }
+                    });
+                }
+            } else {
+                if (element.checked) {
+                    const notSureCheckbox = document.querySelector('input[name="vaccines"][value="Not Sure"]');
+                    if (notSureCheckbox) notSureCheckbox.checked = false;
+                }
+            }
+
+            // Handle showing/hiding Other field
+            const otherCheckbox = document.querySelector('input[name="vaccines"][value="Other"]');
+            const otherWrapper = document.getElementById('otherVaccineInputWrapper');
+            if (otherWrapper) {
+                if (otherCheckbox && otherCheckbox.checked) {
+                    otherWrapper.classList.remove('hidden');
+                    setTimeout(() => {
+                        document.getElementById('otherVaccineInput').focus();
+                    }, 50);
+                } else {
+                    otherWrapper.classList.add('hidden');
+                }
+            }
+        }
+
+        function toggleOtherConditionField() {
+            const hasOther = document.getElementById('conditionOther').checked;
+            const container = document.getElementById('otherConditionInputWrapper');
+            if (hasOther) {
+                container.classList.remove('hidden');
+                setTimeout(() => {
+                    document.getElementById('otherConditionInput').focus();
+                }, 50);
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        function handleConditionsChange(element) {
+            if (element.value === "none") {
+                if (element.checked) {
+                    const checkboxes = document.querySelectorAll('input[name="conditions"]');
+                    checkboxes.forEach(cb => {
+                        if (cb.value !== "none") {
+                            cb.checked = false;
+                        }
+                    });
+                }
+            } else {
+                if (element.checked) {
+                    const noneCheckbox = document.querySelector('input[name="conditions"][value="none"]');
+                    if (noneCheckbox) noneCheckbox.checked = false;
+                }
+            }
+            toggleOtherConditionField();
+        }
 
         function runStep4Engine() {
             document.getElementById('progressBlock').style.display = 'none';
@@ -2713,6 +3122,75 @@
                     passportContainer.classList.remove('scale-95', 'opacity-0');
                     passportContainer.classList.add('scale-100', 'opacity-100');
                 }, 50);
+            }
+        }
+
+        async function submitToDatabaseAndNext() {
+            const btn = document.getElementById('step3ContinueBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<span class="material-symbols-outlined animate-spin">sync</span> Saving Identity...`;
+            btn.disabled = true;
+
+            try {
+                const payload = {
+                    petName: document.getElementById('petName')?.value,
+                    species: document.getElementById('selectedText')?.innerText.trim(),
+                    gender: document.getElementById('petGender')?.value,
+                    breed: document.getElementById('petBreed')?.value,
+                    appearance: document.getElementById('petAppearance')?.value,
+                    ageType: document.getElementById('petAgeType')?.value || 'exact',
+                    dob: document.getElementById('petDOB')?.value,
+                    approxYears: document.getElementById('approxYears')?.value,
+                    approxMonths: document.getElementById('approxMonths')?.value,
+                    weight: document.getElementById('petWeight')?.value,
+                    ownerName: document.getElementById('ownerName')?.value,
+                    primaryPhone: document.getElementById('primaryPhone')?.value,
+                    emergencyContactName: document.getElementById('emergencyContactName')?.value,
+                    emergencyPhone: document.getElementById('emergencyPhone')?.value,
+                    emergencyRelationship: document.getElementById('emergencyRelation')?.value === 'Other' ? document.getElementById('customRelation')?.value : document.getElementById('emergencyRelation')?.value,
+                    photoUrl: document.getElementById('passportPetPhoto')?.src,
+                    
+                    lastVaccinationDate: document.getElementById('lastVaccinationDate')?.value,
+                    knownAllergies: document.getElementById('knownAllergies')?.value,
+                    lastVeterinaryVisit: document.getElementById('lastVeterinaryVisit')?.value,
+                    
+                    vaccines: Array.from(document.querySelectorAll('input[name="vaccines"]:checked')).map(e => e.value),
+                    otherVaccineText: document.getElementById('otherVaccineInput')?.value,
+                    conditions: Array.from(document.querySelectorAll('input[name="conditions"]:checked')).map(e => e.value),
+                    otherConditionText: document.getElementById('otherConditionInput')?.value,
+                    
+                    healthRecords: Object.values(window.globalHealthRecords || {})
+                };
+
+                const res = await fetch('/api/pet-passport', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (data.success && data.passportId) {
+                    // Update IDs in the UI
+                    const topId = document.getElementById('finalPassportIdTop');
+                    if (topId) topId.innerText = data.passportId;
+                    const botId = document.getElementById('finalPassportIdBottom');
+                    if (botId) botId.innerText = data.passportId;
+
+                    // Generate QR Code dynamically
+                    const qrImg = document.getElementById('passportQRCodeImg');
+                    if (qrImg) {
+                        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=sruvo.com/passport/${data.passportId}&color=d95191`;
+                    }
+
+                    nextStep(4);
+                } else {
+                    alert('Failed to save passport: ' + (data.error || 'Unknown error. Check backend logs.'));
+                }
+            } catch(err) {
+                alert('Exception saving passport: ' + err.message);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             }
         }
     </script>
