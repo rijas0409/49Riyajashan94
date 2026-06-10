@@ -22,6 +22,8 @@ import AdminWallets from "@/components/admin/AdminWallets";
 import AdminBuyers from "@/components/admin/AdminBuyers";
 import AdminNotifications from "@/components/admin/AdminNotifications";
 import AdminVetAppointments from "@/components/admin/AdminVetAppointments";
+import AdminPetPassport from "@/components/admin/AdminPetPassport";
+
 
 export interface AdminData {
   pendingSellers: Record<string, any>[];
@@ -502,6 +504,7 @@ const AdminDashboard = () => {
       case "notifications": return <AdminNotifications />;
       case "settings": return <AdminSettings />;
       case "listings": return <AdminListings data={data} actions={actions} />;
+      case "pet_passport": return <AdminPetPassport />;
       case "transport": return <AdminTransport data={data} actions={actions} />;
       case "profile": return <AdminProfileSettings user={user} onBack={() => setActiveSection("overview")} onProfileUpdate={(photo) => setProfilePhoto(photo)} />;
       default: return <AdminOverview data={data} actions={actions} setActiveSection={handleSectionChange} />;

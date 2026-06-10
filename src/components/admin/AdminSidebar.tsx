@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Stethoscope, Package, DollarSign, Settings, Radio, PawPrint, Truck, Image, Megaphone, Wallet, ShoppingBag, Bell, Calendar } from "lucide-react";
+import { LayoutDashboard, Users, Stethoscope, Package, DollarSign, Settings, Radio, PawPrint, Truck, Image, Megaphone, Wallet, ShoppingBag, Bell, Calendar, FileText } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SRUVO_LOGO_URL } from "@/constants/branding";
 
@@ -16,6 +16,7 @@ const navItems = [
   { id: "vets", label: "Vets", icon: Stethoscope },
   { id: "vet_appointments", label: "Vet Appointments", icon: Calendar },
   { id: "listings", label: "Listings", icon: PawPrint },
+  { id: "pet_passport", label: "Pet Passport", icon: FileText },
   { id: "products", label: "Products", icon: Package },
   { id: "transport", label: "Transport", icon: Truck },
   { id: "banners", label: "Banners", icon: Image },

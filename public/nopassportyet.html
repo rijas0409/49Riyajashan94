@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+      name="viewport"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              // Sruvo Brand Identity Colors from Images
+              primary: "#d95191", // Deep vibrant pink/magenta from buttons & badges
+              "primary-container": "#fcebf3", // Premium pastel pink containers
+              "on-surface": "#412b36", // Deep premium plum-tinted dark text
+              "on-surface-variant": "#7c6872", // Muted elegant secondary text
+              surface: "#fffbfe", // Clean warm brand background
+              "surface-container-low": "#fdf4f8", // Subtle light card details
+              "surface-container-high": "#fbe7f0", // Behind-stacked card tint
+              "surface-container-highest": "#f7d3e3", // Lines and accent structure
+              "tertiary-container": "#f8daf0", // Notification/ID badge background
+              "on-tertiary-container": "#853164", // Deep text for identity badge
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        overflow-x: hidden; /* Prevent horizontal scroll */
+      }
+      .glass-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+      }
+      /* Fix for mobile height issues */
+      .main-container {
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    </style>
+  </head>
+
+  <body
+    class="bg-surface text-on-surface antialiased selection:bg-primary-container"
+  >
+    <!-- Floating Back Button -->
+    <button
+      id="btnBackToProfile"
+      class="fixed top-6 left-6 z-50 w-10 h-10 rounded-full bg-[#F3F0F9] flex items-center justify-center hover:opacity-95 transition-all active:scale-90 focus:outline-none"
+      aria-label="Go Back"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#6B7280"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="lucide lucide-arrow-left"
+      >
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+    </button>
+
+    <main class="main-container px-4 py-8">
+      <div class="w-full max-w-md mx-auto text-center space-y-10 pt-[39px]">
+        <div class="relative flex justify-center">
+          <div
+            class="absolute inset-0 bg-primary/10 blur-3xl -z-10 rounded-full scale-125"
+          ></div>
+
+          <div class="relative w-48 h-[247px] sm:w-56 sm:h-[279px]">
+            <div
+              class="absolute top-3 left-3 w-full h-full bg-surface-container-high rounded-xl rotate-3"
+            ></div>
+
+            <div
+              class="absolute inset-0 glass-card border border-white/60 shadow-xl rounded-xl flex flex-col p-5 overflow-hidden transition-all duration-500"
+            >
+              <div class="flex justify-between items-start mb-6">
+                <div
+                  class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-[#f381b8] flex items-center justify-center text-white shadow-sm"
+                >
+                  <span class="material-symbols-outlined text-xl"
+                    >fingerprint</span
+                  >
+                </div>
+                <div
+                  class="bg-tertiary-container/60 px-2.5 py-0.5 rounded-full border border-primary/10 flex items-center justify-center"
+                >
+                  <span
+                    class="text-[9px] font-bold tracking-widest text-on-tertiary-container uppercase"
+                    >Sruvo ID</span
+                  >
+                </div>
+              </div>
+
+              <div class="space-y-3">
+                <div
+                  class="h-1.5 w-3/4 bg-surface-container-highest rounded-full"
+                ></div>
+                <div
+                  class="h-1.5 w-1/2 bg-surface-container-highest rounded-full"
+                ></div>
+                <div class="pt-4 grid grid-cols-2 gap-3">
+                  <div
+                    class="h-8 bg-surface-container-low rounded-md border border-surface-container-high"
+                  ></div>
+                  <div
+                    class="h-8 bg-surface-container-low rounded-md border border-surface-container-high"
+                  ></div>
+                </div>
+              </div>
+
+              <div
+                class="mt-auto self-end w-12 h-12 bg-surface-container-low rounded-lg p-1.5 flex items-center justify-center border border-surface-container-high"
+              >
+                <span class="material-symbols-outlined text-primary/40 text-3xl"
+                  >qr_code_2</span
+                >
+              </div>
+            </div>
+
+            <div
+              class="absolute -bottom-4 -right-4 w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center z-10 border border-primary-container"
+            >
+              <div
+                class="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center"
+              >
+                <span
+                  class="material-symbols-outlined text-primary text-3xl"
+                  style="font-variation-settings: &quot;FILL&quot; 1"
+                  >shield_with_heart</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-3 px-2">
+          <h1
+            class="text-3xl sm:text-4xl font-extrabold tracking-tight text-on-surface"
+          >
+            No Pet Passport Yet
+          </h1>
+          <p
+            class="text-base sm:text-lg text-on-surface-variant leading-relaxed"
+          >
+            Create a secure digital identity for your pet to manage health
+            records and travel docs in one space.
+          </p>
+        </div>
+
+        <div class="flex flex-col items-center gap-5">
+          <button
+            id="addFirstPetBtn"
+            class="w-full sm:w-auto group relative flex items-center justify-center gap-3 px-10 py-4 bg-gradient-to-r from-primary to-[#e56ba4] text-white rounded-full font-bold text-lg shadow-[0_10px_25px_rgba(217,81,145,0.3)] active:scale-95 transition-all"
+          >
+            <span class="material-symbols-outlined text-2xl">add_circle</span>
+            Add Your First Pet
+          </button>
+
+          <div
+            class="flex items-center gap-2 px-4 py-2 bg-surface-container-low rounded-full border border-primary-container/30"
+          >
+            <span
+              class="material-symbols-outlined text-primary text-sm"
+              style="font-variation-settings: &quot;FILL&quot; 1"
+              >verified_user</span
+            >
+            <span
+              class="text-[10px] font-bold text-on-surface-variant tracking-wider uppercase"
+              >Secure Storage</span
+            >
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div class="fixed top-0 left-0 w-full h-full -z-20 pointer-events-none">
+      <div
+        class="absolute top-1/4 -left-20 w-72 h-72 bg-primary/5 rounded-full blur-[80px]"
+      ></div>
+      <div
+        class="absolute bottom-1/4 -right-20 w-72 h-72 bg-primary/10 rounded-full blur-[80px]"
+      ></div>
+    </div>
+
+    <script>
+      document
+        .getElementById("addFirstPetBtn")
+        .addEventListener("click", () => {
+          window.parent.postMessage("create_new_passport", "*");
+        });
+      document
+        .getElementById("btnBackToProfile")
+        .addEventListener("click", () => {
+          window.parent.postMessage("close_pet_passport_flow", "*");
+        });
+    </script>
+  </body>
+</html>
