@@ -5296,7 +5296,10 @@
           Math.random().toString(36).substring(2, 5).toUpperCase();
 
         try {
+          const urlParams = new URLSearchParams(window.location.search);
+          const passedUserId = urlParams.get('userId');
           const payload = {
+            userId: passedUserId,
             petName: document.getElementById("petName")?.value,
             species: document.getElementById("selectedText")?.innerText.trim(),
             gender: document.getElementById("petGender")?.value,
@@ -5398,13 +5401,24 @@
 
           // Sync info with localStorage as a robust local backup
           try {
-            localStorage.setItem(
-              "lastSavedPassportData",
-              JSON.stringify({
-                passportId,
-                ...payload,
-              }),
-            );
+            const currentItem = { passportId, ...payload };
+            // Save single item for easy fallback
+            localStorage.setItem("lastSavedPassportData", JSON.stringify(currentItem));
+            
+            // Save to an array for multiple offline passports support
+            const existingAll = localStorage.getItem("allSavedPassports");
+            let allSaved = [];
+            if (existingAll) {
+              allSaved = JSON.parse(existingAll);
+            }
+            // Overwrite if same passportId exists, otherwise add
+            const existingIndex = allSaved.findIndex(p => p.passportId === passportId);
+            if (existingIndex >= 0) {
+              allSaved[existingIndex] = currentItem;
+            } else {
+              allSaved.unshift(currentItem); // add to top
+            }
+            localStorage.setItem("allSavedPassports", JSON.stringify(allSaved));
           } catch (e) {
             console.warn("Could not save to localStorage", e);
           }

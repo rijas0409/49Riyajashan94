@@ -1,18 +1,29 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { PawPrint, Plus, ShieldCheck, ArrowLeft, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const EmptyPetPassport = () => {
   const navigate = useNavigate();
   const [passportCount, setPassportCount] = useState<number | null>(null);
-  const [iframeSrc, setIframeSrc] = useState<string>("/mypassport.html");
+  const [iframeSrc, setIframeSrc] = useState<string>("");
   const [isIframeActive, setIsIframeActive] = useState(false);
+  const [isIframeLoading, setIsIframeLoading] = useState(true);
+  const [userId, setUserId] = useState<string>("");
+
+  // Trigger loading view on URL or view active state alterations
+  useEffect(() => {
+    setIsIframeLoading(true);
+  }, [iframeSrc, isIframeActive]);
 
   useEffect(() => {
-    const checkPassports = async () => {
+    const init = async () => {
       try {
-        const res = await fetch("/api/pet-passport");
+        const { data: { session } } = await supabase.auth.getSession();
+        const uid = session?.user?.id || "";
+        setUserId(uid);
+        
+        const res = await fetch(`/api/pet-passport?userId=${uid}`);
         if (res.ok) {
           const data = await res.json();
           const count = Array.isArray(data) ? data.length : 0;
@@ -20,17 +31,22 @@ const EmptyPetPassport = () => {
 
           // If user has passports, they should immediately see the list (iframe)
           if (count > 0) {
+            setIframeSrc(`/mypassport.html?userId=${uid}`);
             setIsIframeActive(true);
+          } else {
+            setIframeSrc(`/nopassportyet.html`);
           }
         } else {
           setPassportCount(0);
+          setIframeSrc(`/nopassportyet.html`);
         }
       } catch (e) {
         console.error("Failed to check passports:", e);
         setPassportCount(0);
+        setIframeSrc(`/nopassportyet.html`);
       }
     };
-    checkPassports();
+    init();
   }, []);
 
   useEffect(() => {
@@ -38,9 +54,9 @@ const EmptyPetPassport = () => {
       if (event.data === "close_pet_passport_flow") {
         if (iframeSrc.includes("/rjpass.html")) {
           // Return from details/creation to main companion dashboard
-          setIframeSrc("/mypassport.html");
+          setIframeSrc(`/mypassport.html?userId=${userId}`);
           // Re-check count to see if we should stay in iframe or go to empty state
-          fetch("/api/pet-passport")
+          fetch(`/api/pet-passport?userId=${userId}`)
             .then((res) => res.json())
             .then((data) => {
               if (Array.isArray(data) && data.length > 0) {
@@ -49,6 +65,7 @@ const EmptyPetPassport = () => {
               } else {
                 setPassportCount(0);
                 setIsIframeActive(false);
+                setIframeSrc(`/nopassportyet.html`);
               }
             });
         } else {
@@ -56,59 +73,59 @@ const EmptyPetPassport = () => {
           navigate("/buyer/profile");
         }
       } else if (event.data === "create_new_passport") {
-        setIframeSrc("/rjpass.html");
+        setIframeSrc(`/rjpass.html?userId=${userId}`);
         setIsIframeActive(true);
       } else if (event.data && event.data.type === "open_passport") {
         const passportId = event.data.passportId;
-        setIframeSrc(`/rjpass.html?id=${encodeURIComponent(passportId)}`);
+        setIframeSrc(`/rjpass.html?id=${encodeURIComponent(passportId)}&userId=${userId}`);
         setIsIframeActive(true);
       }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [iframeSrc, navigate]);
+  }, [iframeSrc, navigate, userId]);
 
-  const handleCreateFirst = () => {
-    setIframeSrc("/rjpass.html");
-    setIsIframeActive(true);
-  };
+  const showLoadingOverlay = passportCount === null || isIframeLoading;
 
-  // Loading state
-  if (passportCount === null) {
-    return (
-      <div className="min-h-screen bg-[#fffbfe] flex flex-col items-center justify-center p-6 text-center">
-        <Loader2 className="w-10 h-10 text-[#d95191] animate-spin mb-4" />
-        <p className="text-[#7c6872] font-semibold font-mono text-sm uppercase tracking-widest">
-          Checking Identities...
-        </p>
-      </div>
-    );
-  }
-
-  // Case A: No passports yet (Serving uploaded HTML via iframe)
-  if (!isIframeActive && passportCount === 0) {
-    return (
-      <div className="fixed inset-0 w-full h-full bg-[#fffbfe] z-[100]">
-        <iframe
-          src="/nopassportyet.html"
-          className="w-full h-full border-none"
-          title="No Passport Yet"
-        />
-      </div>
-    );
-  }
-
-  // Case B: Has passports or explicit flow active (Iframe Screen)
   return (
-    <div className="fixed inset-0 w-full h-full bg-[#fffbfe] z-[100]">
-      <iframe
-        key={iframeSrc}
-        src={iframeSrc}
-        className="w-full h-full border-none"
-        allow="camera *; microphone *; autoplay *"
-        title="Pet Passport Flow"
-      />
+    <div className="fixed inset-0 w-full h-full bg-[#fffbfe] z-[100] overflow-hidden">
+      {/* Premium Branded Loading Overlay */}
+      {showLoadingOverlay && (
+        <div className="absolute inset-0 z-[110] bg-[#fffbfe] flex flex-col items-center justify-center p-6 text-center transition-all duration-300">
+          <div className="relative w-20 h-20 mb-6 flex items-center justify-center">
+            {/* Double rotating ring animation */}
+            <div className="absolute inset-0 rounded-full border-4 border-[#fff0f5] border-t-[#d95191] animate-spin"></div>
+            <div className="absolute inset-2 rounded-full border-4 border-[#fff0f5] border-b-[#853164] animate-spin [animation-direction:reverse] opacity-80"></div>
+            <img 
+              src="/IMG_20260606_213853.png" 
+              alt="Paw" 
+              className="w-10 h-10 object-contain drop-shadow-sm animate-pulse z-10"
+            />
+          </div>
+          <h3 className="text-slate-800 font-extrabold text-sm tracking-wide mb-1">
+            {passportCount === null ? "Verifying Passport Vault..." : "Unlocking Digital Passport..."}
+          </h3>
+          <p className="text-[#a08b96] font-mono text-[10px] uppercase tracking-[0.25em] animate-pulse">
+            Sruvo Security Core Syncing
+          </p>
+        </div>
+      )}
+
+      {/* Render matching frame source in raw background silently */}
+      {passportCount !== null && (
+        <iframe
+          key={iframeSrc}
+          src={!isIframeActive && passportCount === 0 ? "/nopassportyet.html" : iframeSrc}
+          className="w-full h-full border-none"
+          allow="camera *; microphone *; autoplay *"
+          title="Pet Passport Sync"
+          onLoad={() => {
+            // Once loaded, fade out loading protection
+            setIsIframeLoading(false);
+          }}
+        />
+      )}
     </div>
   );
 };

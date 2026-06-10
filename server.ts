@@ -424,11 +424,14 @@ Return the response as a single JSON object containing only a "description" key.
       }
 
       const passportId = req.query.id as string;
+      const userId = req.query.userId as string;
+
       if (!passportId) {
-        const { data, error } = await supabaseAdmin
-          .from("pet_passports")
-          .select("*")
-          .order("created_at", { ascending: false });
+        let query = supabaseAdmin.from("pet_passports").select("*").order("created_at", { ascending: false });
+        if (userId) {
+          query = query.eq("user_id", userId);
+        }
+        const { data, error } = await query;
         if (error) throw error;
         return res.json(data || []);
       }
@@ -475,6 +478,7 @@ Return the response as a single JSON object containing only a "description" key.
   app.post("/api/pet-passport", async (req, res) => {
     try {
       const payload = req.body;
+      const userId = req.query.userId as string || payload.userId || null;
       let supabaseAdmin: any = null;
       try {
         const { createClient } = await import("@supabase/supabase-js");
@@ -502,6 +506,7 @@ Return the response as a single JSON object containing only a "description" key.
             const { data: petData, error: petErr } = await supabaseAdmin
               .from("pet_passports")
               .insert({
+                user_id: userId,
                 passport_id: passportId,
                 pet_name: payload.petName,
                 species: payload.species,
