@@ -757,6 +757,67 @@ Return the response as a single JSON object containing only a "description" key.
     }
   });
 
+  // End Point: Delete Pet Account
+  app.post("/api/delete-pet-account", async (req, res) => {
+    try {
+      const { passportId } = req.body;
+      if (!passportId) {
+        return res.status(400).json({ error: "passportId is required" });
+      }
+
+      let supabaseAdmin: any = null;
+      try {
+        const { createClient } = await import("@supabase/supabase-js");
+        let supabaseUrl = (process.env.VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co").trim();
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+        supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+      } catch (err) {
+        console.warn("Could not init supabaseAdmin on server", err);
+      }
+
+      if (!supabaseAdmin) {
+        return res.status(500).json({ error: "Supabase client not initialized" });
+      }
+
+      // 1. Find pet passport
+      const { data: pet, error: petErr } = await supabaseAdmin
+        .from("pet_passports")
+        .select("id")
+        .eq("passport_id", passportId)
+        .maybeSingle();
+
+      if (petErr) {
+        return res.status(500).json({ error: "Error searching passport: " + petErr.message });
+      }
+      if (!pet) {
+        return res.status(404).json({ error: "Passport not found" });
+      }
+
+      const petPassportId = pet.id;
+
+      // 2. Delete related data
+      await supabaseAdmin.from("pet_medical_logs").delete().eq("pet_passport_id", petPassportId);
+      await supabaseAdmin.from("pet_health_conditions").delete().eq("pet_passport_id", petPassportId);
+      await supabaseAdmin.from("pet_health_records_documents").delete().eq("pet_passport_id", petPassportId);
+      
+      // 3. Delete passport
+      const { error: deleteErr } = await supabaseAdmin
+        .from("pet_passports")
+        .delete()
+        .eq("id", petPassportId);
+
+      if (deleteErr) {
+        return res.status(500).json({ error: "Failed to delete passport: " + deleteErr.message });
+      }
+
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error("Error deleting pet account:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
