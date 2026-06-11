@@ -1602,7 +1602,7 @@
         </div>
 
         <div class="grid grid-cols-4 gap-3">
-          <button class="flex flex-col items-center gap-2 group">
+          <button id="shareDashboardBtn" class="flex flex-col items-center gap-2 group">
             <div
               class="w-14 h-14 rounded-full bg-surface-container-low border border-surface-container-highest flex items-center justify-center text-primary group-hover:bg-primary-container/50 group-active:scale-95 transition-all"
             >
@@ -1613,7 +1613,7 @@
               >Share</span
             >
           </button>
-          <button class="flex flex-col items-center gap-2 group">
+          <button id="pdfDashboardBtn" class="flex flex-col items-center gap-2 group">
             <div
               class="w-14 h-14 rounded-full bg-surface-container-low border border-surface-container-highest flex items-center justify-center text-primary group-hover:bg-primary-container/50 group-active:scale-95 transition-all"
             >
@@ -1624,15 +1624,15 @@
               >PDF</span
             >
           </button>
-          <button class="flex flex-col items-center gap-2 group">
+          <button id="addRecordDashboardBtn" class="flex flex-col items-center gap-2 group">
             <div
               class="w-14 h-14 rounded-full bg-surface-container-low border border-surface-container-highest flex items-center justify-center text-primary group-hover:bg-primary-container/50 group-active:scale-95 transition-all"
             >
-              <span class="material-symbols-outlined">qr_code_2</span>
+              <span class="material-symbols-outlined">note_add</span>
             </div>
             <span
               class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider"
-              >View QR</span
+              >Add Record</span
             >
           </button>
           <button
@@ -2814,8 +2814,16 @@
         }
       }
 
-      function loadPassportDataIntoUI(payload) {
-        if (!payload) return;
+      function loadPassportDataIntoUI(dataObj) {
+        if (!dataObj) return;
+
+        // Support both structured { pet, medical, conditions, healthRecords } and plain payload
+        const payload = dataObj.pet || dataObj;
+        const medical = dataObj.medical || {};
+        const conditions = dataObj.conditions || [];
+        const healthRecords = dataObj.healthRecords || [];
+
+        window.currentPassportId = payload.passport_id || payload.passportId || "";
 
         // Set form elements for compatibility and edits for step 1, 2, 3
         const petAgeTypeInput = document.getElementById("petAgeType");
@@ -2916,13 +2924,255 @@
         }
 
         const lastVaccinationDateInput = document.getElementById("lastVaccinationDate");
-        if (lastVaccinationDateInput) lastVaccinationDateInput.value = payload.last_vaccination_date || payload.lastVaccinationDate || "";
+        if (lastVaccinationDateInput) lastVaccinationDateInput.value = medical.last_vaccination_date || payload.last_vaccination_date || payload.lastVaccinationDate || "";
 
         const knownAllergiesInput = document.getElementById("knownAllergies");
-        if (knownAllergiesInput) knownAllergiesInput.value = payload.known_allergies || payload.knownAllergies || "";
+        if (knownAllergiesInput) knownAllergiesInput.value = medical.known_allergies || payload.known_allergies || payload.knownAllergies || "";
 
         const lastVeterinaryVisitInput = document.getElementById("lastVeterinaryVisit");
-        if (lastVeterinaryVisitInput) lastVeterinaryVisitInput.value = payload.last_veterinary_visit || payload.lastVeterinaryVisit || "";
+        if (lastVeterinaryVisitInput) lastVeterinaryVisitInput.value = medical.last_veterinary_visit || payload.last_veterinary_visit || payload.lastVeterinaryVisit || "";
+
+        // Pre-fill health conditions checklist
+        if (conditions && conditions.length > 0) {
+          // Uncheck everything first
+          document.querySelectorAll('input[name="conditions"]').forEach(cb => cb.checked = false);
+          
+          conditions.forEach(cond => {
+            const val = (cond.condition_name || "").toLowerCase();
+            const checkbox = document.querySelector(`input[name="conditions"][value="${val}"]`);
+            if (checkbox) {
+              checkbox.checked = true;
+            }
+            if (val === "other" || val === "others") {
+              const otherCheckbox = document.getElementById("conditionOther");
+              if (otherCheckbox) otherCheckbox.checked = true;
+              const otherWrapper = document.getElementById("otherConditionInputWrapper");
+              if (otherWrapper) otherWrapper.classList.remove("hidden");
+              const otherInput = document.getElementById("otherConditionInput");
+              if (otherInput) otherInput.value = cond.specify_other || "";
+            }
+          });
+        }
+
+        // Pre-fill health records / uploaded documents UI and object state
+        if (healthRecords && healthRecords.length > 0) {
+          const container = document.getElementById("healthRecordsContainer");
+          if (container) {
+            container.innerHTML = "";
+            window.globalHealthRecords = {};
+
+            healthRecords.forEach((r, idx) => {
+              const recordId = "hr_db_" + idx + "_" + Date.now();
+              
+              const recordData = {
+                type: r.record_type,
+                vaccineName: r.vaccine_name,
+                specifyVaccine: r.specify_vaccine,
+                dateAdministered: r.date_administered,
+                nextDueDate: r.next_due_date,
+                diagnosis: r.diagnosis,
+                prescribedBy: r.prescribed_by,
+                issueDate: r.issue_date,
+                testName: r.test_name,
+                testDate: r.test_date,
+                procedureName: r.procedure_name,
+                surgeryDate: r.surgery_date,
+                conditionName: r.condition_name,
+                certificateTitle: r.certificate_title,
+                recordDescription: r.record_description,
+                documentBase64: r.document_base64
+              };
+
+              window.globalHealthRecords[recordId] = recordData;
+
+              let displayName = "";
+              let displaySub = "";
+              let icon = "description";
+              let dateVal = r.issue_date || r.date_administered || r.test_date || r.surgery_date || "";
+              const type = r.record_type;
+
+              if (type === "Vaccination") {
+                icon = "vaccines";
+                const mainName = r.vaccine_name;
+                const custName = r.specify_vaccine;
+                const finalVaccineName =
+                  mainName === "Other" || mainName === "Others"
+                    ? custName || "Other"
+                    : mainName || "Vaccine";
+
+                displayName = `Vaccination: ${finalVaccineName}`;
+
+                let dateStr = "";
+                if (r.date_administered) {
+                  const dateObj = new Date(r.date_administered);
+                  dateStr = `Administered: ${dateObj.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}`;
+                }
+
+                let dueDateStr = "";
+                if (r.next_due_date) {
+                  const dueObj = new Date(r.next_due_date);
+                  dueDateStr = ` • Next Due: ${dueObj.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}`;
+                }
+                displaySub = `${dateStr}${dueDateStr}`;
+              } else if (type === "Prescription") {
+                icon = "prescriptions";
+                displayName = `Prescription: ${r.diagnosis || "Reason"}`;
+
+                let dateStr = "";
+                if (r.issue_date) {
+                  const dateObj = new Date(r.issue_date);
+                  dateStr = dateObj.toLocaleDateString("en-US", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  });
+                }
+                displaySub = `Prescribed by ${r.prescribed_by || "Doctor"}${dateStr ? " • " + dateStr : ""}`;
+              } else if (type === "Lab Test") {
+                icon = "biotech";
+                displayName = `Lab Test: ${r.test_name || "Test"}`;
+
+                let dateStr = "";
+                if (r.test_date) {
+                  const dateObj = new Date(r.test_date);
+                  dateStr = dateObj.toLocaleDateString("en-US", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  });
+                }
+                displaySub = `Performed: ${dateStr}`;
+              } else if (type === "Surgery") {
+                icon = "healing";
+                displayName = `Surgery: ${r.procedure_name || "Procedure"}`;
+
+                let dateStr = "";
+                if (r.surgery_date) {
+                  const dateObj = new Date(r.surgery_date);
+                  dateStr = dateObj.toLocaleDateString("en-US", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  });
+                }
+                displaySub = `Date: ${dateStr}`;
+              } else if (type === "Medical Condition") {
+                icon = "emergency";
+                displayName = `Condition: ${r.condition_name || "Condition"}`;
+
+                let dateStr = "";
+                if (r.issue_date) {
+                  const dateObj = new Date(r.issue_date);
+                  dateStr = dateObj.toLocaleDateString("en-US", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  });
+                }
+                displaySub = `Diagnosed: ${dateStr}`;
+              } else if (type === "Health Certificate") {
+                icon = "workspace_premium";
+                displayName = `Certificate: ${r.certificate_title || "Certificate"}`;
+
+                let dateStr = "";
+                if (r.issue_date) {
+                  const dateObj = new Date(r.issue_date);
+                  dateStr = dateObj.toLocaleDateString("en-US", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  });
+                }
+                displaySub = `Issued: ${dateStr}`;
+              } else {
+                icon = "description";
+                displayName = `${r.certificate_title || "Other Record"}: ${r.record_description || "Detail"}`;
+
+                let dateStr = "";
+                if (r.issue_date) {
+                  const dateObj = new Date(r.issue_date);
+                  dateStr = dateObj.toLocaleDateString("en-US", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  });
+                }
+                displaySub = `Date: ${dateStr}`;
+              }
+
+              const fileExt = (type === "Health Certificate" || type === "Vaccination") ? "jpg" : "pdf";
+              const baseName = type.toLowerCase().replace(/\s+/g, "_");
+              const filename = `${baseName}_record.${fileExt}`;
+
+              const card = document.createElement("div");
+              card.id = recordId;
+              card.className =
+                "p-3.5 bg-white border border-surface-container-highest rounded-2xl shadow-sm space-y-2 animate-[fadeInUp_0.3s_ease-out]";
+              card.innerHTML = `
+                      <div class="flex items-center justify-between">
+                          <div class="flex items-center gap-2.5">
+                              <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                  <span class="material-symbols-outlined text-[16px]">${icon}</span>
+                              </div>
+                              <div>
+                                  <p class="text-sm font-bold text-on-surface">${displayName}</p>
+                                  <p class="text-[10px] font-medium text-on-surface-variant">${displaySub}</p>
+                              </div>
+                          </div>
+                          <button type="button" class="w-7 h-7 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant hover:text-red-500 hover:bg-red-50 transition-colors" onclick="deleteHealthRecord(this, '${recordId}')">
+                              <span class="material-symbols-outlined text-[14px]">delete</span>
+                          </button>
+                      </div>
+                      <div class="flex items-center justify-between bg-surface-container-low border border-surface-container-high px-3 py-2 rounded-xl">
+                          <div class="flex items-center gap-2 truncate">
+                              <span class="material-symbols-outlined text-on-surface-variant text-sm">attach_file</span>
+                              <span class="text-[11px] font-medium text-on-surface truncate">${filename}</span>
+                          </div>
+                          <div class="flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded-md border border-green-200 shrink-0">
+                              <span class="material-symbols-outlined text-green-600 text-[12px] font-bold">check</span>
+                              <span class="text-[9px] font-black text-green-700 uppercase tracking-wide">Analysed</span>
+                          </div>
+                      </div>
+                  `;
+
+              container.appendChild(card);
+            });
+
+            if (typeof updateHealthRecordButtons === "function") {
+              updateHealthRecordButtons();
+            }
+          }
+        }
+
+        // Pre-fill vaccines checklist checkboxes
+        if (healthRecords && healthRecords.length > 0) {
+          // Uncheck all vaccines checkboxes first
+          document.querySelectorAll('input[name="vaccines"]').forEach(cb => cb.checked = false);
+
+          healthRecords.forEach(r => {
+            if (r.record_type === "Vaccination" && r.vaccine_name) {
+              const vaccineName = r.vaccine_name;
+              const checkboxes = document.querySelectorAll('input[name="vaccines"]');
+              let found = false;
+              checkboxes.forEach(cb => {
+                if (cb.value === vaccineName) {
+                  cb.checked = true;
+                  found = true;
+                }
+              });
+              if (!found && vaccineName !== "Not Sure") {
+                const otherCb = document.querySelector('input[name="vaccines"][value="Other"]');
+                if (otherCb) {
+                  otherCb.checked = true;
+                  const otherWrapper = document.getElementById("otherVaccineInputWrapper");
+                  if (otherWrapper) otherWrapper.classList.remove("hidden");
+                  const otherInput = document.getElementById("otherVaccineInput");
+                  if (otherInput) otherInput.value = r.specify_vaccine || vaccineName;
+                }
+              }
+            }
+          });
+        }
 
         if (typeof updateContinueButtonsState === "function") {
           updateContinueButtonsState();
@@ -3102,6 +3352,7 @@
           const isVisitor = urlParams.get("visitor") === "true";
 
           if (passportId) {
+            window.currentPassportId = passportId;
             console.log(
               "[DEBUG] Found passport target ID in query parameter:",
               passportId,
@@ -3155,6 +3406,79 @@
               };
             }
 
+            // Share button
+            const shareBtn = document.getElementById("shareDashboardBtn");
+            if (shareBtn) {
+              shareBtn.onclick = () => {
+                const passId = window.currentPassportId;
+                if (!passId) {
+                  alert("No passport ID available. Please save your passport first.");
+                  return;
+                }
+                const shareUrl = `https://sruvoindia.vercel.app/passport/${passId}`;
+                if (navigator.share) {
+                  navigator.share({
+                    title: "Verified Pet Passport",
+                    text: `Check out our verified pet passport secured by Sruvo blockchain, health records and vaccine logs included.`,
+                    url: shareUrl
+                  }).catch(err => console.error(err));
+                } else {
+                  navigator.clipboard.writeText(shareUrl)
+                    .then(() => {
+                      alert("Verified passport link copied to clipboard!");
+                    })
+                    .catch(() => {
+                      alert("Failed to copy link. Feel free to copy from address bar.");
+                    });
+                }
+              };
+            }
+
+            // PDF button
+            const pdfBtn = document.getElementById("pdfDashboardBtn");
+            if (pdfBtn) {
+              pdfBtn.onclick = () => {
+                const passId = window.currentPassportId;
+                if (!passId) {
+                  alert("No passport ID available. Please save your passport first.");
+                  return;
+                }
+                const printUrl = `/userQR.html?id=${encodeURIComponent(passId)}&print=true`;
+                window.open(printUrl, "_blank");
+              };
+            }
+
+            // Add Record button
+            const addRecDashboardBtn = document.getElementById("addRecordDashboardBtn");
+            if (addRecDashboardBtn) {
+              addRecDashboardBtn.onclick = () => {
+                // Send to Step 2 where they can add/upload medical documents and vaccination logs
+                document.getElementById("step5").classList.remove("active");
+                document.getElementById("step2").classList.add("active");
+                currentStep = 2;
+
+                // Re-enable and show progress track
+                const progBlock = document.getElementById("progressBlock");
+                if (progBlock) progBlock.style.display = "block";
+
+                // Ensure head navigation buttons are visible
+                const backBtn = document.getElementById("backBtn");
+                if (backBtn) backBtn.classList.remove("hidden");
+
+                updateUI();
+
+                // Smooth scroll to top
+                window.scrollTo({ top: 0, behavior: "smooth" });
+
+                // Directly open the health record addition modal to let them attach a document immediately!
+                if (typeof openHealthRecordModal === "function") {
+                  setTimeout(() => {
+                    openHealthRecordModal();
+                  }, 300);
+                }
+              };
+            }
+
             // Fetch details, and update UI before hiding the loader
             try {
               const res = await fetch(
@@ -3166,7 +3490,7 @@
                   "[DEBUG] Successfully fetched passport data from backend:",
                   data,
                 );
-                loadPassportDataIntoUI(data.pet || data);
+                loadPassportDataIntoUI(data);
               } else {
                 console.warn(
                   "[DEBUG] Backend fetch was not successful.",
@@ -3373,6 +3697,10 @@
         // Update vaccination records dynamically based on selected species
         updateVaccines(name);
         updateModalVaccines(name);
+
+        if (typeof updateContinueButtonsState === "function") {
+          updateContinueButtonsState();
+        }
       }
 
       function showBreedDropdown() {
@@ -3428,6 +3756,9 @@
         const menu = document.getElementById("breedDropdownMenu");
         if (menu) {
           menu.classList.add("hidden");
+        }
+        if (typeof updateContinueButtonsState === "function") {
+          updateContinueButtonsState();
         }
       }
 
@@ -4310,6 +4641,8 @@
         // Listen to global changes to instantly validate and update continue buttons
         document.addEventListener("input", updateContinueButtonsState);
         document.addEventListener("change", updateContinueButtonsState);
+        document.addEventListener("click", updateContinueButtonsState);
+        document.addEventListener("focusin", updateContinueButtonsState);
 
         // Initial call to set correct disabled/enabled state of buttons
         updateContinueButtonsState();
@@ -5075,6 +5408,10 @@
 
         const calDropdown = document.getElementById("dobCalendarDropdown");
         if (calDropdown) calDropdown.classList.add("hidden");
+
+        if (typeof updateContinueButtonsState === "function") {
+          updateContinueButtonsState();
+        }
       }
 
       function prevMonth() {
@@ -5517,6 +5854,7 @@
 
             if (res.ok && data && data.success && data.passportId) {
               const finalId = data.passportId;
+              window.currentPassportId = finalId;
               
               // Update IDs in the UI
               const topId = document.getElementById("finalPassportIdTop");

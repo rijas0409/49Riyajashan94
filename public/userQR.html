@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"/>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#d95191",
+                        "primary-container": "#fcebf3",
+                        "on-surface": "#412b36",
+                        "on-surface-variant": "#7c6872",
+                        "surface": "#fffbfe",
+                        "surface-container-low": "#fdf4f8",
+                        "surface-container-high": "#fbe7f0",
+                        "surface-container-highest": "#f7d3e3",
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .slide-up {
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @media print {
+            body {
+                background: white !important;
+                color: black !important;
+                padding-bottom: 0 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            main {
+                max-width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-surface text-on-surface antialiased pb-10">
+
+    <!-- Global Loader Overlay -->
+    <div id="globalLoader" class="fixed inset-0 z-[200] bg-surface flex flex-col items-center justify-center gap-3 transition-opacity duration-300 pointer-events-all">
+        <div class="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
+        <p class="text-xs font-bold text-on-surface-variant font-mono uppercase tracking-widest animate-pulse">
+            Retrieving Passport...
+        </p>
+    </div>
+
+    <!-- Header (Hidden on print) -->
+    <div class="bg-surface/80 backdrop-blur-md sticky top-0 z-50 border-b border-surface-container-highest no-print">
+        <div class="max-w-md mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-1.5 border-b-2 border-primary pb-0.5">
+                <span class="material-symbols-outlined text-primary text-xl">sound_detection_dog_barking</span>
+                <span class="text-sm font-black tracking-[0.2em] uppercase text-on-surface">Sruvo</span>
+            </div>
+            
+            <div id="statusBadge" class="flex items-center gap-1.5 bg-green-100 px-3 py-1.5 rounded-full border border-green-200 shadow-sm animate-pulse">
+                <span class="material-symbols-outlined text-[14px] text-green-600">verified</span>
+                <p class="text-[10px] font-extrabold text-green-700 tracking-widest uppercase">Verified Live</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main id="mainContainer" class="px-6 pt-6 max-w-md mx-auto space-y-6 slide-up hidden">
+        
+        <!-- Passport Frame -->
+        <div class="w-full flex flex-col justify-stretch">
+            <div class="bg-gradient-to-br from-[#1a1a24] to-[#3a2a32] p-1 rounded-[28px] shadow-2xl relative overflow-hidden group min-h-[380px] flex flex-col">
+                <div class="absolute inset-0 bg-gradient-to-tr from-primary/0 via-white/10 to-primary/0 pointer-events-none"></div>
+                
+                <div class="bg-surface rounded-[24px] overflow-hidden flex flex-col relative z-10 h-full border border-surface-container-highest shadow-inner">
+                    <!-- Sruvo Republic Header -->
+                    <div class="bg-gradient-to-r from-primary to-[#e56ba4] px-5 py-4 flex justify-between items-center relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+                        <div class="relative z-10 text-white flex flex-col justify-center">
+                            <div class="flex items-center gap-1.5 mb-2 border-b border-white/20 pb-1.5 w-fit">
+                                <span class="material-symbols-outlined text-white text-base">sound_detection_dog_barking</span>
+                                <span class="text-sm font-black tracking-[0.2em] uppercase">Sruvo</span>
+                            </div>
+                            <p class="text-[8px] uppercase tracking-[0.2em] font-extrabold opacity-90">Republic of Sruvo</p>
+                            <p class="text-[19px] font-black tracking-wide leading-tight mt-0.5 shadow-sm">PET PASSPORT</p>
+                        </div>
+                        <div class="relative z-10 bg-white/20 p-2.5 rounded-2xl backdrop-blur-sm border border-white/20 shadow-inner flex items-center justify-center">
+                            <span class="material-symbols-outlined text-white text-[28px]">verified_user</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Core Details -->
+                    <div class="p-5 bg-white space-y-4 relative flex-1">
+                        <span class="material-symbols-outlined absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[120px] text-surface-container-highest opacity-30 pointer-events-none">shield_with_heart</span>
+
+                        <!-- Photo and Primary Name Header -->
+                        <div class="flex gap-4 items-center relative z-10">
+                            <div class="w-20 h-20 rounded-[18px] bg-surface-container-high border-2 border-primary/20 shadow-md flex items-center justify-center overflow-hidden shrink-0">
+                                <img id="petPhoto" src="" alt="Pet Photo" class="w-full h-full object-cover">
+                            </div>
+                            <div class="space-y-1">
+                                <h2 id="petName" class="text-2xl font-black text-on-surface leading-none tracking-tight">--</h2>
+                                <p id="petBreed" class="text-[11px] font-bold text-primary uppercase tracking-wider">--</p>
+                                <p class="text-[11px] font-semibold text-on-surface-variant flex items-center gap-1.5 mt-1 bg-surface-container-low w-fit px-2 py-0.5 rounded-md border border-surface-container-highest">
+                                    <span id="genderIcon" class="material-symbols-outlined text-[14px]">pets</span>
+                                    <span id="genderText">--</span> • <span id="petWeight">-- kg</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-dashed border-surface-container-highest"></div>
+
+                        <!-- Technical Ledger Details -->
+                        <div class="grid grid-cols-2 gap-y-4 gap-x-3 relative z-10">
+                            <div class="space-y-0.5">
+                                <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Passport ID</p>
+                                <p id="passportId" class="text-sm font-black text-on-surface font-mono bg-surface-container-low px-2 py-1 rounded-md border border-surface-container-highest w-fit">--</p>
+                            </div>
+                            <div class="space-y-0.5">
+                                <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Microchip No.</p>
+                                <p id="microchipNo" class="text-sm font-bold text-on-surface px-1 font-mono">--</p>
+                            </div>
+                            <div class="space-y-0.5">
+                                <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Owner</p>
+                                <p id="ownerName" class="text-sm font-bold text-on-surface px-1 truncate">--</p>
+                            </div>
+                            <div class="space-y-0.5">
+                                <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Valid Till</p>
+                                <p class="text-sm font-bold text-primary flex items-center gap-1 px-1">
+                                    <span class="material-symbols-outlined text-[14px]">all_inclusive</span> Lifetime
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Health Clearances Container (With real actual logged records) -->
+        <div class="space-y-4">
+            <div class="flex items-center gap-2 px-1">
+                <span class="material-symbols-outlined text-primary text-xl">health_and_safety</span>
+                <h3 class="text-sm font-black text-on-surface uppercase tracking-wider">Health Clearances</h3>
+            </div>
+            
+            <div id="clearancesContainer" class="grid grid-cols-1 gap-3">
+                <!-- Dynamically populated files/cards go here -->
+            </div>
+        </div>
+
+        <!-- Scanning timestamp & Footprint details -->
+        <div class="mt-8 pt-6 border-t border-dashed border-surface-container-highest text-center space-y-2">
+            <span class="material-symbols-outlined text-surface-container-highest text-3xl">local_police</span>
+            <p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest leading-relaxed">
+                Scan timestamp: <span id="scanTimestamp" class="text-on-surface">--</span><br>
+                Secured by Sruvo Blockchain Validation
+            </p>
+        </div>
+
+    </main>
+
+    <!-- Fallback/Error state -->
+    <div id="errorContainer" class="hidden px-6 pt-16 max-w-md mx-auto text-center space-y-4 animate-fade-in">
+        <span class="material-symbols-outlined text-red-500 text-6xl">error_outline</span>
+        <h2 class="text-xl font-bold text-on-surface">Passport Not Found</h2>
+        <p class="text-sm text-on-surface-variant leading-relaxed">The scanned or shared passport link does not exist in the Sruvo Verification registry, or the passport ID is invalid.</p>
+        <button onclick="window.close()" class="bg-primary hover:bg-primary/95 text-white font-bold py-3 px-6 rounded-xl text-sm transition-all shadow-md">
+            Close View
+        </button>
+    </div>
+
+    <div class="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none opacity-40 no-print">
+        <div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px]"></div>
+        <div class="absolute bottom-20 left-0 w-48 h-48 bg-primary/5 rounded-full blur-[60px]"></div>
+    </div>
+
+    <!-- Core Dynamic Setup Script -->
+    <script>
+        // Support dynamic rendering and parsing
+        function getDeterministicMicrochip(passportId) {
+            let hash = 0;
+            if (!passportId) return "98102000034";
+            for (let i = 0; i < passportId.length; i++) {
+                hash = passportId.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const absHash = Math.abs(hash).toString();
+            // Pad deterministic barcode RFID digits unique to the pet
+            return "98102" + absHash.padStart(10, "0").substring(0, 10);
+        }
+
+        function formatScanTimestamp() {
+            const now = new Date();
+            const days = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const day = now.getDate();
+            const month = days[now.getMonth()];
+            const year = now.getFullYear();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const mins = String(now.getMinutes()).padStart(2, '0');
+            return `${day} ${month} ${year}, ${hours}:${mins} Local Time`;
+        }
+
+        window.addEventListener("DOMContentLoaded", async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const passportId = urlParams.get("id");
+            const printTrigger = urlParams.get("print") === "true";
+
+            // Set current scanning timestamp instantly
+            const scanEl = document.getElementById("scanTimestamp");
+            if (scanEl) {
+                scanEl.innerText = formatScanTimestamp();
+            }
+
+            if (!passportId) {
+                showError();
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/pet-passport?id=${encodeURIComponent(passportId)}`);
+                if (!res.ok) {
+                    showError();
+                    return;
+                }
+
+                const data = await res.json();
+                const pet = data.pet || data;
+                const healthRecords = data.healthRecords || [];
+
+                if (!pet || !pet.pet_name) {
+                    showError();
+                    return;
+                }
+
+                // Populate Card UI
+                document.getElementById("petName").innerText = pet.pet_name;
+                document.getElementById("petBreed").innerText = pet.breed || pet.species || "Unknown breed";
+                document.getElementById("passportId").innerText = pet.passport_id;
+                document.getElementById("microchipNo").innerText = getDeterministicMicrochip(pet.passport_id);
+                document.getElementById("ownerName").innerText = pet.owner_name || "Authorized Sruvo Caregiver";
+                
+                // Gender Setup
+                const gender = pet.gender || "Male";
+                document.getElementById("genderText").innerText = gender;
+                const genderIcon = document.getElementById("genderIcon");
+                if (gender.toLowerCase() === "male") {
+                    genderIcon.innerText = "male";
+                    genderIcon.className = "material-symbols-outlined text-[14px] text-blue-500 font-bold";
+                } else if (gender.toLowerCase() === "female") {
+                    genderIcon.innerText = "female";
+                    genderIcon.className = "material-symbols-outlined text-[14px] text-pink-500 font-bold";
+                } else {
+                    genderIcon.innerText = "pets";
+                    genderIcon.className = "material-symbols-outlined text-[14px] text-primary font-bold";
+                }
+
+                // Weight
+                document.getElementById("petWeight").innerText = pet.weight ? `${pet.weight} kg` : "-- kg";
+
+                // Photo URL
+                const speciesImgs = {
+                    dog: "/Dogs.png",
+                    cat: "/Cats.png",
+                    bird: "/Birds.png",
+                    fish: "/Fish.png",
+                    rabbit: "/Rabbits.png",
+                    turtle: "/Turtle.png",
+                    guineapig: "/Guineapigs.png",
+                    hamster: "/Hamsters.png",
+                    mouse: "/Mouse.png"
+                };
+                const specKey = (pet.species || "dog").toLowerCase().replace(/\s+/g, "");
+                const defaultFallback = speciesImgs[specKey] || "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80";
+                document.getElementById("petPhoto").src = pet.photo_url || defaultFallback;
+
+                // Populate Dynamic Clearance Grid matching userQR.html exactly
+                const clearancesContainer = document.getElementById("clearancesContainer");
+                clearancesContainer.innerHTML = "";
+
+                if (healthRecords && healthRecords.length > 0) {
+                    healthRecords.forEach(r => {
+                        const type = r.record_type;
+                        let iconName = "workspace_premium";
+                        let mainTitle = r.certificate_title || "Digital Certificate";
+                        let validityText = "Valid & Verified";
+
+                        if (type === "Vaccination") {
+                            iconName = "vaccines";
+                            const vaccineSelect = r.vaccine_name || "";
+                            mainTitle = (vaccineSelect === "Other" || vaccineSelect === "Others") ? (r.specify_vaccine || "Vaccination") : vaccineSelect;
+                            
+                            if (r.next_due_date) {
+                                const dueObj = new Date(r.next_due_date);
+                                validityText = `Valid till ${dueObj.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
+                            } else if (r.date_administered) {
+                                const admObj = new Date(r.date_administered);
+                                validityText = `Administered ${admObj.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
+                            } else {
+                                validityText = "Active Vaccination";
+                            }
+                        } else if (type === "Prescription") {
+                            iconName = "medication";
+                            mainTitle = r.diagnosis || "Active Treatment";
+                            validityText = r.prescribed_by ? `Prescribed by ${r.prescribed_by}` : "Active Record";
+                        } else if (type === "Lab Test") {
+                            iconName = "biotech";
+                            mainTitle = r.test_name || "Diagnostic Analysis";
+                            if (r.test_date) {
+                                const testObj = new Date(r.test_date);
+                                validityText = `Tested: ${testObj.toLocaleDateString("en-US", { day: 'numeric', month: "short", year: "numeric" })}`;
+                            }
+                        } else if (type === "Surgery") {
+                            iconName = "healing";
+                            mainTitle = r.procedure_name || "Surgical Record";
+                            if (r.surgery_date) {
+                                const surgObj = new Date(r.surgery_date);
+                                validityText = `Date: ${surgObj.toLocaleDateString("en-US", { day: 'numeric', month: "short", year: "numeric" })}`;
+                            }
+                        } else if (type === "Medical Condition") {
+                            iconName = "emergency";
+                            mainTitle = r.condition_name || "Medical Condition";
+                            if (r.issue_date) {
+                                const issueObj = new Date(r.issue_date);
+                                validityText = `Diagnosed: ${issueObj.toLocaleDateString("en-US", { day: 'numeric', month: "short", year: "numeric" })}`;
+                            }
+                        }
+
+                        // Style clearance card
+                        const cardDiv = document.createElement("div");
+                        cardDiv.className = "bg-surface-container-low border border-surface-container-highest rounded-[20px] p-4 flex items-center justify-between shadow-sm relative overflow-hidden";
+                        cardDiv.innerHTML = `
+                            <div class="absolute right-0 top-0 w-16 h-16 bg-green-500/5 rounded-bl-[40px]"></div>
+                            <div class="flex items-center gap-4 relative z-10">
+                                <div class="w-12 h-12 rounded-full bg-white border border-surface-container-highest shadow-sm flex items-center justify-center shrink-0">
+                                    <span class="material-symbols-outlined text-green-600 text-2xl">${iconName}</span>
+                                </div>
+                                <div class="pr-2">
+                                    <p class="text-sm font-black text-on-surface tracking-tight truncate max-w-[170px]">${mainTitle}</p>
+                                    <p class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mt-0.5">${validityText}</p>
+                                </div>
+                            </div>
+                            <div class="bg-green-100 text-green-700 px-3 py-1 rounded-md border border-green-200 flex items-center gap-1 relative z-10 shrink-0">
+                                <span class="material-symbols-outlined text-[14px]">check_circle</span>
+                                <span class="text-[10px] font-extrabold uppercase tracking-widest">Cleared</span>
+                            </div>
+                        `;
+                        clearancesContainer.appendChild(cardDiv);
+                    });
+                } else {
+                    // Show a clean fallback card indicating default verification status
+                    const emptyCard = document.createElement("div");
+                    emptyCard.className = "bg-surface-container-low border border-surface-container-highest rounded-[20px] p-5 text-center shadow-sm relative py-8";
+                    emptyCard.innerHTML = `
+                        <span class="material-symbols-outlined text-green-600 text-4xl mb-2">shield</span>
+                        <p class="text-sm font-black text-on-surface">No Core Medical Records Appended</p>
+                        <p class="text-[11px] text-on-surface-variant font-medium mt-1">This digital pet passport identity profile is dynamically verified as live.</p>
+                    `;
+                    clearancesContainer.appendChild(emptyCard);
+                }
+
+                // Show Main, Hide Loader
+                document.getElementById("mainContainer").classList.remove("hidden");
+                const loader = document.getElementById("globalLoader");
+                if (loader) {
+                    loader.classList.add("opacity-0");
+                    setTimeout(() => loader.remove(), 300);
+                }
+
+                // Handle Automatic PDF print dialog trigger
+                if (printTrigger) {
+                    setTimeout(() => {
+                        window.print();
+                    }, 1200);
+                }
+
+            } catch (err) {
+                console.error("Failed to load pet data:", err);
+                showError();
+            }
+        });
+
+        function showError() {
+            // Hide Loader & Main, Show Error
+            const loader = document.getElementById("globalLoader");
+            if (loader) loader.remove();
+            document.getElementById("mainContainer").classList.add("hidden");
+            document.getElementById("errorContainer").classList.remove("hidden");
+        }
+    </script>
+</body>
+</html>

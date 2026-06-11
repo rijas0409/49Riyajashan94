@@ -168,7 +168,7 @@
                 
                 <button onclick="handleDownloadPDF()" class="w-full flex items-center gap-3 p-4 rounded-2xl bg-surface-container-low border border-surface-container-high text-on-surface hover:bg-primary-container/20 transition-all active:scale-[0.99]">
                     <span class="material-symbols-outlined text-primary">download</span>
-                    <span class="text-sm font-bold tracking-tight">Download PDF Document</span>
+                    <span class="text-sm font-bold tracking-tight">Download Passport PDF</span>
                 </button>
                 
                 <button onclick="handleShareLink()" class="w-full flex items-center gap-3 p-4 rounded-2xl bg-surface-container-low border border-surface-container-high text-on-surface hover:bg-primary-container/20 transition-all active:scale-[0.99]">
@@ -257,16 +257,8 @@
             const passportId = sheet.dataset.selectedPassportId;
             closeQuickActions();
             if (passportId) {
-                const printUrl = `https://sruvoindia.vercel.app/passport/${passportId}`;
-                const printWindow = window.open(printUrl, '_blank');
-                if (printWindow) {
-                    printWindow.onload = function() {
-                        printWindow.print();
-                    };
-                } else {
-                    showToast("Redirecting to Passport Print View...");
-                    window.location.href = `/rjpass.html?id=${encodeURIComponent(passportId)}`;
-                }
+                const printUrl = `/userQR.html?id=${encodeURIComponent(passportId)}&print=true`;
+                window.open(printUrl, '_blank');
             }
         }
 
