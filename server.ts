@@ -431,9 +431,18 @@ Return the response as a single JSON object containing only a "description" key.
         if (userId) {
           query = query.eq("user_id", userId);
         }
-        const { data, error } = await query;
-        if (error) throw error;
-        return res.json(data || []);
+        try {
+          const { data, error } = await query;
+          if (error) {
+            // Log it but return empty so frontend can use fallback logic
+            console.error("Supabase query error (possibly missing column):", error);
+            return res.json([]);
+          }
+          return res.json(data || []);
+        } catch (queryErr) {
+          console.error("Query failed:", queryErr);
+          return res.json([]);
+        }
       }
 
       const { data: pet, error: petErr } = await supabaseAdmin
@@ -498,10 +507,12 @@ Return the response as a single JSON object containing only a "description" key.
       const passportId = "SRV-" + Math.random().toString(36).substring(2, 5).toUpperCase() + "-" + Math.random().toString(36).substring(2, 5).toUpperCase();
       
       if (supabaseAdmin) {
+        let timeoutId: any;
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error("Supabase timeout")), 25000); // 25 sec timeout to allow base64 uploads
+        });
+        
         try {
-          // Timeout after 4.5 seconds so backend does not stall 
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Supabase timeout")), 4500));
-          
           const dbOperations = async () => {
             const { data: petData, error: petErr } = await supabaseAdmin
               .from("pet_passports")
@@ -578,9 +589,14 @@ Return the response as a single JSON object containing only a "description" key.
           };
 
           await Promise.race([dbOperations(), timeoutPromise]);
-        } catch (dbErr) {
-          console.warn("Database operations failed or timed out. Handled gracefully. Error:", dbErr);
+        } catch (dbErr: any) {
+          console.error("Database operations failed or timed out. Handled gracefully. Error:", dbErr?.message || dbErr);
+          throw new Error(dbErr?.message || "Failed to save passport to database.");
+        } finally {
+          clearTimeout(timeoutId);
         }
+      } else {
+        throw new Error("Supabase is not configured. Cannot generate passport.");
       }
       
       return res.json({ success: true, passportId });

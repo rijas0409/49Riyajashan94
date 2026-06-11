@@ -162,42 +162,6 @@
                     passports = await res.json();
                 }
 
-                // Check localStorage backup array
-                const allLocalBackup = localStorage.getItem('allSavedPassports');
-                if (allLocalBackup) {
-                    try {
-                        const parsedArray = JSON.parse(allLocalBackup);
-                        if (Array.isArray(parsedArray)) {
-                            // Reverse to get oldest first if unshifted, actually unshift keeps newest at front
-                            parsedArray.reverse().forEach(parsed => {
-                              if (parsed && parsed.passportId) {
-                                  // Skip if it does not belong to the user (if user is provided)
-                                  if (passedUserId && parsed.userId && parsed.userId !== passedUserId) {
-                                      return;
-                                  }
-                                  
-                                  const exists = passports.some(p => (p.passport_id || p.passportId) === parsed.passportId);
-                                  if (!exists) {
-                                      passports.unshift({
-                                          passport_id: parsed.passportId,
-                                          pet_name: parsed.petName,
-                                          species: parsed.species || 'Dog',
-                                          breed: parsed.breed || 'Golden Retriever',
-                                          gender: parsed.gender || 'Male',
-                                          weight: parsed.weight || '9.4',
-                                          dob: parsed.dob || '2022-10-12',
-                                          owner_name: parsed.ownerName || 'Rijas Pabla',
-                                          photo_url: parsed.photoUrl
-                                      });
-                                  }
-                              }
-                           });
-                        }
-                    } catch(e) {
-                        console.warn("Could not parse allSavedPassports offline fallback:", e);
-                    }
-                }
-
                 // Remove loading spinner
                 if (loadingPlaceholder) {
                     loadingPlaceholder.remove();

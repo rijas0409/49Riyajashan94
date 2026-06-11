@@ -3044,15 +3044,8 @@
               loadPassportDataIntoUI(data.pet || data);
             } else {
               console.warn(
-                "[DEBUG] Backend fetch was not successful. Using local storage lookup.",
+                "[DEBUG] Backend fetch was not successful.",
               );
-              const backup = localStorage.getItem("lastSavedPassportData");
-              if (backup) {
-                const parsed = JSON.parse(backup);
-                if ((parsed.passport_id || parsed.passportId) === passportId) {
-                  loadPassportDataIntoUI(parsed);
-                }
-              }
             }
           } else {
             // No ID, standard creation flow
@@ -5355,7 +5348,7 @@
           try {
             console.log("[DEBUG] Before fetch('/api/pet-passport')");
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 sec timeout
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 sec timeout
 
             const res = await fetch("/api/pet-passport", {
               method: "POST",
@@ -5367,81 +5360,42 @@
             clearTimeout(timeoutId);
             console.log("[DEBUG] After fetch, Response Status:", res.status);
 
-            if (res.ok) {
+            let data = {};
+            try {
               const responseText = await res.text();
-              let data = {};
-              try {
-                data = JSON.parse(responseText);
-              } catch (e) {
-                console.warn("API response is not JSON:", responseText);
+              data = JSON.parse(responseText);
+            } catch (e) {
+              console.warn("API response parsing failed", e);
+            }
+
+            if (res.ok && data && data.success && data.passportId) {
+              const finalId = data.passportId;
+              
+              // Update IDs in the UI
+              const topId = document.getElementById("finalPassportIdTop");
+              if (topId) topId.innerText = finalId;
+              const botId = document.getElementById("finalPassportIdBottom");
+              if (botId) botId.innerText = finalId;
+
+              // Generate QR Code dynamically
+              const qrImg = document.getElementById("passportQRCodeImg");
+              if (qrImg) {
+                qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://sruvoindia.vercel.app/passport/${finalId}&color=d95191`;
               }
 
-              if (data && data.success && data.passportId) {
-                passportId = data.passportId;
-              }
+              nextStep(4);
             } else {
-              console.warn(
-                "API returned error status: " +
-                  res.status +
-                  ". Operating in fallback/static mode.",
-              );
+              const errorMsg = data.error || "Failed to save to database. Please check your connection.";
+              console.error("Database save error:", errorMsg);
+              alert("Error: " + errorMsg);
             }
           } catch (netErr) {
-            console.warn(
-              "Network error or static deployment. Operating in offline/static mode.",
-              netErr,
-            );
+            console.error("Network error saving to DB:", netErr);
+            alert("Network error: Could not save the passport to the database.");
           }
-
-          // Update IDs in the UI
-          const topId = document.getElementById("finalPassportIdTop");
-          if (topId) topId.innerText = passportId;
-          const botId = document.getElementById("finalPassportIdBottom");
-          if (botId) botId.innerText = passportId;
-
-          // Sync info with localStorage as a robust local backup
-          try {
-            const currentItem = { passportId, ...payload };
-            // Save single item for easy fallback
-            localStorage.setItem("lastSavedPassportData", JSON.stringify(currentItem));
-            
-            // Save to an array for multiple offline passports support
-            const existingAll = localStorage.getItem("allSavedPassports");
-            let allSaved = [];
-            if (existingAll) {
-              allSaved = JSON.parse(existingAll);
-            }
-            // Overwrite if same passportId exists, otherwise add
-            const existingIndex = allSaved.findIndex(p => p.passportId === passportId);
-            if (existingIndex >= 0) {
-              allSaved[existingIndex] = currentItem;
-            } else {
-              allSaved.unshift(currentItem); // add to top
-            }
-            localStorage.setItem("allSavedPassports", JSON.stringify(allSaved));
-          } catch (e) {
-            console.warn("Could not save to localStorage", e);
-          }
-
-          // Generate QR Code dynamically
-          const qrImg = document.getElementById("passportQRCodeImg");
-          if (qrImg) {
-            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://sruvoindia.vercel.app/passport/${passportId}&color=d95191`;
-          }
-
-          nextStep(4);
         } catch (err) {
           console.error("Exception during setup submission:", err);
-          const topId = document.getElementById("finalPassportIdTop");
-          if (topId) topId.innerText = backupPassportId;
-          const botId = document.getElementById("finalPassportIdBottom");
-          if (botId) botId.innerText = backupPassportId;
-
-          const qrImg = document.getElementById("passportQRCodeImg");
-          if (qrImg) {
-            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://sruvoindia.vercel.app/passport/${backupPassportId}&color=d95191`;
-          }
-          nextStep(4);
+          alert("An unexpected error occurred during submission.");
         } finally {
           btn.innerHTML = originalText;
           btn.disabled = false;
