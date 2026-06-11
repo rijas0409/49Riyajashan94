@@ -427,10 +427,14 @@ Return the response as a single JSON object containing only a "description" key.
       const userId = req.query.userId as string;
 
       if (!passportId) {
-        let query = supabaseAdmin.from("pet_passports").select("*").order("created_at", { ascending: false });
-        if (userId) {
-          query = query.eq("user_id", userId);
+        if (!userId) {
+          // Prevent data leak: if no userId is passed, don't return all passports
+          return res.json([]);
         }
+        
+        let query = supabaseAdmin.from("pet_passports").select("*").order("created_at", { ascending: false });
+        query = query.eq("user_id", userId);
+        
         try {
           const { data, error } = await query;
           if (error) {
@@ -759,6 +763,16 @@ Return the response as a single JSON object containing only a "description" key.
     });
     console.log("Static production assets middleware configured.");
   }
+
+  // Global Error Handler to always return JSON for API routes
+  app.use((err: any, req: any, res: any, next: any) => {
+    if (req.path.startsWith('/api/')) {
+      console.error("Express API Error:", err);
+      res.status(err.status || 500).json({ error: err.message || "Internal Server Error" });
+    } else {
+      next(err);
+    }
+  });
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`[Server] Sruvo Full-Stack Server listening on http://0.0.0.0:${PORT}`);

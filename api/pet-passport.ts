@@ -16,11 +16,17 @@ export default async function handler(req: any, res: any) {
 
   if (req.method === 'GET') {
     const passportId = req.query.id;
+    const userId = req.query.userId;
+    
     if (!passportId) {
+      if (!userId) {
+        return res.json([]);
+      }
       try {
         const { data, error } = await supabase
           .from("pet_passports")
           .select("*")
+          .eq("user_id", userId)
           .order("created_at", { ascending: false });
         if (error) throw error;
         return res.json(data || []);
