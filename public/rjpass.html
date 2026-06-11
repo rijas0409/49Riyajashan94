@@ -74,6 +74,15 @@
         opacity: 1;
         pointer-events: auto;
       }
+      .modal-scale {
+        transform: scale(0.95);
+        opacity: 0;
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+      }
+      .modal-scale.open {
+        transform: scale(1);
+        opacity: 1;
+      }
 
       /* Custom Premium Animations for Step 4 */
       .pulse-ring {
@@ -1468,6 +1477,7 @@
                   </div>
                 </div>
                 <div
+                  onclick="openDashboardQRModal()"
                   class="w-14 h-14 bg-white rounded-xl border-2 border-surface-container-highest p-1 flex items-center justify-center shadow-sm relative group cursor-pointer hover:border-primary/50 transition-colors"
                 >
                   <div
@@ -1764,7 +1774,7 @@
               Vault Documents
             </h3>
           </div>
-          <div class="space-y-2">
+          <div id="dashboardVaultDocuments" class="space-y-2">
             <div
               class="flex items-center justify-between p-3 bg-white rounded-xl border border-surface-container-highest cursor-pointer hover:border-primary/30 transition-colors"
             >
@@ -2782,6 +2792,108 @@
       <canvas id="photoCanvas" class="hidden"></canvas>
     </div>
 
+    <!-- Fullscreen QR Close-View Modal with Custom Anim & Close View Actions -->
+    <div id="qrModal" class="fixed inset-0 z-[100] hidden opacity-0 bg-on-surface/40 backdrop-blur-md flex items-center justify-center p-6 transition-opacity duration-300" onclick="closeQRModal()">
+        <div id="qrModalContent" class="bg-white rounded-[32px] p-6 w-full max-w-xs shadow-2xl border border-surface-container-highest text-center modal-scale" onclick="event.stopPropagation()">
+            <div class="w-12 h-1 bg-surface-container-highest rounded-full mx-auto mb-5"></div>
+            <h3 class="text-lg font-black tracking-tight text-on-surface">Scan Passport QR</h3>
+            <p id="modalPassportId" class="text-xs font-bold font-mono text-primary bg-primary-container/50 px-2 py-0.5 rounded-md w-fit mx-auto mt-1"></p>
+            
+            <div class="my-6 p-4 bg-surface-container-low border-2 border-dashed border-primary/20 rounded-[24px] flex items-center justify-center aspect-square max-w-[220px] mx-auto shadow-inner">
+                <img id="modalQRCodeImg" src="" alt="Expanded QR Code" class="w-full h-full object-contain rounded-lg">
+            </div>
+            
+            <button onclick="closeQRModal()" class="w-full bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-bold py-3.5 rounded-2xl text-xs tracking-wider uppercase transition-colors active:scale-98">
+                Close View
+            </button>
+        </div>
+    </div>
+
+    <!-- Dedicated Dashboard Independent Add Record Modal -->
+    <div id="dashboardRecordModal" class="fixed inset-0 z-[100] hidden bg-on-surface/40 backdrop-blur-md flex items-center justify-center p-4" onclick="closeDashboardRecordModal()">
+        <div class="bg-white rounded-[32px] p-6 w-full max-w-md shadow-2xl border border-surface-container-highest flex flex-col max-h-[90vh]" onclick="event.stopPropagation()">
+            <!-- Drag Handle / Header -->
+            <div class="w-12 h-1 bg-surface-container-highest rounded-full mx-auto mb-4"></div>
+            
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-2xl">add_moderator</span>
+                    <h3 class="text-lg font-black tracking-tight text-on-surface">Add Health Record</h3>
+                </div>
+                <button onclick="closeDashboardRecordModal()" class="w-8 h-8 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+            </div>
+            
+            <!-- Modal Scrollable Content -->
+            <div class="overflow-y-auto pr-1 space-y-4 flex-1">
+                <!-- Record Type Selection -->
+                <div>
+                    <label class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant mb-1.5">Record Type</label>
+                    <select id="dbRecType" class="w-full h-11 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors" onchange="toggleDashboardRecordFields()">
+                        <option value="Vaccination">Vaccination Log</option>
+                        <option value="Health Certificate">Health Certificate</option>
+                        <option value="Clinical Vet Visit">Clinical Vet Visit</option>
+                        <option value="Surgical/Procedure Log">Surgical/Procedure Log</option>
+                        <option value="Prescription Doc">Prescription Document</option>
+                    </select>
+                </div>
+                
+                <!-- Dynamic Field: Title / Vaccine / Diagnosis -->
+                <div>
+                    <label id="dbTitleLabel" class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant mb-1.5">Vaccine Name</label>
+                    <input id="dbTitleInput" type="text" placeholder="e.g. Rabies, DHPP, Parvovirus" class="w-full h-11 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary/50 transition-colors">
+                </div>
+                
+                <!-- Couple Grid: Administered Date & Next Due Date / Valid Till -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label id="dbDateLabel" class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant mb-1.5">Date Administered</label>
+                        <input id="dbDateInput" type="date" class="w-full h-11 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors">
+                    </div>
+                    <div id="dbNextDueWrapper">
+                        <label id="dbNextDueLabel" class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant mb-1.5">Next Due Date</label>
+                        <input id="dbNextDueInput" type="date" class="w-full h-11 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors">
+                    </div>
+                </div>
+                
+                <!-- Dynamic Field: Issued/Authorized By / Veterinary Doctor -->
+                <div>
+                    <label class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant mb-1.5">Authorized / Vet Doctor</label>
+                    <input id="dbIssuerInput" type="text" placeholder="e.g. Dr. S. Sharma, Sruvo Vet Clinic" class="w-full h-11 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary/50 transition-colors">
+                </div>
+
+                <!-- Attached File Upload Block -->
+                <div>
+                    <label class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant mb-1.5">Upload Certificate / Document</label>
+                    <div class="border-2 border-dashed border-surface-container-highest rounded-xl p-4 bg-surface-container-low hover:border-primary/30 transition-colors relative flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <span class="material-symbols-outlined text-primary text-xl">upload_file</span>
+                            <div>
+                                <p id="dbFileStatus" class="text-xs font-bold text-on-surface truncate max-w-[200px]">Optional document or image</p>
+                                <p class="text-[9px] text-on-surface-variant font-medium">JPEG, PNG or PDF (Max 2MB)</p>
+                            </div>
+                        </div>
+                        <label class="bg-primary/5 hover:bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg border border-primary/20 cursor-pointer transition-colors shrink-0">
+                            Browse
+                            <input id="dbFileInput" type="file" accept="image/*,application/pdf" class="hidden" onchange="handleDashboardFileSelect(event)">
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Lower Actions -->
+            <div class="pt-4 border-t border-surface-container-highest flex gap-3 mt-4">
+                <button onclick="closeDashboardRecordModal()" class="flex-1 bg-surface-container-low hover:bg-surface-container-high text-on-surface font-bold py-3 px-4 rounded-xl text-xs tracking-wider uppercase transition-colors">
+                    Cancel
+                </button>
+                <button id="dbSubmitBtn" onclick="submitDashboardRecord()" class="flex-1 bg-gradient-to-r from-primary to-[#e56ba4] text-white font-black py-3 px-4 rounded-xl text-xs tracking-wider uppercase shadow-md active:scale-98 hover:brightness-105 transition-all">
+                    Save Record
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
       let currentStep = 1;
       let intervalTracker = null;
@@ -2824,6 +2936,10 @@
         const healthRecords = dataObj.healthRecords || [];
 
         window.currentPassportId = payload.passport_id || payload.passportId || "";
+
+        if (typeof renderDashboardDocuments === "function") {
+          renderDashboardDocuments(healthRecords);
+        }
 
         // Set form elements for compatibility and edits for step 1, 2, 3
         const petAgeTypeInput = document.getElementById("petAgeType");
@@ -3452,30 +3568,7 @@
             const addRecDashboardBtn = document.getElementById("addRecordDashboardBtn");
             if (addRecDashboardBtn) {
               addRecDashboardBtn.onclick = () => {
-                // Send to Step 2 where they can add/upload medical documents and vaccination logs
-                document.getElementById("step5").classList.remove("active");
-                document.getElementById("step2").classList.add("active");
-                currentStep = 2;
-
-                // Re-enable and show progress track
-                const progBlock = document.getElementById("progressBlock");
-                if (progBlock) progBlock.style.display = "block";
-
-                // Ensure head navigation buttons are visible
-                const backBtn = document.getElementById("backBtn");
-                if (backBtn) backBtn.classList.remove("hidden");
-
-                updateUI();
-
-                // Smooth scroll to top
-                window.scrollTo({ top: 0, behavior: "smooth" });
-
-                // Directly open the health record addition modal to let them attach a document immediately!
-                if (typeof openHealthRecordModal === "function") {
-                  setTimeout(() => {
-                    openHealthRecordModal();
-                  }, 300);
-                }
+                openDashboardRecordModal();
               };
             }
 
@@ -5885,6 +5978,252 @@
           btn.innerHTML = originalText;
           btn.disabled = false;
         }
+      }
+
+      function openDashboardQRModal() {
+        const passId = window.currentPassportId || "SRV-QDG-C1N";
+        const url = `https://sruvoindia.vercel.app/passport/${passId}`;
+        const modal = document.getElementById('qrModal');
+        const modalContent = document.getElementById('qrModalContent');
+        if (document.getElementById('modalPassportId')) {
+          document.getElementById('modalPassportId').innerText = passId;
+        }
+        if (document.getElementById('modalQRCodeImg')) {
+          document.getElementById('modalQRCodeImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(url)}&color=d95191`;
+        }
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+          modal.classList.remove('opacity-0');
+          if (modalContent) modalContent.classList.add('open');
+        }, 10);
+      }
+
+      function closeQRModal() {
+        const modal = document.getElementById('qrModal');
+        const modalContent = document.getElementById('qrModalContent');
+        if (modalContent) modalContent.classList.remove('open');
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+        }, 300);
+      }
+
+      // Supporting JavaScript for Independent Dashboard Record Modal
+      window.lastDashboardBase64 = null;
+
+      function openDashboardRecordModal() {
+        const modal = document.getElementById("dashboardRecordModal");
+        if (!modal) return;
+        
+        // Reset Inputs
+        document.getElementById("dbTitleInput").value = "";
+        document.getElementById("dbDateInput").value = new Date().toISOString().substring(0, 10);
+        document.getElementById("dbNextDueInput").value = "";
+        document.getElementById("dbIssuerInput").value = "";
+        document.getElementById("dbFileStatus").innerText = "Optional document or image";
+        document.getElementById("dbFileInput").value = "";
+        window.lastDashboardBase64 = null;
+
+        modal.classList.remove("hidden");
+        toggleDashboardRecordFields();
+      }
+
+      function closeDashboardRecordModal() {
+        const modal = document.getElementById("dashboardRecordModal");
+        if (modal) modal.classList.add("hidden");
+      }
+
+      function toggleDashboardRecordFields() {
+        const type = document.getElementById("dbRecType").value;
+        const titleLabel = document.getElementById("dbTitleLabel");
+        const titleInput = document.getElementById("dbTitleInput");
+        const dateLabel = document.getElementById("dbDateLabel");
+        const nextDueWrapper = document.getElementById("dbNextDueWrapper");
+
+        if (type === "Vaccination") {
+          titleLabel.innerText = "Vaccine Name";
+          titleInput.placeholder = "e.g. Rabies, DHPP, Parvovirus";
+          dateLabel.innerText = "Date Administered";
+          nextDueWrapper.classList.remove("hidden");
+        } else if (type === "Health Certificate") {
+          titleLabel.innerText = "Certificate Name / Title";
+          titleInput.placeholder = "e.g. Fit to Fly Certificate";
+          dateLabel.innerText = "Issue Date";
+          nextDueWrapper.classList.add("hidden");
+        } else if (type === "Clinical Vet Visit") {
+          titleLabel.innerText = "Diagnosis / Primary Reason";
+          titleInput.placeholder = "e.g. Ear Infection treatment";
+          dateLabel.innerText = "Visit Date";
+          nextDueWrapper.classList.add("hidden");
+        } else if (type === "Surgical/Procedure Log") {
+          titleLabel.innerText = "Procedure Name";
+          titleInput.placeholder = "e.g. Spaying, dental cleaning";
+          dateLabel.innerText = "Procedure Date";
+          nextDueWrapper.classList.add("hidden");
+        } else if (type === "Prescription Doc") {
+          titleLabel.innerText = "Diagnosis / Med Name";
+          titleInput.placeholder = "e.g. Skin Allergies treatment";
+          dateLabel.innerText = "Prescribed Date";
+          nextDueWrapper.classList.add("hidden");
+        }
+      }
+
+      function handleDashboardFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const maxSizeBytes = 2 * 1024 * 1024; // 2MB
+        if (file.size > maxSizeBytes) {
+          alert("Maximum file size allowed is 2MB.");
+          event.target.value = "";
+          return;
+        }
+
+        document.getElementById("dbFileStatus").innerText = "Reading file ...";
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          window.lastDashboardBase64 = e.target.result;
+          document.getElementById("dbFileStatus").innerText = `Attached: ${file.name}`;
+        };
+        reader.onerror = function() {
+          alert("Error encountered reading selected file.");
+          document.getElementById("dbFileStatus").innerText = "File read failed";
+        };
+        reader.readAsDataURL(file);
+      }
+
+      async function submitDashboardRecord() {
+        const passId = window.currentPassportId;
+        if (!passId) {
+          alert("No passport context discovered on the active page.");
+          return;
+        }
+
+        const type = document.getElementById("dbRecType").value;
+        const titleVal = document.getElementById("dbTitleInput").value.trim();
+        const dateVal = document.getElementById("dbDateInput").value;
+        const nextDueVal = document.getElementById("dbNextDueInput").value;
+        const issuerVal = document.getElementById("dbIssuerInput").value.trim();
+
+        if (!titleVal) {
+          alert("Please fill out the record details / heading.");
+          return;
+        }
+
+        const submitBtn = document.getElementById("dbSubmitBtn");
+        const originalText = submitBtn.innerText;
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Saving...";
+
+        const recordData = {
+          type: type,
+          vaccineName: type === "Vaccination" ? titleVal : null,
+          specifyVaccine: type === "Vaccination" ? titleVal : null,
+          dateAdministered: type === "Vaccination" ? dateVal : null,
+          nextDueDate: type === "Vaccination" ? nextDueVal : null,
+          diagnosis: (type === "Clinical Vet Visit" || type === "Prescription Doc") ? titleVal : null,
+          prescribedBy: (type === "Clinical Vet Visit" || type === "Prescription Doc") ? issuerVal : null,
+          testName: null,
+          testDate: null,
+          procedureName: type === "Surgical/Procedure Log" ? titleVal : null,
+          surgeryDate: type === "Surgical/Procedure Log" ? dateVal : null,
+          conditionName: null,
+          issueDate: (type === "Medical Condition") ? dateVal : null,
+          certificateTitle: type === "Health Certificate" ? titleVal : null,
+          recordDescription: `${type} record issued on ${dateVal || 'date'} by ${issuerVal || 'Veterinary Practitioner'}`,
+          documentBase64: window.lastDashboardBase64 || null
+        };
+
+        try {
+          const res = await fetch("/api/health-record", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              passportId: passId,
+              record: recordData
+            })
+          });
+
+          if (!res.ok) {
+            const errObj = await res.json();
+            throw new Error(errObj.error || "Failed to save health record to cloud.");
+          }
+
+          alert("Success! Health record added directly to Passport Vault.");
+          closeDashboardRecordModal();
+
+          // Refresh Dashboard data instantly
+          const refreshRes = await fetch(`/api/pet-passport?id=${encodeURIComponent(passId)}`);
+          if (refreshRes.ok) {
+            const data = await refreshRes.json();
+            loadPassportDataIntoUI(data);
+          }
+        } catch (err) {
+          console.error("Error saving record:", err);
+          alert("Error: " + err.message);
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.innerText = originalText;
+        }
+      }
+
+      function renderDashboardDocuments(healthRecords) {
+        const container = document.getElementById("dashboardVaultDocuments");
+        if (!container) return;
+        
+        if (!healthRecords || healthRecords.length === 0) {
+          container.innerHTML = `
+            <div class="text-center py-4 text-xs font-semibold text-on-surface-variant/40">
+              No documents stored in vault yet.
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = "";
+        healthRecords.forEach(r => {
+          const type = r.record_type || r.type;
+          let iconName = "description";
+          let mainTitle = r.certificate_title || r.certificateTitle || "Digital Certificate";
+
+          if (type === "Vaccination") {
+            iconName = "vaccines";
+            const vaccineSelect = r.vaccine_name || r.vaccineName || "";
+            mainTitle = (vaccineSelect === "Other" || vaccineSelect === "Others") ? (r.specify_vaccine || r.specifyVaccine || "Vaccination") : vaccineSelect;
+          } else if (type === "Prescription" || type === "Prescription Doc") {
+            iconName = "medication";
+            mainTitle = r.diagnosis || "Active Treatment";
+          } else if (type === "Lab Test") {
+            iconName = "biotech";
+            mainTitle = r.test_name || r.testName || "Diagnostic Analysis";
+          } else if (type === "Surgery" || type === "Surgical/Procedure Log") {
+            iconName = "healing";
+            mainTitle = r.procedure_name || r.procedureName || "Surgical Record";
+          } else if (type === "Medical Condition") {
+            iconName = "emergency";
+            mainTitle = r.condition_name || r.conditionName || "Medical Condition";
+          } else if (type === "Clinical Vet Visit") {
+            iconName = "medical_information";
+            mainTitle = r.diagnosis || "Clinical Diagnosis";
+          } else if (type === "Health Certificate") {
+            iconName = "workspace_premium";
+            mainTitle = r.certificate_title || r.certificateTitle || "Health Certificate";
+          }
+
+          const card = document.createElement("div");
+          card.className = "flex items-center justify-between p-3 bg-white rounded-xl border border-surface-container-highest cursor-pointer hover:border-primary/30 transition-colors";
+          card.innerHTML = `
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined text-primary/60">${iconName}</span>
+              <span class="text-sm font-bold text-on-surface">${mainTitle}</span>
+            </div>
+            <span class="material-symbols-outlined text-on-surface-variant text-sm">chevron_right</span>
+          `;
+          container.appendChild(card);
+        });
       }
     </script>
   </body>

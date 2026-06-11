@@ -662,6 +662,87 @@ Return the response as a single JSON object containing only a "description" key.
     }
   });
 
+  // End Point: Appending a single health record directly to the database for an existing passport
+  app.post("/api/health-record", async (req, res) => {
+    try {
+      const { passportId, record } = req.body;
+      if (!passportId) {
+        return res.status(400).json({ error: "passportId is required" });
+      }
+      if (!record) {
+        return res.status(400).json({ error: "record is required" });
+      }
+
+      let supabaseAdmin: any = null;
+      try {
+        const { createClient } = await import("@supabase/supabase-js");
+        let supabaseUrl = (process.env.VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co").trim();
+        try {
+          const urlObj = new URL(supabaseUrl);
+          supabaseUrl = urlObj.origin;
+        } catch (e) {
+          supabaseUrl = supabaseUrl.replace(/\/$/, "");
+        }
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+        supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+      } catch (err) {
+        console.warn("Could not init supabaseAdmin on server", err);
+      }
+
+      if (!supabaseAdmin) {
+        return res.status(500).json({ error: "Supabase client not initialized" });
+      }
+
+      // Get pet_passport rows ID
+      const { data: pet, error: petErr } = await supabaseAdmin
+        .from("pet_passports")
+        .select("id")
+        .eq("passport_id", passportId)
+        .maybeSingle();
+
+      if (petErr) {
+        return res.status(500).json({ error: "Error searching passport: " + petErr.message });
+      }
+      if (!pet) {
+        return res.status(404).json({ error: "Passport not found" });
+      }
+
+      // Insert into pet_health_records_documents
+      const { data, error } = await supabaseAdmin
+        .from("pet_health_records_documents")
+        .insert({
+          pet_passport_id: pet.id,
+          record_type: record.type,
+          vaccine_name: record.vaccineName,
+          specify_vaccine: record.specifyVaccine,
+          date_administered: record.dateAdministered || null,
+          next_due_date: record.nextDueDate || null,
+          diagnosis: record.diagnosis,
+          prescribed_by: record.prescribedBy,
+          issue_date: record.issueDate || null,
+          test_name: record.testName,
+          test_date: record.testDate || null,
+          procedure_name: record.procedureName,
+          surgery_date: record.surgeryDate || null,
+          condition_name: record.conditionName,
+          certificate_title: record.certificateTitle,
+          record_description: record.recordDescription,
+          document_base64: record.documentBase64
+        })
+        .select()
+        .single();
+
+      if (error) {
+        return res.status(500).json({ error: "Failed to insert health record: " + error.message });
+      }
+
+      return res.json({ success: true, record: data });
+    } catch (e: any) {
+      console.error("Error adding single health record:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
