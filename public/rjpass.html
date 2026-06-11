@@ -2239,8 +2239,6 @@
           class="bg-white rounded-2xl border border-surface-container-highest divide-y divide-surface-container-highest overflow-hidden mt-4"
         >
           <button
-            id="btnEditPetProfileSidebar"
-            onclick="return false;"
             class="w-full flex items-center justify-between p-4 hover:bg-surface-container-low transition-colors"
           >
             <div class="flex items-center gap-3 text-on-surface">
@@ -2253,7 +2251,6 @@
             >
           </button>
           <button
-            onclick="deletePetAccount()"
             class="w-full flex items-center justify-between p-4 hover:bg-red-50 transition-colors"
           >
             <div class="flex items-center gap-3 text-red-500">
@@ -3536,28 +3533,21 @@
             const editBtn = document.getElementById("btnEditPassportDetails");
             if (editBtn) {
               editBtn.onclick = () => {
-                openEditPetProfileFlow();
+                document.getElementById("step5").classList.remove("active");
+                document.getElementById("step1").classList.add("active");
+                currentStep = 1;
+
+                // Re-enable and show progress track
+                const progBlock = document.getElementById("progressBlock");
+                if (progBlock) progBlock.style.display = "block";
+
+                // Ensure head navigation buttons are visible
+                const backBtn = document.getElementById("backBtn");
+                if (backBtn) backBtn.classList.remove("hidden");
+
+                updateUI();
               };
             }
-        }
-
-        function openEditPetProfileFlow() {
-          const step5 = document.getElementById("step5");
-          const step1 = document.getElementById("step1");
-          if (step5) step5.classList.remove("active");
-          if (step1) step1.classList.add("active");
-          currentStep = 1;
-
-          // Re-enable and show progress track
-          const progBlock = document.getElementById("progressBlock");
-          if (progBlock) progBlock.style.display = "block";
-
-          // Ensure head navigation buttons are visible
-          const backBtn = document.getElementById("backBtn");
-          if (backBtn) backBtn.classList.remove("hidden");
-
-          updateUI();
-        }
 
             // Share button
             const shareBtn = document.getElementById("shareDashboardBtn");
@@ -6161,37 +6151,6 @@
           } else {
             customWrapper.classList.add("hidden");
           }
-        }
-      }
-
-      async function deletePetAccount() {
-        if (!confirm("Are you sure you want to delete this pet account? This action cannot be undone.")) {
-          return;
-        }
-        
-        const passportId = window.currentPassportId;
-        if (!passportId) {
-          alert("No passport context found.");
-          return;
-        }
-        
-        try {
-          const res = await fetch("/api/delete-pet-account", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ passportId })
-          });
-
-          const data = await res.json();
-          if (data.success) {
-            alert("Pet account deleted successfully.");
-            window.location.reload(); // Reload to reflect changes
-          } else {
-            throw new Error(data.error || "Failed to delete");
-          }
-        } catch (e: any) {
-          console.error("Delete failed:", e);
-          alert("Delete failed: " + e.message);
         }
       }
 
