@@ -241,18 +241,6 @@
 
     <!-- Core Dynamic Setup Script -->
     <script>
-        // Support dynamic rendering and parsing
-        function getDeterministicMicrochip(passportId) {
-            let hash = 0;
-            if (!passportId) return "98102000034";
-            for (let i = 0; i < passportId.length; i++) {
-                hash = passportId.charCodeAt(i) + ((hash << 5) - hash);
-            }
-            const absHash = Math.abs(hash).toString();
-            // Pad deterministic barcode RFID digits unique to the pet
-            return "98102" + absHash.padStart(10, "0").substring(0, 10);
-        }
-
         function formatScanTimestamp() {
             const now = new Date();
             const days = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -311,7 +299,7 @@
                 document.getElementById("petName").innerText = pet.pet_name;
                 document.getElementById("petBreed").innerText = pet.breed || pet.species || "Unknown breed";
                 document.getElementById("passportId").innerText = pet.passport_id;
-                document.getElementById("microchipNo").innerText = getDeterministicMicrochip(pet.passport_id);
+                document.getElementById("microchipNo").innerText = pet.microchip_number || "Not provided";
                 document.getElementById("ownerName").innerText = pet.owner_name || "Authorized Sruvo Caregiver";
                 
                 // Generate QR Code dynamically

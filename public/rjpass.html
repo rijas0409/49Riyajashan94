@@ -1012,6 +1012,7 @@
               >
               <input
                 type="text"
+                id="petMicrochip"
                 placeholder="e.g. 900118000234123"
                 class="w-full pl-11 pr-5 py-3.5 bg-surface-container-low border border-surface-container-highest rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-sm font-medium tracking-wide"
               />
@@ -2850,7 +2851,23 @@
                 <!-- Dynamic Input: Detail Header -->
                 <div class="space-y-1.5">
                     <label id="dbTitleLabel" class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant">Vaccine Name</label>
+                    <div id="dbTitleSelectWrapper" class="relative hidden">
+                        <select id="dbTitleSelect" onchange="handleDbVaccineChange()" class="w-full h-12 px-3.5 pr-10 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors appearance-none">
+                            <option value="" disabled selected>Select Vaccine</option>
+                            <option value="Rabies">Rabies</option>
+                            <option value="DHPP">DHPP</option>
+                            <option value="Leptospirosis">Leptospirosis</option>
+                            <option value="Kennel Cough">Kennel Cough</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-lg">expand_more</span>
+                    </div>
                     <input id="dbTitleInput" type="text" placeholder="e.g. Rabies, DHPP, Parvovirus" class="w-full h-12 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/50 transition-colors">
+                </div>
+                
+                <div id="dbCustomVaccineWrapper" class="space-y-1.5 hidden mb-4">
+                    <label class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant">Specify Vaccine Name</label>
+                    <input id="dbCustomVaccineInput" type="text" placeholder="e.g. Canine Distemper" class="w-full h-12 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/50 transition-colors">
                 </div>
                 
                 <!-- Date Grid: Administered Date & Next Due Date / Valid Till -->
@@ -5909,6 +5926,7 @@
               document.getElementById("emergencyRelation")?.value === "Other"
                 ? document.getElementById("customRelation")?.value
                 : document.getElementById("emergencyRelation")?.value,
+            microchipNumber: document.getElementById("petMicrochip")?.value,
             photoUrl: document.getElementById("passportPetPhoto")?.src,
 
             lastVaccinationDate: document.getElementById("lastVaccinationDate")
@@ -6036,6 +6054,8 @@
         
         // Reset Inputs
         document.getElementById("dbTitleInput").value = "";
+        document.getElementById("dbTitleSelect").value = "";
+        document.getElementById("dbCustomVaccineInput").value = "";
         document.getElementById("dbDateInput").value = new Date().toISOString().substring(0, 10);
         document.getElementById("dbNextDueInput").value = "";
         document.getElementById("dbIssuerInput").value = "";
@@ -6056,14 +6076,23 @@
         const type = document.getElementById("dbRecType").value;
         const titleLabel = document.getElementById("dbTitleLabel");
         const titleInput = document.getElementById("dbTitleInput");
+        const titleSelectWrapper = document.getElementById("dbTitleSelectWrapper");
+        const dbCustomVaccineWrapper = document.getElementById("dbCustomVaccineWrapper");
         const dateLabel = document.getElementById("dbDateLabel");
         const nextDueWrapper = document.getElementById("dbNextDueWrapper");
         const issuerLabel = document.getElementById("dbIssuerLabel");
         const issuerInput = document.getElementById("dbIssuerInput");
 
+        titleSelectWrapper.classList.add("hidden");
+        titleInput.classList.remove("hidden");
+        dbCustomVaccineWrapper.classList.add("hidden");
+
         if (type === "Vaccination") {
+          titleSelectWrapper.classList.remove("hidden");
+          titleInput.classList.add("hidden");
+          handleDbVaccineChange(); // trigger custom input visibility if "Other" is pre-selected
+
           titleLabel.innerText = "Vaccine Name";
-          titleInput.placeholder = "e.g. Rabies, DHPP, Parvovirus";
           dateLabel.innerText = "Date Administered";
           nextDueWrapper.classList.remove("hidden");
           issuerLabel.innerText = "Authorized Vet / Clinic";
@@ -6113,6 +6142,18 @@
         }
       }
 
+      function handleDbVaccineChange() {
+        const sel = document.getElementById("dbTitleSelect");
+        const customWrapper = document.getElementById("dbCustomVaccineWrapper");
+        if (sel && customWrapper) {
+          if (sel.value === "Other") {
+            customWrapper.classList.remove("hidden");
+          } else {
+            customWrapper.classList.add("hidden");
+          }
+        }
+      }
+
       function handleDashboardFileSelect(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -6146,7 +6187,19 @@
         }
 
         const type = document.getElementById("dbRecType").value;
-        const titleVal = document.getElementById("dbTitleInput").value.trim();
+        let titleVal = "";
+        
+        if (type === "Vaccination") {
+          const selValue = document.getElementById("dbTitleSelect").value;
+          if (selValue === "Other") {
+            titleVal = document.getElementById("dbCustomVaccineInput").value.trim();
+          } else {
+            titleVal = selValue;
+          }
+        } else {
+          titleVal = document.getElementById("dbTitleInput").value.trim();
+        }
+        
         const dateVal = document.getElementById("dbDateInput").value;
         const nextDueVal = document.getElementById("dbNextDueInput").value;
         const issuerVal = document.getElementById("dbIssuerInput").value.trim();
