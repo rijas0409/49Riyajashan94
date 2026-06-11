@@ -86,6 +86,7 @@ export default async function handler(req: any, res: any) {
     const { data: petData, error: petErr } = await supabase
       .from("pet_passports")
       .insert({
+        user_id: payload.userId,
         passport_id: passportId,
         pet_name: payload.petName,
         species: payload.species,

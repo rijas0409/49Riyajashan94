@@ -19,11 +19,11 @@ const EmptyPetPassport = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const uid = session?.user?.id || "";
+        const { data: { user } } = await supabase.auth.getUser();
+        const uid = user?.id || "";
         setUserId(uid);
         
-        const res = await fetch(`/api/pet-passport?userId=${uid}`);
+        const res = await fetch(`/api/pet-passport?userId=${uid}&_t=${Date.now()}`);
         if (res.ok) {
           const data = await res.json();
           const count = Array.isArray(data) ? data.length : 0;
@@ -56,7 +56,7 @@ const EmptyPetPassport = () => {
           // Return from details/creation to main companion dashboard
           setIframeSrc(`/mypassport.html?userId=${userId}`);
           // Re-check count to see if we should stay in iframe or go to empty state
-          fetch(`/api/pet-passport?userId=${userId}`)
+          fetch(`/api/pet-passport?userId=${userId}&_t=${Date.now()}`)
             .then((res) => res.json())
             .then((data) => {
               if (Array.isArray(data) && data.length > 0) {

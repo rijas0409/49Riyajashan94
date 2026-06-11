@@ -352,7 +352,9 @@
             try {
                 const urlParams = new URLSearchParams(window.location.search);
                 const passedUserId = urlParams.get('userId');
-                const res = await fetch(`/api/pet-passport${passedUserId ? '?userId=' + passedUserId : ''}`);
+                const cacheBuster = `_t=${Date.now()}`;
+                const qs = passedUserId ? `?userId=${passedUserId}&${cacheBuster}` : `?${cacheBuster}`;
+                const res = await fetch(`/api/pet-passport${qs}`);
                 let passports = [];
                 if (res.ok) {
                     passports = await res.json();

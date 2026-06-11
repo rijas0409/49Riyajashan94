@@ -3690,6 +3690,14 @@
           window.parent.postMessage("close_pet_passport_flow", "*");
           return;
         }
+
+        // If passport has been generated (step 5) or showing pet account (step 6),
+        // send user back to the profile instead of re-doing steps
+        if (currentStep >= 5) {
+          window.parent.postMessage("close_pet_passport_flow", "*");
+          return;
+        }
+
         if (currentStep > 1) {
           if (currentStep === 4 && intervalTracker) {
             cancelAnimationFrame(intervalTracker);
