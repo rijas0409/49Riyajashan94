@@ -698,6 +698,7 @@ Return the response as a single JSON object containing only a "description" key.
       }
 
       // Get pet_passport rows ID
+      console.log("[DEBUG] Searching for passport:", passportId);
       const { data: pet, error: petErr } = await supabaseAdmin
         .from("pet_passports")
         .select("id")
@@ -705,41 +706,50 @@ Return the response as a single JSON object containing only a "description" key.
         .maybeSingle();
 
       if (petErr) {
+        console.error("[DEBUG] Pet search error:", petErr);
         return res.status(500).json({ error: "Error searching passport: " + petErr.message });
       }
       if (!pet) {
+        console.error("[DEBUG] Passport not found for:", passportId);
         return res.status(404).json({ error: "Passport not found" });
       }
 
+      console.log("[DEBUG] Pet id found:", pet.id, "Inserting record:", JSON.stringify(record).substring(0, 100));
+
       // Insert into pet_health_records_documents
+      const insertData: any = {
+        pet_passport_id: pet.id,
+        record_type: record.type,
+        record_description: record.recordDescription,
+      };
+
+      if (record.vaccineName) insertData.vaccine_name = record.vaccineName;
+      if (record.specifyVaccine) insertData.specify_vaccine = record.specifyVaccine;
+      if (record.dateAdministered) insertData.date_administered = record.dateAdministered;
+      if (record.nextDueDate) insertData.next_due_date = record.nextDueDate;
+      if (record.diagnosis) insertData.diagnosis = record.diagnosis;
+      if (record.prescribedBy) insertData.prescribed_by = record.prescribedBy;
+      if (record.issueDate) insertData.issue_date = record.issueDate;
+      if (record.testName) insertData.test_name = record.testName;
+      if (record.testDate) insertData.test_date = record.testDate;
+      if (record.procedureName) insertData.procedure_name = record.procedureName;
+      if (record.surgeryDate) insertData.surgery_date = record.surgeryDate;
+      if (record.conditionName) insertData.condition_name = record.conditionName;
+      if (record.certificateTitle) insertData.certificate_title = record.certificateTitle;
+      if (record.documentBase64) insertData.document_base64 = record.documentBase64;
+
       const { data, error } = await supabaseAdmin
         .from("pet_health_records_documents")
-        .insert({
-          pet_passport_id: pet.id,
-          record_type: record.type,
-          vaccine_name: record.vaccineName,
-          specify_vaccine: record.specifyVaccine,
-          date_administered: record.dateAdministered || null,
-          next_due_date: record.nextDueDate || null,
-          diagnosis: record.diagnosis,
-          prescribed_by: record.prescribedBy,
-          issue_date: record.issueDate || null,
-          test_name: record.testName,
-          test_date: record.testDate || null,
-          procedure_name: record.procedureName,
-          surgery_date: record.surgeryDate || null,
-          condition_name: record.conditionName,
-          certificate_title: record.certificateTitle,
-          record_description: record.recordDescription,
-          document_base64: record.documentBase64
-        })
+        .insert(insertData)
         .select()
         .single();
 
       if (error) {
+        console.error("[DEBUG] Insert error:", error);
         return res.status(500).json({ error: "Failed to insert health record: " + error.message });
       }
 
+      console.log("[DEBUG] Insert successful:", data);
       return res.json({ success: true, record: data });
     } catch (e: any) {
       console.error("Error adding single health record:", e);
