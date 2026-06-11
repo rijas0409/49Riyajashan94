@@ -504,7 +504,7 @@ Return the response as a single JSON object containing only a "description" key.
         console.warn("Could not init supabaseAdmin on server", err);
       }
       
-      const passportId = "SRV-" + Math.random().toString(36).substring(2, 5).toUpperCase() + "-" + Math.random().toString(36).substring(2, 5).toUpperCase();
+      let passportId = payload.passportId || "SRV-" + Math.random().toString(36).substring(2, 5).toUpperCase() + "-" + Math.random().toString(36).substring(2, 5).toUpperCase();
       
       if (supabaseAdmin) {
         let timeoutId: any;
@@ -514,35 +514,91 @@ Return the response as a single JSON object containing only a "description" key.
         
         try {
           const dbOperations = async () => {
-            const { data: petData, error: petErr } = await supabaseAdmin
-              .from("pet_passports")
-              .insert({
-                user_id: userId,
-                passport_id: passportId,
-                pet_name: payload.petName,
-                species: payload.species,
-                gender: payload.gender,
-                breed: payload.breed,
-                appearance: payload.appearance,
-                age_type: payload.ageType,
-                dob: payload.dob || null,
-                approx_years: payload.approxYears ? parseInt(payload.approxYears) : null,
-                approx_months: payload.approxMonths ? parseInt(payload.approxMonths) : null,
-                weight: payload.weight ? parseFloat(payload.weight) : null,
-                owner_name: payload.ownerName,
-                primary_phone: payload.primaryPhone,
-                emergency_contact_name: payload.emergencyContactName,
-                emergency_phone: payload.emergencyPhone,
-                emergency_relationship: payload.emergencyRelationship,
-                photo_url: payload.photoUrl
-              }).select().single();
+            let existingPet: any = null;
+            if (payload.passportId) {
+              const { data, error } = await supabaseAdmin
+                .from("pet_passports")
+                .select("*")
+                .eq("passport_id", payload.passportId)
+                .maybeSingle();
+              if (data) {
+                existingPet = data;
+              }
+            }
+
+            let petData: any = null;
+            let petErr: any = null;
+
+            if (existingPet) {
+              passportId = existingPet.passport_id;
+              const { data, error } = await supabaseAdmin
+                .from("pet_passports")
+                .update({
+                  user_id: userId || existingPet.user_id,
+                  pet_name: payload.petName,
+                  species: payload.species,
+                  gender: payload.gender,
+                  breed: payload.breed,
+                  appearance: payload.appearance,
+                  age_type: payload.ageType,
+                  dob: payload.dob || null,
+                  approx_years: payload.approxYears ? parseInt(payload.approxYears) : null,
+                  approx_months: payload.approxMonths ? parseInt(payload.approxMonths) : null,
+                  weight: payload.weight ? parseFloat(payload.weight) : null,
+                  owner_name: payload.ownerName,
+                  primary_phone: payload.primaryPhone,
+                  emergency_contact_name: payload.emergencyContactName,
+                  emergency_phone: payload.emergencyPhone,
+                  emergency_relationship: payload.emergencyRelationship,
+                  photo_url: payload.photoUrl
+                })
+                .eq("passport_id", passportId)
+                .select()
+                .single();
+              
+              petData = data;
+              petErr = error;
+            } else {
+              const { data, error } = await supabaseAdmin
+                .from("pet_passports")
+                .insert({
+                  user_id: userId,
+                  passport_id: passportId,
+                  pet_name: payload.petName,
+                  species: payload.species,
+                  gender: payload.gender,
+                  breed: payload.breed,
+                  appearance: payload.appearance,
+                  age_type: payload.ageType,
+                  dob: payload.dob || null,
+                  approx_years: payload.approxYears ? parseInt(payload.approxYears) : null,
+                  approx_months: payload.approxMonths ? parseInt(payload.approxMonths) : null,
+                  weight: payload.weight ? parseFloat(payload.weight) : null,
+                  owner_name: payload.ownerName,
+                  primary_phone: payload.primaryPhone,
+                  emergency_contact_name: payload.emergencyContactName,
+                  emergency_phone: payload.emergencyPhone,
+                  emergency_relationship: payload.emergencyRelationship,
+                  photo_url: payload.photoUrl
+                })
+                .select()
+                .single();
+              
+              petData = data;
+              petErr = error;
+            }
               
             if (petErr) {
               console.error("petErr", petErr);
-              throw new Error("Failed to insert into pet_passports: " + petErr.message);
+              throw new Error("Failed to save pet passport: " + petErr.message);
             }
 
             const medicalRowId = petData.id;
+
+            // Clear existing related table records to allow safe re-entry during update/edit
+            await supabaseAdmin.from("pet_medical_logs").delete().eq("pet_passport_id", medicalRowId);
+            await supabaseAdmin.from("pet_health_conditions").delete().eq("pet_passport_id", medicalRowId);
+            await supabaseAdmin.from("pet_health_records_documents").delete().eq("pet_passport_id", medicalRowId);
             
             await supabaseAdmin.from("pet_medical_logs").insert({
               pet_passport_id: medicalRowId,

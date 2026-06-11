@@ -2816,6 +2816,118 @@
 
       function loadPassportDataIntoUI(payload) {
         if (!payload) return;
+
+        // Set form elements for compatibility and edits for step 1, 2, 3
+        const petAgeTypeInput = document.getElementById("petAgeType");
+        if (petAgeTypeInput && (payload.age_type || payload.ageType)) {
+          const type = payload.age_type || payload.ageType || "exact";
+          petAgeTypeInput.value = type;
+          
+          if (typeof setAgeType === "function") {
+            // Synchronize specific view tabs
+            setAgeType(type);
+          }
+        }
+
+        const petDobInput = document.getElementById("petDOB");
+        if (petDobInput && payload.dob) {
+          petDobInput.value = payload.dob;
+          if (typeof selectCalendarDate === "function") {
+            selectCalendarDate(payload.dob);
+          }
+        }
+
+        const petNameInput = document.getElementById("petName");
+        if (petNameInput) petNameInput.value = payload.pet_name || payload.petName || "";
+
+        const petBreedInput = document.getElementById("petBreed");
+        if (petBreedInput) petBreedInput.value = payload.breed || payload.petBreed || "";
+
+        const petAppearanceInput = document.getElementById("petAppearance");
+        if (petAppearanceInput) petAppearanceInput.value = payload.appearance || "";
+
+        const petWeightInput = document.getElementById("petWeight");
+        if (petWeightInput) petWeightInput.value = payload.weight || "";
+
+        const approxYearsInput = document.getElementById("approxYears");
+        if (approxYearsInput && payload.approx_years) {
+          approxYearsInput.value = payload.approx_years;
+        } else if (approxYearsInput && payload.approxYears) {
+          approxYearsInput.value = payload.approxYears;
+        }
+
+        const approxMonthsInput = document.getElementById("approxMonths");
+        if (approxMonthsInput && payload.approx_months) {
+          approxMonthsInput.value = payload.approx_months;
+        } else if (approxMonthsInput && payload.approxMonths) {
+          approxMonthsInput.value = payload.approxMonths;
+        }
+
+        const genderVal = payload.gender || "Male";
+        if (typeof setGender === "function") {
+          setGender(genderVal);
+        }
+
+        const speciesVal = payload.species || "Dog";
+        if (typeof selectSpecies === "function") {
+          let speciesIcon = "sound_detection_dog_barking";
+          if (speciesVal.toLowerCase() === "cat") speciesIcon = "pets";
+          else if (speciesVal.toLowerCase() === "bird") speciesIcon = "flutter_dash";
+          else if (speciesVal.toLowerCase() === "hamster") speciesIcon = "cruelty_free";
+          selectSpecies(speciesVal, speciesIcon);
+        }
+
+        const photoUrl = payload.photo_url || payload.photoUrl;
+        if (photoUrl) {
+          const previewContainer = document.getElementById("petPhotoPreview");
+          if (previewContainer) {
+            previewContainer.innerHTML = `<img src="${photoUrl}" class="w-full h-full object-cover" />`;
+          }
+          hasPetPhoto = true;
+        }
+
+        // Emergency and medical history
+        const ownerNameInput = document.getElementById("ownerName");
+        if (ownerNameInput) ownerNameInput.value = payload.owner_name || payload.ownerName || "";
+
+        const primaryPhoneInput = document.getElementById("primaryPhone");
+        if (primaryPhoneInput) primaryPhoneInput.value = payload.primary_phone || payload.primaryPhone || "";
+
+        const emergencyContactNameInput = document.getElementById("emergencyContactName");
+        if (emergencyContactNameInput) emergencyContactNameInput.value = payload.emergency_contact_name || payload.emergencyContactName || "";
+
+        const emergencyPhoneInput = document.getElementById("emergencyPhone");
+        if (emergencyPhoneInput) emergencyPhoneInput.value = payload.emergency_phone || payload.emergencyPhone || "";
+
+        const emergencyRelationSelect = document.getElementById("emergencyRelation");
+        if (emergencyRelationSelect) {
+          const relation = payload.emergency_relationship || payload.emergencyRelationship || "";
+          const knownRelations = ["Parent", "Sibling", "Friend", "Spouse", "Co-Owner", "Neighbor", "Veterinarian", "Other"];
+          if (knownRelations.includes(relation)) {
+            emergencyRelationSelect.value = relation;
+          } else if (relation) {
+            emergencyRelationSelect.value = "Other";
+            const customRelationInput = document.getElementById("customRelation");
+            if (customRelationInput) customRelationInput.value = relation;
+          }
+          if (typeof toggleCustomRelation === "function") {
+            toggleCustomRelation();
+          }
+        }
+
+        const lastVaccinationDateInput = document.getElementById("lastVaccinationDate");
+        if (lastVaccinationDateInput) lastVaccinationDateInput.value = payload.last_vaccination_date || payload.lastVaccinationDate || "";
+
+        const knownAllergiesInput = document.getElementById("knownAllergies");
+        if (knownAllergiesInput) knownAllergiesInput.value = payload.known_allergies || payload.knownAllergies || "";
+
+        const lastVeterinaryVisitInput = document.getElementById("lastVeterinaryVisit");
+        if (lastVeterinaryVisitInput) lastVeterinaryVisitInput.value = payload.last_veterinary_visit || payload.lastVeterinaryVisit || "";
+
+        if (typeof updateContinueButtonsState === "function") {
+          updateContinueButtonsState();
+        }
+
         // Basic Details
         const petName_el = document.getElementById("passPetName");
         if (petName_el)
@@ -2826,7 +2938,7 @@
 
         const dob_val = payload.dob;
         const db_el = document.getElementById("passDOB");
-        if (db_el) db_el.innerText = formatDateString(dob_val) || "12 Oct 2022";
+        if (db_el) db_el.innerText = getFormattedDOB(dob_val) || "12 Oct 2022";
 
         const ow_el = document.getElementById("passOwner");
         if (ow_el)
@@ -3023,29 +3135,52 @@
               finCont.style.transform = "scale(1)";
             }
 
-            // Hide loader after setting ID even before data is fully fetched
-            // (Dashboard has its own skeletons/content)
-            const loader = document.getElementById("globalLoader");
-            if (loader) {
-              loader.classList.add("opacity-0");
-              setTimeout(() => (loader.style.display = "none"), 300);
+            // Bind edit button action handler
+            const editBtn = document.getElementById("btnEditPassportDetails");
+            if (editBtn) {
+              editBtn.onclick = () => {
+                document.getElementById("step5").classList.remove("active");
+                document.getElementById("step1").classList.add("active");
+                currentStep = 1;
+
+                // Re-enable and show progress track
+                const progBlock = document.getElementById("progressBlock");
+                if (progBlock) progBlock.style.display = "block";
+
+                // Ensure head navigation buttons are visible
+                const backBtn = document.getElementById("backBtn");
+                if (backBtn) backBtn.classList.remove("hidden");
+
+                updateUI();
+              };
             }
 
-            // Fetch details
-            const res = await fetch(
-              `/api/pet-passport?id=${encodeURIComponent(passportId)}`,
-            );
-            if (res.ok) {
-              const data = await res.json();
-              console.log(
-                "[DEBUG] Successfully fetched passport data from backend:",
-                data,
+            // Fetch details, and update UI before hiding the loader
+            try {
+              const res = await fetch(
+                `/api/pet-passport?id=${encodeURIComponent(passportId)}`,
               );
-              loadPassportDataIntoUI(data.pet || data);
-            } else {
-              console.warn(
-                "[DEBUG] Backend fetch was not successful.",
-              );
+              if (res.ok) {
+                const data = await res.json();
+                console.log(
+                  "[DEBUG] Successfully fetched passport data from backend:",
+                  data,
+                );
+                loadPassportDataIntoUI(data.pet || data);
+              } else {
+                console.warn(
+                  "[DEBUG] Backend fetch was not successful.",
+                );
+              }
+            } catch (fetchErr) {
+              console.error("Failed to fetch passport details:", fetchErr);
+            } finally {
+              // Hide loader ONLY after data is loaded and UI is fully rendered
+              const loader = document.getElementById("globalLoader");
+              if (loader) {
+                loader.classList.add("opacity-0");
+                setTimeout(() => (loader.style.display = "none"), 300);
+              }
             }
           } else {
             // No ID, standard creation flow
@@ -5078,9 +5213,17 @@
       }
 
       function getAgeString(dobString) {
-        if (!dobString) return "3 Yrs";
+        if (!dobString) return "0 Mos";
         const petAgeType = document.getElementById("petAgeType");
-        if (petAgeType && petAgeType.value === "approx") {
+        
+        // Active setup inputs on step 1/2 of registration:
+        if (
+          petAgeType && 
+          petAgeType.value === "approx" && 
+          typeof currentStep !== "undefined" && 
+          currentStep < 5 &&
+          (document.getElementById("approxYears")?.value || document.getElementById("approxMonths")?.value)
+        ) {
           const yearsInput = document.getElementById("approxYears");
           const monthsInput = document.getElementById("approxMonths");
           const yrs = parseInt(yearsInput ? yearsInput.value : "0", 10) || 0;
@@ -5091,8 +5234,10 @@
           if (yrs > 0) return yrs + (yrs === 1 ? " Yr" : " Yrs");
           return "0 Yrs";
         }
+
+        // Dynamic age calculation:
         const dob = new Date(dobString);
-        if (isNaN(dob.getTime())) return "3 Yrs";
+        if (isNaN(dob.getTime())) return "0 Mos";
         const today = new Date();
         let years = today.getFullYear() - dob.getFullYear();
         let months = today.getMonth() - dob.getMonth();
@@ -5100,7 +5245,8 @@
           years--;
           months += 12;
         }
-        if (years === 0) {
+        if (years <= 0) {
+          if (months <= 0) return "0 Mos";
           return months + (months === 1 ? " Mo" : " Mos");
         }
         if (years > 0 && months > 0) {
@@ -5292,6 +5438,7 @@
           const urlParams = new URLSearchParams(window.location.search);
           const passedUserId = urlParams.get('userId');
           const payload = {
+            passportId: urlParams.get("id") || null,
             userId: passedUserId,
             petName: document.getElementById("petName")?.value,
             species: document.getElementById("selectedText")?.innerText.trim(),

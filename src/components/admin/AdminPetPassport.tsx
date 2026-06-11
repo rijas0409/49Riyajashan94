@@ -505,17 +505,39 @@ const AdminPetPassport = () => {
                               </p>
                             </div>
                             <div>
-                              <p className="text-slate-400 mb-0.5">Age Reference</p>
-                              {selectedPassport.age_type === "dob" ? (
-                                <p className="font-bold text-slate-700 flex items-center gap-1">
-                                  <Calendar className="w-3 h-3 text-slate-400" /> 
-                                  {selectedPassport.dob ? new Date(selectedPassport.dob).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "N/A"}
-                                </p>
-                              ) : (
-                                <p className="font-bold text-slate-700">
-                                  {selectedPassport.approx_years || 0} Years, {selectedPassport.approx_months || 0} Months (Approx)
-                                </p>
-                              )}
+                              <p className="text-slate-400 mb-0.5">Birthday / Current Age</p>
+                              <p className="font-bold text-slate-700 flex items-center gap-1 flex-wrap">
+                                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                {selectedPassport.dob ? (
+                                  selectedPassport.age_type === "approx" || selectedPassport.age_type === "approximate" ? (
+                                    `~ ${new Date(selectedPassport.dob).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}`
+                                  ) : (
+                                    new Date(selectedPassport.dob).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                                  )
+                                ) : "N/A"}
+                                {selectedPassport.dob && (
+                                  <span className="text-[#d95191] bg-[#fff0f5] px-1.5 py-0.5 rounded text-[10px] font-black uppercase ml-1">
+                                    {(() => {
+                                      const dob = new Date(selectedPassport.dob);
+                                      const today = new Date();
+                                      let years = today.getFullYear() - dob.getFullYear();
+                                      let months = today.getMonth() - dob.getMonth();
+                                      if (months < 0 || (months === 0 && today.getDate() < dob.getDate())) {
+                                        years--;
+                                        months += 12;
+                                      }
+                                      if (years <= 0) {
+                                        if (months <= 0) return "0 Mos";
+                                        return `${months} ${months === 1 ? "Mo" : "Mos"}`;
+                                      }
+                                      if (years > 0 && months > 0) {
+                                        return `${years} Yr${years > 1 ? "s" : ""} ${months} Mo${months > 1 ? "s" : ""}`;
+                                      }
+                                      return `${years} ${years === 1 ? "Yr" : "Yrs"}`;
+                                    })()}
+                                  </span>
+                                )}
+                              </p>
                             </div>
                           </div>
 

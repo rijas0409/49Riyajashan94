@@ -54,6 +54,24 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+
+        /* NEW: Smooth Transitions for Bottom Sheet & Modal */
+        .bottom-sheet {
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .bottom-sheet.open {
+            transform: translateY(0);
+        }
+        .modal-scale {
+            transform: scale(0.95);
+            opacity: 0;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        }
+        .modal-scale.open {
+            transform: scale(1);
+            opacity: 1;
+        }
     </style>
 </head>
 
@@ -115,6 +133,52 @@
 
     </main>
 
+    <!-- Fullscreen QR Close-View Modal with Custom Anim & Close View Actions -->
+    <div id="qrModal" class="fixed inset-0 z-[100] hidden opacity-0 bg-on-surface/40 backdrop-blur-md flex items-center justify-center p-6 transition-opacity duration-300" onclick="closeQRModal()">
+        <div id="qrModalContent" class="bg-white rounded-[32px] p-6 w-full max-w-xs shadow-2xl border border-surface-container-highest text-center modal-scale" onclick="event.stopPropagation()">
+            <div class="w-12 h-1 bg-surface-container-highest rounded-full mx-auto mb-5"></div>
+            <h3 class="text-lg font-black tracking-tight text-on-surface">Scan Passport QR</h3>
+            <p id="modalPassportId" class="text-xs font-bold font-mono text-primary bg-primary-container/50 px-2 py-0.5 rounded-md w-fit mx-auto mt-1"></p>
+            
+            <div class="my-6 p-4 bg-surface-container-low border-2 border-dashed border-primary/20 rounded-[24px] flex items-center justify-center aspect-square max-w-[220px] mx-auto shadow-inner">
+                <img id="modalQRCodeImg" src="" alt="Expanded QR Code" class="w-full h-full object-contain rounded-lg">
+            </div>
+            
+            <button onclick="closeQRModal()" class="w-full bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-bold py-3.5 rounded-2xl text-xs tracking-wider uppercase transition-colors active:scale-98">
+                Close View
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Actions Bottom Sheet with Custom Slide Transition & Handlers -->
+    <div id="actionSheet" class="fixed inset-0 z-[90] hidden opacity-0 bg-on-surface/30 backdrop-blur-sm transition-opacity duration-300" onclick="closeQuickActions()">
+        <div id="actionSheetContent" class="fixed bottom-0 left-0 w-full bg-surface border-t border-surface-container-highest rounded-t-[32px] p-6 pb-8 bottom-sheet shadow-[0_-10px_30px_rgba(0,0,0,0.05)]" onclick="event.stopPropagation()">
+            <div class="w-12 h-1 bg-surface-container-highest rounded-full mx-auto mb-5"></div>
+            
+            <div class="mb-4">
+                <h4 id="sheetPetName" class="text-base font-black text-on-surface">Pet's Passport</h4>
+                <p class="text-xs text-on-surface-variant font-medium">Choose a quick action for this digital record.</p>
+            </div>
+
+            <div class="space-y-2">
+                <button onclick="handleEditPassportDetails()" class="w-full flex items-center gap-3 p-4 rounded-2xl bg-surface-container-low border border-surface-container-high text-on-surface hover:bg-primary-container/20 transition-all active:scale-[0.99]">
+                    <span class="material-symbols-outlined text-primary">edit</span>
+                    <span class="text-sm font-bold tracking-tight">Edit Passport Details</span>
+                </button>
+                
+                <button onclick="handleDownloadPDF()" class="w-full flex items-center gap-3 p-4 rounded-2xl bg-surface-container-low border border-surface-container-high text-on-surface hover:bg-primary-container/20 transition-all active:scale-[0.99]">
+                    <span class="material-symbols-outlined text-primary">download</span>
+                    <span class="text-sm font-bold tracking-tight">Download PDF Document</span>
+                </button>
+                
+                <button onclick="handleShareLink()" class="w-full flex items-center gap-3 p-4 rounded-2xl bg-surface-container-low border border-surface-container-high text-on-surface hover:bg-primary-container/20 transition-all active:scale-[0.99]">
+                    <span class="material-symbols-outlined text-primary">share</span>
+                    <span class="text-sm font-bold tracking-tight">Share Verified Passport Link</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Glowing Background Overlay: Exact markup from peto.html -->
     <div class="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none opacity-40">
         <div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px]"></div>
@@ -122,6 +186,143 @@
 
     <script>
         let currentStep = 0;
+
+        // NEW: Fullscreen QR Modal Logic
+        function openQRModal(url, passportId) {
+            const modal = document.getElementById('qrModal');
+            const modalContent = document.getElementById('qrModalContent');
+            if (document.getElementById('modalPassportId')) {
+                document.getElementById('modalPassportId').innerText = passportId;
+            }
+            if (document.getElementById('modalQRCodeImg')) {
+                document.getElementById('modalQRCodeImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(url)}&color=d95191`;
+            }
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                if (modalContent) modalContent.classList.add('open');
+            }, 10);
+        }
+
+        function closeQRModal() {
+            const modal = document.getElementById('qrModal');
+            const modalContent = document.getElementById('qrModalContent');
+            if (modalContent) modalContent.classList.remove('open');
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // NEW: Quick Actions Bottom Sheet Logic
+        function openQuickActions(passportId, petName) {
+            const sheet = document.getElementById('actionSheet');
+            const sheetContent = document.getElementById('actionSheetContent');
+            if (document.getElementById('sheetPetName')) {
+                document.getElementById('sheetPetName').innerText = `${petName}'s Passport`;
+            }
+            
+            sheet.dataset.selectedPassportId = passportId;
+            sheet.dataset.selectedPetName = petName;
+
+            sheet.classList.remove('hidden');
+            setTimeout(() => {
+                sheet.classList.remove('opacity-0');
+                if (sheetContent) sheetContent.classList.add('open');
+            }, 10);
+        }
+
+        function closeQuickActions() {
+            const sheet = document.getElementById('actionSheet');
+            const sheetContent = document.getElementById('actionSheetContent');
+            if (sheetContent) sheetContent.classList.remove('open');
+            sheet.classList.add('opacity-0');
+            setTimeout(() => {
+                sheet.classList.add('hidden');
+            }, 400);
+        }
+
+        function handleEditPassportDetails() {
+            const sheet = document.getElementById('actionSheet');
+            const passportId = sheet.dataset.selectedPassportId;
+            closeQuickActions();
+            if (passportId) {
+                openPassportDetails(passportId);
+            }
+        }
+
+        function handleDownloadPDF() {
+            const sheet = document.getElementById('actionSheet');
+            const passportId = sheet.dataset.selectedPassportId;
+            closeQuickActions();
+            if (passportId) {
+                const printUrl = `https://sruvoindia.vercel.app/passport/${passportId}`;
+                const printWindow = window.open(printUrl, '_blank');
+                if (printWindow) {
+                    printWindow.onload = function() {
+                        printWindow.print();
+                    };
+                } else {
+                    showToast("Redirecting to Passport Print View...");
+                    window.location.href = `/rjpass.html?id=${encodeURIComponent(passportId)}`;
+                }
+            }
+        }
+
+        function handleShareLink() {
+            const sheet = document.getElementById('actionSheet');
+            const passportId = sheet.dataset.selectedPassportId;
+            closeQuickActions();
+            if (passportId) {
+                const shareUrl = `https://sruvoindia.vercel.app/passport/${passportId}`;
+                
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(shareUrl)
+                        .then(() => {
+                            showToast("Passport link copied!");
+                        })
+                        .catch(err => {
+                            console.error("Clipboard copy failed:", err);
+                            showToast("Copied Sruvo passport link!");
+                        });
+                } else {
+                    const el = document.createElement('textarea');
+                    el.value = shareUrl;
+                    document.body.appendChild(el);
+                    el.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(el);
+                    showToast("Passport link copied!");
+                }
+            }
+        }
+
+        function showToast(message) {
+            const existing = document.getElementById('custom-toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.id = 'custom-toast';
+            toast.className = 'fixed bottom-24 left-1/2 -translate-x-1/2 z-[110] bg-[#412b36] text-[#fffbfe] text-xs font-bold px-4 py-3 rounded-full shadow-lg border border-primary/20 transition-all duration-300 transform translate-y-4 opacity-0 flex items-center gap-2';
+            toast.innerHTML = `
+                <span class="material-symbols-outlined text-primary text-sm">verified</span>
+                <span>${message}</span>
+            `;
+            document.body.appendChild(toast);
+
+            toast.offsetHeight; // Reflow
+            toast.classList.remove('opacity-0', 'translate-y-4');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-4');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 2500);
+        }
         
         function triggerCreateNew() {
             window.parent.postMessage('create_new_passport', '*');
@@ -131,12 +332,15 @@
             window.parent.postMessage({ type: 'open_passport', passportId }, '*');
         }
 
-        function formatDateString(dateStr) {
+        function formatDateString(dateStr, ageType = 'exact') {
             if (!dateStr) return 'N/A';
             try {
                 const d = new Date(dateStr);
                 if (isNaN(d.getTime())) return dateStr;
                 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                if (ageType === 'approx' || ageType === 'approximate') {
+                    return `~ ${months[d.getMonth()]} ${d.getFullYear()}`;
+                }
                 return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
             } catch(e) {
                 return dateStr;
@@ -174,7 +378,7 @@
                     const breed = p.breed || p.species || 'Golden Retriever';
                     const gender = p.gender || 'Male';
                     const weight = p.weight ? (p.weight.toString().includes('kg') ? p.weight : `${p.weight} kg`) : 'N/A';
-                    const dob = formatDateString(p.dob);
+                    const dob = formatDateString(p.dob, p.age_type || p.ageType);
                     const ownerName = p.owner_name || p.ownerName || 'Rijas Pabla';
                     const photoUrl = p.photo_url || p.photoUrl || "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80";
                     const appearance = p.appearance || 'Golden coat with white chest patch';
@@ -203,17 +407,23 @@
                                     <div class="p-6 bg-white space-y-5 relative flex-1 animate-fadeInUp">
                                         <span class="material-symbols-outlined absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[120px] text-surface-container-highest opacity-30 pointer-events-none">shield_with_heart</span>
 
-                                        <div class="flex gap-4 items-center relative z-10">
-                                            <div class="w-20 h-20 rounded-[18px] bg-surface-container-high border-2 border-primary/20 shadow-md flex items-center justify-center overflow-hidden shrink-0">
-                                                <img src="${photoUrl}" alt="${petName}" class="w-full h-full object-cover">
+                                        <div class="flex justify-between items-start relative z-10">
+                                            <div class="flex gap-4 items-center">
+                                                <div class="w-20 h-20 rounded-[18px] bg-surface-container-high border-2 border-primary/20 shadow-md flex items-center justify-center overflow-hidden shrink-0">
+                                                    <img src="${photoUrl}" alt="${petName}" class="w-full h-full object-cover">
+                                                </div>
+                                                <div class="space-y-1">
+                                                    <h2 class="text-2xl font-black text-on-surface leading-none tracking-tight">${petName}</h2>
+                                                    <p class="text-[11px] font-bold text-primary uppercase tracking-wider">${breed}</p>
+                                                    <p class="text-[11px] font-semibold text-on-surface-variant flex items-center gap-1.5 mt-1 bg-surface-container-low w-fit px-2 py-0.5 rounded-md border border-surface-container-highest">
+                                                        <span class="material-symbols-outlined text-[14px] text-primary">${gender.toLowerCase() === 'female' ? 'female' : 'male'}</span> ${gender} • ${weight}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div class="space-y-1">
-                                                <h2 class="text-2xl font-black text-on-surface leading-none tracking-tight">${petName}</h2>
-                                                <p class="text-[11px] font-bold text-primary uppercase tracking-wider">${breed}</p>
-                                                <p class="text-[11px] font-semibold text-on-surface-variant flex items-center gap-1.5 mt-1 bg-surface-container-low w-fit px-2 py-0.5 rounded-md border border-surface-container-highest">
-                                                    <span class="material-symbols-outlined text-[14px] text-primary">${gender.toLowerCase() === 'female' ? 'female' : 'male'}</span> ${gender} • ${weight}
-                                                </p>
-                                            </div>
+                                            
+                                            <button onclick="event.stopPropagation(); openQuickActions('${passportId}', '${petName}')" class="w-8 h-8 rounded-full bg-surface-container-low border border-surface-container-highest flex items-center justify-center text-on-surface-variant hover:bg-primary-container/40 active:scale-90 transition-all cursor-pointer">
+                                                <span class="material-symbols-outlined text-lg">more_horiz</span>
+                                            </button>
                                         </div>
 
                                         <div class="border-t border-dashed border-surface-container-highest"></div>
@@ -254,8 +464,10 @@
                                                 <p class="text-[11px] font-extrabold text-green-700 tracking-wide uppercase">Active & Verified</p>
                                             </div>
                                         </div>
-                                        <div class="w-14 h-14 bg-white rounded-xl border-2 border-surface-container-highest p-1 flex items-center justify-center shadow-sm relative group cursor-pointer hover:border-primary/50 transition-colors">
-                                            <div class="absolute inset-0 bg-primary/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                        <div onclick="event.stopPropagation(); openQRModal('https://sruvoindia.vercel.app/passport/${passportId}', '${passportId}')" class="w-14 h-14 bg-white rounded-xl border-2 border-surface-container-highest p-1 flex items-center justify-center shadow-sm relative group cursor-pointer hover:border-primary/50 transition-colors" title="Tap to expand">
+                                            <div class="absolute inset-0 bg-primary/5 rounded-xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                <span class="material-symbols-outlined text-primary text-xs font-bold">fullscreen</span>
+                                            </div>
                                             <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://sruvoindia.vercel.app/passport/${passportId}&color=d95191" alt="QR Code" class="w-full h-full object-contain rounded-md" referrerPolicy="no-referrer">
                                         </div>
                                     </div>
