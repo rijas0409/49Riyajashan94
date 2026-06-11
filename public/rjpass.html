@@ -1598,7 +1598,8 @@
                 </p>
               </div>
               <div
-                class="w-12 h-12 bg-white rounded-xl border-2 border-surface-container-highest p-0.5 shrink-0 flex items-center justify-center"
+                onclick="openDashboardQRModal()"
+                class="w-12 h-12 bg-white rounded-xl border-2 border-surface-container-highest p-0.5 shrink-0 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
               >
                 <img
                   id="dashCardQRCodeImg"
@@ -2810,71 +2811,80 @@
     </div>
 
     <!-- Dedicated Dashboard Independent Add Record Modal -->
-    <div id="dashboardRecordModal" class="fixed inset-0 z-[100] hidden bg-on-surface/40 backdrop-blur-md flex items-center justify-center p-4" onclick="closeDashboardRecordModal()">
-        <div class="bg-white rounded-[32px] p-6 w-full max-w-md shadow-2xl border border-surface-container-highest flex flex-col max-h-[90vh]" onclick="event.stopPropagation()">
-            <!-- Drag Handle / Header -->
-            <div class="w-12 h-1 bg-surface-container-highest rounded-full mx-auto mb-4"></div>
+    <div id="dashboardRecordModal" class="fixed inset-0 z-[100] hidden bg-on-surface/40 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300" onclick="closeDashboardRecordModal()">
+        <div class="bg-white rounded-t-[32px] sm:rounded-[32px] p-6 w-full max-w-md shadow-2xl border-t sm:border border-text-on-surface-variant/10 flex flex-col max-h-[85vh] sm:max-h-[90vh] transition-transform duration-300 transform translate-y-0" onclick="event.stopPropagation()">
+            <!-- Drag Handle for Mobile Header -->
+            <div class="w-12 h-1.5 bg-surface-container-highest rounded-full mx-auto mb-5"></div>
             
-            <div class="flex justify-between items-center mb-4">
-                <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-primary text-2xl">add_moderator</span>
-                    <h3 class="text-lg font-black tracking-tight text-on-surface">Add Health Record</h3>
+            <div class="flex justify-between items-center mb-5">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                        <span class="material-symbols-outlined text-[20px]">add_moderator</span>
+                    </div>
+                    <h3 class="text-base font-black tracking-tight text-on-surface">Add Health Record</h3>
                 </div>
-                <button onclick="closeDashboardRecordModal()" class="w-8 h-8 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors">
+                <button onclick="closeDashboardRecordModal()" class="w-8 h-8 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high active:scale-95 transition-all">
                     <span class="material-symbols-outlined text-[18px]">close</span>
                 </button>
             </div>
             
             <!-- Modal Scrollable Content -->
-            <div class="overflow-y-auto pr-1 space-y-4 flex-1">
+            <div class="overflow-y-auto pr-1 space-y-4 flex-1 no-scrollbar">
                 <!-- Record Type Selection -->
-                <div>
-                    <label class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant mb-1.5">Record Type</label>
-                    <select id="dbRecType" class="w-full h-11 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors" onchange="toggleDashboardRecordFields()">
-                        <option value="Vaccination">Vaccination Log</option>
-                        <option value="Health Certificate">Health Certificate</option>
-                        <option value="Clinical Vet Visit">Clinical Vet Visit</option>
-                        <option value="Surgical/Procedure Log">Surgical/Procedure Log</option>
-                        <option value="Prescription Doc">Prescription Document</option>
-                    </select>
-                </div>
-                
-                <!-- Dynamic Field: Title / Vaccine / Diagnosis -->
-                <div>
-                    <label id="dbTitleLabel" class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant mb-1.5">Vaccine Name</label>
-                    <input id="dbTitleInput" type="text" placeholder="e.g. Rabies, DHPP, Parvovirus" class="w-full h-11 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary/50 transition-colors">
-                </div>
-                
-                <!-- Couple Grid: Administered Date & Next Due Date / Valid Till -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label id="dbDateLabel" class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant mb-1.5">Date Administered</label>
-                        <input id="dbDateInput" type="date" class="w-full h-11 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors">
+                <div class="space-y-1.5">
+                    <label class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant">Record Type</label>
+                    <div class="relative">
+                        <select id="dbRecType" class="w-full h-12 px-3.5 pr-10 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors appearance-none" onchange="toggleDashboardRecordFields()">
+                            <option value="Vaccination">Vaccination</option>
+                            <option value="Prescription">Prescription</option>
+                            <option value="Lab Test">Lab Test</option>
+                            <option value="Surgery">Surgery</option>
+                            <option value="Medical Condition">Medical Condition</option>
+                            <option value="Health Certificate">Health Certificate</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-lg">expand_more</span>
                     </div>
-                    <div id="dbNextDueWrapper">
-                        <label id="dbNextDueLabel" class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant mb-1.5">Next Due Date</label>
-                        <input id="dbNextDueInput" type="date" class="w-full h-11 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors">
+                </div>
+                
+                <!-- Dynamic Input: Detail Header -->
+                <div class="space-y-1.5">
+                    <label id="dbTitleLabel" class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant">Vaccine Name</label>
+                    <input id="dbTitleInput" type="text" placeholder="e.g. Rabies, DHPP, Parvovirus" class="w-full h-12 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/50 transition-colors">
+                </div>
+                
+                <!-- Date Grid: Administered Date & Next Due Date / Valid Till -->
+                <div class="grid grid-cols-2 gap-3.5">
+                    <div class="space-y-1.5">
+                        <label id="dbDateLabel" class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant">Date Administered</label>
+                        <input id="dbDateInput" type="date" class="w-full h-12 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors">
+                    </div>
+                    <div id="dbNextDueWrapper" class="space-y-1.5">
+                        <label id="dbNextDueLabel" class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant">Next Due Date</label>
+                        <input id="dbNextDueInput" type="date" class="w-full h-12 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors">
                     </div>
                 </div>
                 
                 <!-- Dynamic Field: Issued/Authorized By / Veterinary Doctor -->
-                <div>
-                    <label class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant mb-1.5">Authorized / Vet Doctor</label>
-                    <input id="dbIssuerInput" type="text" placeholder="e.g. Dr. S. Sharma, Sruvo Vet Clinic" class="w-full h-11 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary/50 transition-colors">
+                <div class="space-y-1.5">
+                    <label id="dbIssuerLabel" class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant">Authorized / Vet Doctor</label>
+                    <input id="dbIssuerInput" type="text" placeholder="e.g. Dr. S. Sharma, Sruvo Vet Clinic" class="w-full h-12 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/50 transition-colors">
                 </div>
 
                 <!-- Attached File Upload Block -->
-                <div>
-                    <label class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant mb-1.5">Upload Certificate / Document</label>
-                    <div class="border-2 border-dashed border-surface-container-highest rounded-xl p-4 bg-surface-container-low hover:border-primary/30 transition-colors relative flex items-center justify-between">
-                        <div class="flex items-center gap-2.5">
-                            <span class="material-symbols-outlined text-primary text-xl">upload_file</span>
-                            <div>
-                                <p id="dbFileStatus" class="text-xs font-bold text-on-surface truncate max-w-[200px]">Optional document or image</p>
+                <div class="space-y-1.5">
+                    <label class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant">Upload Certificate / Document</label>
+                    <div class="border-2 border-dashed border-surface-container-highest rounded-2xl p-4 bg-surface-container-low hover:border-primary/30 transition-colors relative flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-3 truncate">
+                            <div class="w-9 h-9 rounded-xl bg-primary/5 flex items-center justify-center text-primary shrink-0">
+                                <span class="material-symbols-outlined text-[20px]">upload_file</span>
+                            </div>
+                            <div class="truncate">
+                                <p id="dbFileStatus" class="text-xs font-bold text-on-surface truncate pr-1">Optional document or image</p>
                                 <p class="text-[9px] text-on-surface-variant font-medium">JPEG, PNG or PDF (Max 2MB)</p>
                             </div>
                         </div>
-                        <label class="bg-primary/5 hover:bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg border border-primary/20 cursor-pointer transition-colors shrink-0">
+                        <label class="bg-primary/5 hover:bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider px-3.5 py-2 rounded-xl border border-primary/20 cursor-pointer transition-all shrink-0 active:scale-95 duration-100">
                             Browse
                             <input id="dbFileInput" type="file" accept="image/*,application/pdf" class="hidden" onchange="handleDashboardFileSelect(event)">
                         </label>
@@ -2883,11 +2893,11 @@
             </div>
             
             <!-- Lower Actions -->
-            <div class="pt-4 border-t border-surface-container-highest flex gap-3 mt-4">
-                <button onclick="closeDashboardRecordModal()" class="flex-1 bg-surface-container-low hover:bg-surface-container-high text-on-surface font-bold py-3 px-4 rounded-xl text-xs tracking-wider uppercase transition-colors">
+            <div class="pt-4 border-t border-text-on-surface-variant/10 flex gap-3 mt-4">
+                <button onclick="closeDashboardRecordModal()" class="flex-1 bg-surface-container-low hover:bg-surface-container-high text-on-surface font-black py-3.5 px-4 rounded-xl text-xs tracking-wider uppercase transition-colors active:scale-95 duration-150">
                     Cancel
                 </button>
-                <button id="dbSubmitBtn" onclick="submitDashboardRecord()" class="flex-1 bg-gradient-to-r from-primary to-[#e56ba4] text-white font-black py-3 px-4 rounded-xl text-xs tracking-wider uppercase shadow-md active:scale-98 hover:brightness-105 transition-all">
+                <button id="dbSubmitBtn" onclick="submitDashboardRecord()" class="flex-1 bg-gradient-to-r from-primary to-[#e56ba4] text-white font-black py-3.5 px-4 rounded-xl text-xs tracking-wider uppercase shadow-md active:scale-95 hover:brightness-105 transition-all duration-150">
                     Save Record
                 </button>
             </div>
@@ -3532,14 +3542,15 @@
                   return;
                 }
                 const shareUrl = `https://sruvoindia.vercel.app/passport/${passId}`;
+                const shareText = `Check out my pet's verified Sruvo pet passport.\nIdentity details, health records, vaccination history, and care information are securely organized in one place. ${shareUrl}`;
                 if (navigator.share) {
                   navigator.share({
-                    title: "Verified Pet Passport",
-                    text: `Check out our verified pet passport secured by Sruvo blockchain, health records and vaccine logs included.`,
+                    title: "Verified Sruvo Pet Passport",
+                    text: `Check out my pet's verified Sruvo pet passport.\nIdentity details, health records, vaccination history, and care information are securely organized in one place.`,
                     url: shareUrl
                   }).catch(err => console.error(err));
                 } else {
-                  navigator.clipboard.writeText(shareUrl)
+                  navigator.clipboard.writeText(shareText)
                     .then(() => {
                       alert("Verified passport link copied to clipboard!");
                     })
@@ -6039,32 +6050,58 @@
         const titleInput = document.getElementById("dbTitleInput");
         const dateLabel = document.getElementById("dbDateLabel");
         const nextDueWrapper = document.getElementById("dbNextDueWrapper");
+        const issuerLabel = document.getElementById("dbIssuerLabel");
+        const issuerInput = document.getElementById("dbIssuerInput");
 
         if (type === "Vaccination") {
           titleLabel.innerText = "Vaccine Name";
           titleInput.placeholder = "e.g. Rabies, DHPP, Parvovirus";
           dateLabel.innerText = "Date Administered";
           nextDueWrapper.classList.remove("hidden");
+          issuerLabel.innerText = "Authorized Vet / Clinic";
+          issuerInput.placeholder = "e.g. Sruvo Vet Clinic";
+        } else if (type === "Prescription") {
+          titleLabel.innerText = "Diagnosis / Reason";
+          titleInput.placeholder = "e.g. Ear Infection, Skin Allergies";
+          dateLabel.innerText = "Prescribed Date";
+          nextDueWrapper.classList.add("hidden");
+          issuerLabel.innerText = "Prescribing Doctor";
+          issuerInput.placeholder = "e.g. Dr. S. Sharma";
+        } else if (type === "Lab Test") {
+          titleLabel.innerText = "Test Name";
+          titleInput.placeholder = "e.g. Complete Blood Count, CBC";
+          dateLabel.innerText = "Test Date";
+          nextDueWrapper.classList.add("hidden");
+          issuerLabel.innerText = "Lab / Clinic";
+          issuerInput.placeholder = "e.g. Sruvo Diagnostics";
+        } else if (type === "Surgery") {
+          titleLabel.innerText = "Procedure Name";
+          titleInput.placeholder = "e.g. Spaying, Dental Cleaning";
+          dateLabel.innerText = "Procedure Date";
+          nextDueWrapper.classList.add("hidden");
+          issuerLabel.innerText = "Veterinary Surgeon";
+          issuerInput.placeholder = "e.g. Dr. A. Verma";
+        } else if (type === "Medical Condition") {
+          titleLabel.innerText = "Condition Name";
+          titleInput.placeholder = "e.g. Chronic Kidney Disease";
+          dateLabel.innerText = "Diagnosis Date";
+          nextDueWrapper.classList.add("hidden");
+          issuerLabel.innerText = "Diagnosing Expert";
+          issuerInput.placeholder = "e.g. Dr. S. Sharma";
         } else if (type === "Health Certificate") {
           titleLabel.innerText = "Certificate Name / Title";
           titleInput.placeholder = "e.g. Fit to Fly Certificate";
           dateLabel.innerText = "Issue Date";
           nextDueWrapper.classList.add("hidden");
-        } else if (type === "Clinical Vet Visit") {
-          titleLabel.innerText = "Diagnosis / Primary Reason";
-          titleInput.placeholder = "e.g. Ear Infection treatment";
-          dateLabel.innerText = "Visit Date";
+          issuerLabel.innerText = "Authorized Signing Officer";
+          issuerInput.placeholder = "e.g. Government Vet Registrar";
+        } else if (type === "Other") {
+          titleLabel.innerText = "Record Details / Title";
+          titleInput.placeholder = "e.g. Deworming Treatment";
+          dateLabel.innerText = "Record Date";
           nextDueWrapper.classList.add("hidden");
-        } else if (type === "Surgical/Procedure Log") {
-          titleLabel.innerText = "Procedure Name";
-          titleInput.placeholder = "e.g. Spaying, dental cleaning";
-          dateLabel.innerText = "Procedure Date";
-          nextDueWrapper.classList.add("hidden");
-        } else if (type === "Prescription Doc") {
-          titleLabel.innerText = "Diagnosis / Med Name";
-          titleInput.placeholder = "e.g. Skin Allergies treatment";
-          dateLabel.innerText = "Prescribed Date";
-          nextDueWrapper.classList.add("hidden");
+          issuerLabel.innerText = "Authorized Instigator";
+          issuerInput.placeholder = "e.g. Caretaker, Vet Guard";
         }
       }
 
@@ -6122,16 +6159,16 @@
           specifyVaccine: type === "Vaccination" ? titleVal : null,
           dateAdministered: type === "Vaccination" ? dateVal : null,
           nextDueDate: type === "Vaccination" ? nextDueVal : null,
-          diagnosis: (type === "Clinical Vet Visit" || type === "Prescription Doc") ? titleVal : null,
-          prescribedBy: (type === "Clinical Vet Visit" || type === "Prescription Doc") ? issuerVal : null,
-          testName: null,
-          testDate: null,
-          procedureName: type === "Surgical/Procedure Log" ? titleVal : null,
-          surgeryDate: type === "Surgical/Procedure Log" ? dateVal : null,
-          conditionName: null,
-          issueDate: (type === "Medical Condition") ? dateVal : null,
+          diagnosis: (type === "Prescription" || type === "Medical Condition") ? titleVal : null,
+          prescribedBy: (type === "Prescription" || type === "Medical Condition") ? issuerVal : null,
+          testName: type === "Lab Test" ? titleVal : null,
+          testDate: type === "Lab Test" ? dateVal : null,
+          procedureName: type === "Surgery" ? titleVal : null,
+          surgeryDate: type === "Surgery" ? dateVal : null,
+          conditionName: type === "Medical Condition" ? titleVal : null,
+          issueDate: (type === "Health Certificate" || type === "Other") ? dateVal : null,
           certificateTitle: type === "Health Certificate" ? titleVal : null,
-          recordDescription: `${type} record issued on ${dateVal || 'date'} by ${issuerVal || 'Veterinary Practitioner'}`,
+          recordDescription: `${type} record details: ${titleVal}. Date on record: ${dateVal || 'date'}. Issued by: ${issuerVal || 'Authorized Entity'}`,
           documentBase64: window.lastDashboardBase64 || null
         };
 
@@ -6148,7 +6185,13 @@
           });
 
           if (!res.ok) {
-            const errObj = await res.json();
+            const rawText = await res.text();
+            let errObj;
+            try {
+              errObj = JSON.parse(rawText);
+            } catch (e) {
+              throw new Error("Server error (non-JSON): " + rawText.substring(0, 50));
+            }
             throw new Error(errObj.error || "Failed to save health record to cloud.");
           }
 

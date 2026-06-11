@@ -30,12 +30,27 @@
 
     <style>
         body { font-family: 'Inter', sans-serif; }
+        .text-gradient-primary {
+            background: linear-gradient(135deg, hsl(340, 65%, 75%), hsl(280, 55%, 72%));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
         .slide-up {
             animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         @keyframes slideUp {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+        .modal-scale {
+            transform: scale(0.95);
+            opacity: 0;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        }
+        .modal-scale.open {
+            transform: scale(1);
+            opacity: 1;
         }
         @media print {
             body {
@@ -68,9 +83,11 @@
     <!-- Header (Hidden on print) -->
     <div class="bg-surface/80 backdrop-blur-md sticky top-0 z-50 border-b border-surface-container-highest no-print">
         <div class="max-w-md mx-auto px-6 py-4 flex items-center justify-between">
-            <div class="flex items-center gap-1.5 border-b-2 border-primary pb-0.5">
-                <img src="/sruvologo.png" alt="Sruvo Logo" class="w-8 h-8 object-contain" />
-                <span class="text-sm font-black tracking-[0.2em] uppercase text-on-surface">Sruvo</span>
+            <div class="flex items-center gap-1">
+                <img src="/sruvologo.png" alt="Sruvo Logo" class="w-12 h-12 object-contain" />
+                <div>
+                    <span class="text-xl font-bold text-gradient-primary block -mb-0.5">Sruvo</span>
+                </div>
             </div>
             
             <div id="statusBadge" class="flex items-center gap-1.5 bg-green-100 px-3 py-1.5 rounded-full border border-green-200 shadow-sm animate-pulse">
@@ -148,6 +165,21 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Registry Bottom Bar -->
+                    <div class="bg-surface-container-low px-5 py-4 flex justify-between items-center border-t border-surface-container-highest relative z-10">
+                        <div class="space-y-1">
+                            <p class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest">Registry Status</p>
+                            <div class="flex items-center gap-1.5 bg-green-100 px-2 py-1 rounded-md border border-green-200 w-fit">
+                                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                                <p class="text-[11px] font-extrabold text-green-700 tracking-wide uppercase">Active & Verified</p>
+                            </div>
+                        </div>
+                        <div onclick="openQRModal()" class="w-14 h-14 bg-white rounded-xl border-2 border-surface-container-highest p-1 flex items-center justify-center shadow-sm relative group cursor-pointer hover:border-primary/50 transition-colors">
+                            <div class="absolute inset-0 bg-primary/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <img id="passportQRCodeImg" src="" alt="QR Code" class="w-full h-full object-contain rounded-md" />
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -169,7 +201,7 @@
             <span class="material-symbols-outlined text-surface-container-highest text-3xl">local_police</span>
             <p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest leading-relaxed">
                 Scan timestamp: <span id="scanTimestamp" class="text-on-surface">--</span><br>
-                Secured by Sruvo Blockchain Validation
+                Secured by Sruvo
             </p>
         </div>
 
@@ -188,6 +220,23 @@
     <div class="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none opacity-40 no-print">
         <div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px]"></div>
         <div class="absolute bottom-20 left-0 w-48 h-48 bg-primary/5 rounded-full blur-[60px]"></div>
+    </div>
+
+    <!-- Fullscreen QR Close-View Modal with Custom Anim & Close View Actions -->
+    <div id="qrModal" class="fixed inset-0 z-[100] hidden opacity-0 bg-on-surface/40 backdrop-blur-md flex items-center justify-center p-6 transition-opacity duration-300 no-print" onclick="closeQRModal()">
+        <div id="qrModalContent" class="bg-white rounded-[32px] p-6 w-full max-w-xs shadow-2xl border border-surface-container-highest text-center modal-scale" onclick="event.stopPropagation()">
+            <div class="w-12 h-1 bg-surface-container-highest rounded-full mx-auto mb-5"></div>
+            <h3 class="text-lg font-black tracking-tight text-on-surface">Scan Passport QR</h3>
+            <p id="modalPassportId" class="text-xs font-bold font-mono text-primary bg-primary-container/50 px-2 py-0.5 rounded-md w-fit mx-auto mt-1"></p>
+            
+            <div class="my-6 p-4 bg-surface-container-low border-2 border-dashed border-primary/20 rounded-[24px] flex items-center justify-center aspect-square max-w-[220px] mx-auto shadow-inner">
+                <img id="modalQRCodeImg" src="" alt="Expanded QR Code" class="w-full h-full object-contain rounded-lg">
+            </div>
+            
+            <button onclick="closeQRModal()" class="w-full bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-bold py-3.5 rounded-2xl text-xs tracking-wider uppercase transition-colors active:scale-98">
+                Close View
+            </button>
+        </div>
     </div>
 
     <!-- Core Dynamic Setup Script -->
@@ -212,7 +261,18 @@
             const year = now.getFullYear();
             const hours = String(now.getHours()).padStart(2, '0');
             const mins = String(now.getMinutes()).padStart(2, '0');
-            return `${day} ${month} ${year}, ${hours}:${mins} Local Time`;
+            
+            let tz = "Local Time";
+            try {
+                const parts = new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(now);
+                const tzPart = parts.find(p => p.type === 'timeZoneName');
+                if (tzPart) {
+                    tz = tzPart.value;
+                }
+            } catch (e) {
+                // fallback remains Local Time
+            }
+            return `${day} ${month} ${year}, ${hours}:${mins} ${tz}`;
         }
 
         window.addEventListener("DOMContentLoaded", async () => {
@@ -253,6 +313,12 @@
                 document.getElementById("passportId").innerText = pet.passport_id;
                 document.getElementById("microchipNo").innerText = getDeterministicMicrochip(pet.passport_id);
                 document.getElementById("ownerName").innerText = pet.owner_name || "Authorized Sruvo Caregiver";
+                
+                // Generate QR Code dynamically
+                const qrImg = document.getElementById("passportQRCodeImg");
+                if (qrImg) {
+                    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://sruvoindia.vercel.app/passport/${encodeURIComponent(pet.passport_id)}&color=d95191`;
+                }
                 
                 // Gender Setup
                 const gender = pet.gender || "Male";
@@ -400,6 +466,38 @@
             if (loader) loader.remove();
             document.getElementById("mainContainer").classList.add("hidden");
             document.getElementById("errorContainer").classList.remove("hidden");
+        }
+
+        function openQRModal() {
+            const passId = document.getElementById("passportId").innerText || "";
+            const url = `https://sruvoindia.vercel.app/passport/${passId}`;
+            const modal = document.getElementById('qrModal');
+            const modalContent = document.getElementById('qrModalContent');
+            if (document.getElementById('modalPassportId')) {
+                document.getElementById('modalPassportId').innerText = passId;
+            }
+            if (document.getElementById('modalQRCodeImg') && passId) {
+                document.getElementById('modalQRCodeImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(url)}&color=d95191`;
+            }
+            if (modal) {
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    if (modalContent) modalContent.classList.add('open');
+                }, 10);
+            }
+        }
+
+        function closeQRModal() {
+            const modal = document.getElementById('qrModal');
+            const modalContent = document.getElementById('qrModalContent');
+            if (modalContent) modalContent.classList.remove('open');
+            if (modal) {
+                modal.classList.add('opacity-0');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                }, 300);
+            }
         }
     </script>
 </body>
