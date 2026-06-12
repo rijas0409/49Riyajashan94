@@ -6252,9 +6252,11 @@
             try {
               errObj = JSON.parse(rawText);
             } catch (e) {
-              throw new Error("Server error (non-JSON): " + rawText.substring(0, 100));
+              const htmlErrorMatch = rawText.match(/<title>(.*?)<\/title>/);
+              const htmlError = htmlErrorMatch ? htmlErrorMatch[1] : "Unknown HTML Error";
+              throw new Error(`Failed to save medical record: Server returned non-JSON (${res.status} ${res.statusText} - ${htmlError})`);
             }
-            throw new Error(errObj.error || "Failed to save health record to cloud.");
+            throw new Error(`Failed to save medical record: ${errObj.error || errObj.message || "Unknown backend error"}`);
           }
 
           alert("Success! Health record added directly to Passport Vault.");
