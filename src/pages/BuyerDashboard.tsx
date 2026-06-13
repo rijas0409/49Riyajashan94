@@ -239,21 +239,6 @@ const BuyerDashboard = () => {
       if (role === "vet") { navigate("/vet/home"); return; }
       
       fetchPets();
-
-      const channel = supabase
-        .channel("public:pets:buyer")
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "pets" },
-          () => {
-            fetchPets();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     }
   }, [authReady, session, profile, navigate]);
 
@@ -269,30 +254,19 @@ const BuyerDashboard = () => {
       if (error) throw error;
 
       const rows = petsData || [];
-      // Set baseline pets immediately to remove UI latency
-      setPets((prev) => {
-         // preserve existing profiles if we already have them during real-time updates
-         if (prev.length > 0) {
-            const profileMap = new Map(prev.map(p => [p.id, p.profiles]));
-            return rows.map((r: any) => ({ ...r, profiles: profileMap.get(r.id) || null }));
-         }
-         return rows;
-      });
-      setLoading(false);
-
-      // Async fetch owner profiles
       const ownerIds = Array.from(new Set(rows.map((pet: any) => pet.owner_id).filter(Boolean)));
-      mergeOwnerProfiles(ownerIds).then((ownersMap) => {
-        setPets(currentPets => 
-          currentPets.map(pet => ({
-            ...pet,
-            profiles: ownersMap[pet.owner_id] || pet.profiles || null
-          }))
-        );
-      });
+      const ownersMap = await mergeOwnerProfiles(ownerIds);
+
+      const enrichedPets = rows.map((pet: any) => ({
+        ...pet,
+        profiles: ownersMap[pet.owner_id] || null,
+      }));
+
+      setPets(enrichedPets);
     } catch (e) {
       console.error("fetchPets error:", e);
       toast.error("Failed to load pets");
+    } finally {
       setLoading(false);
     }
   };

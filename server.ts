@@ -7,6 +7,27 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  let _cachedSupabaseAdmin: any = null;
+  async function getSupabaseAdmin() {
+    if (_cachedSupabaseAdmin) return _cachedSupabaseAdmin;
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      let supabaseUrl = (process.env.VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co").trim();
+      try {
+        const urlObj = new URL(supabaseUrl);
+        supabaseUrl = urlObj.origin;
+      } catch (e) {
+        supabaseUrl = supabaseUrl.replace(/\/$/, "");
+      }
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+      _cachedSupabaseAdmin = createClient(supabaseUrl, supabaseKey);
+      return _cachedSupabaseAdmin;
+    } catch (err) {
+      console.warn("Could not init cached supabaseAdmin in server", err);
+      return null;
+    }
+  }
+
   // Set up JSON parsing with a limit for larger requests
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -264,16 +285,7 @@ Keep descriptions concise (max 2 sentences).`;
       let existingBio = "";
 
       if (vetId) {
-        const { createClient } = await import("@supabase/supabase-js");
-        let supabaseUrl = (process.env.VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co").trim();
-        try {
-          const urlObj = new URL(supabaseUrl);
-          supabaseUrl = urlObj.origin;
-        } catch (e) {
-          supabaseUrl = supabaseUrl.replace(/\/$/, "");
-        }
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
-        supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+        supabaseAdmin = await getSupabaseAdmin();
 
         const { data, error: fetchErr } = await supabaseAdmin
           .from("vet_profiles")
@@ -403,21 +415,7 @@ Return the response as a single JSON object containing only a "description" key.
   // End Point: Pet Passport Fetch
   app.get("/api/pet-passport", async (req, res) => {
     try {
-      let supabaseAdmin: any = null;
-      try {
-        const { createClient } = await import("@supabase/supabase-js");
-        let supabaseUrl = (process.env.VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co").trim();
-        try {
-          const urlObj = new URL(supabaseUrl);
-          supabaseUrl = urlObj.origin;
-        } catch (e) {
-          supabaseUrl = supabaseUrl.replace(/\/$/, "");
-        }
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
-        supabaseAdmin = createClient(supabaseUrl, supabaseKey);
-      } catch (err) {
-        console.warn("Could not init supabaseAdmin on server", err);
-      }
+      const supabaseAdmin = await getSupabaseAdmin();
 
       if (!supabaseAdmin) {
         return res.status(500).json({ error: "Supabase client not initialized" });
@@ -492,21 +490,7 @@ Return the response as a single JSON object containing only a "description" key.
     try {
       const payload = req.body;
       const userId = req.query.userId as string || payload.userId || null;
-      let supabaseAdmin: any = null;
-      try {
-        const { createClient } = await import("@supabase/supabase-js");
-        let supabaseUrl = (process.env.VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co").trim();
-        try {
-          const urlObj = new URL(supabaseUrl);
-          supabaseUrl = urlObj.origin;
-        } catch (e) {
-          supabaseUrl = supabaseUrl.replace(/\/$/, "");
-        }
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
-        supabaseAdmin = createClient(supabaseUrl, supabaseKey);
-      } catch (err) {
-        console.warn("Could not init supabaseAdmin on server", err);
-      }
+      const supabaseAdmin = await getSupabaseAdmin();
       
       let passportId = payload.passportId || "SRV-" + Math.random().toString(36).substring(2, 5).toUpperCase() + "-" + Math.random().toString(36).substring(2, 5).toUpperCase();
       
@@ -677,21 +661,7 @@ Return the response as a single JSON object containing only a "description" key.
         return res.status(400).json({ error: "record is required" });
       }
 
-      let supabaseAdmin: any = null;
-      try {
-        const { createClient } = await import("@supabase/supabase-js");
-        let supabaseUrl = (process.env.VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co").trim();
-        try {
-          const urlObj = new URL(supabaseUrl);
-          supabaseUrl = urlObj.origin;
-        } catch (e) {
-          supabaseUrl = supabaseUrl.replace(/\/$/, "");
-        }
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
-        supabaseAdmin = createClient(supabaseUrl, supabaseKey);
-      } catch (err) {
-        console.warn("Could not init supabaseAdmin on server", err);
-      }
+      const supabaseAdmin = await getSupabaseAdmin();
 
       if (!supabaseAdmin) {
         return res.status(500).json({ error: "Supabase client not initialized" });

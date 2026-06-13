@@ -27,7 +27,7 @@ try {
   
   const key = rawKey.trim();
   
-  if (!VITE_SUPABASE_URL || !VITE_SUPABASE_PUBLISHABLE_KEY) {
+  if (!url || !key) {
     console.warn("Supabase credentials missing from environment. Using mock client to prevent 'Failed to fetch' errors.");
     
     // Return a mock instance that doesn't make network requests

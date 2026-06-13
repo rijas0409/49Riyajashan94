@@ -193,6 +193,21 @@
   </head>
 
   <body class="bg-surface text-on-surface antialiased">
+    <!-- Global Loader Overlay to prevent flicker -->
+    <div
+      id="globalLoader"
+      class="fixed inset-0 z-[1000] bg-surface flex flex-col items-center justify-center transition-opacity duration-300"
+    >
+      <div class="flex flex-col items-center gap-3">
+        <div
+          class="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin"
+        ></div>
+        <span class="text-sm font-semibold text-on-surface-variant font-mono"
+          >Securing Identity...</span
+        >
+      </div>
+    </div>
+
     <nav
       class="flex items-center justify-between px-6 pt-5 pb-2 max-w-md mx-auto"
     >
@@ -1110,7 +1125,7 @@
       <div id="step4" class="step-container space-y-6">
         <div class="text-center space-y-2 mt-4">
           <h1 class="text-2xl font-black tracking-tight" id="statusHeader">
-            Finalizing Details...
+            Securing Identity...
           </h1>
           <p class="text-on-surface-variant text-sm" id="statusSubHeader">
             Please keep this screen open while we build your pet's official
@@ -3515,6 +3530,8 @@
           const passportId = urlParams.get("id");
           const isVisitor = urlParams.get("visitor") === "true";
 
+          console.log("[DEBUG] Screen entered: Securing Identity Loader Check");
+
           if (passportId) {
             window.currentPassportId = passportId;
             console.log(
@@ -3629,7 +3646,7 @@
 
             // Fetch details, and update UI before hiding the loader
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 12000); 
+            const timeoutId = setTimeout(() => controller.abort(), 30000); 
 
             try {
               const res = await fetch(
@@ -5996,8 +6013,9 @@
           try {
             console.log("[DEBUG] Before fetch('/api/pet-passport')");
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 sec timeout
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 sec timeout
 
+            console.log("[DEBUG] API execution started for /api/pet-passport POST");
             const res = await fetch("/api/pet-passport", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -6006,7 +6024,7 @@
             });
 
             clearTimeout(timeoutId);
-            console.log("[DEBUG] After fetch, Response Status:", res.status);
+            console.log("[DEBUG] API response received. Status:", res.status);
 
             let data = {};
             try {
@@ -6827,13 +6845,13 @@
             
             reminders.forEach(rm => {
                 const dayText = rm.daysLeft === 1 ? "1 day" : rm.daysLeft + " days";
-                const html = \`<div class="flex items-center justify-between p-2.5 bg-white/50 rounded-xl border border-primary/10">
+                const html = `<div class="flex items-center justify-between p-2.5 bg-white/50 rounded-xl border border-primary/10">
                   <div class="flex items-center gap-2.5">
                     <span class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary material-symbols-outlined text-sm">event</span>
-                    <span class="text-xs font-bold text-on-surface">\${rm.title}</span>
+                    <span class="text-xs font-bold text-on-surface">${rm.title}</span>
                   </div>
-                  <span class="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-md">In \${dayText}</span>
-                </div>\`;
+                  <span class="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-md">In ${dayText}</span>
+                </div>`;
                 remList.insertAdjacentHTML('beforeend', html);
             });
         } else {
