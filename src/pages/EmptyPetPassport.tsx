@@ -14,6 +14,10 @@ const EmptyPetPassport = () => {
   // Trigger loading view on URL or view active state alterations
   useEffect(() => {
     setIsIframeLoading(true);
+    const timeout = setTimeout(() => {
+      setIsIframeLoading(false);
+    }, 800); // Safety fallback so the UI never hangs while heavy resources load (like TFJS in the iframe)
+    return () => clearTimeout(timeout);
   }, [iframeSrc, isIframeActive]);
 
   useEffect(() => {
@@ -23,30 +27,41 @@ const EmptyPetPassport = () => {
         const uid = user?.id || "";
         setUserId(uid);
         
-        const res = await fetch(`/api/pet-passport?userId=${uid}&_t=${Date.now()}`);
-        if (res.ok) {
-          const data = await res.json();
-          const count = Array.isArray(data) ? data.length : 0;
-          setPassportCount(count);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-          const urlParams = new URLSearchParams(window.location.search);
-          const checkCreate = urlParams.get("create") === "true";
+        try {
+          const res = await fetch(`/api/pet-passport?userId=${uid}&_t=${Date.now()}`, { signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            const data = await res.json();
+            const count = Array.isArray(data) ? data.length : 0;
+            setPassportCount(count);
 
-          if (checkCreate) {
-            setIframeSrc(`/rjpass.html?userId=${uid}`);
-            setIsIframeActive(true);
-          } else if (count > 0) {
-            setIframeSrc(`/mypassport.html?userId=${uid}`);
-            setIsIframeActive(true);
+            const urlParams = new URLSearchParams(window.location.search);
+            const checkCreate = urlParams.get("create") === "true";
+
+            if (checkCreate) {
+              setIframeSrc(`/rjpass.html?userId=${uid}`);
+              setIsIframeActive(true);
+            } else if (count > 0) {
+              setIframeSrc(`/mypassport.html?userId=${uid}`);
+              setIsIframeActive(true);
+            } else {
+              setIframeSrc(`/nopassportyet.html`);
+            }
           } else {
+            setPassportCount(0);
             setIframeSrc(`/nopassportyet.html`);
           }
-        } else {
-          setPassportCount(0);
-          setIframeSrc(`/nopassportyet.html`);
+        } catch (fetchErr: any) {
+           clearTimeout(timeoutId);
+           console.error("Failed to check passports fetch:", fetchErr);
+           setPassportCount(0);
+           setIframeSrc(`/nopassportyet.html`);
         }
       } catch (e) {
-        console.error("Failed to check passports:", e);
+        console.error("Failed to check passports overall:", e);
         setPassportCount(0);
         setIframeSrc(`/nopassportyet.html`);
       }
@@ -61,8 +76,13 @@ const EmptyPetPassport = () => {
           // Return from details/creation to main companion dashboard
           setIframeSrc(`/mypassport.html?userId=${userId}`);
           // Re-check count to see if we should stay in iframe or go to empty state
-          fetch(`/api/pet-passport?userId=${userId}&_t=${Date.now()}`)
-            .then((res) => res.json())
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 12000);
+          fetch(`/api/pet-passport?userId=${userId}&_t=${Date.now()}`, { signal: controller.signal })
+            .then((res) => {
+              clearTimeout(timeoutId);
+              return res.json();
+            })
             .then((data) => {
               if (Array.isArray(data) && data.length > 0) {
                 setPassportCount(data.length);
@@ -72,6 +92,10 @@ const EmptyPetPassport = () => {
                 setIsIframeActive(false);
                 setIframeSrc(`/nopassportyet.html`);
               }
+            })
+            .catch(err => {
+               clearTimeout(timeoutId);
+               console.error("fetch passports via message error:", err);
             });
         } else {
           // Exit passport flow to buyer profile

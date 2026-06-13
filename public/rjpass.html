@@ -3515,6 +3515,16 @@
       // Check for direct passport loading via query parameter "id"
       // Run this immediately to handle step state before browser paint
       (async function checkInitialPassportState() {
+        const forceHideLoader = () => {
+          const loader = document.getElementById("globalLoader");
+          if (loader) {
+            loader.classList.add("opacity-0");
+            setTimeout(() => {
+              if (loader) loader.style.display = "none";
+            }, 300);
+          }
+        };
+
         try {
           const urlParams = new URLSearchParams(window.location.search);
           const passportId = urlParams.get("id");
@@ -3536,7 +3546,11 @@
             const progBlock = document.getElementById("progressBlock");
             if (progBlock) progBlock.style.display = "none";
 
-            updateUI();
+            try {
+              updateUI();
+            } catch (uiErr) {
+              console.warn("Failed updating UI for step 5", uiErr);
+            }
 
             // If visitor mode, hide edit buttons (optional but good for QR flows)
             if (isVisitor) {
@@ -3571,7 +3585,7 @@
                 const backBtn = document.getElementById("backBtn");
                 if (backBtn) backBtn.classList.remove("hidden");
 
-                updateUI();
+                try { updateUI(); } catch(e){}
               };
             }
 
@@ -3622,14 +3636,20 @@
             const addRecDashboardBtn = document.getElementById("addRecordDashboardBtn");
             if (addRecDashboardBtn) {
               addRecDashboardBtn.onclick = () => {
-                openDashboardRecordModal();
+                if (typeof openDashboardRecordModal === "function") {
+                  openDashboardRecordModal();
+                }
               };
             }
 
             // Fetch details, and update UI before hiding the loader
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 12000); 
+
             try {
               const res = await fetch(
                 `/api/pet-passport?id=${encodeURIComponent(passportId)}`,
+                { signal: controller.signal }
               );
               if (res.ok) {
                 const data = await res.json();
@@ -3637,43 +3657,46 @@
                   "[DEBUG] Successfully fetched passport data from backend:",
                   data,
                 );
-                loadPassportDataIntoUI(data);
+                try {
+                  loadPassportDataIntoUI(data);
+                } catch (loadErr) {
+                  console.error("Failed executing loadPassportDataIntoUI:", loadErr);
+                }
               } else {
                 console.warn(
-                  "[DEBUG] Backend fetch was not successful.",
+                  "[DEBUG] Backend fetch was not successful. Status:", res.status
                 );
+                alert("Failed to load passport. It may not exist.");
               }
             } catch (fetchErr) {
               console.error("Failed to fetch passport details:", fetchErr);
-            } finally {
-              // Hide loader ONLY after data is loaded and UI is fully rendered
-              const loader = document.getElementById("globalLoader");
-              if (loader) {
-                loader.classList.add("opacity-0");
-                setTimeout(() => (loader.style.display = "none"), 300);
+              if (fetchErr.name === 'AbortError') {
+                 alert("Request to load passport timed out. Please try again.");
               }
+            } finally {
+              clearTimeout(timeoutId);
+              forceHideLoader();
             }
           } else {
             // No ID, standard creation flow
-            document.getElementById("step1").classList.add("active");
-            updateUI();
-
-            // Hide loader
-            const loader = document.getElementById("globalLoader");
-            if (loader) {
-              loader.classList.add("opacity-0");
-              setTimeout(() => (loader.style.display = "none"), 300);
-            }
+            const step1El = document.getElementById("step1");
+            if (step1El) step1El.classList.add("active");
+            try { updateUI(); } catch(e){}
+            forceHideLoader();
           }
         } catch (err) {
-          console.error("Error loading direct passport ID:", err);
-          // Fallback: show step 1 ONLY if no ID was provided
-          const currentUrlParams = new URLSearchParams(window.location.search);
-          if (!currentUrlParams.get("id")) {
-            document.getElementById("step1").classList.add("active");
+          console.error("Critical error in initial passport state:", err);
+          forceHideLoader();
+          
+          try {
+            const currentUrlParams = new URLSearchParams(window.location.search);
+            if (!currentUrlParams.get("id")) {
+              const step1El = document.getElementById("step1");
+              if (step1El) step1El.classList.add("active");
+            }
+          } catch(fallbackErr) {
+             console.error("Fallback UI activation failed.", fallbackErr);
           }
-          const loader = document.getElementById("globalLoader");
-          if (loader) loader.style.display = "none";
         }
       })();
 
