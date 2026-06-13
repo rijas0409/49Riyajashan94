@@ -758,6 +758,117 @@ Return the response as a single JSON object containing only a "description" key.
     }
   });
 
+  // End Point: Delete Health Record
+  app.delete("/api/health-record", async (req, res) => {
+    try {
+      const { recordId } = req.query;
+      if (!recordId) {
+        return res.status(400).json({ error: "recordId is required" });
+      }
+
+      const supabaseAdmin = await getSupabaseAdmin();
+      if (!supabaseAdmin) {
+        return res.status(500).json({ error: "Supabase client not initialized" });
+      }
+
+      const { error } = await supabaseAdmin
+        .from("pet_health_records_documents")
+        .delete()
+        .eq("id", recordId);
+
+      if (error) {
+        return res.status(500).json({ error: "Failed to delete health record: " + error.message });
+      }
+
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error("Error deleting health record:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+  // End Point: Update/Replace Health Record / Document
+  app.put("/api/health-record", async (req, res) => {
+    try {
+      const { recordId, updates } = req.body;
+      if (!recordId) {
+        return res.status(400).json({ error: "recordId is required" });
+      }
+
+      const supabaseAdmin = await getSupabaseAdmin();
+      if (!supabaseAdmin) {
+        return res.status(500).json({ error: "Supabase client not initialized" });
+      }
+
+      let updatePayload = { ...updates };
+      if (updates.documentBase64 && updates.documentBase64.startsWith("data:")) {
+        const bucket = "pet-documents";
+        try {
+          const matches = updates.documentBase64.match(/^data:(.+?);base64,(.+)$/);
+          if (matches && matches.length === 3) {
+            const mimeType = matches[1];
+            const base64Data = matches[2];
+            
+            let ext = "bin";
+            if (mimeType.includes("pdf")) ext = "pdf";
+            else if (mimeType.includes("jpeg") || mimeType.includes("jpg")) ext = "jpg";
+            else if (mimeType.includes("png")) ext = "png";
+            
+            const filePath = `updated/records/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+            const buffer = Buffer.from(base64Data, "base64");
+            
+            const { error: uploadErr } = await supabaseAdmin.storage.from(bucket).upload(filePath, buffer, {
+              contentType: mimeType,
+              upsert: true
+            });
+            
+            if (!uploadErr) {
+              const { data: publicUrlData } = supabaseAdmin.storage.from(bucket).getPublicUrl(filePath);
+              updatePayload.file_url = publicUrlData.publicUrl;
+              updatePayload.file_path = filePath;
+              updatePayload.storage_bucket = bucket;
+              updatePayload.document_base64 = updates.documentBase64;
+            }
+          }
+        } catch (err) {
+          console.error("Failed to upload replacement document:", err);
+        }
+      }
+
+      const mappedDbUpdates: any = {};
+      if (updatePayload.certificateTitle !== undefined) mappedDbUpdates.certificate_title = updatePayload.certificateTitle;
+      if (updatePayload.recordDescription !== undefined) mappedDbUpdates.record_description = updatePayload.recordDescription;
+      if (updatePayload.nextDueDate !== undefined) mappedDbUpdates.next_due_date = updatePayload.nextDueDate || null;
+      if (updatePayload.issueDate !== undefined) mappedDbUpdates.issue_date = updatePayload.issueDate || null;
+      if (updatePayload.document_base64 !== undefined) mappedDbUpdates.document_base64 = updatePayload.document_base64;
+      if (updatePayload.file_url !== undefined) mappedDbUpdates.file_url = updatePayload.file_url;
+      if (updatePayload.file_path !== undefined) mappedDbUpdates.file_path = updatePayload.file_path;
+      if (updatePayload.storage_bucket !== undefined) mappedDbUpdates.storage_bucket = updatePayload.storage_bucket;
+
+      Object.keys(updatePayload).forEach(key => {
+        if (key.includes("_")) {
+          mappedDbUpdates[key] = updatePayload[key];
+        }
+      });
+
+      const { data, error } = await supabaseAdmin
+        .from("pet_health_records_documents")
+        .update(mappedDbUpdates)
+        .eq("id", recordId)
+        .select()
+        .single();
+
+      if (error) {
+        return res.status(500).json({ error: "Failed to update record: " + error.message });
+      }
+
+      return res.json({ success: true, record: data });
+    } catch (e: any) {
+      console.error("Error updating health record:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

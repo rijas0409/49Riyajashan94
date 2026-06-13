@@ -586,10 +586,10 @@ const Vet = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleRealtimeChange)
       .subscribe();
 
-    // Polling fallback every 2 seconds to make sure approval reflects instantly
+    // Polling fallback gently every 20 seconds
     const pollInterval = setInterval(() => {
       fetchVets();
-    }, 2000);
+    }, 20000);
 
     return () => {
       supabase.removeChannel(channel);

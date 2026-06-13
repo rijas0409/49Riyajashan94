@@ -174,7 +174,7 @@ export default function VetsNearYou() {
       )
       .subscribe();
 
-    const pollInterval = setInterval(fetchVets, 2000);
+    const pollInterval = setInterval(fetchVets, 20000);
 
     return () => {
       supabase.removeChannel(channel);

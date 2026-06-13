@@ -114,7 +114,7 @@ export default function AppointmentConfirmation() {
 
     const pollInterval = setInterval(() => {
       fetchAppointment();
-    }, 4000);
+    }, 20000);
 
     return () => {
       supabase.removeChannel(channel);

@@ -262,10 +262,10 @@ const VetSchedule = () => {
       )
       .subscribe();
 
-    // Fallback polling to guarantee real-time synchronization in secondary windows
+    // Fallback polling gently every 20 seconds
     const pollInterval = setInterval(() => {
       fetchAppointments();
-    }, 4000);
+    }, 20000);
 
     return () => {
       supabase.removeChannel(channel);

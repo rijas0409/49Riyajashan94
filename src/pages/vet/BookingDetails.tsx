@@ -590,8 +590,12 @@ const BookingDetails = () => {
               // Get Age display
               const getAgeDisplay = (p: any) => {
                 if (p.approx_years !== null || p.approx_months !== null) {
-                  const y = p.approx_years || 0;
-                  const m = p.approx_months || 0;
+                  let y = p.approx_years || 0;
+                  let m = p.approx_months || 0;
+                  if (m >= 12) {
+                    y += Math.floor(m / 12);
+                    m = m % 12;
+                  }
                   if (y > 0 && m > 0) return `${y} Yr${y > 1 ? 's' : ''} ${m} Mo${m > 1 ? 's' : ''}`;
                   if (y > 0) return `${y} Yr${y > 1 ? 's' : ''}`;
                   return `${m} Mo${m > 1 ? 's' : ''}`;

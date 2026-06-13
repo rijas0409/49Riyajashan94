@@ -1713,7 +1713,7 @@
               <span class="text-xs font-bold text-on-surface-variant"
                 >Last Sync</span
               >
-              <span class="text-xs font-bold text-primary"
+              <span class="text-xs font-bold text-primary" id="dashboardLastSync"
                 >Today, 10:42 AM</span
               >
             </div>
@@ -2208,14 +2208,7 @@
               >chevron_right</span
             >
           </button>
-          <button
-            class="w-full flex items-center justify-between p-4 hover:bg-red-50 transition-colors"
-          >
-            <div class="flex items-center gap-3 text-red-500">
-              <span class="material-symbols-outlined text-lg">delete</span>
-              <span class="text-sm font-bold">Delete Pet Account</span>
-            </div>
-          </button>
+
         </div>
       </div>
     </main>
@@ -2909,6 +2902,91 @@
         </div>
     </div>
 
+    <!-- Document Details Modal -->
+    <div id="documentDetailsModal" class="fixed inset-0 z-[109] hidden bg-on-surface/60 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300" onclick="closeDocumentDetailsModal()">
+        <div class="bg-white rounded-[28px] p-6 w-full max-w-md shadow-2xl border border-text-on-surface-variant/10 flex flex-col max-h-[90vh] transition-transform duration-300 transform translate-y-full" onclick="event.stopPropagation()">
+            <!-- Title Header -->
+            <div class="flex justify-between items-start mb-5 pb-4 border-b border-surface-container-highest">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                        <span id="docDetailsIcon" class="material-symbols-outlined text-[22px]">description</span>
+                    </div>
+                    <div>
+                        <h3 id="docDetailsTitle" class="text-base font-black tracking-tight text-on-surface">Vaccination Certificate</h3>
+                        <p class="text-[11px] text-on-surface-variant font-bold uppercase tracking-wider">Document Details</p>
+                    </div>
+                </div>
+                <button onclick="closeDocumentDetailsModal()" class="w-9 h-9 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface active:scale-95 transition-all">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+
+            <!-- Content Area of Details -->
+            <div class="space-y-4 overflow-y-auto pr-1 flex-1">
+                <!-- Info Grid -->
+                <div class="grid grid-cols-2 gap-3.5 bg-surface-container-low/50 p-4 rounded-2xl border border-surface-container-highest">
+                    <div class="space-y-0.5">
+                        <span class="text-[9px] font-black text-on-surface-variant uppercase tracking-widest block">Document Type</span>
+                        <span id="docDetailsType" class="text-xs font-bold text-on-surface">Vaccination</span>
+                    </div>
+                    <div class="space-y-0.5">
+                        <span class="text-[9px] font-black text-on-surface-variant uppercase tracking-widest block">Status</span>
+                        <span id="docDetailsStatus" class="inline-flex items-center text-[10px] font-extrabold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-md">Active</span>
+                    </div>
+                    <div class="space-y-0.5">
+                        <span class="text-[9px] font-black text-on-surface-variant uppercase tracking-widest block">Upload Date</span>
+                        <span id="docDetailsUploadDate" class="text-xs font-bold text-on-surface">12 Oct 2026</span>
+                    </div>
+                    <div class="space-y-0.5">
+                        <span class="text-[9px] font-black text-on-surface-variant uppercase tracking-widest block">Expiry / Next Due</span>
+                        <span id="docDetailsExpiryDate" class="text-xs font-bold text-on-surface">N/A</span>
+                    </div>
+                </div>
+
+                <!-- Notes / Description -->
+                <div class="space-y-1.5 p-3.5 bg-surface-container-low/30 rounded-2xl border border-surface-container-highest">
+                    <span class="text-[9px] font-black text-on-surface-variant uppercase tracking-widest block">Notes / Description</span>
+                    <p id="docDetailsDescription" class="text-xs font-semibold text-on-surface leading-normal italic">No descriptions available.</p>
+                </div>
+
+                <!-- Provider / Uploaded By -->
+                <div class="flex items-center justify-between p-3.5 bg-surface-container-low/30 rounded-2xl border border-surface-container-highest">
+                    <div class="space-y-0.5">
+                        <span class="text-[9px] font-black text-on-surface-variant uppercase tracking-widest block">Uploaded By / Clinician</span>
+                        <span id="docDetailsProvider" class="text-xs font-bold text-on-surface">Rijas Pabla (Owner)</span>
+                    </div>
+                    <span class="material-symbols-outlined text-primary/60 text-lg">medical_information</span>
+                </div>
+            </div>
+
+            <!-- Actions list -->
+            <div class="mt-5 pt-4 border-t border-surface-container-highest space-y-2.5">
+                <div class="grid grid-cols-2 gap-2.5">
+                    <button id="btnDocView" onclick="handleDocAction('view')" class="flex items-center justify-center gap-1.5 h-11 bg-primary text-white text-xs font-bold rounded-xl shadow-sm hover:opacity-90 active:scale-[0.98] transition-all">
+                        <span class="material-symbols-outlined text-[16px]">visibility</span>
+                        View Document
+                    </button>
+                    <button id="btnDocDownload" onclick="handleDocAction('download')" class="flex items-center justify-center gap-1.5 h-11 bg-surface border border-surface-container-highest text-on-surface text-xs font-bold rounded-xl hover:bg-surface-container-low active:scale-[0.98] transition-all">
+                        <span class="material-symbols-outlined text-[16px]">download</span>
+                        Download
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2.5">
+                    <button id="btnDocReplace" class="flex items-center justify-center gap-1.5 h-11 bg-surface border border-surface-container-highest text-primary text-xs font-bold rounded-xl hover:bg-surface-container-low active:scale-[0.98] transition-all relative">
+                        <span class="material-symbols-outlined text-[16px]">cloud_upload</span>
+                        Replace Document
+                        <input type="file" id="replaceDocInput" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleReplaceDocFile(event)" />
+                    </button>
+                    <button id="btnDocDelete" onclick="handleDocAction('delete')" class="flex items-center justify-center gap-1.5 h-11 bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl hover:bg-red-100 active:scale-[0.98] transition-all">
+                        <span class="material-symbols-outlined text-[16px]">delete</span>
+                        Delete Record
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Document Viewer Modal -->
     <div id="documentViewerModal" class="fixed inset-0 z-[110] hidden bg-on-surface/60 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300" onclick="closeDocumentViewerModal()">
         <div class="bg-white rounded-[24px] p-5 w-full max-w-4xl shadow-2xl border border-text-on-surface-variant/10 flex flex-col max-h-[90vh] transition-transform duration-300 transform translate-y-full" onclick="event.stopPropagation()">
@@ -2963,6 +3041,247 @@
         } catch (e) {
           return dateStr;
         }
+      }
+
+      function formatLastSyncTime(date) {
+        if (!date) date = new Date();
+        const now = new Date();
+        const options = { hour: 'numeric', minute: '2-digit', hour12: true };
+        const timeStr = date.toLocaleTimeString('en-US', options);
+        
+        const isToday = date.getDate() === now.getDate() &&
+                        date.getMonth() === now.getMonth() &&
+                        date.getFullYear() === now.getFullYear();
+                        
+        if (isToday) {
+          return `Today, ${timeStr}`;
+        } else {
+          const day = date.getDate();
+          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const month = months[date.getMonth()];
+          return `${day} ${month}, ${timeStr}`;
+        }
+      }
+
+      function openDocumentDetailsModal(record) {
+        window.lastSelectedDocumentRecord = record;
+        const modal = document.getElementById("documentDetailsModal");
+        if (!modal) return;
+
+        // Map values
+        const type = record.record_type || record.type || "Document";
+        const title = record.certificate_title || record.certificateTitle || record.vaccine_name || record.procedure_name || record.test_name || type;
+        
+        const titleEl = document.getElementById("docDetailsTitle");
+        if (titleEl) titleEl.innerText = title;
+
+        const typeEl = document.getElementById("docDetailsType");
+        if (typeEl) typeEl.innerText = type;
+
+        const desc = record.record_description || record.recordDescription || record.diagnosis || "No description provided.";
+        const descEl = document.getElementById("docDetailsDescription");
+        if (descEl) descEl.innerText = desc;
+
+        const provider = record.prescribed_by || record.prescribedBy || "Owner";
+        const providerEl = document.getElementById("docDetailsProvider");
+        if (providerEl) providerEl.innerText = provider;
+
+        // Upload date formatting
+        const uploadDateStr = record.created_at || record.issue_date || record.date_administered || record.test_date || record.surgery_date || record.updated_at;
+        const uploadDateEl = document.getElementById("docDetailsUploadDate");
+        if (uploadDateEl) {
+          uploadDateEl.innerText = uploadDateStr ? formatDateString(uploadDateStr) : formatDateString(new Date());
+        }
+
+        // Expiry / Next Due date formatting
+        const expiryDateStr = record.next_due_date || record.nextDueDate;
+        const expiryDateEl = document.getElementById("docDetailsExpiryDate");
+        if (expiryDateEl) {
+          expiryDateEl.innerText = expiryDateStr ? formatDateString(expiryDateStr) : "N/A";
+        }
+
+        // Status
+        const statusEl = document.getElementById("docDetailsStatus");
+        if (statusEl) {
+          if (expiryDateStr) {
+            const isExpired = new Date(expiryDateStr) < new Date();
+            statusEl.innerText = isExpired ? "Expired" : "Active";
+            statusEl.className = isExpired 
+              ? "inline-flex items-center text-[10px] font-extrabold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-md"
+              : "inline-flex items-center text-[10px] font-extrabold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-md";
+          } else {
+            statusEl.innerText = "Secured";
+            statusEl.className = "inline-flex items-center text-[10px] font-extrabold text-primary bg-primary/5 border border-primary/20 px-2 py-0.5 rounded-md";
+          }
+        }
+
+        // Set Icon
+        const iconEl = document.getElementById("docDetailsIcon");
+        if (iconEl) {
+          let iconName = "description";
+          if (type === "Vaccination") iconName = "vaccines";
+          else if (type === "Prescription" || type === "Prescription Doc") iconName = "medication";
+          else if (type === "Lab Test") iconName = "biotech";
+          else if (type === "Surgery" || type === "Surgical/Procedure Log") iconName = "healing";
+          else if (type === "Medical Condition") iconName = "emergency";
+          else if (type === "Clinical Vet Visit") iconName = "medical_information";
+          else if (type === "Health Certificate") iconName = "workspace_premium";
+          iconEl.innerText = iconName;
+        }
+
+        // Show Modal
+        modal.classList.remove("hidden");
+        setTimeout(() => {
+          modal.firstElementChild.classList.remove("translate-y-full");
+        }, 10);
+      }
+
+      function closeDocumentDetailsModal() {
+        const modal = document.getElementById("documentDetailsModal");
+        if (!modal) return;
+        modal.firstElementChild.classList.add("translate-y-full");
+        setTimeout(() => {
+          modal.classList.add("hidden");
+        }, 300);
+      }
+
+      async function handleDocAction(action) {
+        const record = window.lastSelectedDocumentRecord;
+        if (!record) return;
+
+        if (action === 'view') {
+          closeDocumentDetailsModal();
+          setTimeout(() => {
+            openDocumentViewer(record);
+          }, 320);
+        } else if (action === 'download') {
+          const src = record.document_base64 || record.documentBase64 || record.file_url;
+          if (!src) {
+            alert("No download source available.");
+            return;
+          }
+          const link = document.createElement("a");
+          link.href = src;
+          link.download = record.certificate_title || record.certificateTitle || record.vaccine_name || "passport_document";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } else if (action === 'delete') {
+          if (!confirm("Are you sure you want to permanently delete this health record/document from your Vault? This action cannot be undone.")) {
+            return;
+          }
+          
+          try {
+            const btn = document.getElementById("btnDocDelete");
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<span class="material-symbols-outlined animate-spin text-[16px]">sync</span> Deleting...`;
+            btn.disabled = true;
+
+            const recordId = record.id;
+            const res = await fetch(`/api/health-record?recordId=${encodeURIComponent(recordId)}`, {
+              method: 'DELETE'
+            });
+
+            if (res.ok) {
+              alert("Document successfully deleted from Vault.");
+              const passportId = window.currentPassportId || record.pet_passport_id;
+              if (passportId) {
+                localStorage.setItem("last_sync_" + passportId, new Date().toISOString());
+              }
+              
+              closeDocumentDetailsModal();
+              
+              // Refresh Passport Data on Dashboard
+              if (window.currentPassportId) {
+                const refreshRes = await fetch(`/api/pet-passport?id=${encodeURIComponent(window.currentPassportId)}`);
+                if (refreshRes.ok) {
+                  const refreshedData = await refreshRes.json();
+                  loadPassportDataIntoUI(refreshedData);
+                }
+              }
+            } else {
+              const errData = await res.json();
+              alert("Error deleting record: " + (errData.error || "Unknown error"));
+            }
+          } catch (err) {
+            console.error("Delete record failed:", err);
+            alert("Connection error. Could not delete document.");
+          } finally {
+            const btn = document.getElementById("btnDocDelete");
+            if (btn) {
+              btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">delete</span> Delete Record`;
+              btn.disabled = false;
+            }
+          }
+        }
+      }
+
+      function handleReplaceDocFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async function() {
+          const base64Data = reader.result;
+          
+          try {
+            const replaceBtn = document.getElementById("btnDocReplace");
+            const originalHTML = replaceBtn.innerHTML;
+            replaceBtn.innerHTML = `<span class="material-symbols-outlined animate-spin text-[16px]">sync</span> Uploading...`;
+            replaceBtn.disabled = true;
+
+            const record = window.lastSelectedDocumentRecord;
+            const recordId = record.id;
+
+            const res = await fetch("/api/health-record", {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                recordId: recordId,
+                updates: {
+                  documentBase64: base64Data
+                }
+              })
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              alert("Document successfully replaced!");
+              
+              const passportId = window.currentPassportId || record.pet_passport_id;
+              if (passportId) {
+                localStorage.setItem("last_sync_" + passportId, new Date().toISOString());
+              }
+              
+              closeDocumentDetailsModal();
+
+              // Refresh Passport Data on Dashboard
+              if (window.currentPassportId) {
+                const refreshRes = await fetch(`/api/pet-passport?id=${encodeURIComponent(window.currentPassportId)}`);
+                if (refreshRes.ok) {
+                  const refreshedData = await refreshRes.json();
+                  loadPassportDataIntoUI(refreshedData);
+                }
+              }
+            } else {
+              const errData = await res.json();
+              alert("Failed to replace document: " + (errData.error || "Unknown error"));
+            }
+          } catch (err) {
+            console.error("Replace file failed:", err);
+            alert("Error replacing document.");
+          } finally {
+            const replaceBtn = document.getElementById("btnDocReplace");
+            if (replaceBtn) {
+              replaceBtn.innerHTML = `<span class="material-symbols-outlined text-[16px]">cloud_upload</span> Replace Document <input type="file" id="replaceDocInput" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleReplaceDocFile(event)" />`;
+              replaceBtn.disabled = false;
+            }
+          }
+        };
+
+        reader.readAsDataURL(file);
       }
 
       function loadPassportDataIntoUI(dataObj) {
@@ -3426,6 +3745,17 @@
           dashboardCreatedOn.innerText = createdDate
             ? formatDateString(createdDate)
             : formatDateString(new Date());
+        }
+
+        const dashboardLastSync = document.getElementById("dashboardLastSync");
+        if (dashboardLastSync) {
+          let lastSyncTime = localStorage.getItem("last_sync_" + passportId);
+          if (!lastSyncTime) {
+            lastSyncTime = payload.updated_at || payload.created_at || payload.createdAt || new Date().toISOString();
+            localStorage.setItem("last_sync_" + passportId, lastSyncTime);
+          }
+          const syncDate = new Date(lastSyncTime);
+          dashboardLastSync.innerText = formatLastSyncTime(syncDate);
         }
 
         // Emergency layout details
@@ -5743,8 +6073,12 @@
         ) {
           const yearsInput = document.getElementById("approxYears");
           const monthsInput = document.getElementById("approxMonths");
-          const yrs = parseInt(yearsInput ? yearsInput.value : "0", 10) || 0;
-          const mos = parseInt(monthsInput ? monthsInput.value : "0", 10) || 0;
+          let yrs = parseInt(yearsInput ? yearsInput.value : "0", 10) || 0;
+          let mos = parseInt(monthsInput ? monthsInput.value : "0", 10) || 0;
+          if (mos >= 12) {
+            yrs += Math.floor(mos / 12);
+            mos = mos % 12;
+          }
           if (yrs === 0 && mos > 0) return mos + (mos === 1 ? " Mo" : " Mos");
           if (yrs > 0 && mos > 0)
             return `${yrs} Yr${yrs > 1 ? "s" : ""} ${mos} Mo${mos > 1 ? "s" : ""}`;
@@ -6037,6 +6371,7 @@
             if (res.ok && data && data.success && data.passportId) {
               const finalId = data.passportId;
               window.currentPassportId = finalId;
+              localStorage.setItem("last_sync_" + finalId, new Date().toISOString());
               
               // Update IDs in the UI
               const topId = document.getElementById("finalPassportIdTop");
@@ -6423,6 +6758,7 @@
           }
 
           alert("Success! Health record added directly to Passport Vault.");
+          localStorage.setItem("last_sync_" + passId, new Date().toISOString());
           closeDashboardRecordModal();
 
           // Refresh Dashboard data instantly
@@ -6485,7 +6821,7 @@
 
           const card = document.createElement("div");
           card.className = "flex items-center justify-between p-3 bg-white rounded-xl border border-surface-container-highest cursor-pointer hover:border-primary/30 transition-colors";
-          card.onclick = () => openDocumentViewer(r);
+          card.onclick = () => openDocumentDetailsModal(r);
           card.innerHTML = `
             <div class="flex items-center gap-3">
               <span class="material-symbols-outlined text-primary/60">${iconName}</span>
