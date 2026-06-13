@@ -119,25 +119,11 @@ const EmptyPetPassport = () => {
 
   return (
     <div className="fixed inset-0 w-full h-full bg-[#fffbfe] z-[100] overflow-hidden">
-      {/* Premium Branded Loading Overlay */}
+      {/* Lightweight inline loader if needed */}
       {showLoadingOverlay && (
-        <div className="absolute inset-0 z-[110] bg-[#fffbfe] flex flex-col items-center justify-center p-6 text-center transition-all duration-300">
-          <div className="relative w-20 h-20 mb-6 flex items-center justify-center">
-            {/* Double rotating ring animation */}
-            <div className="absolute inset-0 rounded-full border-4 border-[#fff0f5] border-t-[#d95191] animate-spin"></div>
-            <div className="absolute inset-2 rounded-full border-4 border-[#fff0f5] border-b-[#853164] animate-spin [animation-direction:reverse] opacity-80"></div>
-            <img 
-              src="/IMG_20260606_213853.png" 
-              alt="Paw" 
-              className="w-10 h-10 object-contain drop-shadow-sm animate-pulse z-10"
-            />
-          </div>
-          <h3 className="text-slate-800 font-extrabold text-sm tracking-wide mb-1">
-            {passportCount === null ? "Verifying Passport Vault..." : "Unlocking Digital Passport..."}
-          </h3>
-          <p className="text-[#a08b96] font-mono text-[10px] uppercase tracking-[0.25em] animate-pulse">
-            Sruvo Security Core Syncing
-          </p>
+        <div className="absolute top-4 right-4 z-[110] bg-white shadow-sm border border-slate-100 rounded-full px-3 py-1.5 flex items-center gap-2 animate-pulse">
+           <div className="w-3 h-3 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
+           <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Syncing</span>
         </div>
       )}
 
