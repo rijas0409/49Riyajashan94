@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Lock, Eye, Shield, Trash2 } from "lucide-react";
+import { ArrowLeft, Lock, Eye, Shield } from "lucide-react";
 import { toast } from "sonner";
 
 const PrivacySecurity = () => {
@@ -31,10 +31,6 @@ const PrivacySecurity = () => {
       toast.success("Password updated successfully");
       setPasswords({ newPassword: "", confirmPassword: "" });
     }
-  };
-
-  const handleDeleteAccount = () => {
-    toast.info("Please contact support to delete your account");
   };
 
   return (
@@ -113,25 +109,6 @@ const PrivacySecurity = () => {
               </div>
             </Card>
           </div>
-        </div>
-
-        {/* Danger Zone */}
-        <div>
-          <h3 className="font-semibold mb-3 text-destructive">Danger Zone</h3>
-          <Card
-            className="p-4 rounded-2xl border-2 border-destructive/20 shadow-sm cursor-pointer hover:shadow-md transition-all"
-            onClick={handleDeleteAccount}
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-destructive/10 rounded-2xl flex items-center justify-center">
-                <Trash2 className="w-6 h-6 text-destructive" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-medium text-destructive">Delete Account</h3>
-                <p className="text-sm text-muted-foreground">Permanently delete your account and data</p>
-              </div>
-            </div>
-          </Card>
         </div>
       </main>
     </div>

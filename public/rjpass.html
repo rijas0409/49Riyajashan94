@@ -2106,7 +2106,7 @@
           </p>
         </div>
 
-        <div class="space-y-3">
+        <div id="upcomingAppointmentsContainer" class="space-y-3">
           <h3
             class="text-xs font-black tracking-wide uppercase text-on-surface pl-1"
           >
@@ -3749,13 +3749,53 @@
 
         const dashboardLastSync = document.getElementById("dashboardLastSync");
         if (dashboardLastSync) {
-          let lastSyncTime = localStorage.getItem("last_sync_" + passportId);
-          if (!lastSyncTime) {
-            lastSyncTime = payload.updated_at || payload.created_at || payload.createdAt || new Date().toISOString();
-            localStorage.setItem("last_sync_" + passportId, lastSyncTime);
-          }
-          const syncDate = new Date(lastSyncTime);
-          dashboardLastSync.innerText = formatLastSyncTime(syncDate);
+          const syncTime = payload.last_sync || payload.lastSync || payload.updated_at || payload.created_at || new Date().toISOString();
+          dashboardLastSync.innerText = typeof formatLastSyncTime === "function" ? formatLastSyncTime(new Date(syncTime)) : formatDateString(syncTime);
+          localStorage.setItem("last_sync_" + passportId, syncTime);
+        }
+
+        // Handle Dynamic Age Rounding
+        updateDynamicAgeDisplay(payload.dob, payload.approx_years, payload.approx_months);
+
+        function updateDynamicAgeDisplay(dob, approxY, approxM) {
+            let years = 0;
+            let months = 0;
+
+            if (dob) {
+                const birthDate = new Date(dob);
+                const today = new Date();
+                years = today.getFullYear() - birthDate.getFullYear();
+                months = today.getMonth() - birthDate.getMonth();
+                if (months < 0) {
+                    years--;
+                    months += 12;
+                }
+            } else {
+                years = parseInt(approxY || 0);
+                months = parseInt(approxM || 0);
+            }
+
+            // Normalization logic: e.g., 1 Year 12 Months -> 2 Years
+            if (months >= 12) {
+                years += Math.floor(months / 12);
+                months = months % 12;
+            }
+
+            let ageStr = "";
+            if (years > 0) ageStr += years + " Year" + (years > 1 ? "s" : "");
+            if (months > 0) ageStr += (ageStr ? " " : "") + months + " Month" + (months > 1 ? "s" : "");
+            if (!ageStr) ageStr = "Just Born";
+
+            const elements = ["passAge", "accAge", "dashPetAge"];
+            elements.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = ageStr;
+            });
+        }
+
+        // Render Upcoming Appointments
+        if (dataObj.appointments && typeof renderUpcomingAppointments === "function") {
+            renderUpcomingAppointments(dataObj.appointments);
         }
 
         // Emergency layout details
@@ -6373,16 +6413,11 @@
               window.currentPassportId = finalId;
               localStorage.setItem("last_sync_" + finalId, new Date().toISOString());
               
-              // Update IDs in the UI
-              const topId = document.getElementById("finalPassportIdTop");
-              if (topId) topId.innerText = finalId;
-              const botId = document.getElementById("finalPassportIdBottom");
-              if (botId) botId.innerText = finalId;
-
-              // Generate QR Code dynamically
-              const qrImg = document.getElementById("passportQRCodeImg");
-              if (qrImg) {
-                qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://sruvoindia.vercel.app/passport/${finalId}&color=d95191`;
+              // Immediately fetch actual database record to avoid legacy/static data
+              const refreshRes = await fetch(`/api/pet-passport?id=${encodeURIComponent(finalId)}`);
+              if (refreshRes.ok) {
+                  const refreshData = await refreshRes.json();
+                  loadPassportDataIntoUI(refreshData);
               }
 
               nextStep(4);
@@ -6757,7 +6792,6 @@
             throw new Error(`Failed to save medical record: ${errObj.error || errObj.message || "Unknown backend error"}`);
           }
 
-          alert("Success! Health record added directly to Passport Vault.");
           localStorage.setItem("last_sync_" + passId, new Date().toISOString());
           closeDashboardRecordModal();
 
@@ -7193,6 +7227,85 @@
         } else {
             remSection.classList.add("hidden");
         }
+      }
+
+      function renderUpcomingAppointments(appointments) {
+        const container = document.getElementById("upcomingAppointmentsContainer") || document.querySelector("#step6 .space-y-3")?.parentElement;
+        if (!container) return;
+        
+        let listWrapper = container.querySelector(".appointments-list");
+        if (!listWrapper) {
+          listWrapper = document.createElement("div");
+          listWrapper.className = "appointments-list space-y-3";
+          
+          // Insert after the title
+          const title = container.querySelector("h3");
+          if (title) {
+              title.insertAdjacentElement('afterend', listWrapper);
+          } else {
+              container.appendChild(listWrapper);
+          }
+          
+          // Remove the dummy card (Annual Checkup)
+          const cards = container.querySelectorAll(".bg-white.rounded-2xl");
+          cards.forEach(c => {
+              if (c.innerText.includes("Checkup") || c.innerText.includes("Sharma")) {
+                  c.remove();
+              }
+          });
+        } else {
+          listWrapper.innerHTML = "";
+        }
+
+        const now = new Date();
+        // Filter: future appointments, not cancelled
+        const upcoming = appointments
+          .filter(a => a.status !== 'cancelled' && (new Date(a.appointment_date + 'T' + apptTimeFix(a.appointment_time)) >= now))
+          .sort((a, b) => new Date(a.appointment_date + 'T' + apptTimeFix(a.appointment_time)) - new Date(b.appointment_date + 'T' + apptTimeFix(b.appointment_time)));
+
+        function apptTimeFix(t) {
+            if (!t) return "00:00:00";
+            if (t.split(':').length === 2) return t + ":00";
+            return t;
+        }
+
+        if (upcoming.length === 0) {
+          listWrapper.innerHTML = `
+            <div class="bg-surface-container-low/50 rounded-2xl p-6 text-center border border-dashed border-surface-container-highest">
+              <span class="material-symbols-outlined text-on-surface-variant/30 text-4xl mb-2">event_busy</span>
+              <p class="text-[11px] font-bold text-on-surface-variant/60 uppercase tracking-widest">No upcoming appointments</p>
+            </div>
+          `;
+          return;
+        }
+
+        upcoming.forEach(app => {
+          const apptDate = new Date(app.appointment_date);
+          const dateStr = apptDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+          const timeStr = app.appointment_time;
+          
+          const card = document.createElement("div");
+          card.className = "bg-white rounded-2xl p-3 border border-surface-container-highest shadow-sm flex justify-between items-center group active:scale-[0.98] transition-all cursor-pointer";
+          card.onclick = () => window.location.href = `/buyer/vet-schedule?id=${app.id}`;
+          
+          card.innerHTML = `
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl ${app.appointment_type === 'home_visit' ? 'bg-blue-50 text-blue-600' : 'bg-primary-container text-primary'} flex items-center justify-center">
+                <span class="material-symbols-outlined text-xl">${app.appointment_type === 'home_visit' ? 'home' : 'medical_services'}</span>
+              </div>
+              <div>
+                <p class="text-sm font-bold text-on-surface">${app.appointment_type === 'home_visit' ? 'Home Consultation' : 'Clinic Visit'}</p>
+                <p class="text-[10px] font-semibold text-on-surface-variant uppercase tracking-tight">
+                  Status: ${app.status.replace(/_/g, ' ')} • ${dateStr}, ${timeStr}
+                </p>
+              </div>
+            </div>
+            <button class="w-8 h-8 rounded-full bg-surface-container-low text-on-surface-variant group-hover:bg-primary-container group-hover:text-primary transition-colors flex items-center justify-center">
+              <span class="material-symbols-outlined text-sm">arrow_forward</span>
+            </button>
+          `;
+          listWrapper.appendChild(card);
+        });
       }
     </script>
   </body>

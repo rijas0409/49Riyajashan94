@@ -473,11 +473,20 @@ Return the response as a single JSON object containing only a "description" key.
         .select("*")
         .eq("pet_passport_id", pet.id);
 
+      // Fetch appointments for this pet
+      // Since vet_appointments doesn't have a strict FK to pet_passports, we match by user_id and pet_name
+      const { data: appointments } = await supabaseAdmin
+        .from("vet_appointments")
+        .select("*")
+        .eq("user_id", pet.user_id)
+        .eq("pet_name", pet.pet_name);
+
       return res.json({
         pet,
         medical,
         conditions,
-        healthRecords
+        healthRecords,
+        appointments: appointments || []
       });
     } catch (err: any) {
       console.error("Error fetching passport details:", err);
@@ -771,6 +780,8 @@ Return the response as a single JSON object containing only a "description" key.
         return res.status(500).json({ error: "Supabase client not initialized" });
       }
 
+      const { data: recordInfo } = await supabaseAdmin.from("pet_health_records_documents").select("pet_passport_id").eq("id", recordId).single();
+
       const { error } = await supabaseAdmin
         .from("pet_health_records_documents")
         .delete()
@@ -778,6 +789,10 @@ Return the response as a single JSON object containing only a "description" key.
 
       if (error) {
         return res.status(500).json({ error: "Failed to delete health record: " + error.message });
+      }
+
+      if (recordInfo) {
+          await supabaseAdmin.from("pet_passports").update({ last_sync: new Date().toISOString() }).eq("id", recordInfo.pet_passport_id);
       }
 
       return res.json({ success: true });
@@ -860,6 +875,10 @@ Return the response as a single JSON object containing only a "description" key.
 
       if (error) {
         return res.status(500).json({ error: "Failed to update record: " + error.message });
+      }
+
+      if (data) {
+          await supabaseAdmin.from("pet_passports").update({ last_sync: new Date().toISOString() }).eq("id", data.pet_passport_id);
       }
 
       return res.json({ success: true, record: data });

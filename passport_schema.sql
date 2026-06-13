@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS public.pet_passports (
     emergency_phone VARCHAR(20),
     emergency_relationship VARCHAR(50),
     photo_url TEXT,
+    last_sync TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
