@@ -86,7 +86,6 @@ const BookingDetails = () => {
   
   // Dynamic Real-time Consultation settings
   const [dbVetData, setDbVetData] = useState<any>(null);
-  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
 
   const [passports, setPassports] = useState<any[]>(() => {
     try {
@@ -172,7 +171,7 @@ const BookingDetails = () => {
       if (matchedVet?.id) {
         const { data, error } = await supabase
           .from("vet_profiles")
-          .select("user_id, consultation_type, clinic_name, clinic_address, hospital_name, hospital_address")
+          .select("consultation_type, clinic_name, clinic_address, hospital_name, hospital_address")
           .eq("id", matchedVet.id)
           .maybeSingle();
         if (data && !error) {
@@ -255,55 +254,6 @@ const BookingDetails = () => {
   const [simulatedWallet, setSimulatedWallet] = useState("Paytm Wallet");
 
   const vet = useMemo(() => matchedVet || {}, [matchedVet]);
-
-  const vetUserId = useMemo(() => {
-    return matchedVet?.userId || matchedVet?.user_id || dbVetData?.user_id;
-  }, [matchedVet, dbVetData]);
-
-  // Real-time booked slots fetching and subscription
-  useEffect(() => {
-    const vId = vetUserId;
-    if (!vId || !selectedDate) return;
-
-    const dateStr = format(selectedDate, "yyyy-MM-dd");
-
-    const fetchBookedSlots = async () => {
-      const { data, error } = await supabase
-        .from("vet_appointments")
-        .select("appointment_time")
-        .eq("vet_id", vId)
-        .eq("appointment_date", dateStr)
-        .in("status", ["confirmed", "booked", "accepted"]);
-
-      if (data && !error) {
-        setBookedSlots(data.map(a => a.appointment_time));
-      } else if (error) {
-        console.error("Error fetching booked slots:", error);
-      }
-    };
-
-    fetchBookedSlots();
-
-    const channel = supabase
-      .channel(`booked-slots-${vId}-${dateStr}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "vet_appointments",
-          filter: `vet_id=eq.${vId}`,
-        },
-        () => {
-          fetchBookedSlots();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [vetUserId, selectedDate]);
 
   // Safely parse weekly_availability if it gets serialised as a string
   const weeklyAvailabilityObject = useMemo(() => {
@@ -513,7 +463,7 @@ const BookingDetails = () => {
     return baseSlots;
   }, [selectedDate, weeklyAvailabilityObject, hasNightZoneActive, safeFormatSelectedDate, safeFormatDate]);
 
-  const disabledSlots: string[] = bookedSlots;
+  const disabledSlots: string[] = []; // Can be expanded with real booking data later
 
   const clinicFee = Number(vet.online_fee !== undefined ? vet.online_fee : (vet.onlineFee !== undefined ? vet.onlineFee : (vet.fee || 500)));
   const homeFee = Number(vet.offline_fee !== undefined ? vet.offline_fee : (vet.offlineFee !== undefined ? vet.offlineFee : 800));
@@ -887,7 +837,7 @@ const BookingDetails = () => {
                           disabled={isTopDisabled} 
                           onClick={() => setSelectedSlot(pair.top!)}
                           className="py-3 rounded-2xl text-[13px] sm:text-sm font-semibold transition-all border-2 text-center"
-                          style={isTopSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isTopDisabled ? { border: '3px dotted #CBD5E1', color: '#94A3B8', opacity: 0.5, cursor: 'not-allowed', pointerEvents: 'none' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}
+                          style={isTopSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isTopDisabled ? { border: '2px dotted hsl(var(--border))', color: 'hsl(var(--muted-foreground))', opacity: 0.35, textDecoration: 'line-through' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}
                         >
                           {pair.top}
                         </button>
@@ -902,7 +852,7 @@ const BookingDetails = () => {
                           disabled={isBottomDisabled} 
                           onClick={() => setSelectedSlot(pair.bottom!)}
                           className="py-3 rounded-2xl text-[13px] sm:text-sm font-semibold transition-all border-2 text-center"
-                          style={isBottomSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isBottomDisabled ? { border: '3px dotted #CBD5E1', color: '#94A3B8', opacity: 0.5, cursor: 'not-allowed', pointerEvents: 'none' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}
+                          style={isBottomSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isBottomDisabled ? { border: '2px dotted hsl(var(--border))', color: 'hsl(var(--muted-foreground))', opacity: 0.35, textDecoration: 'line-through' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}
                         >
                           {pair.bottom}
                         </button>
@@ -924,7 +874,7 @@ const BookingDetails = () => {
                 return (
                   <button key={slot} disabled={isDisabled} onClick={() => setSelectedSlot(slot)}
                     className="py-3 rounded-2xl text-[13px] sm:text-sm font-semibold transition-all border-2"
-                    style={isSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isDisabled ? { border: '3px dotted #CBD5E1', color: '#94A3B8', opacity: 0.5, cursor: 'not-allowed', pointerEvents: 'none' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}>
+                    style={isSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isDisabled ? { border: '2px dotted hsl(var(--border))', color: 'hsl(var(--muted-foreground))', opacity: 0.35, textDecoration: 'line-through' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}>
                     {slot}
                   </button>
                 );
@@ -1636,10 +1586,7 @@ const BookingDetails = () => {
                                   vet: {
                                     name: vetName,
                                     image: vetImage,
-                                    specialization: vetSpecialization,
-                                    rating: vetRating,
-                                    experience: vetExperience,
-                                    qualification: vet?.qualification || "BVSc & AH"
+                                    specialization: vetSpecialization
                                   },
                                   appointmentId: realBookingId,
                                   visitType: visitType,

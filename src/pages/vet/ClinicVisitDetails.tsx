@@ -77,8 +77,8 @@ const ClinicVisitDetails: React.FC = () => {
     ownerName: stateVisit?.ownerName || "Sarah Jenkins",
     ownerPhone: stateVisit?.ownerPhone || "+91 98765 43210",
     address: stateVisit?.address || "123 Pet Lane, Springfield",
-    time: stateVisit?.time || "",
-    reason: stateVisit?.reason || "General Consultation",
+    time: stateVisit?.time || "Today, 2:30 PM – 3:00 PM",
+    reason: stateVisit?.reason || "Luna has reduced appetite for last 2 days.",
     image: stateVisit?.image || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
     distance: "12 mins (4.2 miles)"
   });
@@ -101,8 +101,8 @@ const ClinicVisitDetails: React.FC = () => {
             ownerName: data.user?.full_name || data.user?.name || "Owner",
             ownerPhone: data.user?.phone || "+91 98765 43210",
             address: data.appointment_type === 'home' ? "123 Premium Residency, Indiranagar" : "HSR Paws Clinic, Sector 2",
-            time: data.appointment_time || "",
-            reason: data.consultation_notes || "General Consultation & Checkup",
+            time: `${data.appointment_date}, ${data.appointment_time}`,
+            reason: "General Consultation & Checkup",
             image: data.user?.profile_photo || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
             distance: data.appointment_type === 'home' ? "1.2 miles away" : "12 mins (4.2 miles)"
           };
@@ -151,26 +151,8 @@ const ClinicVisitDetails: React.FC = () => {
   const [helpScreenOpen, setHelpScreenOpen] = useState(false);
 
   // Functional interactive states
-  const [userPassports, setUserPassports] = useState<any[]>([]);
-  const [selectedPassportId, setSelectedPassportId] = useState<string | null>(null);
-  const [connectedPassport, setConnectedPassport] = useState<any | null>(null);
-
-  useEffect(() => {
-    const fetchUserPassports = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // @ts-ignore - manually added table
-        const { data, error } = await supabase
-          .from("pet_passports")
-          .select("*")
-          .eq("user_id", user.id);
-        if (!error && data) {
-          setUserPassports(data);
-        }
-      }
-    };
-    fetchUserPassports();
-  }, []);
+  const [selectedPassportId, setSelectedPassportId] = useState<"luna" | "max" | "coco" | null>(null);
+  const [connectedPassport, setConnectedPassport] = useState<typeof PASSPORT_DATA.luna | null>(null);
   
   const [chiefComplaint, setChiefComplaint] = useState(initialVisit.reason);
   const [isEditingReason, setIsEditingReason] = useState(false);
@@ -534,23 +516,12 @@ const ClinicVisitDetails: React.FC = () => {
   };
 
   // Confirming Pet Passport connection
-  const handleConfirmConnect = async () => {
+  const handleConfirmConnect = () => {
     if (!selectedPassportId) return;
-    const passport = userPassports.find(p => p.id === selectedPassportId);
-    if (!passport) return;
-
-    setConnectedPassport({
-      name: passport.pet_name,
-      id: passport.passport_id,
-      age: passport.age_type === "approx" ? `${passport.approx_years} YRS` : passport.dob,
-      breed: passport.breed,
-      ageText: passport.age_type === "approx" ? `${passport.approx_years} yrs` : "N/A",
-      weight: `${passport.weight || 0} lbs`,
-      dob: passport.dob || "N/A",
-      photo_url: passport.photo_url
-    });
+    const d = PASSPORT_DATA[selectedPassportId];
+    setConnectedPassport(d);
     setPassportOverlayOpen(false);
-    toast.success(`${passport.pet_name}'s Passport synced successfully!`);
+    toast.success(`${d.name}'s Passport synced successfully!`);
   };
 
   return (
@@ -581,29 +552,27 @@ const ClinicVisitDetails: React.FC = () => {
             <p className="text-xs text-gray-400 mb-5">Choose which passport to sync with this visit</p>
             
             <div className="space-y-3">
-              {userPassports.map((data) => {
-                const isSelected = selectedPassportId === data.id;
+              {Object.entries(PASSPORT_DATA).map(([key, data]) => {
+                const isSelected = selectedPassportId === key;
                 return (
                   <div 
-                    key={data.id}
-                    onClick={() => setSelectedPassportId(data.id)}
+                    key={key}
+                    onClick={() => setSelectedPassportId(key as "luna" | "max" | "coco")}
                     className={`border-2 rounded-2xl p-4 cursor-pointer flex items-center gap-3.5 transition-all duration-200 ${
                       isSelected 
                         ? "border-[#ec4899] bg-[#fdf2f8]" 
                         : "border-gray-200 hover:border-[#f9a8d4] hover:bg-[#fff0f6]"
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-pink-50 text-[#ec4899]">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      key === "luna" ? "bg-orange-50 text-orange-500" : key === "max" ? "bg-blue-50 text-blue-500" : "bg-amber-50 text-amber-500"
+                    }`}>
                       <Activity className="w-5 h-5" />
                     </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="font-bold text-gray-800 text-sm">{data.pet_name}</p>
-                      <VerifiedBadge size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-gray-800 text-sm">{data.name}</p>
+                      <p className="text-xs text-gray-400">{data.id} · {data.breed}</p>
                     </div>
-                    <p className="text-[10px] font-bold text-pink-500 uppercase tracking-wider">{data.passport_id}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{data.breed}</p>
-                  </div>
                     
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
                       isSelected ? "bg-[#ec4899] border-[#ec4899]" : "border-gray-300"
@@ -613,11 +582,6 @@ const ClinicVisitDetails: React.FC = () => {
                   </div>
                 );
               })}
-              {userPassports.length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-gray-500 text-sm">No passports found in your account.</p>
-                </div>
-              )}
             </div>
 
             <button 
@@ -778,7 +742,7 @@ const ClinicVisitDetails: React.FC = () => {
         <div className="w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-6 lg:py-8 space-y-6 flex-1 overflow-y-auto bg-slate-50/50">
           
           {/* Confirmed Indicator Badge */}
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-start">
             <div className="bg-[#dcfce7] text-[#16a34a] flex items-center px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-sm border border-green-200">
               <span className="w-2 h-2 rounded-full mr-2 bg-[#16a34a] animate-pulse" />
               Consultation Confirmed
@@ -1212,7 +1176,7 @@ const ClinicVisitDetails: React.FC = () => {
                   <Calendar className="w-4 h-4" />
                 </div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</p>
-                <p className="text-sm font-black text-gray-900 mt-0.5">{dbVisit?.appointment_date || "10 Jun 2026"}</p>
+                <p className="text-sm font-black text-gray-900 mt-0.5">10 Jun 2026</p>
               </div>
 
               {/* Card 3: Time */}
@@ -1221,7 +1185,7 @@ const ClinicVisitDetails: React.FC = () => {
                   <Clock className="w-4 h-4" />
                 </div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Time</p>
-                <p className="text-sm font-black text-gray-900 mt-0.5">{dbVisit?.appointment_time || "2:30 PM"}</p>
+                <p className="text-sm font-black text-gray-900 mt-0.5">2:30 – 3:00 PM</p>
               </div>
 
               {/* Card 4: Duration */}
@@ -1263,42 +1227,46 @@ const ClinicVisitDetails: React.FC = () => {
                 
                 {/* Doctor Avatar + Scalloped Violet verified index */}
                 <div className="relative shrink-0">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md border-2 border-pink-100 bg-white">
-                    {doctorProfile?.profile_photo || doctorProfile?.profiles?.profile_photo ? (
-                      <img 
-                        src={doctorProfile.profile_photo || doctorProfile.profiles.profile_photo} 
-                        alt="Doctor" 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-                        <rect width="64" height="64" fill="#fdf2f8"/>
-                        <path d="M10 64 Q10 44 32 40 Q54 44 54 64Z" fill="#ec4899"/>
-                        <path d="M26 40 L32 48 L38 40" fill="#f9a8d4" opacity="0.7"/>
-                        <rect x="27" y="32" width="10" height="10" rx="4" fill="#fdba74"/>
-                        <ellipse cx="32" cy="26" rx="13" ry="14" fill="#fdba74"/>
-                        <path d="M19 22 Q20 10 32 10 Q44 10 45 22 Q44 12 32 12 Q20 12 19 22Z" fill="#7c2d12"/>
-                        <path d="M19 22 Q17 28 19 32 Q18 24 20 21Z" fill="#7c2d12"/>
-                        <path d="M45 22 Q47 28 45 32 Q46 24 44 21Z" fill="#7c2d12"/>
-                        <ellipse cx="32" cy="11" rx="7" ry="5" fill="#7c2d12"/>
-                        <circle cx="32" cy="9" r="3" fill="#92400e"/>
-                        <ellipse cx="26.5" cy="26" rx="2.5" ry="2.8" fill="#1f1f1f"/>
-                        <ellipse cx="37.5" cy="26" rx="2.5" ry="2.8" fill="#1f1f1f"/>
-                        <circle cx="27.3" cy="25.2" r="1" fill="white"/>
-                        <circle cx="38.3" cy="25.2" r="1" fill="white"/>
-                        <path d="M23.5 22.5 Q26.5 21 29.5 22.5" fill="none" stroke="#7c2d12" strokeWidth="1.3" strokeLinecap="round"/>
-                        <path d="M34.5 22.5 Q37.5 21 40.5 22.5" fill="none" stroke="#7c2d12" strokeWidth="1.3" strokeLinecap="round"/>
-                        <path d="M30.5 29.5 Q32 31 33.5 29.5" fill="none" stroke="#c2845a" strokeWidth="1.2" strokeLinecap="round"/>
-                        <path d="M27.5 33.5 Q32 37 36.5 33.5" fill="none" stroke="#c2845a" strokeWidth="1.4" strokeLinecap="round"/>
-                        <ellipse cx="22" cy="31" rx="4" ry="2.5" fill="#fca5a5" opacity="0.45"/>
-                        <ellipse cx="42" cy="31" rx="4" ry="2.5" fill="#fca5a5" opacity="0.45"/>
-                        <path d="M24 44 Q22 52 28 55 Q32 57 36 55 Q42 52 40 44" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                        <circle cx="32" cy="57" r="3" fill="white" opacity="0.8"/>
-                      </svg>
-                    )}
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md border-2 border-pink-100">
+                    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+                      <rect width="64" height="64" fill="#fdf2f8"/>
+                      {/* scrubs top */}
+                      <path d="M10 64 Q10 44 32 40 Q54 44 54 64Z" fill="#ec4899"/>
+                      {/* collar detail */}
+                      <path d="M26 40 L32 48 L38 40" fill="#f9a8d4" opacity="0.7"/>
+                      {/* neck */}
+                      <rect x="27" y="32" width="10" height="10" rx="4" fill="#fdba74"/>
+                      {/* head */}
+                      <ellipse cx="32" cy="26" rx="13" ry="14" fill="#fdba74"/>
+                      {/* hair */}
+                      <path d="M19 22 Q20 10 32 10 Q44 10 45 22 Q44 12 32 12 Q20 12 19 22Z" fill="#7c2d12"/>
+                      <path d="M19 22 Q17 28 19 32 Q18 24 20 21Z" fill="#7c2d12"/>
+                      <path d="M45 22 Q47 28 45 32 Q46 24 44 21Z" fill="#7c2d12"/>
+                      {/* bun */}
+                      <ellipse cx="32" cy="11" rx="7" ry="5" fill="#7c2d12"/>
+                      <circle cx="32" cy="9" r="3" fill="#92400e"/>
+                      {/* eyes */}
+                      <ellipse cx="26.5" cy="26" rx="2.5" ry="2.8" fill="#1f1f1f"/>
+                      <ellipse cx="37.5" cy="26" rx="2.5" ry="2.8" fill="#1f1f1f"/>
+                      <circle cx="27.3" cy="25.2" r="1" fill="white"/>
+                      <circle cx="38.3" cy="25.2" r="1" fill="white"/>
+                      {/* eyebrows */}
+                      <path d="M23.5 22.5 Q26.5 21 29.5 22.5" fill="none" stroke="#7c2d12" strokeWidth="1.3" strokeLinecap="round"/>
+                      <path d="M34.5 22.5 Q37.5 21 40.5 22.5" fill="none" stroke="#7c2d12" strokeWidth="1.3" strokeLinecap="round"/>
+                      {/* nose */}
+                      <path d="M30.5 29.5 Q32 31 33.5 29.5" fill="none" stroke="#c2845a" strokeWidth="1.2" strokeLinecap="round"/>
+                      {/* smile */}
+                      <path d="M27.5 33.5 Q32 37 36.5 33.5" fill="none" stroke="#c2845a" strokeWidth="1.4" strokeLinecap="round"/>
+                      {/* cheeks */}
+                      <ellipse cx="22" cy="31" rx="4" ry="2.5" fill="#fca5a5" opacity="0.45"/>
+                      <ellipse cx="42" cy="31" rx="4" ry="2.5" fill="#fca5a5" opacity="0.45"/>
+                      {/* stethoscope */}
+                      <path d="M24 44 Q22 52 28 55 Q32 57 36 55 Q42 52 40 44" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                      <circle cx="32" cy="57" r="3" fill="white" opacity="0.8"/>
+                    </svg>
                   </div>
                   
-                  {/* Verified badge */}
+                  {/* Verified badge with exact custom image look (scalloped star checkmark icon) */}
                   <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white flex items-center justify-center p-0.5 shadow-sm">
                     <VerifiedBadge className="w-full h-full text-[#9A3EF8]" />
                   </div>
@@ -1366,15 +1334,18 @@ const ClinicVisitDetails: React.FC = () => {
               <div className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-gray-600 font-medium">Consultation Fee</p>
-                  <p className="text-sm font-bold text-gray-800">₹{dbVisit?.amount || 499}</p>
+                  <p className="text-sm font-bold text-gray-800">₹{paymentDetails?.consultation_fee || dbVisit?.amount || 499}</p>
                 </div>
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600 font-medium">Platform Fee</p>
-                  <p className="text-sm font-bold text-gray-800">₹0</p>
+                  <p className="text-sm text-gray-600 font-medium">Night Surcharge</p>
+                  <p className="text-sm font-bold text-gray-800">₹{paymentDetails?.night_surcharge || 0}</p>
                 </div>
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600 font-medium">Taxes & Charges</p>
-                  <p className="text-sm font-bold text-gray-800">₹0</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm text-gray-600 font-medium">Platform Fee</p>
+                    <span className="text-[10px] font-black bg-green-50 text-green-600 px-1.5 py-0.5 rounded-full border border-green-100">FREE</span>
+                  </div>
+                  <p className="text-sm font-bold text-gray-400 line-through">₹0</p>
                 </div>
               </div>
               
@@ -1383,12 +1354,19 @@ const ClinicVisitDetails: React.FC = () => {
               <div className="flex items-center justify-between p-4">
                 <div>
                   <p className="text-xs text-gray-400 mb-0.5 font-bold uppercase tracking-wider">Total Paid</p>
-                  <p className="text-2xl font-black text-gray-900">₹{dbVisit?.amount || 499}</p>
+                  <p className="text-2xl font-black text-gray-900">₹{paymentDetails?.amount || dbVisit?.amount || 549}</p>
                 </div>
                 <div className="flex items-center gap-1.5 bg-green-50 border border-green-100 text-green-700 text-xs font-black px-3.5 py-2 rounded-full shadow-inner">
                   <CheckCircle2 className="w-4 h-4 text-green-600" strokeWidth={2.5} />
                   Payment Done
                 </div>
+              </div>
+
+              {/* Bottom transaction receipt notes */}
+              <div className="bg-gray-50 border-t border-gray-100 px-4 py-3.5 flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-slate-400" />
+                <p className="text-xs text-slate-400">Paid via <span className="font-semibold text-gray-600">{paymentDetails?.payment_id ? `${paymentDetails.payment_method} · ID: ${paymentDetails.payment_id}` : (paymentDetails?.payment_method || "UPI · sarah@okicici")}</span></p>
+                <p className="ml-auto text-[10px] text-gray-400 font-mono">{paymentDetails?.created_at || (dbVisit?.created_at ? new Date(dbVisit.created_at).toLocaleDateString("en-IN") : "10 Jun, 1:48 PM")}</p>
               </div>
             </div>
           </section>
@@ -1420,12 +1398,12 @@ const ClinicVisitDetails: React.FC = () => {
              <>
                <button 
                  onClick={() => setShowUserQr(true)} 
-                 className="w-full bg-[#12B76A] hover:bg-[#0E9F5D] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-[#12B76A]/20 transition-all active:scale-[0.98]"
+                 className="w-full bg-[#151B32] hover:bg-neutral-800 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-neutral-200 transition-all active:scale-[0.98]"
                >
                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
                  </svg>
-                 Verify with Vet
+                 Verify with Vet (Generate QR)
                </button>
                <p className="text-center text-[11px] text-gray-400 mt-3 flex items-center justify-center gap-1">
                  <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
