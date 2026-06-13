@@ -87,46 +87,9 @@ const BookingDetails = () => {
   // Dynamic Real-time Consultation settings
   const [dbVetData, setDbVetData] = useState<any>(null);
 
-  const [passports, setPassports] = useState<any[]>(() => {
-    try {
-      const cached = localStorage.getItem('sruvo_cached_passports');
-      return cached ? JSON.parse(cached) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [selectedPetPassport, setSelectedPetPassport] = useState<any>(() => {
-    try {
-      const cached = localStorage.getItem('sruvo_cached_passports');
-      if (cached) {
-        const data = JSON.parse(cached);
-        if (Array.isArray(data) && data.length > 0) {
-          const preselectedPetName = location.state?.petName || location.state?.selectedPet?.name;
-          const match = data.find((p: any) => p.pet_name === preselectedPetName || p.petName === preselectedPetName);
-          return match || data[0];
-        }
-      }
-    } catch (e) {
-      console.warn("localStorage cached selected passport error:", e);
-    }
-    return null;
-  });
-
-  const [loadingPassports, setLoadingPassports] = useState(() => {
-    try {
-      const cached = localStorage.getItem('sruvo_cached_passports');
-      if (cached) {
-        const data = JSON.parse(cached);
-        if (Array.isArray(data) && data.length > 0) {
-          return false;
-        }
-      }
-    } catch (e) {
-      console.warn("localStorage cached loading state error:", e);
-    }
-    return true;
-  });
+  const [passports, setPassports] = useState<any[]>([]);
+  const [selectedPetPassport, setSelectedPetPassport] = useState<any>(null);
+  const [loadingPassports, setLoadingPassports] = useState(true);
 
   useEffect(() => {
     const fetchPassports = async () => {
@@ -138,21 +101,10 @@ const BookingDetails = () => {
             const data = await res.json();
             if (Array.isArray(data)) {
               setPassports(data);
-              try {
-                localStorage.setItem('sruvo_cached_passports', JSON.stringify(data));
-              } catch (e) {
-                console.error("Failed to write passports to localStorage cache:", e);
-              }
               if (data.length > 0) {
                 const preselectedPetName = location.state?.petName || location.state?.selectedPet?.name;
                 const match = data.find(p => p.pet_name === preselectedPetName || p.petName === preselectedPetName);
-                setSelectedPetPassport((prev: any) => {
-                  if (prev) {
-                    const latest = data.find(p => p.id === prev.id);
-                    return latest || prev;
-                  }
-                  return match || data[0];
-                });
+                setSelectedPetPassport(match || data[0]);
               }
             }
           }
@@ -286,50 +238,6 @@ const BookingDetails = () => {
   const safeFormatSelectedDate = useCallback((formatStr: string) => {
     return safeFormatDate(selectedDate, formatStr);
   }, [selectedDate, safeFormatDate]);
-
-  // Unified age calculation logic using Date of Birth (dob) or fallbacks
-  const getAgeDisplay = useCallback((p: any) => {
-    if (!p) return "Age Unknown";
-    
-    // Try from Date of Birth (dob) first if it exists
-    if (p.dob) {
-      const dobDate = new Date(p.dob);
-      if (!isNaN(dobDate.getTime())) {
-        const todayDate = new Date();
-        let years = todayDate.getFullYear() - dobDate.getFullYear();
-        let months = todayDate.getMonth() - dobDate.getMonth();
-        if (months < 0 || (months === 0 && todayDate.getDate() < dobDate.getDate())) {
-          years--;
-          months += 12;
-        }
-        if (months >= 12) {
-          years += Math.floor(months / 12);
-          months = months % 12;
-        }
-        if (years <= 0) {
-          if (months <= 0) return "0 Mos";
-          return `${months} Mo${months > 1 ? 's' : ''}`;
-        }
-        if (years > 0 && months > 0) {
-          return `${years} Yr${years > 1 ? 's' : ''} ${months} Mo${months > 1 ? 's' : ''}`;
-        }
-        return `${years} Yr${years > 1 ? 's' : ''}`;
-      }
-    }
-
-    if (p.approx_years !== null || p.approx_months !== null) {
-      let y = p.approx_years || 0;
-      let m = p.approx_months || 0;
-      if (m >= 12) {
-        y += Math.floor(m / 12);
-        m = m % 12;
-      }
-      if (y > 0 && m > 0) return `${y} Yr${y > 1 ? 's' : ''} ${m} Mo${m > 1 ? 's' : ''}`;
-      if (y > 0) return `${y} Yr${y > 1 ? 's' : ''}`;
-      if (m > 0) return `${m} Mo${m > 1 ? 's' : ''}`;
-    }
-    return "Age Unknown";
-  }, []);
 
   const hasNightZoneActive = useMemo(() => {
     if (!weeklyAvailabilityObject) return true; // defaults to true to allow showing default night slots
@@ -676,70 +584,77 @@ const BookingDetails = () => {
           <h3 className="text-base font-bold text-foreground">Who is this for?</h3>
           
           <div className="flex overflow-x-auto gap-3 py-1 no-scrollbar snap-x snap-mandatory">
-            {loadingPassports && passports.length === 0 ? (
-              <div className="flex items-center justify-center py-6 w-full text-slate-500 gap-2 font-medium">
-                <div className="w-4 h-4 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-xs">Unlocking pet passports...</span>
-              </div>
-            ) : (
-              <>
-                {passports.map((passport) => {
-                  const isSelected = selectedPetPassport?.id === passport.id;
+            {passports.map((passport) => {
+              const isSelected = selectedPetPassport?.id === passport.id;
+              
+              // Get Age display
+              const getAgeDisplay = (p: any) => {
+                if (p.approx_years !== null || p.approx_months !== null) {
+                  let y = p.approx_years || 0;
+                  let m = p.approx_months || 0;
+                  if (m >= 12) {
+                    y += Math.floor(m / 12);
+                    m = m % 12;
+                  }
+                  if (y > 0 && m > 0) return `${y} Yr${y > 1 ? 's' : ''} ${m} Mo${m > 1 ? 's' : ''}`;
+                  if (y > 0) return `${y} Yr${y > 1 ? 's' : ''}`;
+                  return `${m} Mo${m > 1 ? 's' : ''}`;
+                }
+                return "Age Unknown";
+              };
 
-                  return (
-                    <div
-                      key={passport.id}
-                      onClick={() => setSelectedPetPassport(passport)}
-                      className={`w-64 flex-shrink-0 p-3.5 rounded-2xl border-2 transition-all cursor-pointer snap-start flex gap-3 ${
-                        isSelected
-                          ? "border-pink-500 bg-pink-50/20 shadow-md shadow-pink-100"
-                          : "border-slate-100 bg-white hover:border-slate-200 hover:shadow-sm"
-                      }`}
-                    >
-                      <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex-shrink-0 relative">
-                        <img
-                          src={passport.photo_url || "/placeholder.svg"}
-                          alt={passport.pet_name}
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = "/placeholder.svg";
-                          }}
-                        />
-                      </div>
-                      <div className="flex-grow min-w-0 flex flex-col justify-center gap-1.5">
-                        <h4 className="text-[15px] font-bold text-slate-800 truncate leading-none">{passport.pet_name}</h4>
-                        <div className="flex items-center gap-1 text-pink-500">
-                          <Shield className="w-3.5 h-3.5" />
-                          <p className="text-[11px] font-bold tracking-wide">
-                            {passport.passport_id?.toUpperCase() || "PENDING"}
-                          </p>
-                        </div>
-                        <p className="text-[10px] text-slate-500 truncate font-semibold">
-                          {passport.breed || "Unknown Breed"} • {getAgeDisplay(passport)}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-                
-                {/* Create Passport Card */}
-                <button
-                  onClick={() => navigate("/buyer/pet-passport?create=true")}
-                  className="group w-56 h-[88px] flex-shrink-0 p-3.5 rounded-2xl border-[3px] border-dashed border-pink-500/30 bg-pink-500/5 hover:bg-pink-500/10 hover:border-pink-500/50 flex flex-col items-center justify-center cursor-pointer transition-all active:scale-[0.98] snap-start shrink-0 shadow-sm"
+              return (
+                <div
+                  key={passport.id}
+                  onClick={() => setSelectedPetPassport(passport)}
+                  className={`w-56 flex-shrink-0 p-3.5 rounded-2xl border-2 transition-all cursor-pointer snap-start flex gap-3 ${
+                    isSelected
+                      ? "border-pink-500 bg-pink-50/20"
+                      : "border-slate-100 bg-white hover:border-slate-200"
+                  }`}
                 >
-                  <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-white rounded-full shadow-md border border-pink-500/10 flex items-center justify-center group-hover:scale-110 group-hover:rotate-90 transition-transform duration-300 shrink-0">
-                        <span className="text-xl font-bold text-pink-500">+</span>
-                      </div>
-                      <div className="text-left min-w-0">
-                        <h3 className="text-[13px] font-black text-pink-500 tracking-tight leading-tight">Create New</h3>
-                        <p className="text-[9px] font-semibold text-slate-500 mt-0.5 uppercase tracking-widest truncate">Pet Passport</p>
-                      </div>
+                  <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex-shrink-0 relative">
+                    <img
+                      src={passport.photo_url || "/placeholder.svg"}
+                      alt={passport.pet_name}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                      }}
+                    />
                   </div>
-                </button>
-              </>
-            )}
+                  <div className="flex-grow min-w-0 flex flex-col justify-center gap-1.5">
+                    <h4 className="text-[15px] font-bold text-slate-800 truncate leading-none">{passport.pet_name}</h4>
+                    <div className="flex items-center gap-1 text-pink-500">
+                      <Shield className="w-3.5 h-3.5" />
+                      <p className="text-[11px] font-medium tracking-wide">
+                        {passport.passport_id?.split("-")[0].toUpperCase() || "PENDING"}
+                      </p>
+                    </div>
+                    <p className="text-[10px] text-slate-500 truncate font-medium">
+                      {passport.breed || "Unknown Breed"} • {getAgeDisplay(passport)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+            
+            {/* Create Passport Card */}
+            <button
+              onClick={() => navigate("/buyer/pet-passport?create=true")}
+              className="group w-56 h-[88px] flex-shrink-0 p-3.5 rounded-2xl border-[3px] border-dashed border-pink-500/30 bg-pink-500/5 hover:bg-pink-500/10 hover:border-pink-500/50 flex flex-col items-center justify-center cursor-pointer transition-all active:scale-[0.98] snap-start shrink-0 shadow-sm"
+            >
+              <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-white rounded-full shadow-md border border-pink-500/10 flex items-center justify-center group-hover:scale-110 group-hover:rotate-90 transition-transform duration-300 shrink-0">
+                    <span className="text-xl font-bold text-pink-500">+</span>
+                  </div>
+                  <div className="text-left min-w-0">
+                    <h3 className="text-[13px] font-black text-pink-500 tracking-tight leading-tight">Create New</h3>
+                    <p className="text-[9px] font-semibold text-slate-500 mt-0.5 uppercase tracking-widest truncate">Pet Passport</p>
+                  </div>
+              </div>
+            </button>
           </div>
 
           {/* Security Message */}
@@ -1592,7 +1507,7 @@ const BookingDetails = () => {
                                   visitType: visitType,
                                   petName: selectedPetPassport?.pet_name || location.state?.petName || location.state?.selectedPet?.name || "Luna",
                                   petBreed: selectedPetPassport ? `${selectedPetPassport.breed || "Unknown Breed"} • ${selectedPetPassport.gender || "Unknown"}` : (location.state?.selectedPet?.breed || "Golden Retriever • Female"),
-                                  petAge: selectedPetPassport ? getAgeDisplay(selectedPetPassport) : "4 Years",
+                                  petAge: selectedPetPassport ? (selectedPetPassport.approx_years !== null ? `${selectedPetPassport.approx_years} Years` : "Unknown Age") : "4 Years",
                                   ownerName: "Sarah Jenkins",
                                   ownerPhone: "+91 98765 43210",
                                   address: visitType === "home" ? "123 Premium Residency, Indiranagar" : (dbVetData?.hospital_address || dbVetData?.clinic_address || dbVetData?.hospital_name || dbVetData?.clinic_name || "HSR Paws Clinic, Sector 2"),
