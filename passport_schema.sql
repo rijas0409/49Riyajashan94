@@ -70,6 +70,9 @@ CREATE TABLE IF NOT EXISTS public.pet_health_records_documents (
     certificate_title VARCHAR(100),
     record_description TEXT,
     document_base64 TEXT,
+    file_url TEXT,
+    file_path TEXT,
+    storage_bucket TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
