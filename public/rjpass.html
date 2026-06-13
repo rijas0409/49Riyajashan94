@@ -1613,8 +1613,8 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-4 gap-3">
-          <button id="shareDashboardBtn" class="flex flex-col items-center gap-2 group">
+        <div class="grid grid-cols-2 gap-4 max-w-xs mx-auto">
+          <button id="shareDashboardBtn" class="flex flex-col items-center gap-2 group w-full">
             <div
               class="w-14 h-14 rounded-full bg-surface-container-low border border-surface-container-highest flex items-center justify-center text-primary group-hover:bg-primary-container/50 group-active:scale-95 transition-all"
             >
@@ -1625,40 +1625,15 @@
               >Share</span
             >
           </button>
-          <button id="pdfDashboardBtn" class="flex flex-col items-center gap-2 group">
+          <button id="pdfDashboardBtn" class="flex flex-col items-center gap-2 group w-full">
             <div
-              class="w-14 h-14 rounded-full bg-surface-container-low border border-surface-container-highest flex items-center justify-center text-primary group-hover:bg-primary-container/50 group-active:scale-95 transition-all"
+              class="w-14 h-14 rounded-full bg-surface-container-low border border-[#ffd1e3] flex items-center justify-center text-primary hover:bg-[#fff0f5] group-active:scale-95 transition-all"
             >
               <span class="material-symbols-outlined">download</span>
             </div>
             <span
               class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider"
               >PDF</span
-            >
-          </button>
-          <button id="addRecordDashboardBtn" class="flex flex-col items-center gap-2 group">
-            <div
-              class="w-14 h-14 rounded-full bg-surface-container-low border border-surface-container-highest flex items-center justify-center text-primary group-hover:bg-primary-container/50 group-active:scale-95 transition-all"
-            >
-              <span class="material-symbols-outlined">note_add</span>
-            </div>
-            <span
-              class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider"
-              >Add Record</span
-            >
-          </button>
-          <button
-            id="btnEditPassportDetails"
-            class="flex flex-col items-center gap-2 group"
-          >
-            <div
-              class="w-14 h-14 rounded-full bg-surface-container-low border border-surface-container-highest flex items-center justify-center text-primary group-hover:bg-primary-container/50 group-active:scale-95 transition-all"
-            >
-              <span class="material-symbols-outlined">edit_document</span>
-            </div>
-            <span
-              class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider"
-              >Edit</span
             >
           </button>
         </div>
@@ -2211,6 +2186,75 @@
 
         </div>
       </div>
+
+      <!-- Step 7: Health Records -->
+      <div id="step7" class="step-container space-y-6 pb-8">
+        <div class="flex items-center gap-3">
+          <button onclick="nextStep(6)" class="w-10 h-10 rounded-full bg-surface-container-low hover:bg-surface-container-high flex items-center justify-center text-on-surface transition-all">
+            <span class="material-symbols-outlined">arrow_back</span>
+          </button>
+          <div>
+            <h1 class="text-xl font-black text-on-surface">Health Records</h1>
+            <p class="text-xs text-on-surface-variant font-medium">Vaccines, Allergies & Meds</p>
+          </div>
+        </div>
+
+        <div id="step7Con" class="space-y-3">
+          <!-- Dynamic health records go here -->
+        </div>
+      </div>
+
+      <!-- Step 8: Consultations -->
+      <div id="step8" class="step-container space-y-6 pb-8">
+        <div class="flex items-center gap-3">
+          <button onclick="nextStep(6)" class="w-10 h-10 rounded-full bg-surface-container-low hover:bg-surface-container-high flex items-center justify-center text-on-surface transition-all">
+            <span class="material-symbols-outlined">arrow_back</span>
+          </button>
+          <div>
+            <h1 class="text-xl font-black text-on-surface">Consultations</h1>
+            <p class="text-xs text-on-surface-variant font-medium">Past Vet Visits & Clinics</p>
+          </div>
+        </div>
+
+        <div id="step8Con" class="space-y-3">
+          <!-- Dynamic consultations go here -->
+        </div>
+      </div>
+
+      <!-- Step 9: Medicine Orders -->
+      <div id="step9" class="step-container space-y-6 pb-8">
+        <div class="flex items-center gap-3">
+          <button onclick="nextStep(6)" class="w-10 h-10 rounded-full bg-surface-container-low hover:bg-surface-container-high flex items-center justify-center text-on-surface transition-all">
+            <span class="material-symbols-outlined">arrow_back</span>
+          </button>
+          <div>
+            <h1 class="text-xl font-black text-on-surface">Medicine Orders</h1>
+            <p class="text-xs text-on-surface-variant font-medium">Past Orders & Refills</p>
+          </div>
+        </div>
+
+        <div id="step9Con" class="space-y-3">
+          <!-- Dynamic medicine orders go here -->
+        </div>
+      </div>
+
+      <!-- Step 10: Documents -->
+      <div id="step10" class="step-container space-y-6 pb-8">
+        <div class="flex items-center gap-3">
+          <button onclick="nextStep(6)" class="w-10 h-10 rounded-full bg-surface-container-low hover:bg-surface-container-high flex items-center justify-center text-on-surface transition-all">
+            <span class="material-symbols-outlined">arrow_back</span>
+          </button>
+          <div>
+            <h1 class="text-xl font-black text-on-surface">Documents</h1>
+            <p class="text-xs text-on-surface-variant font-medium">Reports, Files & Prescriptions</p>
+          </div>
+        </div>
+
+        <div id="step10Con" class="space-y-3">
+          <!-- Dynamic documents go here -->
+        </div>
+      </div>
+
     </main>
 
     <div
@@ -2945,15 +2989,27 @@
 
                 <!-- Notes / Description -->
                 <div class="space-y-1.5 p-3.5 bg-surface-container-low/30 rounded-2xl border border-surface-container-highest">
-                    <span class="text-[9px] font-black text-on-surface-variant uppercase tracking-widest block">Notes / Description</span>
+                    <div class="flex justify-between items-center">
+                        <span class="text-[9px] font-black text-on-surface-variant uppercase tracking-widest block">Notes / Description</span>
+                        <button onclick="toggleEditDocField('description')" class="w-6 h-6 rounded-full hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors focus:outline-none">
+                            <span id="iconEditDocDescription" class="material-symbols-outlined text-[13px]">edit</span>
+                        </button>
+                    </div>
                     <p id="docDetailsDescription" class="text-xs font-semibold text-on-surface leading-normal italic">No descriptions available.</p>
+                    <textarea id="editDocDescriptionInput" class="hidden w-full text-xs font-semibold text-on-surface leading-normal p-2 rounded-xl border border-surface-container-highest bg-white focus:outline-none focus:border-primary/50 transition-colors" rows="2"></textarea>
                 </div>
 
                 <!-- Provider / Uploaded By -->
                 <div class="flex items-center justify-between p-3.5 bg-surface-container-low/30 rounded-2xl border border-surface-container-highest">
-                    <div class="space-y-0.5">
-                        <span class="text-[9px] font-black text-on-surface-variant uppercase tracking-widest block">Uploaded By / Clinician</span>
+                    <div class="space-y-0.5 flex-1">
+                        <div class="flex justify-between items-center pr-2">
+                            <span class="text-[9px] font-black text-on-surface-variant uppercase tracking-widest block">Uploaded By / Clinician</span>
+                            <button onclick="toggleEditDocField('provider')" class="w-6 h-6 rounded-full hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors focus:outline-none">
+                                <span id="iconEditDocProvider" class="material-symbols-outlined text-[13px]">edit</span>
+                            </button>
+                        </div>
                         <span id="docDetailsProvider" class="text-xs font-bold text-on-surface">Rijas Pabla (Owner)</span>
+                        <input id="editDocProviderInput" type="text" class="hidden w-full text-xs font-bold text-on-surface h-8 px-2 rounded-lg border border-surface-container-highest bg-white focus:outline-none focus:border-primary/50 transition-colors">
                     </div>
                     <span class="material-symbols-outlined text-primary/60 text-lg">medical_information</span>
                 </div>
@@ -3068,6 +3124,29 @@
         const modal = document.getElementById("documentDetailsModal");
         if (!modal) return;
 
+        // Reset edit mode states back to original read view
+        const descEl = document.getElementById("docDetailsDescription");
+        const descInput = document.getElementById("editDocDescriptionInput");
+        const descIcon = document.getElementById("iconEditDocDescription");
+        if (descEl) descEl.classList.remove("hidden");
+        if (descInput) descInput.classList.add("hidden");
+        if (descIcon) {
+          descIcon.innerText = "edit";
+          descIcon.classList.remove("text-green-600");
+          descIcon.classList.remove("font-black");
+        }
+
+        const providerEl = document.getElementById("docDetailsProvider");
+        const providerInput = document.getElementById("editDocProviderInput");
+        const providerIcon = document.getElementById("iconEditDocProvider");
+        if (providerEl) providerEl.classList.remove("hidden");
+        if (providerInput) providerInput.classList.add("hidden");
+        if (providerIcon) {
+          providerIcon.innerText = "edit";
+          providerIcon.classList.remove("text-green-600");
+          providerIcon.classList.remove("font-black");
+        }
+
         // Map values
         const type = record.record_type || record.type || "Document";
         const title = record.certificate_title || record.certificateTitle || record.vaccine_name || record.procedure_name || record.test_name || type;
@@ -3079,11 +3158,9 @@
         if (typeEl) typeEl.innerText = type;
 
         const desc = record.record_description || record.recordDescription || record.diagnosis || "No description provided.";
-        const descEl = document.getElementById("docDetailsDescription");
         if (descEl) descEl.innerText = desc;
 
         const provider = record.prescribed_by || record.prescribedBy || "Owner";
-        const providerEl = document.getElementById("docDetailsProvider");
         if (providerEl) providerEl.innerText = provider;
 
         // Upload date formatting
@@ -3143,6 +3220,109 @@
         setTimeout(() => {
           modal.classList.add("hidden");
         }, 300);
+      }
+
+      function toggleEditDocField(field) {
+        const record = window.lastSelectedDocumentRecord;
+        if (!record) return;
+
+        if (field === 'description') {
+          const textEl = document.getElementById("docDetailsDescription");
+          const inputEl = document.getElementById("editDocDescriptionInput");
+          const btnIcon = document.getElementById("iconEditDocDescription");
+
+          if (inputEl.classList.contains("hidden")) {
+            // Enter edit mode
+            inputEl.value = (textEl.innerText === "No description provided." || textEl.innerText === "No descriptions available.") ? "" : textEl.innerText;
+            textEl.classList.add("hidden");
+            inputEl.classList.remove("hidden");
+            btnIcon.innerText = "check";
+            btnIcon.classList.add("text-green-600");
+            btnIcon.classList.add("font-black");
+            inputEl.focus();
+          } else {
+            // Save and return to read view
+            const newValue = inputEl.value.trim();
+            saveDocumentFieldUpdate('record_description', newValue, () => {
+              textEl.innerText = newValue || "No description provided.";
+              textEl.classList.remove("hidden");
+              inputEl.classList.add("hidden");
+              btnIcon.innerText = "edit";
+              btnIcon.classList.remove("text-green-600");
+              btnIcon.classList.remove("font-black");
+              record.record_description = newValue; // local memory update
+              record.recordDescription = newValue;
+            });
+          }
+        } else if (field === 'provider') {
+          const textEl = document.getElementById("docDetailsProvider");
+          const inputEl = document.getElementById("editDocProviderInput");
+          const btnIcon = document.getElementById("iconEditDocProvider");
+
+          if (inputEl.classList.contains("hidden")) {
+            // Enter edit mode
+            inputEl.value = textEl.innerText === "Owner" ? "" : textEl.innerText;
+            textEl.classList.add("hidden");
+            inputEl.classList.remove("hidden");
+            btnIcon.innerText = "check";
+            btnIcon.classList.add("text-green-600");
+            btnIcon.classList.add("font-black");
+            inputEl.focus();
+          } else {
+            // Save and return to read view
+            const newValue = inputEl.value.trim();
+            saveDocumentFieldUpdate('prescribed_by', newValue || "Owner", () => {
+              textEl.innerText = newValue || "Owner";
+              textEl.classList.remove("hidden");
+              inputEl.classList.add("hidden");
+              btnIcon.innerText = "edit";
+              btnIcon.classList.remove("text-green-600");
+              btnIcon.classList.remove("font-black");
+              record.prescribed_by = newValue || "Owner"; // local memory update
+              record.prescribedBy = newValue || "Owner";
+            });
+          }
+        }
+      }
+
+      async function saveDocumentFieldUpdate(fieldName, value, onSuccess) {
+        const record = window.lastSelectedDocumentRecord;
+        if (!record) return;
+
+        try {
+          const res = await fetch("/api/health-record", {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              recordId: record.id,
+              updates: {
+                [fieldName]: value
+              }
+            })
+          });
+
+          if (res.ok) {
+            onSuccess();
+            // Refresh Dashboard data instantly
+            if (window.currentPassportId) {
+              const passportId = window.currentPassportId;
+              localStorage.setItem("last_sync_" + passportId, new Date().toISOString());
+              const refreshRes = await fetch(`/api/pet-passport?id=${encodeURIComponent(passportId)}`);
+              if (refreshRes.ok) {
+                const refreshedData = await refreshRes.json();
+                loadPassportDataIntoUI(refreshedData);
+              }
+            }
+          } else {
+            const errData = await res.json();
+            alert("Failed to update field: " + (errData.error || "Unknown error"));
+          }
+        } catch (err) {
+          console.error("Update failed:", err);
+          alert("Connection error. Could not save changes.");
+        }
       }
 
       async function handleDocAction(action) {
@@ -3292,6 +3472,7 @@
         const medical = dataObj.medical || {};
         const conditions = dataObj.conditions || [];
         const healthRecords = dataObj.healthRecords || [];
+        const appointments = dataObj.appointments || [];
 
         window.currentPassportId = payload.passport_id || payload.passportId || "";
         window.currentHealthRecords = healthRecords || [];
@@ -3301,7 +3482,15 @@
         }
         
         if (typeof renderTimeline === "function") {
-            renderTimeline(healthRecords, payload.created_at);
+            renderTimeline(healthRecords, payload.created_at, appointments);
+        }
+        
+        if (typeof renderUpcomingAppointments === "function") {
+            renderUpcomingAppointments(appointments);
+        }
+
+        if (typeof renderFullScreensList === "function") {
+            renderFullScreensList(healthRecords);
         }
         
         if (typeof renderVerificationsAndReminders === "function") {
@@ -4045,6 +4234,20 @@
 
         if (step === 4) {
           runStep4Engine();
+        }
+
+        if ((step === 5 || step === 6) && window.currentPassportId) {
+          fetch(`/api/pet-passport?id=${encodeURIComponent(window.currentPassportId)}`)
+            .then(res => {
+              if (res.ok) return res.json();
+              throw new Error("Failed to load");
+            })
+            .then(refreshedData => {
+              loadPassportDataIntoUI(refreshedData);
+            })
+            .catch(err => {
+              console.error("Error refreshing passport on transition:", err);
+            });
         }
       }
 
@@ -6096,6 +6299,10 @@
           years--;
           months += 12;
         }
+        if (months >= 12) {
+          years += Math.floor(months / 12);
+          months = months % 12;
+        }
         if (years <= 0) {
           if (months <= 0) return "0 Mos";
           return months + (months === 1 ? " Mo" : " Mos");
@@ -6150,7 +6357,7 @@
         }
       }
 
-      function executeSuccessCompletionState() {
+      async function executeSuccessCompletionState() {
         document.getElementById("statusHeader").innerText =
           "Your Pet Passport is Ready!";
         document.getElementById("statusHeader").className =
@@ -6169,6 +6376,38 @@
           genBlock.style.display = "none";
         }
 
+        // Fetch the actual database record immediately for true and live rendering
+        if (window.currentPassportId) {
+          try {
+            const res = await fetch(`/api/pet-passport?id=${encodeURIComponent(window.currentPassportId)}`);
+            if (res.ok) {
+              const fetchedData = await res.json();
+              loadPassportDataIntoUI(fetchedData);
+            } else {
+              console.warn("Failed to load live database record on success, falling back to form sync");
+              runLocalFieldFallbackSync();
+            }
+          } catch (fetchErr) {
+            console.error("Failed to load freshly created passport from DB:", fetchErr);
+            runLocalFieldFallbackSync();
+          }
+        } else {
+          runLocalFieldFallbackSync();
+        }
+
+        const passportContainer = document.getElementById(
+          "finalPassportContainer",
+        );
+        if (passportContainer) {
+          passportContainer.classList.remove("hidden");
+          setTimeout(() => {
+            passportContainer.classList.remove("scale-95", "opacity-0");
+            passportContainer.classList.add("scale-100", "opacity-100");
+          }, 50);
+        }
+      }
+
+      function runLocalFieldFallbackSync() {
         const today = new Date();
         const formattedDate = today.toLocaleDateString("en-GB", {
           day: "2-digit",
@@ -6259,17 +6498,6 @@
           document.getElementById("dashHealthInsights");
         if (dashHealthInsights) {
           dashHealthInsights.innerText = `${nameVal} is due for ${genderVal.toLowerCase() === "male" ? "his" : genderVal.toLowerCase() === "female" ? "her" : "their"} annual DHPP booster next month. Regular grooming is highly recommended for ${genderVal.toLowerCase() === "male" ? "his" : genderVal.toLowerCase() === "female" ? "her" : "their"} "${breedVal}" coat type.`;
-        }
-
-        const passportContainer = document.getElementById(
-          "finalPassportContainer",
-        );
-        if (passportContainer) {
-          passportContainer.classList.remove("hidden");
-          setTimeout(() => {
-            passportContainer.classList.remove("scale-95", "opacity-0");
-            passportContainer.classList.add("scale-100", "opacity-100");
-          }, 50);
         }
       }
 
@@ -6890,7 +7118,7 @@
         }, 300);
       }
 
-      function renderTimeline(healthRecords, createdAt) {
+      function renderTimeline(healthRecords, createdAt, appointments) {
         const container = document.getElementById("petTimelineContainer");
         const recentContainer = document.getElementById("recentActivityContainer");
         
@@ -6926,6 +7154,26 @@
                     title: title,
                     type: r.record_type || r.type,
                     sub: dateObj.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric", hour: 'numeric', minute: 'numeric' }),
+                    dateObj: dateObj,
+                    primary: true
+                });
+            });
+        }
+
+        // Add completed vet appointments to timeline
+        if (appointments && appointments.length > 0) {
+            const completedAppts = appointments.filter(apt => apt.status === "completed");
+            completedAppts.forEach(apt => {
+                let dateStr = apt.appointment_date;
+                let dateObj = dateStr ? new Date(dateStr) : new Date();
+                const type = apt.appointment_type || "clinic";
+                const formattedType = type.toLowerCase() === "home" ? "Home Visit" : "Clinic Visit";
+                const vetName = apt.vet?.full_name || apt.vet?.name || "Specialist Vet";
+                
+                events.push({
+                    title: `Completed ${formattedType}: ${vetName}`,
+                    type: "Consultation",
+                    sub: dateObj.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) + (apt.appointment_time ? ` at ${apt.appointment_time}` : ""),
                     dateObj: dateObj,
                     primary: true
                 });
@@ -6984,99 +7232,192 @@
       }
 
       function openPetAccountTile(tileType) {
-          const m = document.getElementById("petAccountTileModal");
-          const c = m.querySelector("div.bg-white");
-          const title = document.getElementById("patmTitle");
-          const sub = document.getElementById("patmSubtitle");
-          const iconContainer = document.getElementById("patmIconContainer");
-          const icon = document.getElementById("patmIcon");
-          const content = document.getElementById("patmContent");
-          
-          if(!window.currentHealthRecords) window.currentHealthRecords = [];
-          
-          let records = [];
-          let iconName = "";
-          let iconColor = "";
-          
           if (tileType === "Health Records") {
-              title.innerText = "Health Records";
-              sub.innerText = "Vaccines, Allergies & Meds";
-              iconName = "monitor_heart";
-              iconColor = "bg-blue-100 text-blue-600";
-              records = window.currentHealthRecords.filter(r => {
-                  const t = r.record_type || r.type;
-                  return ["Vaccination", "Prescription", "Lab Test", "Surgery", "Medical Condition", "Health Certificate"].includes(t);
-              });
+              nextStep(7);
           } else if (tileType === "Consultations") {
-              title.innerText = "Consultations";
-              sub.innerText = "Past Vet Visits & Clinics";
-              iconName = "stethoscope";
-              iconColor = "bg-purple-100 text-purple-600";
-              records = window.currentHealthRecords.filter(r => {
-                  const t = r.record_type || r.type;
-                  return ["Video Consultation", "Home Visit", "Clinic Visit", "Follow-up Consultation"].includes(t);
-              });
+              nextStep(8);
           } else if (tileType === "Medicine Orders") {
-              title.innerText = "Medicine Orders";
-              sub.innerText = "Past Orders & Refills";
-              iconName = "medication";
-              iconColor = "bg-orange-100 text-orange-600";
-              records = window.currentHealthRecords.filter(r => {
-                  const t = r.record_type || r.type;
-                  return ["Medicine Order"].includes(t);
-              });
+              nextStep(9);
           } else if (tileType === "Documents") {
-              title.innerText = "Documents";
-              sub.innerText = "Uploaded Files Only";
-              iconName = "topic";
-              iconColor = "bg-green-100 text-green-600";
-              records = window.currentHealthRecords.filter(r => r.file_url || r.document_base64 || r.document_url);
+              nextStep(10);
           }
-          
-          iconContainer.className = `w-10 h-10 rounded-xl flex items-center justify-center ${iconColor}`;
-          icon.innerText = iconName;
-          
-          content.innerHTML = "";
-          if (records.length === 0) {
-              content.innerHTML = `<div class="text-center py-6 text-on-surface-variant/70 text-sm">No records found.</div>`;
+      }
+
+      function renderFullScreensList(healthRecords) {
+        if (!healthRecords) return;
+        
+        const step7Con = document.getElementById("step7Con");
+        const step8Con = document.getElementById("step8Con");
+        const step9Con = document.getElementById("step9Con");
+        const step10Con = document.getElementById("step10Con");
+        
+        if (step7Con) step7Con.innerHTML = "";
+        if (step8Con) step8Con.innerHTML = "";
+        if (step9Con) step9Con.innerHTML = "";
+        if (step10Con) step10Con.innerHTML = "";
+
+        // Filter and Render Step 7: Health Records
+        const healthRecs = healthRecords.filter(r => {
+          const t = r.record_type || r.type;
+          return ["Vaccination", "Prescription", "Lab Test", "Surgery", "Medical Condition", "Health Certificate"].includes(t);
+        });
+        
+        if (step7Con) {
+          if (healthRecs.length === 0) {
+            step7Con.innerHTML = `<div class="text-center py-8 bg-white border border-surface-container-highest rounded-2xl text-on-surface-variant/70 text-xs font-semibold">No health records found.</div>`;
           } else {
-              records.forEach(r => {
-                  const t = r.record_type || r.type || "Record";
-                  let dStr = r.created_at || r.issue_date || r.date_administered || r.test_date || r.surgery_date;
-                  let dObj = dStr ? new Date(dStr) : new Date();
-                  let displayStr = dObj.toLocaleDateString();
-                  let mainText = r.title_name || r.vaccine_name || r.procedure_name || r.test_name || r.certificate_title || r.condition_name || t;
-                  if (t === "Vaccination" && r.vaccine_name === "Other") mainText = r.specify_vaccine;
-                  
-                  let actionBtn = "";
-                  if (tileType === "Documents" || r.file_url || r.document_base64) {
-                      actionBtn = `
-                          <button onclick="viewDocument('${r.id}')" class="p-2 ml-auto rounded-full bg-surface hover:bg-surface-container-high transition-colors text-primary flex-shrink-0 relative z-20">
-                              <span class="material-symbols-outlined text-[16px]">visibility</span>
-                          </button>
-                      `;
-                  }
-                  
-                  content.innerHTML += `
-                      <div class="flex items-center gap-3 p-3 bg-surface-container-lowest border border-surface-container-highest rounded-xl">
-                          <div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center flex-shrink-0 text-on-surface-variant">
-                              <span class="material-symbols-outlined text-[18px]">article</span>
-                          </div>
-                          <div class="flex-1 min-w-0 pr-2">
-                              <p class="text-xs font-bold text-on-surface truncate">${mainText}</p>
-                              <p class="text-[10px] text-on-surface-variant mt-0.5">${t} • ${displayStr}</p>
-                          </div>
-                          ${actionBtn}
-                      </div>
-                  `;
-              });
+            healthRecs.forEach(r => {
+              step7Con.appendChild(createRecordRow(r));
+            });
           }
+        }
+
+        // Filter and Render Step 8: Consultations
+        const consultations = healthRecords.filter(r => {
+          const t = r.record_type || r.type;
+          return ["Video Consultation", "Home Visit", "Clinic Visit", "Follow-up Consultation"].includes(t);
+        });
+        
+        if (step8Con) {
+          if (consultations.length === 0) {
+            step8Con.innerHTML = `<div class="text-center py-8 bg-white border border-surface-container-highest rounded-2xl text-on-surface-variant/70 text-xs font-semibold">No consultations found.</div>`;
+          } else {
+            consultations.forEach(r => {
+              step8Con.appendChild(createRecordRow(r));
+            });
+          }
+        }
+
+        // Filter and Render Step 9: Medicine Orders
+        const orders = healthRecords.filter(r => {
+          const t = r.record_type || r.type;
+          return ["Medicine Order"].includes(t);
+        });
+        
+        if (step9Con) {
+          if (orders.length === 0) {
+            step9Con.innerHTML = `<div class="text-center py-8 bg-white border border-surface-container-highest rounded-2xl text-on-surface-variant/70 text-xs font-semibold">No medicine orders found.</div>`;
+          } else {
+            orders.forEach(r => {
+              step9Con.appendChild(createRecordRow(r));
+            });
+          }
+        }
+
+        // Filter and Render Step 10: Documents
+        const docs = healthRecords.filter(r => r.file_url || r.document_base64 || r.document_url);
+        
+        if (step10Con) {
+          if (docs.length === 0) {
+            step10Con.innerHTML = `<div class="text-center py-8 bg-white border border-surface-container-highest rounded-2xl text-on-surface-variant/70 text-xs font-semibold">No documents found.</div>`;
+          } else {
+            docs.forEach(r => {
+              step10Con.appendChild(createRecordRow(r));
+            });
+          }
+        }
+      }
+
+      function createRecordRow(r) {
+        const t = r.record_type || r.type || "Record";
+        let dStr = r.created_at || r.issue_date || r.date_administered || r.test_date || r.surgery_date;
+        let dObj = dStr ? new Date(dStr) : new Date();
+        let displayStr = dObj.toLocaleDateString();
+        let mainText = r.title_name || r.vaccine_name || r.procedure_name || r.test_name || r.certificate_title || r.condition_name || t;
+        if (t === "Vaccination" && r.vaccine_name === "Other") mainText = r.specify_vaccine;
+        
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between p-4 bg-white border border-surface-container-highest rounded-2xl shadow-sm hover:border-primary/30 transition-all cursor-pointer";
+        row.onclick = () => openDocumentDetailsModal(r);
+        
+        row.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center flex-shrink-0 text-primary">
+              <span class="material-symbols-outlined text-[20px]">article</span>
+            </div>
+            <div>
+              <p class="text-sm font-black text-on-surface">${mainText}</p>
+              <p class="text-[10px] text-on-surface-variant font-medium mt-0.5">${t} • ${displayStr}</p>
+            </div>
+          </div>
+          <button class="w-8 h-8 rounded-full bg-primary-container text-primary flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-sm">chevron_right</span>
+          </button>
+        `;
+        return row;
+      }
+
+      function renderUpcomingAppointments(appointments) {
+        const container = document.getElementById("upcomingAppointmentsContainer");
+        if (!container) return;
+        
+        container.innerHTML = "";
+        
+        const upcoming = (appointments || []).filter(apt => {
+          if (["completed", "cancelled", "rejected"].includes(apt.status)) {
+            return false;
+          }
+          if (!apt.appointment_date) return false;
+          const todayStr = new Date().toISOString().split('T')[0];
+          if (apt.appointment_date > todayStr) return true;
+          if (apt.appointment_date === todayStr) {
+            if (apt.appointment_time) {
+              try {
+                const [time, period] = apt.appointment_time.toUpperCase().split(' ');
+                const [rawHours, minutes] = time.split(':').map(Number);
+                let hours = rawHours;
+                if (period === 'PM' && hours < 12) hours += 12;
+                if (period === 'AM' && hours === 12) hours = 0;
+                const now = new Date();
+                const aptTime = new Date();
+                aptTime.setHours(hours, minutes, 0, 0);
+                return aptTime > now;
+              } catch (e) {
+                return true;
+              }
+            }
+            return true;
+          }
+          return false;
+        });
+
+        if (upcoming.length === 0) {
+          container.innerHTML = `
+            <div class="text-center py-4 bg-white rounded-2xl border border-surface-container-highest">
+              <p class="text-xs text-on-surface-variant font-medium">No upcoming appointments</p>
+            </div>
+          `;
+          return;
+        }
+
+        upcoming.forEach(apt => {
+          const type = apt.appointment_type || "clinic";
+          const formattedType = type.toLowerCase() === "home" ? "Home Visit" : "Clinic Visit";
+          const vetName = apt.vet?.full_name || apt.vet?.name || "Specialist Vet";
+          const formattedDate = apt.appointment_date;
+          const formattedTime = apt.appointment_time || "";
+          const statusText = (apt.status || "Scheduled").toUpperCase();
           
-          m.classList.remove("hidden");
-          setTimeout(() => {
-              c.classList.remove("translate-y-full");
-              c.classList.add("translate-y-0");
-          }, 10);
+          const row = document.createElement("div");
+          row.className = "bg-white rounded-2xl p-3 border border-surface-container-highest shadow-sm flex justify-between items-center";
+          row.innerHTML = `
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center text-primary">
+                <span class="material-symbols-outlined text-xl">calendar_month</span>
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-bold text-on-surface truncate">${vetName}</p>
+                <p class="text-[10px] font-semibold text-on-surface-variant truncate">
+                  ${formattedType} • ${formattedDate} • ${formattedTime}
+                </p>
+                <span class="inline-block mt-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-primary-container text-primary">
+                  ${statusText}
+                </span>
+              </div>
+            </div>
+          `;
+          container.appendChild(row);
+        });
       }
       
       function closePetAccountTile() {

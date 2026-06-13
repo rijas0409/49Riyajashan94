@@ -473,11 +473,52 @@ Return the response as a single JSON object containing only a "description" key.
         .select("*")
         .eq("pet_passport_id", pet.id);
 
+      // Get veterinary appointments for this user
+      let appointments: any[] = [];
+      try {
+        const { data: dbAppts, error: apptsErr } = await supabaseAdmin
+          .from("vet_appointments")
+          .select("*")
+          .eq("user_id", pet.user_id);
+          
+        if (dbAppts && dbAppts.length > 0) {
+          const vetIds = [...new Set(dbAppts.map(apt => apt.vet_id).filter(Boolean))];
+          if (vetIds.length > 0) {
+            const { data: vetProfiles } = await supabaseAdmin
+              .from("profiles")
+              .select("id, name, full_name, email, phone")
+              .in("id", vetIds);
+              
+            const profilesMap = new Map();
+            if (vetProfiles) {
+              vetProfiles.forEach(vp => {
+                profilesMap.set(vp.id, vp);
+              });
+            }
+            
+            appointments = dbAppts.map(apt => ({
+              ...apt,
+              vet: profilesMap.get(apt.vet_id) || { full_name: "Specialist Vet" }
+            }));
+          } else {
+            appointments = dbAppts.map(apt => ({
+              ...apt,
+              vet: { full_name: "Specialist Vet" }
+            }));
+          }
+        } else if (apptsErr) {
+          console.error("Error querying vet_appointments:", apptsErr);
+        }
+      } catch (apptErr) {
+        console.error("Failed to query appointments:", apptErr);
+      }
+
       return res.json({
         pet,
         medical,
         conditions,
-        healthRecords
+        healthRecords,
+        appointments
       });
     } catch (err: any) {
       console.error("Error fetching passport details:", err);
@@ -838,6 +879,9 @@ Return the response as a single JSON object containing only a "description" key.
       const mappedDbUpdates: any = {};
       if (updatePayload.certificateTitle !== undefined) mappedDbUpdates.certificate_title = updatePayload.certificateTitle;
       if (updatePayload.recordDescription !== undefined) mappedDbUpdates.record_description = updatePayload.recordDescription;
+      if (updatePayload.record_description !== undefined) mappedDbUpdates.record_description = updatePayload.record_description;
+      if (updatePayload.prescribedBy !== undefined) mappedDbUpdates.prescribed_by = updatePayload.prescribedBy;
+      if (updatePayload.prescribed_by !== undefined) mappedDbUpdates.prescribed_by = updatePayload.prescribed_by;
       if (updatePayload.nextDueDate !== undefined) mappedDbUpdates.next_due_date = updatePayload.nextDueDate || null;
       if (updatePayload.issueDate !== undefined) mappedDbUpdates.issue_date = updatePayload.issueDate || null;
       if (updatePayload.document_base64 !== undefined) mappedDbUpdates.document_base64 = updatePayload.document_base64;
