@@ -173,6 +173,12 @@ export default function AppointmentConfirmation() {
 
   const vet = appointment.vet || appointment.vet_info || (location.state?.visit?.vet);
   const vetProfile = appointment.vet_profile;
+  const actualVetPhoto = vet?.profile_photo || vet?.image || vetProfile?.profile_photo || "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=300&auto=format&fit=crop";
+  const actualRating = vetProfile?.average_rating || vet?.rating || 4.8;
+  const actualExperience = vetProfile?.years_of_experience || vet?.experience || 8;
+  const actualQualification = vetProfile?.qualification || vet?.qualification || "BVSc & AH";
+  const actualSpecialization = vetProfile?.specialization || (vetProfile?.specializations && vetProfile.specializations[0]) || vet?.specialization || "Veterinary Consultant";
+  const actualName = vet?.full_name || vet?.name || "Veterinary Doctor";
 
   const payId = appointment.payment_details?.payment_id || ("pay_rzp_" + (appointmentId ? appointmentId.replace(/-/g, "").substring(0, 14).toUpperCase() : "QY82JKDLAJS"));
   const payMethod = appointment.payment_details?.payment_method || (appointment.appointment_type === 'home' ? "Card (Visa ending in 8124)" : "UPI (GPay)");
@@ -222,11 +228,7 @@ export default function AppointmentConfirmation() {
                     animate={{ y: [0, -6, 0] }}
                     transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
                   >
-                    {vet?.profile_photo ? (
-                      <img src={vet.profile_photo} alt={vet?.name} className="w-full h-full object-cover rounded-full" />
-                    ) : (
-                      <User className="w-8 h-8 text-[#E8336D]" />
-                    )}
+                    <img src={actualVetPhoto} alt={vet?.full_name || vet?.name} className="w-full h-full object-cover rounded-full" />
                   </motion.div>
                   
                   <motion.div style={{ opacity: pullHintOpacity }} className="mt-2.5 flex flex-col items-center gap-1">
@@ -256,25 +258,23 @@ export default function AppointmentConfirmation() {
                 >
                   <div className="bg-white/95 backdrop-blur rounded-2xl border border-[#E8336D]/15 p-4 flex items-center gap-3 shadow-[0_4px_16px_rgba(232,51,109,0.08)]">
                     <div className="w-12 h-12 rounded-full bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center shrink-0 overflow-hidden">
-                      {vet?.profile_photo ? (
-                        <img src={vet.profile_photo} alt={vet.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <User className="w-5 h-5 text-[#E8336D]" />
-                      )}
+                      <img src={actualVetPhoto} alt={actualName} className="w-full h-full object-cover" />
                     </div>
                     <div className="flex-1 min-w-0 text-left">
                       <h4 className="text-[14.5px] font-black text-slate-900 truncate tracking-tight">
-                        {vet?.full_name || vet?.name || "Dr. Jashan Pabla"}
+                        {actualName}
                       </h4>
                       <p className="text-[11.5px] text-slate-500 font-semibold truncate">
-                        {vetProfile?.specialization || (vetProfile?.specializations && vetProfile.specializations[0]) || "Veterinary Specialist"} · {vetProfile?.qualification || "BVSc & AH"}
+                        {actualSpecialization} · {actualQualification}
                       </p>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <div className="flex gap-0.5">
-                          {[1,2,3,4,5].map(i => <Star key={i} className="w-2.5 h-2.5 fill-[#F59E0B] text-[#F59E0B]" />)}
-                        </div>
-                        <span className="text-[10.5px] font-bold text-slate-400 ml-1">
-                          {vetProfile?.average_rating || "4.9"} · {vetProfile?.years_of_experience || 6}+ yrs exp
+                        <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
+                        <span className="text-[11.5px] font-bold text-slate-700 ml-0.5">
+                          {typeof actualRating === "number" ? actualRating.toFixed(1) : actualRating}
+                        </span>
+                        <span className="text-slate-300 mx-1">·</span>
+                        <span className="text-[11.5px] font-semibold text-[#5f6b73]">
+                          {actualExperience} yrs exp
                         </span>
                       </div>
                     </div>
@@ -289,7 +289,7 @@ export default function AppointmentConfirmation() {
             {/* Waiting Message block */}
             <div className="w-full mt-2 pt-4 border-t border-slate-100 text-center">
               <h2 className="text-[16.5px] font-extrabold text-slate-950 leading-tight mb-1 tracking-tight">
-                Waiting for {vet?.full_name || vet?.name || "Dr. Jashan Pabla"}'s Confirmation
+                Waiting for {actualName}'s Confirmation
               </h2>
               <p className="text-[12.5px] text-slate-500 leading-relaxed font-semibold">
                 We've instantly notified the veterinarian of your booking request. You'll be notified immediately upon confirmation.
@@ -299,80 +299,7 @@ export default function AppointmentConfirmation() {
           </div>
         </div>
 
-        {/* Large Veterinarian Information Card (Visual independent card starting below) */}
-        <div className="relative z-10 -mt-6 bg-white rounded-[22px] border border-slate-200/60 shadow-[0_10px_25px_rgba(0,0,0,0.02)] overflow-hidden">
-          
-          {/* Header Banner bg */}
-          <div className="h-20 bg-gradient-to-r from-pink-50/50 to-purple-50/50 border-b border-slate-100/50" />
-          
-          <div className="px-5 pb-6 pt-0 relative">
-            {/* Round Avatar overlapping banner */}
-            <div className="absolute -top-10 left-5 w-20 h-20 rounded-full border-4 border-white shadow-md bg-slate-50 overflow-hidden shrink-0">
-              {vet?.profile_photo ? (
-                <img src={vet.profile_photo} alt={vet?.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-pink-100 flex items-center justify-center text-[#E8336D]">
-                  <User className="w-8 h-8" />
-                </div>
-              )}
-            </div>
 
-            {/* Right side content: Verification badge */}
-            <div className="flex justify-end pt-3">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 border border-green-100 text-[10px] font-black text-green-600 uppercase tracking-widest leading-none">
-                <CheckCircle2 className="w-3 h-3 text-green-500" strokeWidth={3} />
-                Verified Partner
-              </span>
-            </div>
-
-            {/* Vet Meta Details */}
-            <div className="mt-4 space-y-3">
-              <div>
-                <h3 className="text-[19px] font-black text-slate-900 tracking-tight leading-none">
-                  {vet?.full_name || vet?.name || "Dr. Jashan Pabla"}
-                </h3>
-                <p className="text-xs font-bold text-pink-500 mt-1.5">
-                  {vetProfile?.specialization || (vetProfile?.specializations && vetProfile.specializations[0]) || "Veterinary Consultant"}
-                </p>
-                <p className="text-xs text-slate-400 font-semibold mt-1">
-                  {vetProfile?.qualification || "BVSc & AH • MVSc"}
-                </p>
-              </div>
-
-              {/* Grid of stats */}
-              <div className="grid grid-cols-3 gap-2.5 pt-1.5">
-                <div className="bg-slate-50 p-2.5 rounded-xl text-center">
-                  <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Experience</span>
-                  <span className="text-sm font-black text-slate-900 block mt-0.5">{vetProfile?.years_of_experience || 8}+ Yrs</span>
-                </div>
-                <div className="bg-slate-50 p-2.5 rounded-xl text-center">
-                  <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Rating</span>
-                  <span className="text-sm font-black text-slate-900 block mt-0.5">★ {vetProfile?.average_rating || "4.9"}</span>
-                </div>
-                <div className="bg-slate-50 p-2.5 rounded-xl text-center">
-                  <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Type</span>
-                  <span className="text-sm font-black text-slate-900 block mt-0.5 truncate">
-                    {appointment.appointment_type === "home" ? "Home Visit" : "In-Clinic"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Consultation Details */}
-              <div className="bg-slate-50/50 rounded-xl p-3 border border-slate-100 space-y-2">
-                <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Clinic Address</span>
-                    <p className="text-[11.5px] font-bold text-slate-800 leading-tight">
-                      {vetProfile?.clinic_address || "Indiranagar Primary Care, Sector 4, Bengaluru"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
 
         {/* Timeline Section */}
         <div className="bg-white rounded-[22px] border border-black/5 shadow-sm p-4 px-5">
@@ -397,7 +324,7 @@ export default function AppointmentConfirmation() {
               </div>
               <div className="pt-0.5">
                 <h4 className="text-[13.5px] font-bold text-[#18181B]">Veterinarian Reviewing</h4>
-                <p className="text-[11.5px] text-[#A1A1AA] font-semibold mt-0.5">{vet?.full_name || vet?.name || "The vet"} has been notified</p>
+                <p className="text-[11.5px] text-[#A1A1AA] font-semibold mt-0.5">{actualName} has been notified</p>
               </div>
               <div className="absolute left-[13.5px] top-8 w-[1.5px] h-6 bg-black/5" />
             </div>
@@ -468,7 +395,7 @@ export default function AppointmentConfirmation() {
                     Unable to Confirm<br/>Appointment
                   </h3>
                   <p className="text-[13.5px] text-[#52525B] font-medium leading-relaxed mt-2">
-                    Dr. {vet?.name || "The vet"} is currently unavailable. Here's what you can do right now to get your pet seen quickly.
+                    {actualName.startsWith("Dr.") ? actualName : `Dr. ${actualName}`} is currently unavailable. Here's what you can do right now to get your pet seen quickly.
                   </p>
                 </div>
 
@@ -527,7 +454,7 @@ export default function AppointmentConfirmation() {
             </motion.div>
             <h2 className="text-[28px] font-black text-white tracking-tight mb-2">Appointment Confirmed!</h2>
             <p className="text-white/80 font-medium leading-relaxed">
-              Dr. {vet?.name || "The vet"} accepted your request.<br/>Taking you to your visit details…
+              {actualName.startsWith("Dr.") ? actualName : `Dr. ${actualName}`} accepted your request.<br/>Taking you to your visit details…
             </p>
             <div className="w-40 h-1 bg-white/20 rounded-full mt-8 overflow-hidden">
               <motion.div 

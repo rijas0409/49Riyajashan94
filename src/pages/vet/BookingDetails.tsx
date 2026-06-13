@@ -1586,7 +1586,10 @@ const BookingDetails = () => {
                                   vet: {
                                     name: vetName,
                                     image: vetImage,
-                                    specialization: vetSpecialization
+                                    specialization: vetSpecialization,
+                                    rating: vetRating,
+                                    experience: vetExperience,
+                                    qualification: vet?.qualification || "BVSc & AH"
                                   },
                                   appointmentId: realBookingId,
                                   visitType: visitType,
