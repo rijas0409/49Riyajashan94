@@ -3100,9 +3100,16 @@
     <script>
       let currentStep = 1;
       let intervalTracker = null;
-
-      // Load the AI model in background for faster performance
       let objectDetector = null;
+      let videoStream = null;
+      let currentFacingMode = "environment";
+      let isFlashOn = false;
+      let detectionInterval = null;
+      let scanProgress = 0;
+      let selectedFile = null;
+      let hasPetPhoto = false;
+      let activeCalMonth = new Date().getMonth();
+      let activeCalYear = new Date().getFullYear();
 
       function formatDateString(dateStr) {
         if (!dateStr) return "";
@@ -4081,12 +4088,26 @@
 
           console.log("[DEBUG] Screen entered: Securing Identity Loader Check");
 
+          // Safety fallback: always hide loader after 5 seconds if not hidden yet
+          setTimeout(() => forceHideLoader(), 5000);
+
           if (passportId) {
             window.currentPassportId = passportId;
             console.log(
               "[DEBUG] Found passport target ID in query parameter:",
               passportId,
             );
+
+            const action = urlParams.get("action");
+            if (action === "add_record") {
+              // We need to wait slightly for data to load if we want to show specific pet name
+              // but we can open the modal immediately
+              setTimeout(() => {
+                if (typeof openDashboardRecordModal === "function") {
+                  openDashboardRecordModal();
+                }
+              }, 500);
+            }
 
             // Set current step to 5 (Dashboard) immediately
             currentStep = 5;
@@ -4124,10 +4145,6 @@
               finCont.style.transform = "scale(1)";
             }
 
-            // Bind edit button action handler
-            const editBtn = document.getElementById("btnEditPassportDetails");
-            const editBtnAcc = document.getElementById("btnEditPassportDetailsAcc");
-            
             const handleEditAction = () => {
               document.getElementById("step5").classList.remove("active");
               document.getElementById("step6").classList.remove("active");
@@ -4147,8 +4164,13 @@
               } catch (e) {}
             };
 
-            if (editBtn) editBtn.onclick = handleEditAction;
-            if (editBtnAcc) editBtnAcc.onclick = handleEditAction;
+            // Bind edit button action handler
+            if (editBtn) {
+              editBtn.onclick = handleEditAction;
+            }
+            if (editBtnAcc) {
+              editBtnAcc.onclick = handleEditAction;
+            }
 
             // Share button
             const shareBtn = document.getElementById("shareDashboardBtn");
@@ -4300,9 +4322,11 @@
         const percentage = (Math.min(currentStep, 3) / 3) * 100;
         if (bar) bar.style.width = percentage + "%";
 
-        if (currentStep <= 3) {
+        if (currentStep <= 3 && text) {
           text.innerText = `Step ${currentStep} of 3`;
         }
+
+        if (!title || !progBlock) return;
 
         if (currentStep === 2) {
           title.innerText = "Medical Logs";
@@ -4542,11 +4566,6 @@
       };
 
       // --- UPGRADED ACTUAL AI CAMERA MODAL LOGIC ---
-      let videoStream = null;
-      let currentFacingMode = "environment";
-      let isFlashOn = false;
-      let detectionInterval = null;
-      let scanProgress = 0;
 
       function openCameraModal() {
         const modal = document.getElementById("cameraModal");
@@ -4770,8 +4789,6 @@
 
       // ---------------------------------------------
 
-      let selectedFile = null;
-      let hasPetPhoto = false;
 
       function handleRecordTypeChange() {
         const hrType = document.getElementById("hrType");
@@ -6042,8 +6059,6 @@
       }
 
       // Custom Calendar State and Methods
-      let activeCalMonth = new Date().getMonth();
-      let activeCalYear = new Date().getFullYear();
       const todayDate = new Date();
       const monthNames = [
         "January",

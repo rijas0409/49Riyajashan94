@@ -887,7 +887,7 @@ const BookingDetails = () => {
                           disabled={isTopDisabled} 
                           onClick={() => setSelectedSlot(pair.top!)}
                           className="py-3 rounded-2xl text-[13px] sm:text-sm font-semibold transition-all border-2 text-center"
-                          style={isTopSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isTopDisabled ? { border: '3px dashed #CBD5E1', color: '#94A3B8', opacity: 0.5, cursor: 'not-allowed', pointerEvents: 'none' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}
+                          style={isTopSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isTopDisabled ? { border: '3px dotted #CBD5E1', color: '#94A3B8', opacity: 0.5, cursor: 'not-allowed', pointerEvents: 'none' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}
                         >
                           {pair.top}
                         </button>
@@ -902,7 +902,7 @@ const BookingDetails = () => {
                           disabled={isBottomDisabled} 
                           onClick={() => setSelectedSlot(pair.bottom!)}
                           className="py-3 rounded-2xl text-[13px] sm:text-sm font-semibold transition-all border-2 text-center"
-                          style={isBottomSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isBottomDisabled ? { border: '3px dashed #CBD5E1', color: '#94A3B8', opacity: 0.5, cursor: 'not-allowed', pointerEvents: 'none' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}
+                          style={isBottomSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isBottomDisabled ? { border: '3px dotted #CBD5E1', color: '#94A3B8', opacity: 0.5, cursor: 'not-allowed', pointerEvents: 'none' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}
                         >
                           {pair.bottom}
                         </button>
@@ -924,7 +924,7 @@ const BookingDetails = () => {
                 return (
                   <button key={slot} disabled={isDisabled} onClick={() => setSelectedSlot(slot)}
                     className="py-3 rounded-2xl text-[13px] sm:text-sm font-semibold transition-all border-2"
-                    style={isSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isDisabled ? { border: '3px dashed #CBD5E1', color: '#94A3B8', opacity: 0.5, cursor: 'not-allowed', pointerEvents: 'none' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}>
+                    style={isSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isDisabled ? { border: '3px dotted #CBD5E1', color: '#94A3B8', opacity: 0.5, cursor: 'not-allowed', pointerEvents: 'none' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}>
                     {slot}
                   </button>
                 );

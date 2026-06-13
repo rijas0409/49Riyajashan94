@@ -106,7 +106,8 @@ const EmptyPetPassport = () => {
         setIsIframeActive(true);
       } else if (event.data && event.data.type === "open_passport") {
         const passportId = event.data.passportId;
-        setIframeSrc(`/rjpass.html?id=${encodeURIComponent(passportId)}&userId=${userId}`);
+        const action = event.data.action ? `&action=${event.data.action}` : "";
+        setIframeSrc(`/rjpass.html?id=${encodeURIComponent(passportId)}${action}&userId=${userId}`);
         setIsIframeActive(true);
       }
     };
