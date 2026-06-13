@@ -1734,31 +1734,18 @@
               Verification Log
             </h3>
           </div>
-          <div class="space-y-2.5">
-            <div class="flex items-center gap-3">
-              <span class="material-symbols-outlined text-green-500 text-base"
-                >check_circle</span
-              >
-              <span class="text-sm font-semibold text-on-surface"
-                >Ownership Verified</span
-              >
-            </div>
-            <div class="flex items-center gap-3">
-              <span class="material-symbols-outlined text-green-500 text-base"
-                >check_circle</span
-              >
-              <span class="text-sm font-semibold text-on-surface"
-                >Health Records Synced</span
-              >
-            </div>
-            <div class="flex items-center gap-3">
-              <span class="material-symbols-outlined text-green-500 text-base"
-                >check_circle</span
-              >
-              <span class="text-sm font-semibold text-on-surface"
-                >Vaccination Up-to-date</span
-              >
-            </div>
+          <div id="dashboardVerificationLogList" class="space-y-2.5">
+            <!-- Dynamic items -->
+          </div>
+        </div>
+
+        <div id="dashboardRemindersSection" class="hidden bg-[#fff0f4] rounded-2xl p-4 border border-[#ffd8e4]">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="material-symbols-outlined text-primary text-xl">notifications_active</span>
+            <h3 class="text-xs font-black tracking-wide uppercase text-primary">Active Reminders</h3>
+          </div>
+          <div id="dashboardRemindersList" class="space-y-2">
+            <!-- Dynamic reminders injected here -->
           </div>
         </div>
 
@@ -1869,45 +1856,10 @@
             Recent Activity
           </h3>
           <div
+            id="recentActivityContainer"
             class="space-y-4 relative before:absolute before:inset-0 before:ml-[13px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-surface-container-highest before:to-transparent"
           >
-            <div
-              class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active"
-            >
-              <div
-                class="flex items-center justify-center w-7 h-7 rounded-full border-4 border-surface bg-primary text-white shadow shrink-0 z-10"
-              >
-                <span class="material-symbols-outlined text-[12px]">done</span>
-              </div>
-              <div class="w-[calc(100%-2.5rem)] pl-3">
-                <p class="text-xs font-bold text-on-surface">
-                  Passport Created
-                </p>
-                <span class="text-[10px] font-medium text-on-surface-variant"
-                  >Today, 10:42 AM</span
-                >
-              </div>
-            </div>
-
-            <div
-              class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active"
-            >
-              <div
-                class="flex items-center justify-center w-7 h-7 rounded-full border-4 border-surface bg-surface-container-highest text-on-surface-variant shadow shrink-0 z-10"
-              >
-                <span class="material-symbols-outlined text-[12px]"
-                  >upload_file</span
-                >
-              </div>
-              <div class="w-[calc(100%-2.5rem)] pl-3">
-                <p class="text-xs font-bold text-on-surface">
-                  Documents Uploaded
-                </p>
-                <span class="text-[10px] font-medium text-on-surface-variant"
-                  >Today, 10:40 AM</span
-                >
-              </div>
-            </div>
+            <!-- dynamic items -->
           </div>
         </div>
 
@@ -2008,6 +1960,7 @@
         </div>
 
         <div
+          onclick="nextStep(5)"
           class="bg-gradient-to-r from-primary to-[#e56ba4] rounded-2xl p-4 shadow-[0_8px_20px_rgba(217,81,145,0.25)] flex items-center justify-between cursor-pointer active:scale-95 transition-all"
         >
           <div class="flex items-center gap-3">
@@ -2022,7 +1975,7 @@
               <h3 class="text-sm font-black tracking-wide text-white uppercase">
                 Passport Active
               </h3>
-              <p class="text-[11px] font-mono text-white/80">ID: SRV-882-991</p>
+              <p id="accPassportIdBanner" class="text-[11px] font-mono text-white/80">ID: SRV-882-991</p>
             </div>
           </div>
           <span class="material-symbols-outlined text-white/70"
@@ -2032,6 +1985,7 @@
 
         <div class="grid grid-cols-2 gap-4">
           <div
+            onclick="openPetAccountTile('Health Records')"
             class="bg-surface-container-low rounded-2xl p-4 border border-surface-container-highest flex flex-col items-start gap-3 cursor-pointer hover:bg-surface-container-high transition-colors"
           >
             <div
@@ -2054,6 +2008,7 @@
           </div>
 
           <div
+            onclick="openPetAccountTile('Consultations')"
             class="bg-surface-container-low rounded-2xl p-4 border border-surface-container-highest flex flex-col items-start gap-3 cursor-pointer hover:bg-surface-container-high transition-colors"
           >
             <div
@@ -2076,6 +2031,7 @@
           </div>
 
           <div
+            onclick="openPetAccountTile('Medicine Orders')"
             class="bg-surface-container-low rounded-2xl p-4 border border-surface-container-highest flex flex-col items-start gap-3 cursor-pointer hover:bg-surface-container-high transition-colors"
           >
             <div
@@ -2098,6 +2054,7 @@
           </div>
 
           <div
+            onclick="openPetAccountTile('Documents')"
             class="bg-surface-container-low rounded-2xl p-4 border border-surface-container-highest flex flex-col items-start gap-3 cursor-pointer hover:bg-surface-container-high transition-colors"
           >
             <div
@@ -2193,6 +2150,7 @@
           </h3>
 
           <div
+            id="petTimelineContainer"
             class="space-y-3 relative before:absolute before:inset-0 before:ml-[9px] before:-translate-x-px before:h-full before:w-[2px] before:bg-surface-container-highest"
           >
             <div class="relative flex items-center gap-3 group">
@@ -2830,18 +2788,24 @@
             </div>
             
             <!-- Modal Scrollable Content -->
-            <div class="overflow-y-auto pr-1 space-y-4 flex-1 no-scrollbar">
+            <div class="overflow-y-auto pr-1 space-y-4 flex-1 no-scrollbar block">
                 <!-- Record Type Selection -->
                 <div class="space-y-1.5">
                     <label class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant">Record Type</label>
                     <div class="relative">
-                        <select id="dbRecType" class="w-full h-12 px-3.5 pr-10 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors appearance-none" onchange="toggleDashboardRecordFields()">
+                        <select id="dbRecType" class="w-full h-12 px-3.5 pr-10 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors appearance-none" onchange="toggleDashboardRecordFields(); validateDashboardRecordForm();">
+                            <option value="" disabled selected>Select Record Type</option>
                             <option value="Vaccination">Vaccination</option>
                             <option value="Prescription">Prescription</option>
                             <option value="Lab Test">Lab Test</option>
                             <option value="Surgery">Surgery</option>
                             <option value="Medical Condition">Medical Condition</option>
                             <option value="Health Certificate">Health Certificate</option>
+                            <option value="Video Consultation">Video Consultation</option>
+                            <option value="Home Visit">Home Visit</option>
+                            <option value="Clinic Visit">Clinic Visit</option>
+                            <option value="Follow-up Consultation">Follow-up Consultation</option>
+                            <option value="Medicine Order">Medicine Order</option>
                             <option value="Other">Other</option>
                         </select>
                         <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-lg">expand_more</span>
@@ -2849,10 +2813,10 @@
                 </div>
                 
                 <!-- Dynamic Input: Detail Header -->
-                <div class="space-y-1.5">
+                <div class="space-y-1.5 hidden" id="dbDynamicWrapper1">
                     <label id="dbTitleLabel" class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant">Vaccine Name</label>
                     <div id="dbTitleSelectWrapper" class="relative hidden">
-                        <select id="dbTitleSelect" onchange="handleDbVaccineChange()" class="w-full h-12 px-3.5 pr-10 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors appearance-none">
+                        <select id="dbTitleSelect" onchange="handleDbVaccineChange(); validateDashboardRecordForm();" class="w-full h-12 px-3.5 pr-10 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors appearance-none">
                             <option value="" disabled selected>Select Vaccine</option>
                             <option value="Rabies">Rabies</option>
                             <option value="DHPP">DHPP</option>
@@ -2862,42 +2826,42 @@
                         </select>
                         <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-lg">expand_more</span>
                     </div>
-                    <input id="dbTitleInput" type="text" placeholder="e.g. Rabies, DHPP, Parvovirus" class="w-full h-12 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/50 transition-colors">
+                    <input id="dbTitleInput" type="text" placeholder="e.g. Rabies, DHPP, Parvovirus" class="w-full h-12 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/50 transition-colors" oninput="validateDashboardRecordForm()">
                 </div>
                 
                 <div id="dbCustomVaccineWrapper" class="space-y-1.5 hidden mb-4">
                     <label class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant">Specify Vaccine Name</label>
-                    <input id="dbCustomVaccineInput" type="text" placeholder="e.g. Canine Distemper" class="w-full h-12 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/50 transition-colors">
+                    <input id="dbCustomVaccineInput" type="text" placeholder="e.g. Canine Distemper" class="w-full h-12 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/50 transition-colors" oninput="validateDashboardRecordForm()">
                 </div>
                 
                 <!-- Date Grid: Administered Date & Next Due Date / Valid Till -->
-                <div class="grid grid-cols-2 gap-3.5">
+                <div class="grid grid-cols-2 gap-3.5 hidden" id="dbDynamicWrapper2">
                     <div class="space-y-1.5">
                         <label id="dbDateLabel" class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant">Date Administered</label>
-                        <input id="dbDateInput" type="date" class="w-full h-12 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors">
+                        <input id="dbDateInput" type="date" class="w-full h-12 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors" onchange="validateDashboardRecordForm()">
                     </div>
                     <div id="dbNextDueWrapper" class="space-y-1.5">
                         <label id="dbNextDueLabel" class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant">Next Due Date</label>
-                        <input id="dbNextDueInput" type="date" class="w-full h-12 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors">
+                        <input id="dbNextDueInput" type="date" class="w-full h-12 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors" onchange="validateDashboardRecordForm()">
                     </div>
                 </div>
                 
                 <!-- Dynamic Field: Issued/Authorized By / Veterinary Doctor -->
-                <div class="space-y-1.5">
+                <div class="space-y-1.5 hidden" id="dbDynamicWrapper3">
                     <label id="dbIssuerLabel" class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant">Authorized / Vet Doctor</label>
-                    <input id="dbIssuerInput" type="text" placeholder="e.g. Dr. S. Sharma, Sruvo Vet Clinic" class="w-full h-12 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/50 transition-colors">
+                    <input id="dbIssuerInput" type="text" placeholder="e.g. Dr. S. Sharma, Sruvo Vet Clinic" class="w-full h-12 px-3.5 rounded-xl border border-surface-container-highest bg-surface-container-low text-sm font-bold text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/50 transition-colors" oninput="validateDashboardRecordForm()">
                 </div>
 
                 <!-- Attached File Upload Block -->
-                <div class="space-y-1.5">
+                <div class="space-y-1.5 hidden" id="dbDynamicWrapper4">
                     <label class="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant">Upload Certificate / Document</label>
                     <div class="border-2 border-dashed border-surface-container-highest rounded-2xl p-4 bg-surface-container-low hover:border-primary/30 transition-colors relative flex items-center justify-between gap-2">
                         <div class="flex items-center gap-3 truncate">
                             <div class="w-9 h-9 rounded-xl bg-primary/5 flex items-center justify-center text-primary shrink-0">
                                 <span class="material-symbols-outlined text-[20px]">upload_file</span>
                             </div>
-                            <div class="truncate">
-                                <p id="dbFileStatus" class="text-xs font-bold text-on-surface truncate pr-1">Optional document or image</p>
+                            <div class="truncate w-full">
+                                <p id="dbFileStatus" class="text-xs font-bold text-on-surface truncate pr-1">Required document or image.</p>
                                 <p class="text-[9px] text-on-surface-variant font-medium">JPEG, PNG or PDF (Max 2MB)</p>
                             </div>
                         </div>
@@ -2914,9 +2878,57 @@
                 <button onclick="closeDashboardRecordModal()" class="flex-1 bg-surface-container-low hover:bg-surface-container-high text-on-surface font-black py-3.5 px-4 rounded-xl text-xs tracking-wider uppercase transition-colors active:scale-95 duration-150">
                     Cancel
                 </button>
-                <button id="dbSubmitBtn" onclick="submitDashboardRecord()" class="flex-1 bg-gradient-to-r from-primary to-[#e56ba4] text-white font-black py-3.5 px-4 rounded-xl text-xs tracking-wider uppercase shadow-md active:scale-95 hover:brightness-105 transition-all duration-150">
+                <button id="dbSubmitBtn" onclick="submitDashboardRecord()" disabled class="flex-1 bg-gradient-to-r from-primary to-[#e56ba4] text-white font-black py-3.5 px-4 rounded-xl text-xs tracking-wider uppercase shadow-md active:scale-95 hover:brightness-105 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
                     Save Record
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pet Account Tile Modal -->
+    <div id="petAccountTileModal" class="fixed inset-0 z-[110] hidden bg-on-surface/60 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300" onclick="closePetAccountTile()">
+        <div class="bg-white rounded-[24px] p-5 w-full max-w-lg shadow-2xl border border-text-on-surface-variant/10 flex flex-col max-h-[85vh] transition-transform duration-300 transform translate-y-full" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-3">
+                    <div id="patmIconContainer" class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                        <span id="patmIcon" class="material-symbols-outlined text-[20px]">list</span>
+                    </div>
+                    <div>
+                        <h3 id="patmTitle" class="text-base font-black tracking-tight text-on-surface">Tile</h3>
+                        <p id="patmSubtitle" class="text-xs text-on-surface-variant font-medium">Pet Account</p>
+                    </div>
+                </div>
+                <button onclick="closePetAccountTile()" class="w-9 h-9 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface active:scale-95 transition-all">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            
+            <div id="patmContent" class="flex-1 w-full overflow-y-auto space-y-3 no-scrollbar pb-2">
+                <!-- dynamic items -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Document Viewer Modal -->
+    <div id="documentViewerModal" class="fixed inset-0 z-[110] hidden bg-on-surface/60 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300" onclick="closeDocumentViewerModal()">
+        <div class="bg-white rounded-[24px] p-5 w-full max-w-4xl shadow-2xl border border-text-on-surface-variant/10 flex flex-col max-h-[90vh] transition-transform duration-300 transform translate-y-full" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                        <span class="material-symbols-outlined text-[20px]">description</span>
+                    </div>
+                    <div>
+                        <h3 id="docViewerTitle" class="text-base font-black tracking-tight text-on-surface">Document</h3>
+                        <p class="text-xs text-on-surface-variant font-medium">Passport Vault File</p>
+                    </div>
+                </div>
+                <button onclick="closeDocumentViewerModal()" class="w-9 h-9 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface active:scale-95 transition-all">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            
+            <div id="docViewerContent" class="flex-1 w-full bg-surface-container-low/50 rounded-xl overflow-hidden min-h-[50vh] flex items-center justify-center relative">
+                <!-- content injected here -->
             </div>
         </div>
     </div>
@@ -2963,9 +2975,18 @@
         const healthRecords = dataObj.healthRecords || [];
 
         window.currentPassportId = payload.passport_id || payload.passportId || "";
+        window.currentHealthRecords = healthRecords || [];
 
         if (typeof renderDashboardDocuments === "function") {
           renderDashboardDocuments(healthRecords);
+        }
+        
+        if (typeof renderTimeline === "function") {
+            renderTimeline(healthRecords, payload.created_at);
+        }
+        
+        if (typeof renderVerificationsAndReminders === "function") {
+            renderVerificationsAndReminders(healthRecords);
         }
 
         // Set form elements for compatibility and edits for step 1, 2, 3
@@ -3458,6 +3479,11 @@
 
         const accWeight = document.getElementById("accWeight");
         if (accWeight) accWeight.innerText = (payload.weight || "9.4") + " kg";
+
+        const accPassportIdBanner = document.getElementById("accPassportIdBanner");
+        if (accPassportIdBanner && window.currentPassportId) {
+           accPassportIdBanner.innerText = `ID: ${window.currentPassportId.split("-")[0].toUpperCase()}`;
+        }
 
         const petAccountPhoto = document.getElementById("petAccountPhoto");
         if (petAccountPhoto && (payload.photo_url || payload.photoUrl)) {
@@ -6070,6 +6096,20 @@
       function closeDashboardRecordModal() {
         const modal = document.getElementById("dashboardRecordModal");
         if (modal) modal.classList.add("hidden");
+        
+        // Reset form
+        document.getElementById("dbRecType").value = "";
+        document.getElementById("dbTitleInput").value = "";
+        document.getElementById("dbTitleSelect").value = "";
+        document.getElementById("dbCustomVaccineInput").value = "";
+        document.getElementById("dbDateInput").value = "";
+        document.getElementById("dbNextDueInput").value = "";
+        document.getElementById("dbIssuerInput").value = "";
+        document.getElementById("dbFileInput").value = "";
+        document.getElementById("dbFileStatus").innerText = "Required document or image.";
+        window.lastDashboardBase64 = null;
+        toggleDashboardRecordFields();
+        validateDashboardRecordForm();
       }
 
       function toggleDashboardRecordFields() {
@@ -6082,6 +6122,18 @@
         const nextDueWrapper = document.getElementById("dbNextDueWrapper");
         const issuerLabel = document.getElementById("dbIssuerLabel");
         const issuerInput = document.getElementById("dbIssuerInput");
+
+        if(type) {
+            document.getElementById("dbDynamicWrapper1").classList.remove("hidden");
+            document.getElementById("dbDynamicWrapper2").classList.remove("hidden");
+            document.getElementById("dbDynamicWrapper3").classList.remove("hidden");
+            document.getElementById("dbDynamicWrapper4").classList.remove("hidden");
+        } else {
+            document.getElementById("dbDynamicWrapper1").classList.add("hidden");
+            document.getElementById("dbDynamicWrapper2").classList.add("hidden");
+            document.getElementById("dbDynamicWrapper3").classList.add("hidden");
+            document.getElementById("dbDynamicWrapper4").classList.add("hidden");
+        }
 
         titleSelectWrapper.classList.add("hidden");
         titleInput.classList.remove("hidden");
@@ -6132,6 +6184,20 @@
           nextDueWrapper.classList.add("hidden");
           issuerLabel.innerText = "Authorized Signing Officer";
           issuerInput.placeholder = "e.g. Government Vet Registrar";
+        } else if (type === "Video Consultation" || type === "Home Visit" || type === "Clinic Visit" || type === "Follow-up Consultation") {
+          titleLabel.innerText = "Consultation Reason";
+          titleInput.placeholder = "e.g. Annual Checkup, Vaccination run";
+          dateLabel.innerText = "Consultation Date";
+          nextDueWrapper.classList.add("hidden");
+          issuerLabel.innerText = "Veterinary Doctor";
+          issuerInput.placeholder = "e.g. Dr. S. Sharma";
+        } else if (type === "Medicine Order") {
+          titleLabel.innerText = "Medicine Name / Item";
+          titleInput.placeholder = "e.g. Bravecto, NexGard";
+          dateLabel.innerText = "Order Date";
+          nextDueWrapper.classList.add("hidden");
+          issuerLabel.innerText = "Pharmacy / Clinic";
+          issuerInput.placeholder = "e.g. Sruvo Pharmacy";
         } else if (type === "Other") {
           titleLabel.innerText = "Record Details / Title";
           titleInput.placeholder = "e.g. Deworming Treatment";
@@ -6140,6 +6206,35 @@
           issuerLabel.innerText = "Authorized Instigator";
           issuerInput.placeholder = "e.g. Caretaker, Vet Guard";
         }
+      }
+
+      function validateDashboardRecordForm() {
+        const type = document.getElementById("dbRecType").value;
+        const btn = document.getElementById("dbSubmitBtn");
+        
+        let isValid = true;
+        if (!type) isValid = false;
+
+        const dateVal = document.getElementById("dbDateInput").value;
+        const issuerVal = document.getElementById("dbIssuerInput").value.trim();
+        const hasDoc = !!window.lastDashboardBase64;
+        
+        if (!dateVal || !issuerVal || !hasDoc) {
+            isValid = false;
+        }
+
+        if (type === "Vaccination") {
+          const selValue = document.getElementById("dbTitleSelect").value;
+          if (!selValue) isValid = false;
+          if (selValue === "Other" && !document.getElementById("dbCustomVaccineInput").value.trim()) {
+            isValid = false;
+          }
+        } else if (type) {
+          const titleVal = document.getElementById("dbTitleInput").value.trim();
+          if (!titleVal) isValid = false;
+        }
+        
+        btn.disabled = !isValid;
       }
 
       function handleDbVaccineChange() {
@@ -6156,12 +6251,20 @@
 
       function handleDashboardFileSelect(event) {
         const file = event.target.files[0];
-        if (!file) return;
+        if (!file) {
+            window.lastDashboardBase64 = null;
+            validateDashboardRecordForm();
+            return;
+        }
 
-        const maxSizeBytes = 2 * 1024 * 1024; // 2MB
-        if (file.size > maxSizeBytes) {
-          alert("Maximum file size allowed is 2MB.");
+        const isImage = file.type.startsWith("image/");
+        const maxSizeBytes = 3 * 1024 * 1024; // 3MB initially
+        
+        if (!isImage && file.size > maxSizeBytes) {
+          alert("Maximum file size allowed for PDFs is 3MB.");
           event.target.value = "";
+          window.lastDashboardBase64 = null;
+          validateDashboardRecordForm();
           return;
         }
 
@@ -6169,12 +6272,46 @@
 
         const reader = new FileReader();
         reader.onload = function(e) {
-          window.lastDashboardBase64 = e.target.result;
-          document.getElementById("dbFileStatus").innerText = `Attached: ${file.name}`;
+          if (isImage) {
+              const img = new Image();
+              img.onload = function() {
+                  const canvas = document.createElement("canvas");
+                  const MAX_WIDTH = 1200;
+                  const MAX_HEIGHT = 1200;
+                  let width = img.width;
+                  let height = img.height;
+
+                  if (width > height) {
+                    if (width > MAX_WIDTH) {
+                      height *= MAX_WIDTH / width;
+                      width = MAX_WIDTH;
+                    }
+                  } else {
+                    if (height > MAX_HEIGHT) {
+                      width *= MAX_HEIGHT / height;
+                      height = MAX_HEIGHT;
+                    }
+                  }
+                  canvas.width = width;
+                  canvas.height = height;
+                  const ctx = canvas.getContext("2d");
+                  ctx.drawImage(img, 0, 0, width, height);
+                  window.lastDashboardBase64 = canvas.toDataURL("image/jpeg", 0.7);
+                  document.getElementById("dbFileStatus").innerText = `Attached: ${file.name} (Compressed)`;
+                  validateDashboardRecordForm();
+              };
+              img.src = e.target.result;
+          } else {
+              window.lastDashboardBase64 = e.target.result;
+              document.getElementById("dbFileStatus").innerText = `Attached: ${file.name}`;
+              validateDashboardRecordForm();
+          }
         };
         reader.onerror = function() {
           alert("Error encountered reading selected file.");
           document.getElementById("dbFileStatus").innerText = "File read failed";
+          window.lastDashboardBase64 = null;
+          validateDashboardRecordForm();
         };
         reader.readAsDataURL(file);
       }
@@ -6227,8 +6364,8 @@
           procedureName: type === "Surgery" ? titleVal : null,
           surgeryDate: type === "Surgery" ? dateVal : null,
           conditionName: type === "Medical Condition" ? titleVal : null,
-          issueDate: (type === "Health Certificate" || type === "Other") ? dateVal : null,
-          certificateTitle: type === "Health Certificate" ? titleVal : null,
+          issueDate: (type === "Health Certificate" || type === "Other" || type === "Medicine Order" || type === "Video Consultation" || type === "Home Visit" || type === "Clinic Visit" || type === "Follow-up Consultation") ? dateVal : null,
+          certificateTitle: (type === "Health Certificate" || type === "Other" || type === "Medicine Order" || type === "Video Consultation" || type === "Home Visit" || type === "Clinic Visit" || type === "Follow-up Consultation") ? titleVal : null,
           recordDescription: `${type} record details: ${titleVal}. Date on record: ${dateVal || 'date'}. Issued by: ${issuerVal || 'Authorized Entity'}`,
           documentBase64: window.lastDashboardBase64 || null
         };
@@ -6322,6 +6459,7 @@
 
           const card = document.createElement("div");
           card.className = "flex items-center justify-between p-3 bg-white rounded-xl border border-surface-container-highest cursor-pointer hover:border-primary/30 transition-colors";
+          card.onclick = () => openDocumentViewer(r);
           card.innerHTML = `
             <div class="flex items-center gap-3">
               <span class="material-symbols-outlined text-primary/60">${iconName}</span>
@@ -6331,6 +6469,368 @@
           `;
           container.appendChild(card);
         });
+      }
+
+      function openDocumentViewer(record) {
+        if (!record.document_base64 && !record.documentBase64 && !record.file_url) {
+            alert("Document unavailable.");
+            return;
+        }
+
+        const modal = document.getElementById("documentViewerModal");
+        if (!modal) return;
+
+        // Set title
+        const type = record.record_type || record.type || "Document";
+        const titleEl = document.getElementById("docViewerTitle");
+        if (titleEl) {
+          titleEl.innerText = record.certificate_title || record.certificateTitle || record.vaccine_name || record.procedure_name || record.test_name || type;
+        }
+
+        const contentContainer = document.getElementById("docViewerContent");
+        contentContainer.innerHTML = "";
+
+        const base64Str = record.document_base64 || record.documentBase64;
+        const fileUrl = record.file_url;
+        
+        let src = "";
+        let isPdf = false;
+        
+        if (base64Str) {
+            src = base64Str;
+            isPdf = base64Str.startsWith("data:application/pdf");
+        } else if (fileUrl) {
+            src = fileUrl;
+            isPdf = fileUrl.toLowerCase().endsWith(".pdf");
+        }
+
+        if (isPdf) {
+            contentContainer.innerHTML = `<iframe src="${src}" class="w-full h-full border-0 rounded-xl bg-surface-container-low"></iframe>`;
+        } else {
+            contentContainer.innerHTML = `<img src="${src}" class="w-full h-auto max-h-full object-contain rounded-xl bg-surface-container-low" alt="Document image" />`;
+        }
+
+        // Show modal
+        modal.classList.remove("hidden");
+        // small delay for transition
+        setTimeout(() => {
+          modal.firstElementChild.classList.remove("translate-y-full");
+        }, 10);
+      }
+
+      function closeDocumentViewerModal() {
+        const modal = document.getElementById("documentViewerModal");
+        if (!modal) return;
+        modal.firstElementChild.classList.add("translate-y-full");
+        setTimeout(() => {
+            modal.classList.add("hidden");
+            document.getElementById("docViewerContent").innerHTML = ""; // clean up
+        }, 300);
+      }
+
+      function renderTimeline(healthRecords, createdAt) {
+        const container = document.getElementById("petTimelineContainer");
+        const recentContainer = document.getElementById("recentActivityContainer");
+        
+        let events = [];
+        
+        // Add passport creation event
+        if (createdAt) {
+            events.push({
+                title: "Passport Created",
+                sub: new Date(createdAt).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric", hour: 'numeric', minute: 'numeric' }),
+                dateObj: new Date(createdAt),
+                primary: false
+            });
+        }
+        
+        if (healthRecords && healthRecords.length > 0) {
+            healthRecords.forEach(r => {
+                let dateStr = r.created_at || r.issue_date || r.date_administered || r.test_date || r.surgery_date || r.updated_at;
+                let dateObj = dateStr ? new Date(dateStr) : new Date();
+                
+                let title = r.record_type || r.type || "Record Added";
+                if (title === "Vaccination") title = "Vaccine: " + (r.vaccine_name === "Other" ? r.specify_vaccine : r.vaccine_name);
+                else if (title === "Prescription") title = "Prescription Added";
+                else if (title === "Surgery") title = `Surgery: ${r.title_name || r.procedure_name || 'Completed'}`;
+                else if (title === "Lab Test") title = `Lab Test: ${r.title_name || r.test_name || 'Completed'}`;
+                else if (title === "Health Certificate") title = "Health Certificate Added";
+                else if (title === "Medical Condition") title = `Condition: ${r.title_name || 'Added'}`;
+                else if (title === "Medicine Order") title = `Medicine Ordered: ${r.title_name || 'Completed'}`;
+                else if (title === "Video Consultation" || title === "Home Visit" || title === "Clinic Visit" || title === "Follow-up Consultation") title = `Consultation: ${r.title_name || title}`;
+                else title = "Documents Uploaded";
+                
+                events.push({
+                    title: title,
+                    type: r.record_type || r.type,
+                    sub: dateObj.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric", hour: 'numeric', minute: 'numeric' }),
+                    dateObj: dateObj,
+                    primary: true
+                });
+            });
+        }
+        
+        events.sort((a, b) => b.dateObj - a.dateObj);
+        
+        if (container) {
+            container.innerHTML = "";
+            // Pet timeline shows all
+            events.forEach((ev, i) => {
+                const isLatest = i === 0;
+                const bgClass = ev.primary && isLatest ? "bg-primary" : "bg-surface-container-highest";
+                const row = document.createElement("div");
+                row.className = "relative flex items-center gap-3 group";
+                row.innerHTML = `
+                  <div class="w-5 h-5 rounded-full border-[3px] border-surface ${bgClass} shrink-0 z-10"></div>
+                  <div>
+                    <p class="text-xs font-bold text-on-surface">${ev.title}</p>
+                    <p class="text-[10px] text-on-surface-variant">${ev.sub}</p>
+                  </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+        
+        if (recentContainer) {
+            recentContainer.innerHTML = "";
+            let passportEvents = events.filter(e => {
+                if (!e.primary) return true; // generic like passport created
+                const t = e.type;
+                if (t === "Medicine Order" || t === "Video Consultation" || t === "Home Visit" || t === "Clinic Visit" || t === "Follow-up Consultation") return false;
+                return true;
+            });
+            
+            passportEvents.forEach((ev, i) => {
+                const isLatest = i === 0;
+                const bgClass = isLatest ? "bg-primary text-white" : "bg-surface-container-highest text-on-surface-variant";
+                const icon = isLatest ? "done" : "upload_file";
+                
+                const row = document.createElement("div");
+                row.className = "relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active";
+                row.innerHTML = `
+                  <div class="flex items-center justify-center w-7 h-7 rounded-full border-4 border-surface ${bgClass} shadow shrink-0 z-10">
+                    <span class="material-symbols-outlined text-[12px]">${icon}</span>
+                  </div>
+                  <div class="w-[calc(100%-2.5rem)] pl-3">
+                    <p class="text-xs font-bold text-on-surface">${ev.title}</p>
+                    <span class="text-[10px] font-medium text-on-surface-variant">${ev.sub}</span>
+                  </div>
+                `;
+                recentContainer.appendChild(row);
+            });
+        }
+      }
+
+      function openPetAccountTile(tileType) {
+          const m = document.getElementById("petAccountTileModal");
+          const c = m.querySelector("div.bg-white");
+          const title = document.getElementById("patmTitle");
+          const sub = document.getElementById("patmSubtitle");
+          const iconContainer = document.getElementById("patmIconContainer");
+          const icon = document.getElementById("patmIcon");
+          const content = document.getElementById("patmContent");
+          
+          if(!window.currentHealthRecords) window.currentHealthRecords = [];
+          
+          let records = [];
+          let iconName = "";
+          let iconColor = "";
+          
+          if (tileType === "Health Records") {
+              title.innerText = "Health Records";
+              sub.innerText = "Vaccines, Allergies & Meds";
+              iconName = "monitor_heart";
+              iconColor = "bg-blue-100 text-blue-600";
+              records = window.currentHealthRecords.filter(r => {
+                  const t = r.record_type || r.type;
+                  return ["Vaccination", "Prescription", "Lab Test", "Surgery", "Medical Condition", "Health Certificate"].includes(t);
+              });
+          } else if (tileType === "Consultations") {
+              title.innerText = "Consultations";
+              sub.innerText = "Past Vet Visits & Clinics";
+              iconName = "stethoscope";
+              iconColor = "bg-purple-100 text-purple-600";
+              records = window.currentHealthRecords.filter(r => {
+                  const t = r.record_type || r.type;
+                  return ["Video Consultation", "Home Visit", "Clinic Visit", "Follow-up Consultation"].includes(t);
+              });
+          } else if (tileType === "Medicine Orders") {
+              title.innerText = "Medicine Orders";
+              sub.innerText = "Past Orders & Refills";
+              iconName = "medication";
+              iconColor = "bg-orange-100 text-orange-600";
+              records = window.currentHealthRecords.filter(r => {
+                  const t = r.record_type || r.type;
+                  return ["Medicine Order"].includes(t);
+              });
+          } else if (tileType === "Documents") {
+              title.innerText = "Documents";
+              sub.innerText = "Uploaded Files Only";
+              iconName = "topic";
+              iconColor = "bg-green-100 text-green-600";
+              records = window.currentHealthRecords.filter(r => r.file_url || r.document_base64 || r.document_url);
+          }
+          
+          iconContainer.className = `w-10 h-10 rounded-xl flex items-center justify-center ${iconColor}`;
+          icon.innerText = iconName;
+          
+          content.innerHTML = "";
+          if (records.length === 0) {
+              content.innerHTML = `<div class="text-center py-6 text-on-surface-variant/70 text-sm">No records found.</div>`;
+          } else {
+              records.forEach(r => {
+                  const t = r.record_type || r.type || "Record";
+                  let dStr = r.created_at || r.issue_date || r.date_administered || r.test_date || r.surgery_date;
+                  let dObj = dStr ? new Date(dStr) : new Date();
+                  let displayStr = dObj.toLocaleDateString();
+                  let mainText = r.title_name || r.vaccine_name || r.procedure_name || r.test_name || r.certificate_title || r.condition_name || t;
+                  if (t === "Vaccination" && r.vaccine_name === "Other") mainText = r.specify_vaccine;
+                  
+                  let actionBtn = "";
+                  if (tileType === "Documents" || r.file_url || r.document_base64) {
+                      actionBtn = `
+                          <button onclick="viewDocument('${r.id}')" class="p-2 ml-auto rounded-full bg-surface hover:bg-surface-container-high transition-colors text-primary flex-shrink-0 relative z-20">
+                              <span class="material-symbols-outlined text-[16px]">visibility</span>
+                          </button>
+                      `;
+                  }
+                  
+                  content.innerHTML += `
+                      <div class="flex items-center gap-3 p-3 bg-surface-container-lowest border border-surface-container-highest rounded-xl">
+                          <div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center flex-shrink-0 text-on-surface-variant">
+                              <span class="material-symbols-outlined text-[18px]">article</span>
+                          </div>
+                          <div class="flex-1 min-w-0 pr-2">
+                              <p class="text-xs font-bold text-on-surface truncate">${mainText}</p>
+                              <p class="text-[10px] text-on-surface-variant mt-0.5">${t} • ${displayStr}</p>
+                          </div>
+                          ${actionBtn}
+                      </div>
+                  `;
+              });
+          }
+          
+          m.classList.remove("hidden");
+          setTimeout(() => {
+              c.classList.remove("translate-y-full");
+              c.classList.add("translate-y-0");
+          }, 10);
+      }
+      
+      function closePetAccountTile() {
+          const m = document.getElementById("petAccountTileModal");
+          const c = m.querySelector("div.bg-white");
+          c.classList.remove("translate-y-0");
+          c.classList.add("translate-y-full");
+          setTimeout(() => {
+              m.classList.add("hidden");
+          }, 300);
+      }
+      
+      // We need a helper to view doc by ID since this is a new modal
+      function viewDocument(recordId) {
+          if (!window.currentHealthRecords) return;
+          const r = window.currentHealthRecords.find(x => x.id === recordId || x.id == recordId);
+          if (!r) return;
+          
+          let fileUrl = r.file_url || r.document_url || r.document_base64;
+          if (!fileUrl) return;
+          
+          const m = document.getElementById("documentViewerModal");
+          const c = m.querySelector("div.bg-white");
+          const content = document.getElementById("docViewerContent");
+          
+          document.getElementById("docViewerTitle").innerText = r.record_type || r.type || "Document";
+          
+          content.innerHTML = '<div class="absolute inset-0 flex items-center justify-center"><span class="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></span></div>';
+          
+          m.classList.remove("hidden");
+          setTimeout(() => {
+              c.classList.remove("translate-y-full");
+              c.classList.add("translate-y-0");
+              
+              if (fileUrl.includes("pdf") || fileUrl.includes("document_base64")) {
+                  content.innerHTML = `<iframe src="${fileUrl}" class="w-full h-full rounded-xl border-0 bg-white shadow-inner"></iframe>`;
+              } else {
+                  content.innerHTML = `<img src="${fileUrl}" class="max-w-full max-h-full object-contain rounded-xl p-2 shadow-sm" />`;
+              }
+          }, 10);
+      }
+
+      function renderVerificationsAndReminders(healthRecords) {
+        const vrContainer = document.getElementById("dashboardVerificationLogList");
+        const remSection = document.getElementById("dashboardRemindersSection");
+        const remList = document.getElementById("dashboardRemindersList");
+        
+        if (!vrContainer) return;
+        
+        let hasRecords = healthRecords && healthRecords.length > 0;
+        let vaxUpToDate = false;
+        
+        const reminders = [];
+        
+        if (hasRecords) {
+            const now = new Date();
+            const vaccines = healthRecords.filter(r => r.record_type === 'Vaccination' || r.type === 'Vaccination');
+            vaxUpToDate = vaccines.length > 0 && vaccines.every(v => {
+                if (!v.next_due_date) return true;
+                return new Date(v.next_due_date) >= now;
+            });
+            
+            // Build reminders
+            healthRecords.forEach(r => {
+                if (r.next_due_date) {
+                    const due = new Date(r.next_due_date);
+                    if (due > now) {
+                        const daysLeft = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+                        reminders.push({
+                            title: r.vaccine_name || r.record_type || r.type || "Reminder",
+                            daysLeft: daysLeft,
+                            dueObj: due
+                        });
+                    }
+                }
+            });
+        }
+        
+        vrContainer.innerHTML = `
+            <div class="flex items-center gap-3 transition-opacity">
+              <span class="material-symbols-outlined text-green-500 text-base">check_circle</span>
+              <span class="text-sm font-semibold text-on-surface">Ownership Verified</span>
+            </div>
+            <div class="flex items-center gap-3 transition-opacity ${hasRecords ? 'opacity-100' : 'opacity-40'}">
+              <span class="material-symbols-outlined ${hasRecords ? 'text-green-500' : 'text-on-surface-variant'} text-base">
+                ${hasRecords ? 'check_circle' : 'pending'}
+              </span>
+              <span class="text-sm font-semibold ${hasRecords ? 'text-on-surface' : 'text-on-surface-variant'}">Health Records Synced</span>
+            </div>
+            <div class="flex items-center gap-3 transition-opacity ${vaxUpToDate ? 'opacity-100' : 'opacity-40'}">
+              <span class="material-symbols-outlined ${vaxUpToDate ? 'text-green-500' : 'text-on-surface-variant'} text-base">
+                ${vaxUpToDate ? 'check_circle' : 'pending'}
+              </span>
+              <span class="text-sm font-semibold ${vaxUpToDate ? 'text-on-surface' : 'text-on-surface-variant'}">Vaccination Up-to-date</span>
+            </div>
+        `;
+        
+        if (reminders.length > 0) {
+            remSection.classList.remove("hidden");
+            remList.innerHTML = "";
+            reminders.sort((a,b) => a.dueObj - b.dueObj);
+            
+            reminders.forEach(rm => {
+                const dayText = rm.daysLeft === 1 ? "1 day" : rm.daysLeft + " days";
+                const html = \`<div class="flex items-center justify-between p-2.5 bg-white/50 rounded-xl border border-primary/10">
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary material-symbols-outlined text-sm">event</span>
+                    <span class="text-xs font-bold text-on-surface">\${rm.title}</span>
+                  </div>
+                  <span class="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-md">In \${dayText}</span>
+                </div>\`;
+                remList.insertAdjacentHTML('beforeend', html);
+            });
+        } else {
+            remSection.classList.add("hidden");
+        }
       }
     </script>
   </body>

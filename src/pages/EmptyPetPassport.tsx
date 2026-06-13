@@ -29,8 +29,13 @@ const EmptyPetPassport = () => {
           const count = Array.isArray(data) ? data.length : 0;
           setPassportCount(count);
 
-          // If user has passports, they should immediately see the list (iframe)
-          if (count > 0) {
+          const urlParams = new URLSearchParams(window.location.search);
+          const checkCreate = urlParams.get("create") === "true";
+
+          if (checkCreate) {
+            setIframeSrc(`/rjpass.html?userId=${uid}`);
+            setIsIframeActive(true);
+          } else if (count > 0) {
             setIframeSrc(`/mypassport.html?userId=${uid}`);
             setIsIframeActive(true);
           } else {

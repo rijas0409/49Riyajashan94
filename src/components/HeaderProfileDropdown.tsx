@@ -39,7 +39,9 @@ const HeaderProfileDropdown = ({ trigger }: HeaderProfileDropdownProps) => {
             size="icon" 
             className="rounded-full w-9 h-9 p-0 overflow-hidden"
           >
-            {profile?.photo ? (
+            {!profile ? (
+              <div className="w-full h-full bg-muted animate-pulse"></div>
+            ) : profile?.photo ? (
               <img 
                 src={profile.photo} 
                 alt={profile.name} 
@@ -60,25 +62,35 @@ const HeaderProfileDropdown = ({ trigger }: HeaderProfileDropdownProps) => {
       >
         {/* User Info */}
         <div className="p-4 border-b border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
-              {profile?.photo ? (
-                <img 
-                  src={profile.photo} 
-                  alt={profile?.name} 
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-primary flex items-center justify-center text-white font-bold text-lg">
-                  {getInitial()}
-                </div>
-              )}
+          {!profile ? (
+            <div className="flex items-center gap-3 animate-pulse">
+              <div className="w-12 h-12 rounded-full bg-muted flex-shrink-0"></div>
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="h-4 bg-muted rounded w-24"></div>
+                <div className="h-3 bg-muted rounded w-32"></div>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="font-semibold truncate">{profile?.name || "User"}</p>
-              <p className="text-sm text-muted-foreground truncate">{profile?.email}</p>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-muted">
+                {profile?.photo ? (
+                  <img 
+                    src={profile.photo} 
+                    alt={profile?.name} 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-primary flex items-center justify-center text-white font-bold text-lg">
+                    {getInitial()}
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold truncate">{profile?.name || "User"}</p>
+                <p className="text-sm text-muted-foreground truncate">{profile?.email}</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Menu Items */}

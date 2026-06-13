@@ -710,6 +710,44 @@ Return the response as a single JSON object containing only a "description" key.
       if (!pet) {
         return res.status(404).json({ error: "Passport not found" });
       }
+      
+      // First upload the document if exists
+      let fileUrl = null;
+      let filePath = null;
+      const bucket = "pet-documents";
+      
+      if (record.documentBase64 && record.documentBase64.startsWith("data:")) {
+         try {
+             const matches = record.documentBase64.match(/^data:(.+?);base64,(.+)$/);
+             if (matches && matches.length === 3) {
+                 const mimeType = matches[1];
+                 const base64Data = matches[2];
+                 
+                 let ext = 'bin';
+                 if (mimeType.includes('pdf')) ext = 'pdf';
+                 else if (mimeType.includes('jpeg') || mimeType.includes('jpg')) ext = 'jpg';
+                 else if (mimeType.includes('png')) ext = 'png';
+                 
+                 filePath = `${passportId}/records/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+                 
+                 const buffer = Buffer.from(base64Data, 'base64');
+                 
+                 const { error: uploadErr } = await supabaseAdmin.storage.from(bucket).upload(filePath, buffer, {
+                     contentType: mimeType,
+                     upsert: true
+                 });
+                 
+                 if (!uploadErr) {
+                     const { data: publicUrlData } = supabaseAdmin.storage.from(bucket).getPublicUrl(filePath);
+                     fileUrl = publicUrlData.publicUrl;
+                 } else {
+                     console.error("Storage upload error:", uploadErr);
+                 }
+             }
+         } catch (err) {
+             console.error("Failed to upload document to storage:", err);
+         }
+      }
 
       // Insert into pet_health_records_documents
       const { data, error } = await supabaseAdmin
@@ -731,7 +769,10 @@ Return the response as a single JSON object containing only a "description" key.
           condition_name: record.conditionName,
           certificate_title: record.certificateTitle,
           record_description: record.recordDescription,
-          document_base64: record.documentBase64
+          document_base64: record.documentBase64,
+          file_url: fileUrl,
+          file_path: filePath,
+          storage_bucket: bucket
         })
         .select()
         .single();

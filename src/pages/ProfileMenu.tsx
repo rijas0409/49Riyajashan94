@@ -106,38 +106,52 @@ const ProfileMenu = () => {
 
         {/* User Card */}
         <div className="mb-8 relative">
-          <div className="bg-gradient-primary rounded-[32px] p-6 text-white overflow-hidden relative shadow-lg">
+          <div className="bg-gradient-primary rounded-[32px] p-6 text-white overflow-hidden relative shadow-lg min-h-[128px]">
             {/* Background Decoration */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full -ml-12 -mb-12 blur-xl" />
             
-            <div className="flex items-center gap-5 relative z-10">
-              <div className="relative">
-                <div className="w-20 h-20 rounded-full border-4 border-white/30 overflow-hidden bg-white/20 backdrop-blur-md flex items-center justify-center">
-                  {profile?.profile_photo ? (
-                    <img src={profile.profile_photo} alt={profile.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-10 h-10 text-white" />
-                  )}
-                </div>
-                <button className="absolute bottom-0 right-0 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md">
-                  <Camera className="w-4 h-4 text-primary" />
-                </button>
-              </div>
-              
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold">{profile?.name || "User Name"}</h2>
-                <p className="text-white/80 text-sm">{profile?.role === 'seller' ? 'Pet Seller' : 'Pet Lover'}</p>
-                <div className="flex items-center gap-3 mt-3">
-                  <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                    {profile?.points || 0} Points
-                  </div>
-                  <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                    Level 1
+            {!profile ? (
+              <div className="flex items-center gap-5 relative z-10 animate-pulse">
+                <div className="w-20 h-20 rounded-full bg-white/20 flex-shrink-0"></div>
+                <div className="flex-1 space-y-3">
+                  <div className="h-6 bg-white/20 rounded w-32"></div>
+                  <div className="h-4 bg-white/20 rounded w-24"></div>
+                  <div className="flex gap-2">
+                    <div className="h-5 w-16 bg-white/20 rounded-full"></div>
+                    <div className="h-5 w-16 bg-white/20 rounded-full"></div>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center gap-5 relative z-10">
+                <div className="relative">
+                  <div className="w-20 h-20 rounded-full border-4 border-white/30 overflow-hidden bg-white/20 backdrop-blur-md flex items-center justify-center">
+                    {profile?.profile_photo ? (
+                      <img src={profile.profile_photo} alt={profile.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-10 h-10 text-white" />
+                    )}
+                  </div>
+                  <button className="absolute bottom-0 right-0 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md">
+                    <Camera className="w-4 h-4 text-primary" />
+                  </button>
+                </div>
+                
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold">{profile?.name}</h2>
+                  <p className="text-white/80 text-sm">{profile?.role === 'seller' ? 'Pet Seller' : 'Pet Lover'}</p>
+                  <div className="flex items-center gap-3 mt-3">
+                    <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                      {profile?.points || 0} Points
+                    </div>
+                    <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                      Level 1
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
