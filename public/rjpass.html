@@ -12,6 +12,10 @@
       rel="stylesheet"
     />
     <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block"
       rel="stylesheet"
     />
@@ -52,6 +56,133 @@
       .step-container.active {
         display: block;
         animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      :root {
+          --text-dark: #3A2B2C;
+          --text-muted: #7D6B6D;
+          --accent-pink: #DE6B90;
+          --accent-pink-light: #FFF0F4;
+          --border-pink: #F9E2E8;
+      }
+      .transfer-card {
+          font-family: 'Nunito', sans-serif;
+          position: relative;
+          background: linear-gradient(135deg, #FFF5F7 0%, #FFFFFF 100%);
+          border: 1.5px solid var(--border-pink);
+          border-radius: 24px;
+          padding: 18px 20px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          cursor: pointer;
+          overflow: hidden;
+          box-shadow: 0 8px 20px rgba(222, 107, 140, 0.03);
+          transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+                      box-shadow 0.4s ease, 
+                      border-color 0.3s ease;
+          -webkit-tap-highlight-color: transparent;
+          width: 100%;
+          box-sizing: border-box;
+      }
+      .transfer-card * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+      }
+      .transfer-card:hover {
+          transform: translateY(-3px) scale(1.01);
+          border-color: #F4C2D0;
+          box-shadow: 0 12px 28px rgba(222, 107, 140, 0.08), 
+                      0 4px 10px rgba(0, 0, 0, 0.01);
+      }
+      .transfer-card:active {
+          transform: translateY(-1px) scale(0.99);
+      }
+      .transfer-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -150%;
+          width: 50%;
+          height: 100%;
+          background: linear-gradient(
+              to right, 
+              rgba(255, 255, 255, 0) 0%, 
+              rgba(255, 255, 255, 0.7) 50%, 
+              rgba(255, 255, 255, 0) 100%
+          );
+          transform: skewX(-25deg);
+          transition: 0.75s ease;
+      }
+      .transfer-card:hover::before {
+          left: 150%;
+      }
+      .icon-box {
+          width: 46px;
+          height: 46px;
+          background-color: #FFFFFF;
+          border: 1px solid var(--border-pink);
+          border-radius: 16px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          color: var(--accent-pink);
+          flex-shrink: 0;
+          box-shadow: 0 4px 10px rgba(222, 107, 140, 0.04);
+          transition: transform 0.3s ease;
+      }
+      .transfer-card:hover .icon-box {
+          transform: rotate(-8deg) scale(1.05);
+          background-color: var(--accent-pink-light);
+      }
+      .icon-box svg {
+          width: 22px;
+          height: 22px;
+      }
+      .text-content {
+          flex-grow: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+      }
+      .text-content h3 {
+          font-size: 14px;
+          font-weight: 900;
+          color: var(--text-dark);
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+      }
+      .text-content p {
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--text-muted);
+          line-height: 1.3;
+      }
+      .action-arrow {
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          background-color: var(--accent-pink-light);
+          color: var(--accent-pink);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          flex-shrink: 0;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .transfer-card:hover .action-arrow {
+          background-color: var(--accent-pink);
+          color: #FFFFFF;
+          transform: translateX(2px);
+      }
+      .action-arrow svg {
+          width: 16px;
+          height: 16px;
+          fill: none;
+          stroke: currentColor;
+          stroke-width: 3;
+          stroke-linecap: round;
+          stroke-linejoin: round;
       }
       @keyframes fadeInUp {
         from {
@@ -2076,30 +2207,26 @@
         </div>
 
         <!-- Transfer Ownership Option -->
-        <div
-          onclick="openPetAccountFullView('Transfer Ownership')"
-          class="bg-gradient-to-r from-rose-500/5 to-pink-500/5 hover:from-rose-500/10 hover:to-pink-500/10 rounded-2xl p-4.5 border border-rose-500/10 flex items-center justify-between cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] group mt-2"
-        >
-          <div class="flex items-center gap-3.5">
-            <div
-              class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 shrink-0 shadow-sm"
-            >
-              <span class="material-symbols-outlined text-lg">move_up</span>
+        <div onclick="openPetAccountFullView('Transfer Ownership')" class="transfer-card mt-2">
+            <div class="icon-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
             </div>
-            <div>
-              <h3 class="text-xs font-black uppercase text-on-surface tracking-wider">
-                Transfer Ownership
-              </h3>
-              <p
-                class="text-[10px] font-semibold text-on-surface-variant mt-0.5"
-              >
-                Safely transfer passport, records and charts
-              </p>
+
+            <div class="text-content">
+                <h3>Transfer Ownership</h3>
+                <p>Safely transfer passport, records and charts</p>
             </div>
-          </div>
-          <button class="w-8 h-8 rounded-full bg-rose-500/10 text-rose-600 flex items-center justify-center group-hover:bg-rose-500 group-hover:text-white transition-all">
-            <span class="material-symbols-outlined text-sm">arrow_forward</span>
-          </button>
+
+            <div class="action-arrow">
+                <svg viewBox="0 0 24 24">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </div>
         </div>
 
         <div
@@ -2247,6 +2374,49 @@
         <!-- List of items in full screen with full detail management -->
         <div id="pafvContent" class="space-y-4">
           <!-- Dynamic Content Loaded Here -->
+        </div>
+      </div>
+
+      <!-- Public Ownership Transfer Request Screen -->
+      <div id="publicTransferStep" class="step-container space-y-6">
+        <div class="bg-white rounded-[28px] p-6 border border-surface-container-highest shadow-xl space-y-6">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 select-none">
+                <span class="material-symbols-outlined text-lg font-bold">move_up</span>
+              </div>
+              <div>
+                <h2 class="text-base font-black text-on-surface leading-none">Request Ownership</h2>
+                <p class="text-[10px] text-on-surface-variant font-semibold mt-1">Submit request to current owner</p>
+              </div>
+            </div>
+            <button
+              onclick="closePublicTransferModal()"
+              class="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container-high transition-colors select-none"
+            >
+              <span class="material-symbols-outlined text-sm">close</span>
+            </button>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <label class="text-[10px] font-black uppercase tracking-wider text-on-surface pl-1">Your Full Name</label>
+              <input type="text" id="publicReqNameSecured" placeholder="Your name (e.g. John Doe)" class="w-full mt-1.5 px-3.5 py-3 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs text-on-surface font-semibold focus:border-primary outline-none">
+            </div>
+            <div>
+              <label class="text-[10px] font-black uppercase tracking-wider text-on-surface pl-1">Your Registered Email</label>
+              <p class="text-[9px] text-on-surface-variant/70 font-semibold pl-1 mb-1.5">You must be registered on Sruvo with this email address.</p>
+              <input type="email" id="publicReqEmailSecured" placeholder="you@example.com" class="w-full px-3.5 py-3 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs text-on-surface font-semibold focus:border-primary outline-none">
+            </div>
+            <div>
+              <label class="text-[10px] font-black uppercase tracking-wider text-on-surface pl-1">Your Phone Number</label>
+              <input type="tel" id="publicReqPhoneSecured" placeholder="Mobile number" class="w-full mt-1.5 px-3.5 py-3 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs text-on-surface font-semibold focus:border-primary outline-none">
+            </div>
+            
+            <button id="submitPublicReqBtnSecured" onclick="submitPublicTransferRequestSecured()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-3.5 rounded-xl text-xs tracking-wider uppercase transition-all duration-150 active:scale-95 shadow-md shadow-rose-600/10 mt-2">
+                Submit Request to Owner
+            </button>
+          </div>
         </div>
       </div>
     </main>
@@ -4171,9 +4341,30 @@
 
           const urlParams = new URLSearchParams(window.location.search);
           const passportId = urlParams.get("id");
+          const isTransfer = urlParams.get("transfer") === "true";
           const isVisitor = urlParams.get("visitor") === "true";
 
           console.log("[DEBUG] Screen entered: Securing Identity Loader Check");
+
+          if (isTransfer) {
+            window.currentPassportId = passportId;
+            currentStep = 99; // Public transfer request mode
+            
+            const progBlock = document.getElementById("progressBlock");
+            if (progBlock) progBlock.style.display = "none";
+            
+            const navHeader = document.querySelector("nav");
+            if (navHeader) navHeader.style.display = "none";
+            
+            const publicTransferStep = document.getElementById("publicTransferStep");
+            if (publicTransferStep) {
+              publicTransferStep.classList.remove("hidden");
+              publicTransferStep.classList.add("active");
+            }
+            
+            forceHideLoader();
+            return;
+          }
 
           if (passportId) {
             window.currentPassportId = passportId;
@@ -7827,13 +8018,16 @@
       }
 
       function closePublicTransferModal() {
-          document.getElementById("publicTransferRequestModal").classList.add("hidden");
+          try {
+              window.parent.postMessage("close_pet_passport_flow", "*");
+          } catch(e) {}
+          window.location.replace("/");
       }
 
-      async function submitPublicTransferRequest() {
-          const name = document.getElementById("publicReqName").value.trim();
-          const email = document.getElementById("publicReqEmail").value.trim();
-          const phone = document.getElementById("publicReqPhone").value.trim();
+      async function submitPublicTransferRequestSecured() {
+          const name = document.getElementById("publicReqNameSecured").value.trim();
+          const email = document.getElementById("publicReqEmailSecured").value.trim();
+          const phone = document.getElementById("publicReqPhoneSecured").value.trim();
           const passportId = window.currentPassportId;
           
           if (!name || !email || !phone) {
@@ -7841,7 +8035,7 @@
               return;
           }
           
-          const btn = document.getElementById("submitPublicReqBtn");
+          const btn = document.getElementById("submitPublicReqBtnSecured");
           const originalText = btn.innerText;
           btn.disabled = true;
           btn.innerText = "Submitting Request...";
@@ -7868,53 +8062,5 @@
           }
       }
     </script>
-
-    <!-- Public Ownership Transfer Request Modal -->
-    <div
-      id="publicTransferRequestModal"
-      class="fixed inset-0 z-[120] hidden bg-on-surface/50 backdrop-blur-sm flex items-end sm:items-center justify-center transition-opacity p-0 sm:p-4"
-    >
-      <div
-        class="bg-white w-full sm:max-w-md rounded-t-[32px] sm:rounded-[28px] p-6 space-y-6 shadow-2xl border border-surface-container-highest animate-[fadeInUp_0.3s_cubic-bezier(0.16,1,0.3,1)_forwards]"
-      >
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600">
-              <span class="material-symbols-outlined text-lg">move_up</span>
-            </div>
-            <div>
-              <h2 class="text-base font-black text-on-surface leading-none">Request Ownership</h2>
-              <p class="text-[10px] text-on-surface-variant font-semibold mt-1">Submit request to current owner</p>
-            </div>
-          </div>
-          <button
-            onclick="closePublicTransferModal()"
-            class="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container-high transition-colors"
-          >
-            <span class="material-symbols-outlined text-sm">close</span>
-          </button>
-        </div>
-
-        <div class="space-y-4">
-          <div>
-            <label class="text-[10px] font-black uppercase tracking-wider text-on-surface pl-1">Your Full Name</label>
-            <input type="text" id="publicReqName" placeholder="Your name (e.g. John Doe)" class="w-full mt-1.5 px-3.5 py-3 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs text-on-surface font-semibold focus:border-primary outline-none">
-          </div>
-          <div>
-            <label class="text-[10px] font-black uppercase tracking-wider text-on-surface pl-1">Your Registered Email</label>
-            <p class="text-[9px] text-on-surface-variant/70 font-semibold pl-1 mb-1.5">You must be registered on this platform beforehand with this email address.</p>
-            <input type="email" id="publicReqEmail" placeholder="you@example.com" class="w-full px-3.5 py-3 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs text-on-surface font-semibold focus:border-primary outline-none">
-          </div>
-          <div>
-            <label class="text-[10px] font-black uppercase tracking-wider text-on-surface pl-1">Your Phone Number</label>
-            <input type="tel" id="publicReqPhone" placeholder="Mobile number" class="w-full mt-1.5 px-3.5 py-3 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs text-on-surface font-semibold focus:border-primary outline-none">
-          </div>
-          
-          <button id="submitPublicReqBtn" onclick="submitPublicTransferRequest()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-3.5 rounded-xl text-xs tracking-wider uppercase transition-all duration-150 active:scale-95 shadow-md shadow-rose-600/10">
-              Submit Request to Owner
-          </button>
-        </div>
-      </div>
-    </div>
   </body>
 </html>
