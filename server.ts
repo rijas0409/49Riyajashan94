@@ -37,6 +37,14 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  // End Point: Get public config for Supabase Realtime client
+  app.get("/api/config", (req, res) => {
+    res.json({
+      supabaseUrl: process.env.VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co",
+      supabaseAnonKey: process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || ""
+    });
+  });
+
   // End Point: Pet Care Plan Generator
   app.post("/api/care-plan", async (req, res) => {
     try {
@@ -894,7 +902,11 @@ Return the response as a single JSON object containing only a "description" key.
   // End Point: Create an ownership transfer request
   app.post("/api/ownership-transfer/request", async (req, res) => {
     try {
-      const { passportId, requesterName, requesterEmail, requesterPhone } = req.body;
+      const passportId = req.body.passportId;
+      const requesterName = req.body.requesterName || req.body.name;
+      const requesterEmail = req.body.requesterEmail || req.body.email;
+      const requesterPhone = req.body.requesterPhone || req.body.phone;
+
       if (!passportId || !requesterName || !requesterEmail || !requesterPhone) {
         return res.status(400).json({ error: "Missing required fields: passportId, requesterName, requesterEmail, requesterPhone" });
       }

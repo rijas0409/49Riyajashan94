@@ -4422,6 +4422,9 @@
                 );
                 try {
                   loadPassportDataIntoUI(data);
+                  if (typeof initRealtimeSubscription === "function") {
+                    initRealtimeSubscription();
+                  }
                   if (urlParams.get("transfer") === "true") {
                     document.getElementById("publicTransferRequestModal").classList.remove("hidden");
                   }
@@ -7731,7 +7734,16 @@
           
           try {
               const res = await fetch(`/api/ownership-transfer/requests?passportId=${encodeURIComponent(passportId)}`);
+              if (!res.ok) {
+                  throw new Error(`Server returned status ${res.status}`);
+              }
               const requests = await res.json();
+              if (!requests || requests.error) {
+                  throw new Error((requests && requests.error) || "Unexpected error response");
+              }
+              if (!Array.isArray(requests)) {
+                  throw new Error("Expected an array of incoming requests from the server");
+              }
               
               let listHtml = "";
               if (requests.length === 0) {
@@ -8060,6 +8072,92 @@
               btn.disabled = false;
               btn.innerText = originalText;
           }
+      }
+
+      // Realtime Data Refresh Logic
+      async function triggerRealtimeRefresh() {
+          if (!window.currentPassportId) return;
+          try {
+              console.log("[REALTIME] Fetching fresh passport details and requests...");
+              const res = await fetch(`/api/pet-passport?id=${encodeURIComponent(window.currentPassportId)}&_t=${Date.now()}`);
+              if (res.ok) {
+                  const data = await res.json();
+                  loadPassportDataIntoUI(data);
+                  
+                  // If we are currently in full view mode, refresh the open records list automatically!
+                  if (document.getElementById("petAccountFullView")?.classList.contains("active") && window.currentActiveTileType) {
+                      console.log("[REALTIME] Auto-refreshing current full-view panel:", window.currentActiveTileType);
+                      openPetAccountFullView(window.currentActiveTileType, true);
+                  }
+              }
+              
+              // Also refresh transfer requests if the panel is currently displayed and active
+              if (window.currentActiveTileType === "Transfer Ownership" && window.activeTransferTab === "requests") {
+                  fetchAndRenderIncomingRequests();
+              }
+          } catch (err) {
+              console.warn("[REALTIME] Failed to auto-refresh data:", err);
+          }
+      }
+
+      // Initialize Supabase realtime listening
+      async function initRealtimeSubscription() {
+          if (window.realtimeSubscribed) return;
+          window.realtimeSubscribed = true;
+          
+          try {
+              // Load Supabase script from CDN dynamically if not present
+              if (!window.supabase) {
+                  await new Promise((resolve, reject) => {
+                      const script = document.createElement("script");
+                      script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+                      script.onload = resolve;
+                      script.onerror = reject;
+                      document.head.appendChild(script);
+                  });
+              }
+              
+              const configRes = await fetch("/api/config");
+              if (!configRes.ok) throw new Error("Could not fetch API configuration");
+              const config = await configRes.json();
+              
+              let url = config.supabaseUrl;
+              try {
+                  const urlObj = new URL(url);
+                  url = urlObj.origin;
+              } catch(e) {
+                  url = url.replace(/\/$/, "");
+              }
+              
+              const supabaseClient = window.supabase.createClient(url, config.supabaseAnonKey);
+              
+              // Subscribe to changes on pet_health_records_documents
+              supabaseClient
+                  .channel('realtime_records_channel')
+                  .on('postgres_changes', { event: '*', schema: 'public', table: 'pet_health_records_documents' }, (payload) => {
+                      console.log("[REALTIME] Change detected in pet_health_records_documents:", payload);
+                      triggerRealtimeRefresh();
+                  })
+                  .subscribe();
+
+              // Subscribe to changes on pet_passports
+              supabaseClient
+                  .channel('realtime_passports_channel')
+                  .on('postgres_changes', { event: '*', schema: 'public', table: 'pet_passports' }, (payload) => {
+                      console.log("[REALTIME] Change detected in pet_passports:", payload);
+                      triggerRealtimeRefresh();
+                  })
+                  .subscribe();
+              
+              console.log("[REALTIME] Successfully initialized Supabase Realtime subscriptions!");
+          } catch (err) {
+              console.error("[REALTIME] Failed to initialize real-time subscription:", err);
+          }
+          
+          // Setup periodic automatic fallback pooling loop to guarantee robust sync under all network conditions
+          setInterval(() => {
+              triggerRealtimeRefresh();
+          }, 4000);
       }
     </script>
   </body>

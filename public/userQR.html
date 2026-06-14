@@ -196,6 +196,22 @@
             </div>
         </div>
 
+        <!-- Request Ownership Button Card -->
+        <div id="requestOwnershipSummaryBtnCard" class="bg-gradient-to-br from-[#1a1a24] to-[#2c1d25] p-5 rounded-[24px] border border-surface-container-highest shadow-xl flex items-center justify-between gap-4 cursor-pointer hover:scale-[1.01] active:scale-95 transition-all group no-print" onclick="openOwnershipRequestModal()">
+            <div class="flex items-center gap-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-2xl font-bold">swap_horiz</span>
+                </div>
+                <div class="text-left">
+                    <h4 class="text-sm font-black text-rose-300">Request Ownership</h4>
+                    <p class="text-[10px] text-on-surface-variant/70 font-semibold mt-0.5 leading-tight">Click to request passport & records transfer</p>
+                </div>
+            </div>
+            <button class="w-8 h-8 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-colors">
+                <span class="material-symbols-outlined text-sm">arrow_forward</span>
+            </button>
+        </div>
+
         <!-- Scanning timestamp & Footprint details -->
         <div class="mt-8 pt-6 border-t border-dashed border-surface-container-highest text-center space-y-2">
             <span class="material-symbols-outlined text-surface-container-highest text-3xl">local_police</span>
@@ -236,6 +252,51 @@
             <button onclick="closeQRModal()" class="w-full bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-bold py-3.5 rounded-2xl text-xs tracking-wider uppercase transition-colors active:scale-98">
                 Close View
             </button>
+        </div>
+    </div>
+
+    <!-- Request Ownership Form Modal wrapper -->
+    <div id="ownershipRequestModal" class="fixed inset-0 z-[100] hidden opacity-0 bg-on-surface/40 backdrop-blur-md flex items-center justify-center p-6 transition-opacity duration-300 no-print" onclick="closeOwnershipRequestModal()">
+        <div id="ownershipRequestModalContent" class="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl border border-surface-container-highest modal-scale" onclick="event.stopPropagation()">
+            <!-- Handle -->
+            <div class="w-12 h-1 bg-surface-container-highest rounded-full mx-auto mb-5"></div>
+            
+            <!-- Icon & Header -->
+            <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 select-none">
+                        <span class="material-symbols-outlined text-lg font-bold">move_up</span>
+                    </div>
+                    <div class="text-left">
+                        <h2 class="text-base font-black text-on-surface leading-none">Request Ownership</h2>
+                        <p class="text-[10px] text-on-surface-variant font-semibold mt-1">Submit request to current owner</p>
+                    </div>
+                </div>
+                <button onclick="closeOwnershipRequestModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container-high transition-colors select-none">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </button>
+            </div>
+            
+            <!-- Inputs -->
+            <div class="space-y-4 text-left">
+                <div>
+                    <label class="text-[10px] font-black uppercase tracking-wider text-on-surface pl-1">Your Full Name</label>
+                    <input type="text" id="publicReqNameSecured" placeholder="Your name (e.g. John Doe)" class="w-full mt-1.5 px-3.5 py-3 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs font-semibold text-on-surface focus:border-primary outline-none">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black uppercase tracking-wider text-on-surface pl-1">Your Registered Email</label>
+                    <p class="text-[9px] text-on-surface-variant/70 font-semibold pl-1 mb-1.5 leading-tight">You must be registered on Sruvo with this email address.</p>
+                    <input type="email" id="publicReqEmailSecured" placeholder="you@example.com" class="w-full px-3.5 py-3 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs font-semibold text-on-surface focus:border-primary outline-none">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black uppercase tracking-wider text-on-surface pl-1">Your Phone Number</label>
+                    <input type="tel" id="publicReqPhoneSecured" placeholder="Mobile number" class="w-full mt-1.5 px-3.5 py-3 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs font-semibold text-on-surface focus:border-primary outline-none">
+                </div>
+                
+                <button id="submitPublicReqBtnSecured" onclick="submitPublicTransferRequestSecured()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-4 rounded-xl text-xs tracking-wider uppercase transition-all duration-150 active:scale-95 shadow-md shadow-rose-600/10 mt-2">
+                    Submit Request to Owner
+                </button>
+            </div>
         </div>
     </div>
 
@@ -485,6 +546,80 @@
                 setTimeout(() => {
                     modal.classList.add('hidden');
                 }, 300);
+            }
+        }
+
+        // Ownership Request Form Toggle and Submit Handlers
+        function openOwnershipRequestModal() {
+            const modal = document.getElementById('ownershipRequestModal');
+            const modalContent = document.getElementById('ownershipRequestModalContent');
+            if (modal) {
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    if (modalContent) modalContent.classList.add('open');
+                }, 10);
+            }
+        }
+
+        function closeOwnershipRequestModal() {
+            const modal = document.getElementById('ownershipRequestModal');
+            const modalContent = document.getElementById('ownershipRequestModalContent');
+            if (modalContent) modalContent.classList.remove('open');
+            if (modal) {
+                modal.classList.add('opacity-0');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                }, 300);
+            }
+            // Clear inputs on close
+            const nameEl = document.getElementById("publicReqNameSecured");
+            const emailEl = document.getElementById("publicReqEmailSecured");
+            const phoneEl = document.getElementById("publicReqPhoneSecured");
+            if (nameEl) nameEl.value = "";
+            if (emailEl) emailEl.value = "";
+            if (phoneEl) phoneEl.value = "";
+        }
+
+        async function submitPublicTransferRequestSecured() {
+            const nameEl = document.getElementById("publicReqNameSecured");
+            const emailEl = document.getElementById("publicReqEmailSecured");
+            const phoneEl = document.getElementById("publicReqPhoneSecured");
+
+            const name = nameEl ? nameEl.value.trim() : "";
+            const email = emailEl ? emailEl.value.trim() : "";
+            const phone = phoneEl ? phoneEl.value.trim() : "";
+            const passportId = (document.getElementById("passportId").innerText || "").trim();
+            
+            if (!name || !email || !phone) {
+                alert("All fields are required.");
+                return;
+            }
+            
+            const btn = document.getElementById("submitPublicReqBtnSecured");
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "Submitting Request...";
+            
+            try {
+                const res = await fetch("/api/ownership-transfer/request", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ passportId, name, email, phone })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert("Your request was sent successfully! The current owner has been notified and can approve this transfer inside their Requests Queue.");
+                    closeOwnershipRequestModal();
+                } else {
+                    alert("Submission failed: " + (data.error || "Unknown error"));
+                }
+            } catch(err) {
+                console.error(err);
+                alert("Error contacting the server.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = originalText;
             }
         }
     </script>
