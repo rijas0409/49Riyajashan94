@@ -2341,34 +2341,25 @@
       </div>
 
       <!-- Pet Account Dedicated Full Screen View -->
-      <div id="petAccountFullView" class="step-container space-y-6 pb-8">
-        <!-- Header with beautiful back button -->
-        <div class="flex items-center gap-4 bg-white/60 backdrop-blur p-4 rounded-2xl border border-surface-container-highest shadow-sm">
-          <button
-            onclick="closePetAccountFullView()"
-            class="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container-high transition-colors active:scale-95"
-          >
-            <span class="material-symbols-outlined text-on-surface-variant text-lg">arrow_back</span>
-          </button>
-          <div>
-            <h1 id="pafvTitle" class="text-xl font-black text-on-surface leading-none">Health Records</h1>
-            <p id="pafvSubtitle" class="text-xs text-on-surface-variant/80 font-semibold mt-1">Vaccines, Allergies & Meds</p>
+      <div id="petAccountFullView" class="step-container pb-8">
+        <!-- Main Actions Header: Search Bar & Add Record -->
+        <div id="pafvSearchWrapper" class="space-y-3 mb-6">
+          <div class="flex items-center gap-2">
+            <div class="flex-1 relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px] font-bold">search</span>
+              <input type="text" id="pafvSearchInput" placeholder="Search entries..." oninput="filterPafvRecords()" class="w-full pl-9 pr-3 py-3 bg-surface border border-surface-container-highest rounded-[16px] text-xs text-on-surface placeholder:text-on-surface-variant/60 font-bold focus:border-primary outline-none transition-all shadow-sm">
+            </div>
+            <!-- Quick action button to add a record -->
+            <button id="pafvAddButton" onclick="openDashboardRecordModal()" class="flex items-center gap-1 bg-primary text-white text-[11px] font-black px-4 py-3 rounded-[16px] hover:bg-primary-hover active:scale-[0.98] transition-all shadow-[0_2px_8px_rgba(var(--color-primary-rgb),0.2)] shrink-0 uppercase tracking-widest border border-primary/20">
+              <span class="material-symbols-outlined text-[16px] font-bold">add</span>
+              <span>Add Entry</span>
+            </button>
           </div>
           
-          <!-- Quick action button to add a record if any health or docs is viewed -->
-          <button id="pafvAddButton" onclick="openDashboardRecordModal()" class="ml-auto flex items-center gap-1 bg-primary text-white text-xs font-bold px-3 py-2 rounded-xl hover:bg-primary-hover active:scale-95 transition-all">
-            <span class="material-symbols-outlined text-xs">add</span>
-            <span>Add</span>
-          </button>
-        </div>
-
-        <!-- Search Bar and Count -->
-        <div class="flex items-center justify-between gap-3 bg-white/40 p-3 rounded-2xl border border-surface-container-highest/60">
-          <div class="flex-1 relative">
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
-            <input type="text" id="pafvSearchInput" placeholder="Search entries..." oninput="filterPafvRecords()" class="w-full pl-9 pr-3 py-2.5 bg-white/80 border border-surface-container-highest rounded-xl text-xs text-on-surface placeholder:text-on-surface-variant/50 font-semibold focus:border-primary outline-none transition-colors">
+          <div class="flex items-center justify-between px-1">
+            <span class="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70">Showing Results</span>
+            <span id="pafvCountBadge" class="bg-primary/10 text-primary text-[10px] font-black uppercase px-2.5 py-1 rounded-md shrink-0">0 Records</span>
           </div>
-          <span id="pafvCountBadge" class="bg-primary/10 text-primary text-[10px] font-black uppercase px-2.5 py-1.5 rounded-lg shrink-0">0 Records</span>
         </div>
 
         <!-- List of items in full screen with full detail management -->
@@ -4558,6 +4549,12 @@
       }
 
       document.getElementById("backBtn").addEventListener("click", () => {
+        // Intercept back action if a specific Pet Account tile is open
+        if (window.currentActiveTileType) {
+            closePetAccountFullView();
+            return;
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get("id")) {
           window.parent.postMessage("close_pet_passport_flow", "*");
@@ -7403,19 +7400,15 @@
           }
           
           // Render based on block type
-          const titleEl = document.getElementById("pafvTitle");
-          const subtitleEl = document.getElementById("pafvSubtitle");
           const countBadge = document.getElementById("pafvCountBadge");
           const addButton = document.getElementById("pafvAddButton");
           const contentEl = document.getElementById("pafvContent");
-          const searchContainer = document.getElementById("pafvSearchInput").parentElement.parentElement;
+          const searchContainer = document.getElementById("pafvSearchWrapper");
           
           if (tileType === "Transfer Ownership") {
-              // Hide search and show count differently
-              searchContainer.classList.add("hidden");
-              titleEl.innerText = "Transfer Ownership";
-              subtitleEl.innerText = "Shift passport & records safely";
-              addButton.classList.add("hidden");
+              // Hide search/actions and show count differently
+              if (searchContainer) searchContainer.classList.add("hidden");
+              if (addButton) addButton.classList.add("hidden");
               
               // Render 2-tab interface
               renderOwnershipTransferUI();
@@ -7423,35 +7416,27 @@
           }
           
           // standard tiles
-          searchContainer.classList.remove("hidden");
-          addButton.classList.remove("hidden");
+          if (searchContainer) searchContainer.classList.remove("hidden");
+          if (addButton) addButton.classList.remove("hidden");
           
           let records = [];
           
           if (tileType === "Health Records") {
-              titleEl.innerText = "Health Records";
-              subtitleEl.innerText = "Vaccines, Allergies & Meds";
               records = (window.currentHealthRecords || []).filter(r => {
                   const t = r.record_type || r.type;
                   return ["Vaccination", "Prescription", "Lab Test", "Surgery", "Medical Condition", "Health Certificate"].includes(t);
               });
           } else if (tileType === "Consultations") {
-              titleEl.innerText = "Consultations";
-              subtitleEl.innerText = "Past Vet Visits & Clinics";
               records = (window.currentHealthRecords || []).filter(r => {
                   const t = r.record_type || r.type;
                   return ["Video Consultation", "Home Visit", "Clinic Visit", "Follow-up Consultation"].includes(t);
               });
           } else if (tileType === "Medicine Orders") {
-              titleEl.innerText = "Medicine Orders";
-              subtitleEl.innerText = "Past Orders & Refills";
               records = (window.currentHealthRecords || []).filter(r => {
                   const t = r.record_type || r.type;
                   return ["Medicine Order"].includes(t);
               });
           } else if (tileType === "Documents") {
-              titleEl.innerText = "Documents";
-              subtitleEl.innerText = "Vault & Uploaded Files";
               records = (window.currentHealthRecords || []).filter(r => r.file_url || r.document_base64 || r.document_url);
           }
           
