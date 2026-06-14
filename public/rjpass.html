@@ -2947,15 +2947,17 @@
                 <div class="space-y-1.5 p-3.5 bg-surface-container-low/30 rounded-2xl border border-surface-container-highest">
                     <span class="text-[9px] font-black text-on-surface-variant uppercase tracking-widest block">Notes / Description</span>
                     <p id="docDetailsDescription" class="text-xs font-semibold text-on-surface leading-normal italic">No descriptions available.</p>
+                    <textarea id="editDocDescription" class="hidden w-full px-3 py-2 bg-white border border-surface-container-highest rounded-xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-xs font-semibold text-on-surface resize-none" rows="3" placeholder="Enter notes / description..."></textarea>
                 </div>
 
                 <!-- Provider / Uploaded By -->
-                <div class="flex items-center justify-between p-3.5 bg-surface-container-low/30 rounded-2xl border border-surface-container-highest">
-                    <div class="space-y-0.5">
-                        <span class="text-[9px] font-black text-on-surface-variant uppercase tracking-widest block">Uploaded By / Clinician</span>
+                <div class="p-3.5 bg-surface-container-low/30 rounded-2xl border border-surface-container-highest space-y-1.5">
+                    <span class="text-[9px] font-black text-on-surface-variant uppercase tracking-widest block">Uploaded By / Clinician</span>
+                    <div id="docDetailsProviderContainer" class="flex items-center justify-between">
                         <span id="docDetailsProvider" class="text-xs font-bold text-on-surface">Rijas Pabla (Owner)</span>
+                        <span class="material-symbols-outlined text-primary/60 text-lg">medical_information</span>
                     </div>
-                    <span class="material-symbols-outlined text-primary/60 text-lg">medical_information</span>
+                    <input id="editDocProvider" type="text" class="hidden w-full px-3 py-2 bg-white border border-surface-container-highest rounded-xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none text-xs font-bold text-on-surface" placeholder="Clinician or Owner name" />
                 </div>
             </div>
 
@@ -2982,6 +2984,22 @@
                         <span class="material-symbols-outlined text-[16px]">delete</span>
                         Delete Record
                     </button>
+                </div>
+
+                <div id="docEditActionsSection" class="pt-1.5">
+                    <button id="btnDocEditToggle" onclick="toggleDocEditMode()" class="w-full flex items-center justify-center gap-1.5 h-11 bg-surface border border-primary/20 text-primary text-xs font-black rounded-xl hover:bg-primary/5 active:scale-[0.98] transition-all">
+                        <span class="material-symbols-outlined text-[16px]">edit</span>
+                        Edit Description & Clinician
+                    </button>
+                    <div id="docEditSaveCancelGroup" class="hidden grid grid-cols-2 gap-2.5">
+                        <button onclick="saveDocDetailsEdits()" class="flex items-center justify-center gap-1.5 h-11 bg-pink-600 text-white text-xs font-black rounded-xl shadow-sm hover:opacity-90 active:scale-[0.98] transition-all">
+                            <span class="material-symbols-outlined text-[16px]">save</span>
+                            Save Changes
+                        </button>
+                        <button onclick="toggleDocEditMode(false)" class="flex items-center justify-center gap-1.5 h-11 bg-surface border border-surface-container-highest text-on-surface-variant text-xs font-bold rounded-xl hover:bg-surface-container-low active:scale-[0.98] transition-all">
+                            Cancel
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -3068,6 +3086,9 @@
         const modal = document.getElementById("documentDetailsModal");
         if (!modal) return;
 
+        // Reset edit mode back to view mode
+        try { toggleDocEditMode(false); } catch(err) {}
+
         // Map values
         const type = record.record_type || record.type || "Document";
         const title = record.certificate_title || record.certificateTitle || record.vaccine_name || record.procedure_name || record.test_name || type;
@@ -3143,6 +3164,126 @@
         setTimeout(() => {
           modal.classList.add("hidden");
         }, 300);
+      }
+
+      function toggleDocEditMode(forceState) {
+        const descText = document.getElementById("docDetailsDescription");
+        const descInput = document.getElementById("editDocDescription");
+        const provText = document.getElementById("docDetailsProviderContainer");
+        const provInput = document.getElementById("editDocProvider");
+        
+        const toggleBtn = document.getElementById("btnDocEditToggle");
+        const saveCancelGroup = document.getElementById("docEditSaveCancelGroup");
+        
+        const record = window.lastSelectedDocumentRecord;
+        if (!record) return;
+
+        let active = false;
+        if (typeof forceState === "boolean") {
+          active = forceState;
+        } else {
+          active = descInput.classList.contains("hidden");
+        }
+
+        if (active) {
+          // Enter edit mode
+          descText.classList.add("hidden");
+          descInput.classList.remove("hidden");
+          const currentDesc = record.record_description || record.recordDescription || record.diagnosis || "";
+          descInput.value = currentDesc;
+
+          provText.classList.add("hidden");
+          provInput.classList.remove("hidden");
+          const currentProv = record.prescribed_by || record.prescribedBy || "Owner";
+          provInput.value = currentProv;
+
+          toggleBtn.classList.add("hidden");
+          saveCancelGroup.classList.remove("hidden");
+        } else {
+          // Exit edit mode
+          descText.classList.remove("hidden");
+          descInput.classList.add("hidden");
+
+          provText.classList.remove("hidden");
+          provInput.classList.add("hidden");
+
+          toggleBtn.classList.remove("hidden");
+          saveCancelGroup.classList.add("hidden");
+        }
+      }
+
+      async function saveDocDetailsEdits() {
+        const record = window.lastSelectedDocumentRecord;
+        if (!record) return;
+
+        const newDesc = document.getElementById("editDocDescription").value.trim();
+        const newProv = document.getElementById("editDocProvider").value.trim();
+        const recordId = record.id;
+
+        try {
+          const saveBtn = document.querySelector("#docEditSaveCancelGroup button");
+          const originalText = saveBtn.innerHTML;
+          saveBtn.innerHTML = `<span class="material-symbols-outlined animate-spin text-[16px]">sync</span> Saving...`;
+          saveBtn.disabled = true;
+
+          const res = await fetch("/api/health-record", {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              recordId: recordId,
+              updates: {
+                record_description: newDesc,
+                prescribed_by: newProv
+              }
+            })
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            alert("Document details updated successfully.");
+            
+            // Update local memory
+            record.record_description = newDesc;
+            record.recordDescription = newDesc;
+            record.prescribed_by = newProv;
+            record.prescribedBy = newProv;
+            
+            // Refresh on screen
+            document.getElementById("docDetailsDescription").innerText = newDesc || "No description provided.";
+            document.getElementById("docDetailsProvider").innerText = newProv || "Owner";
+            
+            const passportId = window.currentPassportId || record.pet_passport_id;
+            if (passportId) {
+              localStorage.setItem("last_sync_" + passportId, new Date().toISOString());
+            }
+
+            // Close edit mode
+            toggleDocEditMode(false);
+
+            // Refetch current passport model to refresh the parent companion/public page representation
+            if (window.currentPassportId) {
+              const refreshRes = await fetch(`/api/pet-passport?id=${encodeURIComponent(window.currentPassportId)}`);
+              if (refreshRes.ok) {
+                const refreshedData = await refreshRes.json();
+                loadPassportDataIntoUI(refreshedData);
+              }
+            }
+          } else {
+            const errData = await res.json();
+            alert("Failed to update details: " + (errData.error || "Unknown error"));
+          }
+        } catch (err) {
+          console.error("Failed to update record details:", err);
+          alert("Error: " + err.message);
+        } finally {
+          const saveBtn = document.querySelector("#docEditSaveCancelGroup button");
+          if (saveBtn) {
+            saveBtn.innerHTML = `<span class="material-symbols-outlined text-[16px]">save</span> Save Changes`;
+            saveBtn.disabled = false;
+          }
+        }
       }
 
       async function handleDocAction(action) {
@@ -3664,25 +3805,25 @@
         // Basic Details
         const petName_el = document.getElementById("passPetName");
         if (petName_el)
-          petName_el.innerText = payload.pet_name || payload.petName || "Buddy";
+          petName_el.innerText = payload.pet_name || payload.petName || "";
 
         const breed_el = document.getElementById("passPetBreed");
-        if (breed_el) breed_el.innerText = payload.breed || "Golden Retriever";
+        if (breed_el) breed_el.innerText = payload.breed || payload.petBreed || "";
 
         const dob_val = payload.dob;
         const db_el = document.getElementById("passDOB");
-        if (db_el) db_el.innerText = getFormattedDOB(dob_val) || "12 Oct 2022";
+        if (db_el) db_el.innerText = getFormattedDOB(dob_val) || "";
 
         const ow_el = document.getElementById("passOwner");
         if (ow_el)
           ow_el.innerText =
-            payload.owner_name || payload.ownerName || "Rijas Pabla";
+            payload.owner_name || payload.ownerName || "";
 
         const app_el = document.getElementById("passAppearance");
-        if (app_el) app_el.innerText = payload.appearance || "Golden coat";
+        if (app_el) app_el.innerText = payload.appearance || "";
 
         const weight_el = document.getElementById("passWeightText");
-        if (weight_el) weight_el.innerText = (payload.weight || "9.4") + " kg";
+        if (weight_el) weight_el.innerText = payload.weight ? (payload.weight + " kg") : "";
 
         const genderTxt = payload.gender || "Male";
         const gender_el = document.getElementById("passGenderText");
@@ -3723,7 +3864,7 @@
         const dashPetName = document.getElementById("dashPetName");
         if (dashPetName)
           dashPetName.innerText =
-            payload.pet_name || payload.petName || "Buddy";
+            payload.pet_name || payload.petName || "";
 
         const dashboardPetPhoto = document.getElementById("dashboardPetPhoto");
         if (dashboardPetPhoto && (payload.photo_url || payload.photoUrl)) {
@@ -3766,6 +3907,9 @@
                 const today = new Date();
                 years = today.getFullYear() - birthDate.getFullYear();
                 months = today.getMonth() - birthDate.getMonth();
+                if (today.getDate() < birthDate.getDate()) {
+                    months--;
+                }
                 if (months < 0) {
                     years--;
                     months += 12;
@@ -3782,9 +3926,15 @@
             }
 
             let ageStr = "";
-            if (years > 0) ageStr += years + " Year" + (years > 1 ? "s" : "");
-            if (months > 0) ageStr += (ageStr ? " " : "") + months + " Month" + (months > 1 ? "s" : "");
-            if (!ageStr) ageStr = "Just Born";
+            if (years > 0 && months === 0) {
+                ageStr = `${years} Yrs`;
+            } else if (years > 0) {
+                ageStr = `${years} Yr${years > 1 ? "s" : ""} ${months} Mo${months > 1 ? "s" : ""}`;
+            } else if (months > 0) {
+                ageStr = `${months} Mo${months > 1 ? "s" : ""}`;
+            } else {
+                ageStr = "Just Born";
+            }
 
             const elements = ["passAge", "accAge", "dashPetAge"];
             elements.forEach(id => {
@@ -3814,26 +3964,26 @@
           dashEmergencyPhone.innerText =
             payload.emergency_phone ||
             payload.emergencyPhone ||
-            "+91 98765 43210";
+            "";
         }
 
         // Pet Account Details (Step 6)
         const accPetName = document.getElementById("accPetName");
         if (accPetName)
-          accPetName.innerText = payload.pet_name || payload.petName || "Buddy";
+          accPetName.innerText = payload.pet_name || payload.petName || "";
 
         const accPetBreed = document.getElementById("accPetBreed");
         if (accPetBreed)
-          accPetBreed.innerText = payload.breed || "Golden Retriever";
+          accPetBreed.innerText = payload.breed || payload.petBreed || "";
 
         const accPetAppearance = document.getElementById("accPetAppearance");
         if (accPetAppearance)
-          accPetAppearance.innerText = payload.appearance || "Golden coat";
+          accPetAppearance.innerText = payload.appearance || "";
 
         const accAge = document.getElementById("accAge");
         if (accAge) {
           accAge.innerText =
-            typeof getAgeString === "function" ? getAgeString(dob_val) : "N/A";
+            typeof getAgeString === "function" ? getAgeString(dob_val) : "";
         }
 
         const accGender = document.getElementById("accGender");
@@ -3848,7 +3998,7 @@
         }
 
         const accWeight = document.getElementById("accWeight");
-        if (accWeight) accWeight.innerText = (payload.weight || "9.4") + " kg";
+        if (accWeight) accWeight.innerText = payload.weight ? (payload.weight + " kg") : "";
 
         const accPassportIdBanner = document.getElementById("accPassportIdBanner");
         if (accPassportIdBanner && window.currentPassportId) {
@@ -3864,10 +4014,14 @@
         const dashHealthInsights =
           document.getElementById("dashHealthInsights");
         if (dashHealthInsights) {
-          const nameVal = payload.pet_name || payload.petName || "Buddy";
+          const nameVal = payload.pet_name || payload.petName || "";
           const genderVal = payload.gender || "Male";
-          const breedVal = payload.breed || "Golden Retriever";
-          dashHealthInsights.innerText = `${nameVal} is due for ${genderVal.toLowerCase() === "male" ? "his" : genderVal.toLowerCase() === "female" ? "her" : "their"} annual DHPP booster next month. Regular grooming is highly recommended for ${genderVal.toLowerCase() === "male" ? "his" : genderVal.toLowerCase() === "female" ? "her" : "their"} "${breedVal}" coat type.`;
+          const breedVal = payload.breed || payload.petBreed || "";
+          if (nameVal) {
+            dashHealthInsights.innerText = `${nameVal} is due for ${genderVal.toLowerCase() === "male" ? "his" : genderVal.toLowerCase() === "female" ? "her" : "their"} annual DHPP booster next month. Regular grooming is highly recommended for ${genderVal.toLowerCase() === "male" ? "his" : genderVal.toLowerCase() === "female" ? "her" : "their"} "${breedVal}" coat type.`;
+          } else {
+            dashHealthInsights.innerText = "No health insights available yet.";
+          }
         }
       }
 
@@ -4085,6 +4239,19 @@
 
         if (step === 4) {
           runStep4Engine();
+        }
+
+        if (step === 5) {
+          if (window.currentPassportId) {
+            fetch(`/api/pet-passport?id=${encodeURIComponent(window.currentPassportId)}&_t=${Date.now()}`)
+              .then(res => res.ok ? res.json() : null)
+              .then(data => {
+                if (data) {
+                  loadPassportDataIntoUI(data);
+                }
+              })
+              .catch(err => console.error("Error refreshing dashboard from DB on nextStep(5):", err));
+          }
         }
       }
 
@@ -6122,7 +6289,7 @@
           if (yrs === 0 && mos > 0) return mos + (mos === 1 ? " Mo" : " Mos");
           if (yrs > 0 && mos > 0)
             return `${yrs} Yr${yrs > 1 ? "s" : ""} ${mos} Mo${mos > 1 ? "s" : ""}`;
-          if (yrs > 0) return yrs + (yrs === 1 ? " Yr" : " Yrs");
+          if (yrs > 0) return yrs + " Yrs";
           return "0 Yrs";
         }
 
@@ -6136,18 +6303,25 @@
           years--;
           months += 12;
         }
+
+        // Normalization logic: e.g., 1 Year 12 Months -> 2 Years
+        if (months >= 12) {
+          years += Math.floor(months / 12);
+          months = months % 12;
+        }
+
         if (years <= 0) {
-          if (months <= 0) return "0 Mos";
+          if (months <= 0) return "Just Born";
           return months + (months === 1 ? " Mo" : " Mos");
         }
         if (years > 0 && months > 0) {
           return `${years} Yr${years > 1 ? "s" : ""} ${months} Mo${months > 1 ? "s" : ""}`;
         }
-        return years + (years === 1 ? " Yr" : " Yrs");
+        return years + " Yrs";
       }
 
       function getFormattedDOB(dobString) {
-        if (!dobString) return "12 Oct 2022";
+        if (!dobString) return "";
         const petAgeType = document.getElementById("petAgeType");
         if (petAgeType && petAgeType.value === "approx") {
           const dob = new Date(dobString);
@@ -6158,7 +6332,7 @@
           );
         }
         const dob = new Date(dobString);
-        if (isNaN(dob.getTime())) return "12 Oct 2022";
+        if (isNaN(dob.getTime())) return "";
         return dob.toLocaleDateString("en-GB", {
           day: "numeric",
           month: "short",
@@ -6190,7 +6364,7 @@
         }
       }
 
-      function executeSuccessCompletionState() {
+      async function executeSuccessCompletionState() {
         document.getElementById("statusHeader").innerText =
           "Your Pet Passport is Ready!";
         document.getElementById("statusHeader").className =
@@ -6209,96 +6383,18 @@
           genBlock.style.display = "none";
         }
 
-        const today = new Date();
-        const formattedDate = today.toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        });
-
-        const dashboardCreatedOn =
-          document.getElementById("dashboardCreatedOn");
-        if (dashboardCreatedOn) dashboardCreatedOn.innerText = formattedDate;
-
-        // Dynamically synchronize the custom details entered in the forms
-        const nameInput = document.getElementById("petName");
-        const breedInput = document.getElementById("petBreed");
-        const appearanceInput = document.getElementById("petAppearance");
-        const genderInput = document.getElementById("petGender");
-        const dobInput = document.getElementById("petDOB");
-        const weightInput = document.getElementById("petWeight");
-        const ownerInput = document.getElementById("ownerName");
-
-        const nameVal = (nameInput && nameInput.value.trim()) || "Buddy";
-        const breedVal =
-          (breedInput && breedInput.value.trim()) || "Golden Retriever";
-        const appearanceVal =
-          (appearanceInput && appearanceInput.value.trim()) ||
-          "Golden coat with white chest patch";
-        const genderVal = (genderInput && genderInput.value) || "Male";
-        const dobVal = dobInput ? dobInput.value : "";
-        const weightVal = (weightInput && weightInput.value.trim()) || "9.4";
-        const ownerVal =
-          (ownerInput && ownerInput.value.trim()) || "Rijas Pabla";
-
-        const genderIcon =
-          genderVal.toLowerCase() === "male" ? "male" : "female";
-
-        // 1. Passport Card Details
-        const passPetName = document.getElementById("passPetName");
-        if (passPetName) passPetName.innerText = nameVal;
-
-        const passPetBreed = document.getElementById("passPetBreed");
-        if (passPetBreed) passPetBreed.innerText = breedVal;
-
-        const passGenderIcon = document.getElementById("passGenderIcon");
-        if (passGenderIcon) passGenderIcon.innerText = genderIcon;
-
-        const passGenderText = document.getElementById("passGenderText");
-        if (passGenderText) passGenderText.innerText = genderVal;
-
-        const passWeightText = document.getElementById("passWeightText");
-        if (passWeightText) passWeightText.innerText = weightVal + " kg";
-
-        const passDOB = document.getElementById("passDOB");
-        if (passDOB) passDOB.innerText = getFormattedDOB(dobVal);
-
-        const passOwner = document.getElementById("passOwner");
-        if (passOwner) passOwner.innerText = ownerVal;
-
-        const passAppearance = document.getElementById("passAppearance");
-        if (passAppearance) passAppearance.innerText = appearanceVal;
-
-        // 2. Dashboard Pet Card Name
-        const dashPetName = document.getElementById("dashPetName");
-        if (dashPetName) dashPetName.innerText = nameVal;
-
-        // 3. Pet Account Details
-        const accPetName = document.getElementById("accPetName");
-        if (accPetName) accPetName.innerText = nameVal;
-
-        const accPetBreed = document.getElementById("accPetBreed");
-        if (accPetBreed) accPetBreed.innerText = breedVal;
-
-        const accPetAppearance = document.getElementById("accPetAppearance");
-        if (accPetAppearance) accPetAppearance.innerText = appearanceVal;
-
-        const accAge = document.getElementById("accAge");
-        if (accAge) accAge.innerText = getAgeString(dobVal);
-
-        const accGender = document.getElementById("accGender");
-        if (accGender) {
-          accGender.innerHTML = `<span class="material-symbols-outlined text-[16px]">${genderIcon}</span>${genderVal}`;
-        }
-
-        const accWeight = document.getElementById("accWeight");
-        if (accWeight) accWeight.innerText = weightVal + " kg";
-
-        // 4. Personalized AI Health Insights
-        const dashHealthInsights =
-          document.getElementById("dashHealthInsights");
-        if (dashHealthInsights) {
-          dashHealthInsights.innerText = `${nameVal} is due for ${genderVal.toLowerCase() === "male" ? "his" : genderVal.toLowerCase() === "female" ? "her" : "their"} annual DHPP booster next month. Regular grooming is highly recommended for ${genderVal.toLowerCase() === "male" ? "his" : genderVal.toLowerCase() === "female" ? "her" : "their"} "${breedVal}" coat type.`;
+        // Immediately fetch the newly created passport's actual database record
+        if (window.currentPassportId) {
+          try {
+            console.log("[DEBUG] Fetching actual database record for passport ID:", window.currentPassportId);
+            const refreshRes = await fetch(`/api/pet-passport?id=${encodeURIComponent(window.currentPassportId)}&_t=${Date.now()}`);
+            if (refreshRes.ok) {
+              const refreshData = await refreshRes.json();
+              loadPassportDataIntoUI(refreshData);
+            }
+          } catch (fetchErr) {
+            console.error("Error refreshing database record in success state:", fetchErr);
+          }
         }
 
         const passportContainer = document.getElementById(
