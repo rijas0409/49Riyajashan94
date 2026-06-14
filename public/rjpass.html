@@ -7598,7 +7598,7 @@
           
           if (window.activeTransferTab === "initiate") {
               const passId = window.currentPassportId || "PASSPORT_ID";
-              const publicLink = `${window.location.origin}/rjpass.html?id=${encodeURIComponent(passId)}&transfer=true`;
+              const publicLink = `https://sruvoindia.vercel.app/passport/${encodeURIComponent(passId)}`;
               
               tabBody = `
                   <div class="space-y-4 pt-1 animate-[fadeIn_0.2s_ease-out]">
@@ -7710,7 +7710,12 @@
       
       async function fetchAndRenderIncomingRequests() {
           const contentEl = document.getElementById("pafvContent");
-          const passportId = window.currentPassportId;
+          
+          let passportId = window.currentPassportId;
+          if (!passportId || passportId === "undefined" || passportId === "null" || passportId === "PASSPORT_ID") {
+              const urlParams = new URLSearchParams(window.location.search);
+              passportId = urlParams.get("id");
+          }
           
           let tabHeader = `
               <div class="flex border-b border-surface-container-highest">
@@ -7722,6 +7727,16 @@
                   </button>
               </div>
           `;
+          
+          if (!passportId || passportId === "undefined" || passportId === "null" || passportId === "PASSPORT_ID") {
+              contentEl.innerHTML = `
+                  <div class="space-y-4">
+                      ${tabHeader}
+                      <p class="text-xs text-on-surface-variant font-semibold text-center mt-6">Waiting for passport ID to load requests...</p>
+                  </div>
+              `;
+              return;
+          }
           
           contentEl.innerHTML = `
               <div class="space-y-4">
@@ -7799,6 +7814,7 @@
                   <div class="space-y-4">
                       ${tabHeader}
                       <p class="text-sm text-red-500 font-bold text-center mt-6">Failed to load requests from server.</p>
+                      <p class="text-xs text-red-400 font-semibold text-center mt-2">${err.message || err}</p>
                   </div>
               `;
           }

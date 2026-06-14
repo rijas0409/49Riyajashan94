@@ -5,7 +5,7 @@
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"/>
     
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     
     <script id="tailwind-config">
@@ -43,15 +43,157 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .modal-scale {
-            transform: scale(0.95);
-            opacity: 0;
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        
+        /* Modal Bottom Sheet Slide-Up Animation */
+        .modal-enter {
+            animation: sheetSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
-        .modal-scale.open {
-            transform: scale(1);
-            opacity: 1;
+        @keyframes sheetSlideUp {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Transfer Card Premium Styling mirroring Transfer Ownership exactly */
+        :root {
+            --text-dark: #3A2B2C;
+            --text-muted: #7D6B6D;
+            --accent-pink: #DE6B90;
+            --accent-pink-light: #FFF0F4;
+            --border-pink: #F9E2E8;
+        }
+        .transfer-card {
+            font-family: 'Nunito', sans-serif;
+            position: relative;
+            background: linear-gradient(135deg, #FFF5F7 0%, #FFFFFF 100%);
+            border: 1.5px solid var(--border-pink);
+            border-radius: 24px;
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(222, 107, 140, 0.03);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+                        box-shadow 0.4s ease, 
+                        border-color 0.3s ease;
+            -webkit-tap-highlight-color: transparent;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .transfer-card * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        .transfer-card:hover {
+            transform: translateY(-3px) scale(1.01);
+            border-color: #F4C2D0;
+            box-shadow: 0 12px 28px rgba(222, 107, 140, 0.08), 
+                        0 4px 10px rgba(0, 0, 0, 0.01);
+        }
+        .transfer-card:active {
+            transform: translateY(-1px) scale(0.99);
+        }
+        .transfer-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -150%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(
+                to right, 
+                rgba(255, 255, 255, 0) 0%, 
+                rgba(255, 255, 255, 0.7) 50%, 
+                rgba(255, 255, 255, 0) 100%
+            );
+            transform: skewX(-25deg);
+            transition: 0.75s ease;
+        }
+        .transfer-card:hover::before {
+            left: 150%;
+        }
+        .icon-box {
+            width: 46px;
+            height: 46px;
+            background-color: #FFFFFF;
+            border: 1px solid var(--border-pink);
+            border-radius: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--accent-pink);
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(222, 107, 140, 0.04);
+            transition: transform 0.3s ease;
+        }
+        .transfer-card:hover .icon-box {
+            transform: rotate(-8deg) scale(1.05);
+            background-color: var(--accent-pink-light);
+        }
+        .icon-box svg {
+            width: 22px;
+            height: 22px;
+        }
+        .text-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            text-align: left;
+        }
+        .text-content h3 {
+            font-size: 14px;
+            font-weight: 900;
+            color: var(--text-dark);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .text-content p {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            line-height: 1.3;
+        }
+        .action-arrow {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background-color: var(--accent-pink-light);
+            color: var(--accent-pink);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .transfer-card:hover .action-arrow {
+            background-color: var(--accent-pink);
+            color: #FFFFFF;
+            transform: translateX(2px);
+        }
+        .action-arrow svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 3;
+        }
+
         @media print {
             body {
                 background: white !important;
@@ -197,19 +339,27 @@
         </div>
 
         <!-- Request Ownership Button Card -->
-        <div id="requestOwnershipSummaryBtnCard" class="bg-gradient-to-br from-[#1a1a24] to-[#2c1d25] p-5 rounded-[24px] border border-surface-container-highest shadow-xl flex items-center justify-between gap-4 cursor-pointer hover:scale-[1.01] active:scale-95 transition-all group no-print" onclick="openOwnershipRequestModal()">
-            <div class="flex items-center gap-3.5">
-                <div class="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center shrink-0">
-                    <span class="material-symbols-outlined text-2xl font-bold">swap_horiz</span>
-                </div>
-                <div class="text-left">
-                    <h4 class="text-sm font-black text-rose-300">Request Ownership</h4>
-                    <p class="text-[10px] text-on-surface-variant/70 font-semibold mt-0.5 leading-tight">Click to request passport & records transfer</p>
-                </div>
+        <div id="requestOwnershipSummaryBtnCard" class="transfer-card mt-2 no-print" onclick="openOwnershipRequestModal()">
+            <div class="icon-box">
+                <!-- Swap Transfer SVG Icon fit for request ownership -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <polyline points="16 11 20 15 24 11"></polyline>
+                    <line x1="20" y1="9" x2="20" y2="15"></line>
+                </svg>
             </div>
-            <button class="w-8 h-8 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-colors">
-                <span class="material-symbols-outlined text-sm">arrow_forward</span>
-            </button>
+
+            <div class="text-content">
+                <h3>Request Ownership</h3>
+                <p>Click to request passport & records transfer</p>
+            </div>
+
+            <div class="action-arrow">
+                <svg viewBox="0 0 24 24">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </div>
         </div>
 
         <!-- Scanning timestamp & Footprint details -->
@@ -255,9 +405,9 @@
         </div>
     </div>
 
-    <!-- Request Ownership Form Modal wrapper -->
-    <div id="ownershipRequestModal" class="fixed inset-0 z-[100] hidden opacity-0 bg-on-surface/40 backdrop-blur-md flex items-center justify-center p-6 transition-opacity duration-300 no-print" onclick="closeOwnershipRequestModal()">
-        <div id="ownershipRequestModalContent" class="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl border border-surface-container-highest modal-scale" onclick="event.stopPropagation()">
+    <!-- Request Ownership Form Modal wrapper - Bottom Sheet slide-up style -->
+    <div id="ownershipRequestModal" class="fixed inset-0 z-[100] hidden bg-on-surface/50 backdrop-blur-sm flex items-end sm:items-center justify-center transition-opacity p-0 sm:p-4 no-print" onclick="closeOwnershipRequestModal()">
+        <div id="ownershipRequestModalContent" class="bg-surface w-full max-w-md rounded-t-[28px] sm:rounded-[28px] p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto no-scrollbar modal-enter" onclick="event.stopPropagation()">
             <!-- Handle -->
             <div class="w-12 h-1 bg-surface-container-highest rounded-full mx-auto mb-5"></div>
             
@@ -552,25 +702,15 @@
         // Ownership Request Form Toggle and Submit Handlers
         function openOwnershipRequestModal() {
             const modal = document.getElementById('ownershipRequestModal');
-            const modalContent = document.getElementById('ownershipRequestModalContent');
             if (modal) {
                 modal.classList.remove('hidden');
-                setTimeout(() => {
-                    modal.classList.remove('opacity-0');
-                    if (modalContent) modalContent.classList.add('open');
-                }, 10);
             }
         }
 
         function closeOwnershipRequestModal() {
             const modal = document.getElementById('ownershipRequestModal');
-            const modalContent = document.getElementById('ownershipRequestModalContent');
-            if (modalContent) modalContent.classList.remove('open');
             if (modal) {
-                modal.classList.add('opacity-0');
-                setTimeout(() => {
-                    modal.classList.add('hidden');
-                }, 300);
+                modal.classList.add('hidden');
             }
             // Clear inputs on close
             const nameEl = document.getElementById("publicReqNameSecured");
