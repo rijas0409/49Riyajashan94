@@ -4050,6 +4050,82 @@
         };
 
         try {
+          // Always bind the dashboard button event listeners so they are responsive
+          // when entering the dashboard from ANY flow (direct load or after generation)
+
+          // Bind edit button action handler
+          const editBtn = document.getElementById("btnEditPassportDetails");
+          if (editBtn) {
+            editBtn.onclick = () => {
+              document.getElementById("step5").classList.remove("active");
+              document.getElementById("step1").classList.add("active");
+              currentStep = 1;
+
+              // Re-enable and show progress track
+              const progBlock = document.getElementById("progressBlock");
+              if (progBlock) progBlock.style.display = "block";
+
+              // Ensure head navigation buttons are visible
+              const backBtn = document.getElementById("backBtn");
+              if (backBtn) backBtn.classList.remove("hidden");
+
+              try { updateUI(); } catch(e){}
+            };
+          }
+
+          // Share button
+          const shareBtn = document.getElementById("shareDashboardBtn");
+          if (shareBtn) {
+            shareBtn.onclick = () => {
+              const passId = window.currentPassportId;
+              if (!passId) {
+                alert("No passport ID available. Please save your passport first.");
+                return;
+              }
+              const shareUrl = `https://sruvoindia.vercel.app/passport/${passId}`;
+              const shareText = `Check out my pet's verified Sruvo pet passport.\nIdentity details, health records, vaccination history, and care information are securely organized in one place. ${shareUrl}`;
+              if (navigator.share) {
+                navigator.share({
+                  title: "Verified Sruvo Pet Passport",
+                  text: `Check out my pet's verified Sruvo pet passport.\nIdentity details, health records, vaccination history, and care information are securely organized in one place.`,
+                  url: shareUrl
+                }).catch(err => console.error(err));
+              } else {
+                navigator.clipboard.writeText(shareText)
+                  .then(() => {
+                    alert("Verified passport link copied to clipboard!");
+                  })
+                  .catch(() => {
+                    alert("Failed to copy link. Feel free to copy from address bar.");
+                  });
+              }
+            };
+          }
+
+          // PDF button
+          const pdfBtn = document.getElementById("pdfDashboardBtn");
+          if (pdfBtn) {
+            pdfBtn.onclick = () => {
+              const passId = window.currentPassportId;
+              if (!passId) {
+                alert("No passport ID available. Please save your passport first.");
+                return;
+              }
+              const printUrl = `/userQR.html?id=${encodeURIComponent(passId)}&print=true`;
+              window.open(printUrl, "_blank");
+            };
+          }
+
+          // Add Record button
+          const addRecDashboardBtn = document.getElementById("addRecordDashboardBtn");
+          if (addRecDashboardBtn) {
+            addRecDashboardBtn.onclick = () => {
+              if (typeof openDashboardRecordModal === "function") {
+                openDashboardRecordModal();
+              }
+            };
+          }
+
           const urlParams = new URLSearchParams(window.location.search);
           const passportId = urlParams.get("id");
           const isVisitor = urlParams.get("visitor") === "true";
@@ -4093,79 +4169,6 @@
               finCont.classList.remove("hidden");
               finCont.style.opacity = "1";
               finCont.style.transform = "scale(1)";
-            }
-
-            // Bind edit button action handler
-            const editBtn = document.getElementById("btnEditPassportDetails");
-            if (editBtn) {
-              editBtn.onclick = () => {
-                document.getElementById("step5").classList.remove("active");
-                document.getElementById("step1").classList.add("active");
-                currentStep = 1;
-
-                // Re-enable and show progress track
-                const progBlock = document.getElementById("progressBlock");
-                if (progBlock) progBlock.style.display = "block";
-
-                // Ensure head navigation buttons are visible
-                const backBtn = document.getElementById("backBtn");
-                if (backBtn) backBtn.classList.remove("hidden");
-
-                try { updateUI(); } catch(e){}
-              };
-            }
-
-            // Share button
-            const shareBtn = document.getElementById("shareDashboardBtn");
-            if (shareBtn) {
-              shareBtn.onclick = () => {
-                const passId = window.currentPassportId;
-                if (!passId) {
-                  alert("No passport ID available. Please save your passport first.");
-                  return;
-                }
-                const shareUrl = `https://sruvoindia.vercel.app/passport/${passId}`;
-                const shareText = `Check out my pet's verified Sruvo pet passport.\nIdentity details, health records, vaccination history, and care information are securely organized in one place. ${shareUrl}`;
-                if (navigator.share) {
-                  navigator.share({
-                    title: "Verified Sruvo Pet Passport",
-                    text: `Check out my pet's verified Sruvo pet passport.\nIdentity details, health records, vaccination history, and care information are securely organized in one place.`,
-                    url: shareUrl
-                  }).catch(err => console.error(err));
-                } else {
-                  navigator.clipboard.writeText(shareText)
-                    .then(() => {
-                      alert("Verified passport link copied to clipboard!");
-                    })
-                    .catch(() => {
-                      alert("Failed to copy link. Feel free to copy from address bar.");
-                    });
-                }
-              };
-            }
-
-            // PDF button
-            const pdfBtn = document.getElementById("pdfDashboardBtn");
-            if (pdfBtn) {
-              pdfBtn.onclick = () => {
-                const passId = window.currentPassportId;
-                if (!passId) {
-                  alert("No passport ID available. Please save your passport first.");
-                  return;
-                }
-                const printUrl = `/userQR.html?id=${encodeURIComponent(passId)}&print=true`;
-                window.open(printUrl, "_blank");
-              };
-            }
-
-            // Add Record button
-            const addRecDashboardBtn = document.getElementById("addRecordDashboardBtn");
-            if (addRecDashboardBtn) {
-              addRecDashboardBtn.onclick = () => {
-                if (typeof openDashboardRecordModal === "function") {
-                  openDashboardRecordModal();
-                }
-              };
             }
 
             // Fetch details, and update UI before hiding the loader
