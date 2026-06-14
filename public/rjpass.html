@@ -1985,7 +1985,7 @@
 
         <div class="grid grid-cols-2 gap-4">
           <div
-            onclick="openPetAccountTile('Health Records')"
+            onclick="openPetAccountFullView('Health Records')"
             class="bg-surface-container-low rounded-2xl p-4 border border-surface-container-highest flex flex-col items-start gap-3 cursor-pointer hover:bg-surface-container-high transition-colors"
           >
             <div
@@ -2008,7 +2008,7 @@
           </div>
 
           <div
-            onclick="openPetAccountTile('Consultations')"
+            onclick="openPetAccountFullView('Consultations')"
             class="bg-surface-container-low rounded-2xl p-4 border border-surface-container-highest flex flex-col items-start gap-3 cursor-pointer hover:bg-surface-container-high transition-colors"
           >
             <div
@@ -2031,7 +2031,7 @@
           </div>
 
           <div
-            onclick="openPetAccountTile('Medicine Orders')"
+            onclick="openPetAccountFullView('Medicine Orders')"
             class="bg-surface-container-low rounded-2xl p-4 border border-surface-container-highest flex flex-col items-start gap-3 cursor-pointer hover:bg-surface-container-high transition-colors"
           >
             <div
@@ -2054,7 +2054,7 @@
           </div>
 
           <div
-            onclick="openPetAccountTile('Documents')"
+            onclick="openPetAccountFullView('Documents')"
             class="bg-surface-container-low rounded-2xl p-4 border border-surface-container-highest flex flex-col items-start gap-3 cursor-pointer hover:bg-surface-container-high transition-colors"
           >
             <div
@@ -2073,6 +2073,33 @@
               </p>
             </div>
           </div>
+        </div>
+
+        <!-- Transfer Ownership Option -->
+        <div
+          onclick="openPetAccountFullView('Transfer Ownership')"
+          class="bg-gradient-to-r from-rose-500/5 to-pink-500/5 hover:from-rose-500/10 hover:to-pink-500/10 rounded-2xl p-4.5 border border-rose-500/10 flex items-center justify-between cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] group mt-2"
+        >
+          <div class="flex items-center gap-3.5">
+            <div
+              class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 shrink-0 shadow-sm"
+            >
+              <span class="material-symbols-outlined text-lg">move_up</span>
+            </div>
+            <div>
+              <h3 class="text-xs font-black uppercase text-on-surface tracking-wider">
+                Transfer Ownership
+              </h3>
+              <p
+                class="text-[10px] font-semibold text-on-surface-variant mt-0.5"
+              >
+                Safely transfer passport, records and charts
+              </p>
+            </div>
+          </div>
+          <button class="w-8 h-8 rounded-full bg-rose-500/10 text-rose-600 flex items-center justify-center group-hover:bg-rose-500 group-hover:text-white transition-all">
+            <span class="material-symbols-outlined text-sm">arrow_forward</span>
+          </button>
         </div>
 
         <div
@@ -2112,32 +2139,6 @@
           >
             Upcoming Appointments
           </h3>
-          <div
-            class="bg-white rounded-2xl p-3 border border-surface-container-highest shadow-sm flex justify-between items-center"
-          >
-            <div class="flex items-center gap-3">
-              <div
-                class="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center text-primary"
-              >
-                <span class="material-symbols-outlined text-xl"
-                  >calendar_month</span
-                >
-              </div>
-              <div>
-                <p class="text-sm font-bold text-on-surface">Annual Checkup</p>
-                <p class="text-[10px] font-semibold text-on-surface-variant">
-                  Dr. Sharma Clinic • 24 Oct, 4:00 PM
-                </p>
-              </div>
-            </div>
-            <button
-              class="w-8 h-8 rounded-full bg-primary-container text-primary flex items-center justify-center"
-            >
-              <span class="material-symbols-outlined text-sm"
-                >arrow_forward</span
-              >
-            </button>
-          </div>
         </div>
 
         <div
@@ -2209,6 +2210,43 @@
             >
           </button>
 
+        </div>
+      </div>
+
+      <!-- Pet Account Dedicated Full Screen View -->
+      <div id="petAccountFullView" class="step-container space-y-6 pb-8">
+        <!-- Header with beautiful back button -->
+        <div class="flex items-center gap-4 bg-white/60 backdrop-blur p-4 rounded-2xl border border-surface-container-highest shadow-sm">
+          <button
+            onclick="closePetAccountFullView()"
+            class="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container-high transition-colors active:scale-95"
+          >
+            <span class="material-symbols-outlined text-on-surface-variant text-lg">arrow_back</span>
+          </button>
+          <div>
+            <h1 id="pafvTitle" class="text-xl font-black text-on-surface leading-none">Health Records</h1>
+            <p id="pafvSubtitle" class="text-xs text-on-surface-variant/80 font-semibold mt-1">Vaccines, Allergies & Meds</p>
+          </div>
+          
+          <!-- Quick action button to add a record if any health or docs is viewed -->
+          <button id="pafvAddButton" onclick="openDashboardRecordModal()" class="ml-auto flex items-center gap-1 bg-primary text-white text-xs font-bold px-3 py-2 rounded-xl hover:bg-primary-hover active:scale-95 transition-all">
+            <span class="material-symbols-outlined text-xs">add</span>
+            <span>Add</span>
+          </button>
+        </div>
+
+        <!-- Search Bar and Count -->
+        <div class="flex items-center justify-between gap-3 bg-white/40 p-3 rounded-2xl border border-surface-container-highest/60">
+          <div class="flex-1 relative">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+            <input type="text" id="pafvSearchInput" placeholder="Search entries..." oninput="filterPafvRecords()" class="w-full pl-9 pr-3 py-2.5 bg-white/80 border border-surface-container-highest rounded-xl text-xs text-on-surface placeholder:text-on-surface-variant/50 font-semibold focus:border-primary outline-none transition-colors">
+          </div>
+          <span id="pafvCountBadge" class="bg-primary/10 text-primary text-[10px] font-black uppercase px-2.5 py-1.5 rounded-lg shrink-0">0 Records</span>
+        </div>
+
+        <!-- List of items in full screen with full detail management -->
+        <div id="pafvContent" class="space-y-4">
+          <!-- Dynamic Content Loaded Here -->
         </div>
       </div>
     </main>
@@ -4023,6 +4061,11 @@
             dashHealthInsights.innerText = "No health insights available yet.";
           }
         }
+
+        // Real-Time UI Sync for dedicated full screen modes when data is refreshed
+        if (window.currentActiveTileType) {
+            openPetAccountFullView(window.currentActiveTileType, true);
+        }
       }
 
       window.addEventListener("load", async () => {
@@ -4188,6 +4231,9 @@
                 );
                 try {
                   loadPassportDataIntoUI(data);
+                  if (urlParams.get("transfer") === "true") {
+                    document.getElementById("publicTransferRequestModal").classList.remove("hidden");
+                  }
                 } catch (loadErr) {
                   console.error("Failed executing loadPassportDataIntoUI:", loadErr);
                 }
@@ -7116,110 +7162,483 @@
         }
       }
 
-      function openPetAccountTile(tileType) {
-          const m = document.getElementById("petAccountTileModal");
-          const c = m.querySelector("div.bg-white");
-          const title = document.getElementById("patmTitle");
-          const sub = document.getElementById("patmSubtitle");
-          const iconContainer = document.getElementById("patmIconContainer");
-          const icon = document.getElementById("patmIcon");
-          const content = document.getElementById("patmContent");
+      function openPetAccountFullView(tileType, isRefresh = false) {
+          window.currentActiveTileType = tileType;
           
-          if(!window.currentHealthRecords) window.currentHealthRecords = [];
+          // Switch active screens if not just a refresh
+          if (!isRefresh) {
+              // Hide step 6 and show full screen container
+              document.getElementById("step6").classList.remove("active");
+              document.getElementById("petAccountFullView").classList.add("active");
+              
+              // Smooth transition to top
+              window.scrollTo({ top: 0, behavior: "smooth" });
+              
+              // Clear search filter
+              const searchInput = document.getElementById("pafvSearchInput");
+              if (searchInput) searchInput.value = "";
+          }
+          
+          // Render based on block type
+          const titleEl = document.getElementById("pafvTitle");
+          const subtitleEl = document.getElementById("pafvSubtitle");
+          const countBadge = document.getElementById("pafvCountBadge");
+          const addButton = document.getElementById("pafvAddButton");
+          const contentEl = document.getElementById("pafvContent");
+          const searchContainer = document.getElementById("pafvSearchInput").parentElement.parentElement;
+          
+          if (tileType === "Transfer Ownership") {
+              // Hide search and show count differently
+              searchContainer.classList.add("hidden");
+              titleEl.innerText = "Transfer Ownership";
+              subtitleEl.innerText = "Shift passport & records safely";
+              addButton.classList.add("hidden");
+              
+              // Render 2-tab interface
+              renderOwnershipTransferUI();
+              return;
+          }
+          
+          // standard tiles
+          searchContainer.classList.remove("hidden");
+          addButton.classList.remove("hidden");
           
           let records = [];
-          let iconName = "";
-          let iconColor = "";
           
           if (tileType === "Health Records") {
-              title.innerText = "Health Records";
-              sub.innerText = "Vaccines, Allergies & Meds";
-              iconName = "monitor_heart";
-              iconColor = "bg-blue-100 text-blue-600";
-              records = window.currentHealthRecords.filter(r => {
+              titleEl.innerText = "Health Records";
+              subtitleEl.innerText = "Vaccines, Allergies & Meds";
+              records = (window.currentHealthRecords || []).filter(r => {
                   const t = r.record_type || r.type;
                   return ["Vaccination", "Prescription", "Lab Test", "Surgery", "Medical Condition", "Health Certificate"].includes(t);
               });
           } else if (tileType === "Consultations") {
-              title.innerText = "Consultations";
-              sub.innerText = "Past Vet Visits & Clinics";
-              iconName = "stethoscope";
-              iconColor = "bg-purple-100 text-purple-600";
-              records = window.currentHealthRecords.filter(r => {
+              titleEl.innerText = "Consultations";
+              subtitleEl.innerText = "Past Vet Visits & Clinics";
+              records = (window.currentHealthRecords || []).filter(r => {
                   const t = r.record_type || r.type;
                   return ["Video Consultation", "Home Visit", "Clinic Visit", "Follow-up Consultation"].includes(t);
               });
           } else if (tileType === "Medicine Orders") {
-              title.innerText = "Medicine Orders";
-              sub.innerText = "Past Orders & Refills";
-              iconName = "medication";
-              iconColor = "bg-orange-100 text-orange-600";
-              records = window.currentHealthRecords.filter(r => {
+              titleEl.innerText = "Medicine Orders";
+              subtitleEl.innerText = "Past Orders & Refills";
+              records = (window.currentHealthRecords || []).filter(r => {
                   const t = r.record_type || r.type;
                   return ["Medicine Order"].includes(t);
               });
           } else if (tileType === "Documents") {
-              title.innerText = "Documents";
-              sub.innerText = "Uploaded Files Only";
-              iconName = "topic";
-              iconColor = "bg-green-100 text-green-600";
-              records = window.currentHealthRecords.filter(r => r.file_url || r.document_base64 || r.document_url);
+              titleEl.innerText = "Documents";
+              subtitleEl.innerText = "Vault & Uploaded Files";
+              records = (window.currentHealthRecords || []).filter(r => r.file_url || r.document_base64 || r.document_url);
           }
           
-          iconContainer.className = `w-10 h-10 rounded-xl flex items-center justify-center ${iconColor}`;
-          icon.innerText = iconName;
-          
-          content.innerHTML = "";
-          if (records.length === 0) {
-              content.innerHTML = `<div class="text-center py-6 text-on-surface-variant/70 text-sm">No records found.</div>`;
-          } else {
-              records.forEach(r => {
-                  const t = r.record_type || r.type || "Record";
-                  let dStr = r.created_at || r.issue_date || r.date_administered || r.test_date || r.surgery_date;
-                  let dObj = dStr ? new Date(dStr) : new Date();
-                  let displayStr = dObj.toLocaleDateString();
-                  let mainText = r.title_name || r.vaccine_name || r.procedure_name || r.test_name || r.certificate_title || r.condition_name || t;
-                  if (t === "Vaccination" && r.vaccine_name === "Other") mainText = r.specify_vaccine;
-                  
-                  let actionBtn = "";
-                  if (tileType === "Documents" || r.file_url || r.document_base64) {
-                      actionBtn = `
-                          <button onclick="viewDocument('${r.id}')" class="p-2 ml-auto rounded-full bg-surface hover:bg-surface-container-high transition-colors text-primary flex-shrink-0 relative z-20">
-                              <span class="material-symbols-outlined text-[16px]">visibility</span>
-                          </button>
-                      `;
-                  }
-                  
-                  content.innerHTML += `
-                      <div class="flex items-center gap-3 p-3 bg-surface-container-lowest border border-surface-container-highest rounded-xl">
-                          <div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center flex-shrink-0 text-on-surface-variant">
-                              <span class="material-symbols-outlined text-[18px]">article</span>
-                          </div>
-                          <div class="flex-1 min-w-0 pr-2">
-                              <p class="text-xs font-bold text-on-surface truncate">${mainText}</p>
-                              <p class="text-[10px] text-on-surface-variant mt-0.5">${t} • ${displayStr}</p>
-                          </div>
-                          ${actionBtn}
-                      </div>
-                  `;
+          // Apply search filter if present
+          const q = document.getElementById("pafvSearchInput")?.value?.toLowerCase() || "";
+          if (q) {
+              records = records.filter(r => {
+                  const t = r.record_type || r.type || "";
+                  const mainText = r.title_name || r.vaccine_name || r.procedure_name || r.test_name || r.certificate_title || r.condition_name || "";
+                  const desc = r.record_description || "";
+                  return mainText.toLowerCase().includes(q) || t.toLowerCase().includes(q) || desc.toLowerCase().includes(q);
               });
           }
           
-          m.classList.remove("hidden");
-          setTimeout(() => {
-              c.classList.remove("translate-y-full");
-              c.classList.add("translate-y-0");
-          }, 10);
+          countBadge.innerText = `${records.length} Record${records.length === 1 ? '' : 's'}`;
+          
+          contentEl.innerHTML = "";
+          if (records.length === 0) {
+              contentEl.innerHTML = `
+                  <div class="text-center py-12 px-4 bg-white/40 border border-dashed border-surface-container-highest rounded-2xl">
+                      <span class="material-symbols-outlined text-4xl text-on-surface-variant/30">search_off</span>
+                      <p class="text-sm font-bold text-on-surface-variant/80 mt-2">No matching records found</p>
+                      <p class="text-xs text-on-surface-variant/50 mt-1">Try refining your search terms or add a new record.</p>
+                  </div>
+              `;
+              return;
+          }
+          
+          records.forEach(r => {
+              const t = r.record_type || r.type || "Record";
+              let dStr = r.created_at || r.issue_date || r.date_administered || r.test_date || r.surgery_date;
+              let dObj = dStr ? new Date(dStr) : new Date();
+              let displayStr = dObj.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+              
+              let mainText = r.title_name || r.vaccine_name || r.procedure_name || r.test_name || r.certificate_title || r.condition_name || t;
+              if (t === "Vaccination" && r.vaccine_name === "Other") mainText = r.specify_vaccine || "Other Vaccine";
+              
+              let docBadge = "";
+              if (r.file_url || r.document_base64) {
+                  docBadge = `
+                      <div class="flex items-center gap-1.5 bg-green-50/60 border border-green-200 text-green-700 text-[9px] font-black uppercase tracking-wide px-2.5 py-1 rounded-lg">
+                          <span class="material-symbols-outlined text-[11px] font-bold">check</span>
+                          <span>Attachment Attached</span>
+                      </div>
+                  `;
+              }
+              
+              let descNode = "";
+              if (r.record_description || r.prescribed_by) {
+                  let issuer = r.prescribed_by ? ` • By ${r.prescribed_by}` : '';
+                  descNode = `
+                      <p class="text-[10px] font-medium text-on-surface-variant leading-relaxed bg-surface-container-lowest/50 p-2.5 rounded-xl border border-surface-container-highest/50 mt-1">
+                          ${r.record_description || 'No description added'}${issuer}
+                      </p>
+                  `;
+              }
+              
+              let actionButtons = "";
+              if (r.file_url || r.document_base64) {
+                  actionButtons = `
+                      <button onclick="viewDocument('${r.id}')" class="flex-1 max-w-[120px] flex items-center justify-center gap-1 bg-surface-container-low hover:bg-surface-container-high text-on-surface font-bold text-[10px] uppercase py-2 px-3 rounded-lg transition-all active:scale-95 border border-surface-container-highest">
+                          <span class="material-symbols-outlined text-[13px]">visibility</span>
+                          <span>View File</span>
+                      </button>
+                  `;
+              }
+              
+              contentEl.innerHTML += `
+                  <div class="bg-white p-4.5 rounded-[20px] border border-surface-container-highest shadow-sm space-y-3.5 animate-[fadeInUp_0.2s_ease-out]">
+                      <div class="flex items-start justify-between gap-3">
+                          <div class="flex items-center gap-3">
+                              <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 shadow-inner">
+                                  <span class="material-symbols-outlined text-lg">${getIconForType(t)}</span>
+                              </div>
+                              <div>
+                                  <h4 class="text-sm font-black text-on-surface tracking-tight">${mainText}</h4>
+                                  <p class="text-[10px] font-bold text-on-surface-variant/60 mt-0.5 uppercase tracking-wider">${t} • ${displayStr}</p>
+                              </div>
+                          </div>
+                          
+                          <button onclick="deletePafvRecord('${r.id}')" class="w-8 h-8 rounded-full bg-surface-container-low hover:bg-red-50 hover:text-red-600 text-on-surface-variant flex items-center justify-center transition-all active:scale-90 shrink-0">
+                              <span class="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                      </div>
+                      
+                      ${descNode}
+                      
+                      <div class="flex items-center justify-between gap-3 pt-1">
+                          ${docBadge || '<div></div>'}
+                          ${actionButtons}
+                      </div>
+                  </div>
+              `;
+          });
       }
       
-      function closePetAccountTile() {
-          const m = document.getElementById("petAccountTileModal");
-          const c = m.querySelector("div.bg-white");
-          c.classList.remove("translate-y-0");
-          c.classList.add("translate-y-full");
-          setTimeout(() => {
-              m.classList.add("hidden");
-          }, 300);
+      function filterPafvRecords() {
+          if (window.currentActiveTileType) {
+              openPetAccountFullView(window.currentActiveTileType, true);
+          }
+      }
+      
+      function getIconForType(t) {
+          switch(t) {
+              case "Vaccination": return "vaccines";
+              case "Prescription": return "prescriptions";
+              case "Lab Test": return "biotech";
+              case "Surgery": return "healing";
+              case "Medical Condition": return "emergency";
+              case "Health Certificate": return "workspace_premium";
+              case "Medicine Order": return "medication";
+              case "Video Consultation": return "videocam";
+              case "Home Visit": return "home_health";
+              case "Clinic Visit": return "local_hospital";
+              case "Follow-up Consultation": return "quick_reference";
+              default: return "article";
+          }
+      }
+      
+      function closePetAccountFullView() {
+          window.currentActiveTileType = null;
+          document.getElementById("petAccountFullView").classList.remove("active");
+          document.getElementById("step6").classList.add("active");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      async function deletePafvRecord(recordId) {
+          if (!confirm("Are you sure you want to permanently delete this record? This action cannot be undone.")) {
+              return;
+          }
+          try {
+              const res = await fetch(`/api/health-record?recordId=${encodeURIComponent(recordId)}`, {
+                  method: 'DELETE'
+              });
+              if (res.ok) {
+                  alert("Record successfully deleted.");
+                  if (window.currentPassportId) {
+                      const refreshRes = await fetch(`/api/pet-passport?id=${encodeURIComponent(window.currentPassportId)}`);
+                      if (refreshRes.ok) {
+                          const refreshedData = await refreshRes.json();
+                          loadPassportDataIntoUI(refreshedData);
+                      }
+                  }
+              } else {
+                  const errData = await res.json();
+                  alert("Error deleting record: " + (errData.error || "Unknown error"));
+              }
+          } catch (err) {
+              console.error("Delete failed:", err);
+              alert("Failed to delete record.");
+          }
+      }
+
+      function renderOwnershipTransferUI() {
+          const contentEl = document.getElementById("pafvContent");
+          if (!window.activeTransferTab) window.activeTransferTab = "initiate";
+          
+          let initActive = window.activeTransferTab === "initiate" ? "border-primary text-primary" : "border-transparent text-on-surface-variant hover:text-on-surface";
+          let reqsActive = window.activeTransferTab === "requests" ? "border-primary text-primary" : "border-transparent text-on-surface-variant hover:text-on-surface";
+          
+          let tabHeader = `
+              <div class="flex border-b border-surface-container-highest">
+                  <button onclick="switchTransferTab('initiate')" class="flex-1 text-center font-black pb-3 text-xs uppercase tracking-wider border-b-2 transition-all ${initActive}">
+                      Initiate Transfer
+                  </button>
+                  <button onclick="switchTransferTab('requests')" class="flex-1 text-center font-black pb-3 text-xs uppercase tracking-wider border-b-2 transition-all ${reqsActive}">
+                      Requests Queue
+                  </button>
+              </div>
+          `;
+          
+          let tabBody = "";
+          
+          if (window.activeTransferTab === "initiate") {
+              const passId = window.currentPassportId || "PASSPORT_ID";
+              const publicLink = `${window.location.origin}/rjpass.html?id=${encodeURIComponent(passId)}&transfer=true`;
+              
+              tabBody = `
+                  <div class="space-y-4 pt-1 animate-[fadeIn_0.2s_ease-out]">
+                      <div class="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 space-y-2">
+                          <h4 class="text-xs font-black text-indigo-950 uppercase tracking-wide flex items-center gap-1.5">
+                              <span class="material-symbols-outlined text-sm font-bold">info</span>
+                              How transfer works
+                          </h4>
+                          <p class="text-[10px] text-indigo-900/80 font-semibold leading-relaxed">
+                              You can transfer ownership of this Pet Passport and all historical data (documents, medical records, timeline points, and consultations) to another user.
+                          </p>
+                      </div>
+                      
+                      <div class="bg-white p-5 rounded-2xl border border-surface-container-highest shadow-sm space-y-4">
+                          <div>
+                              <label class="text-[10px] font-bold text-on-surface uppercase tracking-wider pl-1">Recipient's Registry Email</label>
+                              <p class="text-[9px] text-on-surface-variant/60 font-semibold mb-1.5">The recipient must have a registered account on this app with this email address.</p>
+                              <input type="email" id="initiationEmailInput" placeholder="recipient@example.com" class="w-full px-3.5 py-3 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs text-on-surface font-semibold focus:border-primary outline-none">
+                          </div>
+                          
+                          <div class="flex items-start gap-2.5 bg-rose-50/40 p-3 rounded-xl border border-rose-200/50">
+                              <input type="checkbox" id="initiationConfirmCheckbox" class="mt-0.5 rounded border-surface-container-highest text-primary focus:ring-primary">
+                              <label for="initiationConfirmCheckbox" class="text-[9.5px] font-bold text-rose-950 leading-snug">
+                                  I understand that this action is permanent and immediate. Once matching registry user is found, I will lose access to this passport instantly.
+                              </label>
+                          </div>
+                          
+                          <button id="initiateTransferBtn" onclick="submitDirectTransfer()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-3.5 rounded-xl text-xs tracking-wider uppercase transition-all duration-150 active:scale-95 shadow-md shadow-rose-600/10">
+                              Initiate Direct Transfer
+                          </button>
+                      </div>
+                      
+                      <div class="bg-white/80 p-4 rounded-2xl border border-dashed border-surface-container-highest space-y-2.5">
+                          <div>
+                              <h5 class="text-[10px] font-black uppercase tracking-wider text-on-surface">Generate Public Request Link</h5>
+                              <p class="text-[9px] text-on-surface-variant mt-0.5 leading-relaxed">
+                                  Copy and share this public link. Anyone can use this link to enter their contact info and submit an ownership request directly to your Requests Queue.
+                              </p>
+                          </div>
+                          <div class="flex items-center gap-2">
+                              <input type="text" readonly value="${publicLink}" class="flex-1 bg-surface-container-low border border-surface-container-highest rounded-lg px-2.5 py-2 text-[9.5px] font-mono text-on-surface-variant outline-none select-all truncate">
+                              <button onclick="navigator.clipboard.writeText('${publicLink}'); alert('Link copied to clipboard!')" class="bg-primary text-white p-2.5 rounded-lg active:scale-95 hover:bg-primary-hover transition-colors flex items-center justify-center shrink-0">
+                                  <span class="material-symbols-outlined text-sm font-bold">content_copy</span>
+                              </button>
+                          </div>
+                      </div>
+                  </div>
+              `;
+              contentEl.innerHTML = `
+                  <div class="space-y-4">
+                      ${tabHeader}
+                      ${tabBody}
+                  </div>
+              `;
+          } else {
+              // Requests Tab
+              fetchAndRenderIncomingRequests();
+          }
+      }
+      
+      function switchTransferTab(tab) {
+          window.activeTransferTab = tab;
+          renderOwnershipTransferUI();
+      }
+      
+      async function submitDirectTransfer() {
+          const email = document.getElementById("initiationEmailInput").value.trim();
+          const checkbox = document.getElementById("initiationConfirmCheckbox");
+          
+          if (!email) {
+              alert("Please enter recipient email.");
+              return;
+          }
+          if (!checkbox.checked) {
+              alert("Please confirm that you understand the terms by checking the checkbox.");
+              return;
+          }
+          
+          const passportId = window.currentPassportId;
+          if (!passportId) return;
+          
+          const btn = document.getElementById("initiateTransferBtn");
+          const originalText = btn.innerText;
+          btn.disabled = true;
+          btn.innerText = "Processing Transfer...";
+          
+          try {
+              const res = await fetch("/api/ownership-transfer/approve", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ emailDirect: email, passportIdDirect: passportId })
+              });
+              
+              const data = await res.json();
+              if (res.ok) {
+                  alert("Ownership transferred successfully! This passport has now been moved to the recipient's account.");
+                  window.location.href = "/rjpass.html";
+              } else {
+                  alert("Transfer failed: " + (data.error || "Unknown error"));
+              }
+          } catch(err) {
+              console.error(err);
+              alert("Error completing transfer. Connection issues.");
+          } finally {
+              btn.disabled = false;
+              btn.innerText = originalText;
+          }
+      }
+      
+      async function fetchAndRenderIncomingRequests() {
+          const contentEl = document.getElementById("pafvContent");
+          const passportId = window.currentPassportId;
+          
+          let tabHeader = `
+              <div class="flex border-b border-surface-container-highest">
+                  <button onclick="switchTransferTab('initiate')" class="flex-1 text-center font-black pb-3 text-xs uppercase tracking-wider border-b-2 transition-all border-transparent text-on-surface-variant hover:text-on-surface">
+                      Initiate Transfer
+                  </button>
+                  <button onclick="switchTransferTab('requests')" class="flex-1 text-center font-black pb-3 text-xs uppercase tracking-wider border-b-2 transition-all border-primary text-primary">
+                      Requests Queue
+                  </button>
+              </div>
+          `;
+          
+          contentEl.innerHTML = `
+              <div class="space-y-4">
+                  ${tabHeader}
+                  <div class="flex items-center justify-center py-10">
+                      <span class="material-symbols-outlined animate-spin text-2xl text-primary">sync</span>
+                  </div>
+              </div>
+          `;
+          
+          try {
+              const res = await fetch(`/api/ownership-transfer/requests?passportId=${encodeURIComponent(passportId)}`);
+              const requests = await res.json();
+              
+              let listHtml = "";
+              if (requests.length === 0) {
+                  listHtml = `
+                      <div class="text-center py-12 px-4 bg-white/40 border border-dashed border-surface-container-highest rounded-2xl animate-[fadeIn_0.2s_ease-out] mt-3">
+                          <span class="material-symbols-outlined text-4xl text-on-surface-variant/30">move_to_inbox</span>
+                          <p class="text-sm font-bold text-on-surface-variant/80 mt-2">No incoming transfer requests</p>
+                          <p class="text-xs text-on-surface-variant/50 mt-1">Share your public link to start receiving requests.</p>
+                      </div>
+                  `;
+              } else {
+                  listHtml = `<div class="space-y-4 mt-3 animate-[fadeIn_0.2s_ease-out]">`;
+                  requests.forEach(req => {
+                      let date = req.created_at ? new Date(req.created_at).toLocaleDateString() : 'Recent';
+                      listHtml += `
+                          <div class="bg-white p-4.5 rounded-[22px] border border-surface-container-highest shadow-sm space-y-3.5">
+                              <div class="flex items-start justify-between">
+                                  <div>
+                                      <h4 class="text-sm font-black text-on-surface">${req.prescribed_by}</h4>
+                                      <p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider mt-0.5">Requester</p>
+                                  </div>
+                                  <span class="text-[9.5px] font-bold text-on-surface-variant/60 uppercase">${date}</span>
+                              </div>
+                              
+                              <div class="space-y-1.5 text-[10.5px] font-semibold text-on-surface bg-surface-container-lowest p-3 rounded-xl border border-surface-container-highest/60">
+                                  <p class="flex items-center gap-2"><span class="material-symbols-outlined text-xs text-on-surface-variant">mail</span> ${req.certificate_title}</p>
+                                  <p class="flex items-center gap-2"><span class="material-symbols-outlined text-xs text-on-surface-variant">phone</span> ${req.condition_name}</p>
+                              </div>
+                              
+                              <div class="flex gap-2.5 pt-1">
+                                  <button onclick="rejectTransferRequest('${req.id}')" class="flex-1 bg-surface-container-low hover:bg-red-50 hover:text-red-600 text-on-surface font-black py-2.5 rounded-lg text-[10px] uppercase tracking-wide transition-all active:scale-95 border border-surface-container-highest">
+                                      Decline
+                                  </button>
+                                  <button onclick="approveTransferRequest('${req.id}')" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-black py-2.5 rounded-lg text-[10px] uppercase tracking-wide transition-all active:scale-95 shadow-sm">
+                                      Approve
+                                  </button>
+                              </div>
+                          </div>
+                      `;
+                  });
+                  listHtml += `</div>`;
+              }
+              
+              contentEl.innerHTML = `
+                  <div class="space-y-4">
+                      ${tabHeader}
+                      ${listHtml}
+                  </div>
+              `;
+          } catch(err) {
+              console.error(err);
+              contentEl.innerHTML = `
+                  <div class="space-y-4">
+                      ${tabHeader}
+                      <p class="text-sm text-red-500 font-bold text-center mt-6">Failed to load requests from server.</p>
+                  </div>
+              `;
+          }
+      }
+      
+      async function rejectTransferRequest(requestId) {
+          if (!confirm("Are you sure you want to decline this request?")) return;
+          try {
+              const res = await fetch("/api/ownership-transfer/reject", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ requestId })
+              });
+              if (res.ok) {
+                  alert("Request successfully declined.");
+                  fetchAndRenderIncomingRequests();
+              } else {
+                  alert("Failed to decline request.");
+              }
+          } catch(err) {
+              console.error(err);
+          }
+      }
+      
+      async function approveTransferRequest(requestId) {
+          if (!confirm("Are you sure you want to approve this request? This will permanently transfer ownership and remove the passport from your profile immediately. This action cannot be revoked!")) return;
+          try {
+              const res = await fetch("/api/ownership-transfer/approve", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ requestId })
+              });
+              const data = await res.json();
+              if (res.ok) {
+                  alert("Ownership transferred successfully! Handing over full credential access.");
+                  window.location.href = "/rjpass.html";
+              } else {
+                  alert("Transfer failed: " + (data.error || "Unknown error"));
+              }
+          } catch(err) {
+              console.error(err);
+              alert("Error processing approval.");
+          }
       }
       
       // We need a helper to view doc by ID since this is a new modal
@@ -7406,6 +7825,96 @@
           listWrapper.appendChild(card);
         });
       }
+
+      function closePublicTransferModal() {
+          document.getElementById("publicTransferRequestModal").classList.add("hidden");
+      }
+
+      async function submitPublicTransferRequest() {
+          const name = document.getElementById("publicReqName").value.trim();
+          const email = document.getElementById("publicReqEmail").value.trim();
+          const phone = document.getElementById("publicReqPhone").value.trim();
+          const passportId = window.currentPassportId;
+          
+          if (!name || !email || !phone) {
+              alert("All fields are required.");
+              return;
+          }
+          
+          const btn = document.getElementById("submitPublicReqBtn");
+          const originalText = btn.innerText;
+          btn.disabled = true;
+          btn.innerText = "Submitting Request...";
+          
+          try {
+              const res = await fetch("/api/ownership-transfer/request", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ passportId, name, email, phone })
+              });
+              const data = await res.json();
+              if (res.ok) {
+                  alert("Your request was sent successfully! The current owner has been notified and can approve this transfer inside their Requests Queue.");
+                  closePublicTransferModal();
+              } else {
+                  alert("Submission failed: " + (data.error || "Unknown error"));
+              }
+          } catch(err) {
+              console.error(err);
+              alert("Error contacting the server.");
+          } finally {
+              btn.disabled = false;
+              btn.innerText = originalText;
+          }
+      }
     </script>
+
+    <!-- Public Ownership Transfer Request Modal -->
+    <div
+      id="publicTransferRequestModal"
+      class="fixed inset-0 z-[120] hidden bg-on-surface/50 backdrop-blur-sm flex items-end sm:items-center justify-center transition-opacity p-0 sm:p-4"
+    >
+      <div
+        class="bg-white w-full sm:max-w-md rounded-t-[32px] sm:rounded-[28px] p-6 space-y-6 shadow-2xl border border-surface-container-highest animate-[fadeInUp_0.3s_cubic-bezier(0.16,1,0.3,1)_forwards]"
+      >
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600">
+              <span class="material-symbols-outlined text-lg">move_up</span>
+            </div>
+            <div>
+              <h2 class="text-base font-black text-on-surface leading-none">Request Ownership</h2>
+              <p class="text-[10px] text-on-surface-variant font-semibold mt-1">Submit request to current owner</p>
+            </div>
+          </div>
+          <button
+            onclick="closePublicTransferModal()"
+            class="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container-high transition-colors"
+          >
+            <span class="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="text-[10px] font-black uppercase tracking-wider text-on-surface pl-1">Your Full Name</label>
+            <input type="text" id="publicReqName" placeholder="Your name (e.g. John Doe)" class="w-full mt-1.5 px-3.5 py-3 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs text-on-surface font-semibold focus:border-primary outline-none">
+          </div>
+          <div>
+            <label class="text-[10px] font-black uppercase tracking-wider text-on-surface pl-1">Your Registered Email</label>
+            <p class="text-[9px] text-on-surface-variant/70 font-semibold pl-1 mb-1.5">You must be registered on this platform beforehand with this email address.</p>
+            <input type="email" id="publicReqEmail" placeholder="you@example.com" class="w-full px-3.5 py-3 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs text-on-surface font-semibold focus:border-primary outline-none">
+          </div>
+          <div>
+            <label class="text-[10px] font-black uppercase tracking-wider text-on-surface pl-1">Your Phone Number</label>
+            <input type="tel" id="publicReqPhone" placeholder="Mobile number" class="w-full mt-1.5 px-3.5 py-3 bg-surface-container-low border border-surface-container-highest rounded-xl text-xs text-on-surface font-semibold focus:border-primary outline-none">
+          </div>
+          
+          <button id="submitPublicReqBtn" onclick="submitPublicTransferRequest()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-3.5 rounded-xl text-xs tracking-wider uppercase transition-all duration-150 active:scale-95 shadow-md shadow-rose-600/10">
+              Submit Request to Owner
+          </button>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

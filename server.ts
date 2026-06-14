@@ -891,6 +891,263 @@ Return the response as a single JSON object containing only a "description" key.
     }
   });
 
+  // End Point: Create an ownership transfer request
+  app.post("/api/ownership-transfer/request", async (req, res) => {
+    try {
+      const { passportId, requesterName, requesterEmail, requesterPhone } = req.body;
+      if (!passportId || !requesterName || !requesterEmail || !requesterPhone) {
+        return res.status(400).json({ error: "Missing required fields: passportId, requesterName, requesterEmail, requesterPhone" });
+      }
+
+      const supabaseAdmin = await getSupabaseAdmin();
+      if (!supabaseAdmin) {
+        return res.status(500).json({ error: "Supabase client not initialized" });
+      }
+
+      // 1. Fetch passport record to get database ID
+      const { data: pet, error: petErr } = await supabaseAdmin
+        .from("pet_passports")
+        .select("id, user_id")
+        .eq("passport_id", passportId)
+        .maybeSingle();
+
+      if (petErr) {
+        return res.status(500).json({ error: "Database error searching passport: " + petErr.message });
+      }
+      if (!pet) {
+        return res.status(404).json({ error: "Passport not found with ID: " + passportId });
+      }
+
+      // Check if request already exists to prevent duplicate entries
+      const { data: existing } = await supabaseAdmin
+        .from("pet_health_records_documents")
+        .select("id")
+        .eq("pet_passport_id", pet.id)
+        .eq("record_type", "OwnershipTransferRequest")
+        .eq("certificate_title", requesterEmail)
+        .maybeSingle();
+
+      if (existing) {
+        return res.json({ success: true, message: "Request already submitted." });
+      }
+
+      // 2. Insert as a live database record of type "OwnershipTransferRequest"
+      const { data, error } = await supabaseAdmin
+        .from("pet_health_records_documents")
+        .insert({
+          pet_passport_id: pet.id,
+          record_type: "OwnershipTransferRequest",
+          certificate_title: requesterEmail, // store target email
+          prescribed_by: requesterName,      // store target name
+          record_description: "pending",     // status
+          condition_name: requesterPhone,    // phone
+          document_base64: pet.user_id       // store current owner ID for mapping
+        })
+        .select()
+        .single();
+
+      if (error) {
+        return res.status(500).json({ error: "Failed to submit request: " + error.message });
+      }
+
+      return res.json({ success: true, request: data });
+    } catch (e: any) {
+      console.error("Error creating ownership transfer request:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+  // End Point: Get incoming requests for a passport
+  app.get("/api/ownership-transfer/requests", async (req, res) => {
+    try {
+      const { passportId } = req.query;
+      if (!passportId) {
+        return res.status(400).json({ error: "passportId is required" });
+      }
+
+      const supabaseAdmin = await getSupabaseAdmin();
+      if (!supabaseAdmin) {
+        return res.status(500).json({ error: "Supabase client not initialized" });
+      }
+
+      const { data: pet, error: petErr } = await supabaseAdmin
+        .from("pet_passports")
+        .select("id")
+        .eq("passport_id", passportId)
+        .maybeSingle();
+
+      if (petErr || !pet) {
+        return res.json([]);
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from("pet_health_records_documents")
+        .select("*")
+        .eq("pet_passport_id", pet.id)
+        .eq("record_type", "OwnershipTransferRequest")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        return res.status(500).json({ error: error.message });
+      }
+
+      return res.json(data || []);
+    } catch (e: any) {
+      console.error("Error fetching transfer requests:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+  // End Point: Reject/Delete ownership transfer request
+  app.post("/api/ownership-transfer/reject", async (req, res) => {
+    try {
+      const { requestId } = req.body;
+      if (!requestId) {
+        return res.status(400).json({ error: "requestId is required" });
+      }
+
+      const supabaseAdmin = await getSupabaseAdmin();
+      if (!supabaseAdmin) {
+        return res.status(500).json({ error: "Supabase client not initialized" });
+      }
+
+      const { error } = await supabaseAdmin
+        .from("pet_health_records_documents")
+        .delete()
+        .eq("id", requestId);
+
+      if (error) {
+        return res.status(500).json({ error: "Failed to reject: " + error.message });
+      }
+
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error("Error rejecting request:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+  // End Point: Approve / Complete ownership transfer
+  app.post("/api/ownership-transfer/approve", async (req, res) => {
+    try {
+      const { requestId, emailDirect, passportIdDirect } = req.body;
+      const supabaseAdmin = await getSupabaseAdmin();
+      if (!supabaseAdmin) {
+        return res.status(500).json({ error: "Supabase client not initialized" });
+      }
+
+      let email = "";
+      let petPassportId = "";
+      let isDirect = false;
+
+      if (requestId) {
+        // Fetch request data
+        const { data: request, error: reqErr } = await supabaseAdmin
+          .from("pet_health_records_documents")
+          .select("*")
+          .eq("id", requestId)
+          .single();
+
+        if (reqErr || !request) {
+          return res.status(404).json({ error: "Request record not found: " + (reqErr?.message || "") });
+        }
+        email = request.certificate_title;
+        petPassportId = request.pet_passport_id;
+      } else if (emailDirect && passportIdDirect) {
+        isDirect = true;
+        email = emailDirect.trim();
+        
+        const { data: pet, error: petErr } = await supabaseAdmin
+          .from("pet_passports")
+          .select("id")
+          .eq("passport_id", passportIdDirect)
+          .maybeSingle();
+
+        if (petErr || !pet) {
+          return res.status(404).json({ error: "Passport not found" });
+        }
+        petPassportId = pet.id;
+      } else {
+        return res.status(400).json({ error: "Either requestId or (emailDirect and passportIdDirect) is required" });
+      }
+
+      // 1. Look up recipient in profiles by email
+      const { data: recipient, error: recErr } = await supabaseAdmin
+        .from("profiles")
+        .select("id, name, full_name")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (recErr) {
+        return res.status(500).json({ error: "Database error during profile search: " + recErr.message });
+      }
+      if (!recipient) {
+        return res.status(404).json({ error: `The recipient email (${email}) is not registered. Please ensure they create an account first so they can receive ownership.` });
+      }
+
+      const targetUserId = recipient.id;
+
+      // 2. Lookup existing passport Details
+      const { data: petDetail, error: detailErr } = await supabaseAdmin
+        .from("pet_passports")
+        .select("*")
+        .eq("id", petPassportId)
+        .single();
+
+      if (detailErr || !petDetail) {
+        return res.status(404).json({ error: "Target passport not found." });
+      }
+
+      const previousUserId = petDetail.user_id;
+
+      // 3. Database transaction / updates
+      // A. Transfer basic passport details to the new owner
+      const { error: updatePetErr } = await supabaseAdmin
+        .from("pet_passports")
+        .update({ 
+          user_id: targetUserId,
+          owner_name: recipient.full_name || recipient.name || petDetail.owner_name,
+          last_sync: new Date().toISOString()
+        })
+        .eq("id", petPassportId);
+
+      if (updatePetErr) {
+        throw new Error("Failed transferring passport owner column: " + updatePetErr.message);
+      }
+
+      // B. Transfer all associated consultation records (vet_appointments)
+      const { error: apptErr } = await supabaseAdmin
+        .from("vet_appointments")
+        .update({ user_id: targetUserId })
+        .eq("user_id", previousUserId)
+        .eq("pet_name", petDetail.pet_name);
+
+      if (apptErr) {
+         console.warn("Associated appointment updates warnings (non-fatal):", apptErr.message);
+      }
+
+      // C. Delete the request record
+      if (requestId) {
+        await supabaseAdmin
+          .from("pet_health_records_documents")
+          .delete()
+          .eq("id", requestId);
+      } else {
+        // Direct transfer, clean up other request records pointing to this passport
+        await supabaseAdmin
+          .from("pet_health_records_documents")
+          .delete()
+          .eq("pet_passport_id", petPassportId)
+          .eq("record_type", "OwnershipTransferRequest");
+      }
+
+      return res.json({ success: true, message: "Ownership successfully transferred!", targetUserId });
+    } catch (e: any) {
+      console.error("Error approving ownership transfer:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
