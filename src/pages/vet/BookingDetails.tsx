@@ -1657,54 +1657,54 @@ const BookingDetails = () => {
                                 address: visitType === "home" ? "123 Premium Residency, Indiranagar" : (dbVetData?.hospital_address || dbVetData?.clinic_address || dbVetData?.hospital_name || dbVetData?.clinic_name || "HSR Paws Clinic, Sector 2"),
                               };
                               localStorage.setItem(`payment_details_${realBookingId}`, JSON.stringify(paymentDetails));
+
+                              toast.success("Payment successful! Requesting vet confirmation...");
+                              navigate(`/vet/appointment-confirmation/${realBookingId}`, { 
+                                replace: true,
+                                state: { 
+                                  visit: {
+                                    id: realBookingId,
+                                    vet: {
+                                      id: matchedVet?.id || dbVetData?.id,
+                                      name: vetName,
+                                      full_name: vetName,
+                                      image: vetImage,
+                                      profile_photo: vetImage,
+                                      specialization: vetSpecialization,
+                                      ...matchedVet,
+                                      ...dbVetData
+                                    },
+                                    vet_profile: {
+                                      specialization: vetSpecialization,
+                                      qualification: dbVetData?.qualification || matchedVet?.qualification || "",
+                                      years_of_experience: dbVetData?.years_of_experience || matchedVet?.years_of_experience || matchedVet?.experience || "",
+                                      average_rating: dbVetData?.average_rating || matchedVet?.average_rating || matchedVet?.rating || "",
+                                      ...matchedVet,
+                                      ...dbVetData
+                                    },
+                                    appointmentId: realBookingId,
+                                    visitType: visitType,
+                                    petName: selectedPetPassport?.pet_name || location.state?.petName || location.state?.selectedPet?.name || "Luna",
+                                    petBreed: selectedPetPassport ? `${selectedPetPassport.breed || "Unknown Breed"} • ${selectedPetPassport.gender || "Unknown"}` : (location.state?.selectedPet?.breed || "Golden Retriever • Female"),
+                                    petAge: selectedPetPassport ? (selectedPetPassport.approx_years !== null ? `${selectedPetPassport.approx_years} Years` : "Unknown Age") : "4 Years",
+                                    ownerName: "Sarah Jenkins",
+                                    ownerPhone: "+91 98765 43210",
+                                    address: visitType === "home" ? "123 Premium Residency, Indiranagar" : (dbVetData?.hospital_address || dbVetData?.clinic_address || dbVetData?.hospital_name || dbVetData?.clinic_name || "HSR Paws Clinic, Sector 2"),
+                                    time: safeFormatSelectedDate("dd MMM yyyy") + ", " + selectedSlot,
+                                    reason: "General Consultation & Checkup",
+                                    image: "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
+                                    distance: visitType === "home" ? "1.2 miles away" : "12 mins (4.2 miles)",
+                                    amount: total,
+                                    payment_details: paymentDetails
+                                  }
+                                } 
+                              });
                             } catch (insertErr: any) {
                               console.error("FAIL LOUDLY: Error inserting appointment:", insertErr);
                               toast.error(`Booking Failed: ${insertErr.message || insertErr}`);
-                              setPaymentStep(null); // Reset simulation state overlay so user is not stuck
+                              setPaymentStep("payment_method"); // Reset simulation state overlay so user is not stuck
                               return; // ABORT REDIRECTION/SUCCESS TOAST COMPLETELY ON FAILURE
                             }
-
-                            toast.success("Payment successful! Requesting vet confirmation...");
-                            navigate(`/vet/appointment-confirmation/${realBookingId}`, { 
-                              replace: true,
-                              state: { 
-                                visit: {
-                                  id: realBookingId,
-                                  vet: {
-                                    id: matchedVet?.id || dbVetData?.id,
-                                    name: vetName,
-                                    full_name: vetName,
-                                    image: vetImage,
-                                    profile_photo: vetImage,
-                                    specialization: vetSpecialization,
-                                    ...matchedVet,
-                                    ...dbVetData
-                                  },
-                                  vet_profile: {
-                                    specialization: vetSpecialization,
-                                    qualification: dbVetData?.qualification || matchedVet?.qualification || "",
-                                    years_of_experience: dbVetData?.years_of_experience || matchedVet?.years_of_experience || matchedVet?.experience || "",
-                                    average_rating: dbVetData?.average_rating || matchedVet?.average_rating || matchedVet?.rating || "",
-                                    ...matchedVet,
-                                    ...dbVetData
-                                  },
-                                  appointmentId: realBookingId,
-                                  visitType: visitType,
-                                  petName: selectedPetPassport?.pet_name || location.state?.petName || location.state?.selectedPet?.name || "Luna",
-                                  petBreed: selectedPetPassport ? `${selectedPetPassport.breed || "Unknown Breed"} • ${selectedPetPassport.gender || "Unknown"}` : (location.state?.selectedPet?.breed || "Golden Retriever • Female"),
-                                  petAge: selectedPetPassport ? (selectedPetPassport.approx_years !== null ? `${selectedPetPassport.approx_years} Years` : "Unknown Age") : "4 Years",
-                                  ownerName: "Sarah Jenkins",
-                                  ownerPhone: "+91 98765 43210",
-                                  address: visitType === "home" ? "123 Premium Residency, Indiranagar" : (dbVetData?.hospital_address || dbVetData?.clinic_address || dbVetData?.hospital_name || dbVetData?.clinic_name || "HSR Paws Clinic, Sector 2"),
-                                  time: safeFormatSelectedDate("dd MMM yyyy") + ", " + selectedSlot,
-                                  reason: "General Consultation & Checkup",
-                                  image: "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
-                                  distance: visitType === "home" ? "1.2 miles away" : "12 mins (4.2 miles)",
-                                  amount: total,
-                                  payment_details: paymentDetails
-                                }
-                              } 
-                            });
                           }, 1800);
                         }, 1200);
                       }, 1200);

@@ -117,11 +117,11 @@ const getVetPublicUrl = (photo: any) => {
 const ClinicVisitDetails: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { appointmentId } = useParams(); // URL short Booking id
-
+  const { appointmentId } = useParams(); // URL short Booking id or real id
+  
   // Get state passed from payment/booking or use exact default details from custom layout
   const { visit: stateVisit } = (location.state as ClinicVisitDetailsState) || {};
-  const realDbId = location.state?.realAppointmentId || stateVisit?.id || "SRV-84721";
+  const realDbId = location.state?.realAppointmentId || stateVisit?.id || appointmentId || "SRV-84721";
 
   const [initialVisit, setInitialVisit] = useState({
     id: realDbId,
@@ -229,6 +229,9 @@ const ClinicVisitDetails: React.FC = () => {
 
   const [vetProfileId, setVetProfileId] = useState<string | null>(null);
   const [doctorProfile, setDoctorProfile] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isOwnerOrVet, setIsOwnerOrVet] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   const doctorPhoto = useMemo(() => {
     const rawPhoto = doctorProfile?.profiles?.profile_photo || doctorProfile?.profile_photo || stateVisit?.image || location.state?.vet?.image || "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=300&auto=format&fit=crop";
@@ -348,11 +351,14 @@ const ClinicVisitDetails: React.FC = () => {
     const fetchAppointmentAndVet = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        if (user) setCurrentUser(user);
         
         let query = supabase.from("vet_appointments").select("*");
         
         const targetId = realDbId || stateVisit?.id;
-        if (targetId) {
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetId || "");
+
+        if (targetId && targetId !== "SRV-84721" && isUUID) {
           query = query.eq("id", targetId);
         } else {
           if (user?.id) {
@@ -373,6 +379,11 @@ const ClinicVisitDetails: React.FC = () => {
           setDbVisit(appt);
           setCurrentVisitId(appt.id);
 
+          if (user && (user.id === appt.user_id || user.id === appt.vet_id)) {
+            setIsOwnerOrVet(true);
+          }
+          setIsAuthLoading(false);
+
           // Fetch the corresponding vet's profile ID
           if (appt.vet_id) {
             const { data: vetProf, error: vetProfErr } = await supabase
@@ -386,6 +397,7 @@ const ClinicVisitDetails: React.FC = () => {
             }
           }
         } else {
+          setIsAuthLoading(false);
           // Fallback to use first veterinarian profile if no appointment exists
           const { data: fallbackVet } = await supabase
             .from("vet_profiles")
@@ -765,9 +777,9 @@ const ClinicVisitDetails: React.FC = () => {
   };
 
   // Check if they came from the correct flow
-  const isDirectAccess = !location.state || !location.state.fromBookingFlow;
+  const isDirectAccess = (!location.state || !location.state.fromBookingFlow) && !isOwnerOrVet;
 
-  if (isDirectAccess) {
+  if (isDirectAccess && !isAuthLoading) {
     return (
       <div className="w-full min-h-screen bg-[#f8f9fa] flex items-center justify-center p-4 font-sans text-gray-900">
         <div className="w-full max-w-md bg-white border border-gray-200 rounded-[32px] p-8 shadow-[0_12px_40px_rgba(0,0,0,0.03)] text-center flex flex-col items-center">
