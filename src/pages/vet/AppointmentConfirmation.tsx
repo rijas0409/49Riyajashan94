@@ -66,12 +66,21 @@ export default function AppointmentConfirmation() {
             
           const localPayStr = localStorage.getItem(`payment_details_${appointmentId}`);
           const localPay = localPayStr ? JSON.parse(localPayStr) : null;
+          
+          let dbPay = null;
+          if (data.consultation_notes) {
+            try {
+              dbPay = JSON.parse(data.consultation_notes);
+            } catch (e) {
+              console.error("Error parsing consultation notes:", e);
+            }
+          }
             
           setAppointment({ 
             ...data, 
             vet_profile: vp, 
             vet: rawProfile || data.vet,
-            payment_details: localPay 
+            payment_details: localPay || dbPay 
           });
           
           if (data.status === "confirmed" || data.status === "approved") {
@@ -211,9 +220,9 @@ export default function AppointmentConfirmation() {
   const displayRating = vetProfile?.average_rating || vet?.average_rating || vetProfile?.rating || vet?.rating || null;
   const displayExperience = vetProfile?.years_of_experience || vet?.years_of_experience || vetProfile?.experience || vet?.experience || null;
 
-  const payId = appointment.payment_details?.payment_id || ("pay_rzp_" + (appointmentId ? appointmentId.replace(/-/g, "").substring(0, 14).toUpperCase() : "QY82JKDLAJS"));
-  const payMethod = appointment.payment_details?.payment_method || (appointment.appointment_type === 'home' ? "Card (Visa ending in 8124)" : "UPI (GPay)");
-  const payAmount = appointment.amount || appointment.payment_details?.amount || 499;
+  const payId = appointment.payment_details?.payment_id || appointment.payment_id || "";
+  const payMethod = appointment.payment_details?.payment_method || appointment.payment_method || "Payment Completed";
+  const payAmount = appointment.amount || appointment.payment_details?.amount || 0;
 
   return (
     <div className="min-h-screen bg-[#F7F7FB] font-['Inter'] relative overflow-x-hidden">

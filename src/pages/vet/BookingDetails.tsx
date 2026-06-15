@@ -1699,7 +1699,9 @@ const BookingDetails = () => {
                                   time: safeFormatSelectedDate("dd MMM yyyy") + ", " + selectedSlot,
                                   reason: "General Consultation & Checkup",
                                   image: "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
-                                  distance: visitType === "home" ? "1.2 miles away" : "12 mins (4.2 miles)"
+                                  distance: visitType === "home" ? "1.2 miles away" : "12 mins (4.2 miles)",
+                                  amount: total,
+                                  payment_details: paymentDetails
                                 }
                               } 
                             });
