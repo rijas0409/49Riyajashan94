@@ -87,9 +87,34 @@ const BookingDetails = () => {
   // Dynamic Real-time Consultation settings
   const [dbVetData, setDbVetData] = useState<any>(null);
 
-  const [passports, setPassports] = useState<any[]>([]);
-  const [selectedPetPassport, setSelectedPetPassport] = useState<any>(null);
-  const [loadingPassports, setLoadingPassports] = useState(true);
+  const [passports, setPassports] = useState<any[]>(() => {
+    try {
+      const cached = localStorage.getItem("cached_pet_passports");
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [selectedPetPassport, setSelectedPetPassport] = useState<any>(() => {
+    try {
+      const cachedSelected = localStorage.getItem("cached_selected_pet_passport");
+      if (cachedSelected) return JSON.parse(cachedSelected);
+      const cached = localStorage.getItem("cached_pet_passports");
+      const list = cached ? JSON.parse(cached) : [];
+      return list.length > 0 ? list[0] : null;
+    } catch {
+      return null;
+    }
+  });
+  const [loadingPassports, setLoadingPassports] = useState(() => {
+    try {
+      const cached = localStorage.getItem("cached_pet_passports");
+      // Only keep skeleton loading active if zero items are cached
+      return !cached || JSON.parse(cached).length === 0;
+    } catch {
+      return true;
+    }
+  });
 
   useEffect(() => {
     const fetchPassports = async () => {
@@ -99,15 +124,18 @@ const BookingDetails = () => {
           const { data, error } = await supabase
             .from("pet_passports")
             .select("*")
-            .eq("owner_id", user.id)
+            .eq("user_id", user.id)
             .order("created_at", { ascending: false });
             
           if (!error && data) {
             setPassports(data);
+            localStorage.setItem("cached_pet_passports", JSON.stringify(data));
             if (data.length > 0) {
               const preselectedPetName = location.state?.petName || location.state?.selectedPet?.name;
               const match = data.find((p: any) => p.pet_name === preselectedPetName || p.petName === preselectedPetName);
-              setSelectedPetPassport(match || data[0]);
+              const finalMatch = match || selectedPetPassport || data[0];
+              setSelectedPetPassport(finalMatch);
+              localStorage.setItem("cached_selected_pet_passport", JSON.stringify(finalMatch));
             }
           }
         }
@@ -639,7 +667,10 @@ const BookingDetails = () => {
               return (
                 <div
                   key={passport.id}
-                  onClick={() => setSelectedPetPassport(passport)}
+                  onClick={() => {
+                    setSelectedPetPassport(passport);
+                    localStorage.setItem("cached_selected_pet_passport", JSON.stringify(passport));
+                  }}
                   className={`w-56 flex-shrink-0 p-3.5 rounded-2xl border-2 transition-all cursor-pointer snap-start flex gap-3 ${
                     isSelected
                       ? "border-pink-500 bg-pink-50/20"
