@@ -772,11 +772,11 @@ const ClinicVisitDetails: React.FC = () => {
           </div>
           
           <h1 className="text-xl font-extrabold tracking-tight text-gray-900 mb-3">
-            Direct Access Suspended
+            Consultation Details Protected
           </h1>
           
           <p className="text-[13px] text-gray-500 font-medium leading-relaxed mb-8 px-2">
-            The visit details page can only be accessed through the standard consultation booking flow inside the application. For privacy and security reasons, direct link sharing is restricted.
+            This consultation can only be accessed through the official appointment flow within Sruvo. Access is restricted to ensure the privacy, security, and integrity of consultation records.
           </p>
           
           <button
