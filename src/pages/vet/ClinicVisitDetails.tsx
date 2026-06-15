@@ -684,10 +684,21 @@ const ClinicVisitDetails: React.FC = () => {
                             : "border-gray-200 hover:border-[#f9a8d4] hover:bg-[#fff0f6]"
                         }`}
                       >
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                          isCat ? "bg-amber-50 text-amber-500" : "bg-orange-50 text-orange-500"
-                        }`}>
-                          <Activity className="w-5 h-5" />
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-gray-50 border border-gray-100">
+                          {passport.photo_url ? (
+                            <img 
+                              src={passport.photo_url} 
+                              alt={pName} 
+                              className="w-full h-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className={`w-full h-full flex items-center justify-center ${
+                              isCat ? "bg-amber-50 text-amber-500" : "bg-orange-50 text-orange-500"
+                            }`}>
+                              <Activity className="w-5 h-5" />
+                            </div>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-gray-800 text-sm">{pName}</p>
