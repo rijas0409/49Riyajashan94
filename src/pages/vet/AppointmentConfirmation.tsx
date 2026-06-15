@@ -201,6 +201,16 @@ export default function AppointmentConfirmation() {
 
   const vetImgUrl = getPublicUrl(vet?.profile_photo || vet?.image || vet?.avatar_url);
 
+  // Dynamic values without fallbacks
+  const displaySpecialization = vetProfile?.specialization || 
+    (Array.isArray(vetProfile?.specializations) && vetProfile.specializations.length > 0 ? vetProfile.specializations.join(", ") : null) || 
+    vet?.specialization || 
+    null;
+
+  const displayQualification = vetProfile?.qualification || vet?.qualification || null;
+  const displayRating = vetProfile?.average_rating || vet?.average_rating || vetProfile?.rating || vet?.rating || null;
+  const displayExperience = vetProfile?.years_of_experience || vet?.years_of_experience || vetProfile?.experience || vet?.experience || null;
+
   const payId = appointment.payment_details?.payment_id || ("pay_rzp_" + (appointmentId ? appointmentId.replace(/-/g, "").substring(0, 14).toUpperCase() : "QY82JKDLAJS"));
   const payMethod = appointment.payment_details?.payment_method || (appointment.appointment_type === 'home' ? "Card (Visa ending in 8124)" : "UPI (GPay)");
   const payAmount = appointment.amount || appointment.payment_details?.amount || 499;
@@ -286,26 +296,34 @@ export default function AppointmentConfirmation() {
                       {vetImgUrl ? (
                         <img src={vetImgUrl} alt={getVetDisplayName()} className="w-full h-full object-cover" />
                       ) : (
-                        <User className="w-5 h-5 text-[#E8336D]" />
+                        <div className="w-full h-full bg-pink-500/10 flex items-center justify-center text-[15px] font-black text-[#E8336D]">
+                          {(getVetDisplayName().replace("Dr. ", "")[0] || "V").toUpperCase()}
+                        </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0 text-left">
                       <h4 className="text-[14.5px] font-black text-slate-900 truncate tracking-tight">
                         {getVetDisplayName()}
                       </h4>
-                      <p className="text-[11.5px] text-slate-500 font-semibold truncate">
-                        {vetProfile?.specialization || (vetProfile?.specializations && vetProfile.specializations[0]) || "Veterinary Endocrinologist"}{vetProfile?.qualification ? ` · ${vetProfile.qualification}` : ""}
-                      </p>
+                      {displaySpecialization && (
+                        <p className="text-[11.5px] text-slate-500 font-semibold truncate">
+                          {displaySpecialization}{displayQualification ? ` · ${displayQualification}` : ""}
+                        </p>
+                      )}
                       <div className="flex items-center gap-1 mt-0.5">
-                        <div className="flex items-center">
-                          <Star className="w-3 h-3 fill-[#F59E0B] text-[#F59E0B]" />
-                          <span className="text-[10.5px] font-bold text-slate-600 ml-1">
-                            {vetProfile?.average_rating || "4.8"}
+                        {displayRating && (
+                          <div className="flex items-center">
+                            <Star className="w-3 h-3 fill-[#F59E0B] text-[#F59E0B]" />
+                            <span className="text-[10.5px] font-bold text-slate-600 ml-1">
+                              {displayRating}
+                            </span>
+                          </div>
+                        )}
+                        {displayExperience && (
+                          <span className="text-[10.5px] font-bold text-slate-400 ml-1">
+                            {displayRating ? "· " : ""}{displayExperience}+ yrs exp
                           </span>
-                        </div>
-                        <span className="text-[10.5px] font-bold text-slate-400 ml-1">
-                          · {vetProfile?.years_of_experience || "8"}+ yrs exp
-                        </span>
+                        )}
                       </div>
                     </div>
                     <div className="w-8 h-8 rounded-full bg-[#12B76A] flex items-center justify-center shadow-lg shadow-[#12B76A]/30 shrink-0">
