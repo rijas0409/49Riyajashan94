@@ -6,7 +6,8 @@ import {
   CheckCircle2, Play, Calendar, Wallet, User, Home,
   MessageSquare, Star, MapPin, Clock, Compass, Plus, 
   Minus, Sparkles, Check, ChevronUp, ChevronDown, 
-  Activity, Video, Phone, Tag, Trash, AlertTriangle, LifeBuoy, Info, X, Hourglass, Building2
+  Activity, Video, Phone, Tag, Trash, AlertTriangle, LifeBuoy, Info, X, Hourglass, Building2,
+  FileText, PawPrint
 } from "lucide-react";
 import { toast } from "sonner";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
@@ -630,28 +631,28 @@ const ClinicVisitDetails: React.FC = () => {
       {/* ═══════════════ PASSPORT BOTTOM SHEET OVERLAY ═══════════════ */}
       {passportOverlayOpen && (
         <div 
-          className="fixed inset-0 z-50 bg-black/45 backdrop-blur-[3px] flex items-end md:items-center justify-center transition-all duration-300"
+          className="fixed inset-0 z-50 bg-[#000000]/45 backdrop-blur-[3px] flex items-end md:items-center justify-center transition-all duration-300"
           onClick={() => setPassportOverlayOpen(false)}
         >
           <div 
-            className="w-full max-w-md bg-white rounded-t-[1.5rem] md:rounded-2xl p-6 pb-8 animate-slide-up md:animate-zoom-in shadow-2xl mx-auto"
+            className="w-full max-w-[500px] bg-white rounded-t-[2.2rem] md:rounded-[2.5rem] p-7 pb-8 animate-slide-up md:animate-zoom-in shadow-2xl mx-auto flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Grab handle */}
-            <div className="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-5" />
+            <div className="w-14 h-1.5 bg-[#e2e8f0] rounded-full mx-auto mb-6" />
             
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-lg font-bold text-gray-900">Select Pet Passport</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-[26px] font-extrabold text-[#0c1322] tracking-tight leading-none">Select Pet Passport</h2>
               <button 
                 onClick={() => setPassportOverlayOpen(false)}
-                className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400"
+                className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" strokeWidth={2.5} />
               </button>
             </div>
-            <p className="text-xs text-gray-400 mb-5">Choose which passport to sync with this visit</p>
+            <p className="text-[14px] text-gray-400 font-semibold mt-1.5 mb-6">Choose which passport to sync with this visit</p>
             
-            <div className="space-y-3">
+            <div className="flex-1">
               {loadingUserPassports ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ec4899]"></div>
@@ -660,40 +661,45 @@ const ClinicVisitDetails: React.FC = () => {
               ) : userPassports.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center select-none">
                   <div className="w-12 h-12 rounded-xl bg-pink-50 flex items-center justify-center text-[#ec4899] mb-3">
-                    <AlertCircle className="w-6 h-6" />
+                    <AlertTriangle className="w-6 h-6" />
                   </div>
                   <p className="text-sm font-bold text-gray-800">No passports found</p>
                   <p className="text-xs text-gray-500 max-w-[240px] mt-1">Please create a Pet Passport from your profile first.</p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1 py-1">
                   {userPassports.map((passport) => {
                     const isSelected = selectedPassportId === passport.id;
-                    const pId = passport.passport_id || `#PP-${passport.id?.slice(0, 6).toUpperCase()}`;
+                    const pId = (passport.passport_id || `SRV-${passport.id?.slice(0, 6).toUpperCase()}`).replace(/^#/, "");
                     const pName = passport.pet_name || "Unnamed Pet";
                     
-                    let pAge = "";
+                    let pAge = "1 yr";
                     if (passport.approx_years !== null && passport.approx_years !== undefined) {
-                      pAge = `${passport.approx_years} yrs${passport.approx_months ? ` ${passport.approx_months} mos` : ""}`;
+                      pAge = `${passport.approx_years} yr${passport.approx_years !== 1 ? "s" : ""}`;
+                      if (passport.approx_months) {
+                        pAge += ` ${passport.approx_months} mos`;
+                      }
                     } else if (passport.dob) {
                       const years = new Date().getFullYear() - new Date(passport.dob).getFullYear();
-                      pAge = `${years} yrs`;
+                      pAge = `${years} yr${years !== 1 ? "s" : ""}`;
                     }
                     
-                    const pBreed = `${passport.breed || "Breed"} · ${passport.gender || ""}${pAge ? ` · ${pAge}` : ""}`;
+                    const pBreed = passport.breed || "Breed";
                     const isCat = passport.species?.toLowerCase() === "cat";
+                    const gender = passport.gender || "Male";
                     
                     return (
                       <div 
                         key={passport.id}
                         onClick={() => setSelectedPassportId(passport.id)}
-                        className={`border-2 rounded-2xl p-4 cursor-pointer flex items-center gap-3.5 transition-all duration-200 ${
+                        className={`border-2 rounded-[24px] p-4 cursor-pointer flex items-center gap-4 transition-all duration-200 ${
                           isSelected 
-                            ? "border-[#ec4899] bg-[#fdf2f8]" 
-                            : "border-gray-200 hover:border-[#f9a8d4] hover:bg-[#fff0f6]"
+                            ? "border-[#f9a8d4] bg-[#fff5f8]" 
+                            : "border-gray-200/80 bg-white hover:border-gray-300 hover:bg-gray-50/50"
                         }`}
                       >
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-gray-50 border border-gray-100">
+                        {/* Pet Photo on left */}
+                        <div className="w-[68px] h-[68px] rounded-[18px] overflow-hidden shrink-0 border border-gray-100 flex items-center justify-center bg-gray-50">
                           {passport.photo_url ? (
                             <img 
                               src={passport.photo_url} 
@@ -705,19 +711,52 @@ const ClinicVisitDetails: React.FC = () => {
                             <div className={`w-full h-full flex items-center justify-center ${
                               isCat ? "bg-amber-50 text-amber-500" : "bg-orange-50 text-orange-500"
                             }`}>
-                              <Activity className="w-5 h-5" />
+                              <Activity className="w-6 h-6" />
                             </div>
                           )}
                         </div>
+
+                        {/* Details Middle */}
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-gray-800 text-sm">{pName}</p>
-                          <p className="text-xs text-gray-400 font-mono">{pId} · {pBreed}</p>
+                          <p className="font-extrabold text-[#0c1322] text-lg leading-tight mb-1">{pName}</p>
+                          
+                          <div className="flex items-center text-xs text-gray-500 font-semibold gap-1 px-0.5">
+                            <FileText className="w-3.5 h-3.5 text-[#ec4899] shrink-0" />
+                            <span className="truncate">{pId}</span>
+                            <span className="text-gray-300 mx-1 font-extrabold">·</span>
+                            <PawPrint className="w-3.5 h-3.5 text-[#ec4899] shrink-0" />
+                            <span className="truncate">{pBreed}</span>
+                          </div>
+
+                          {/* Chips Line */}
+                          <div className="flex items-center gap-2 mt-2">
+                            {/* Gender chip */}
+                            {gender.toLowerCase() === "female" ? (
+                              <span className="bg-[#fff1f2] text-[#f43f5e] px-2.5 py-0.5 text-xs font-bold rounded-lg flex items-center gap-1">
+                                <span className="text-sm font-bold">♀</span> Female
+                              </span>
+                            ) : (
+                              <span className="bg-[#eff6ff] text-[#3b82f6] px-2.5 py-0.5 text-xs font-bold rounded-lg flex items-center gap-1">
+                                <span className="text-sm font-bold">♂</span> Male
+                              </span>
+                            )}
+
+                            {/* Age chip */}
+                            <span className="bg-[#f0fdf4] text-[#16a34a] px-2.5 py-0.5 text-xs font-bold rounded-lg flex items-center gap-1">
+                              <Calendar className="w-3.5 h-3.5 text-[#16a34a]" /> {pAge}
+                            </span>
+                          </div>
                         </div>
-                        
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                          isSelected ? "bg-[#ec4899] border-[#ec4899]" : "border-gray-300"
-                        }`}>
-                          {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+
+                        {/* Radio Button on right */}
+                        <div className="shrink-0 ml-1">
+                          {isSelected ? (
+                            <div className="w-[24px] h-[24px] rounded-full border-2 border-[#ec4899] flex items-center justify-center bg-white">
+                              <div className="w-[12px] h-[12px] rounded-full bg-[#ec4899]" />
+                            </div>
+                          ) : (
+                            <div className="w-[24px] h-[24px] rounded-full border-2 border-slate-200 bg-white" />
+                          )}
                         </div>
                       </div>
                     );
@@ -726,13 +765,19 @@ const ClinicVisitDetails: React.FC = () => {
               )}
             </div>
 
+            {/* Helper status text */}
+            <div className="flex items-center gap-2 mt-5 mb-5 px-1">
+              <Info className="w-5 h-5 text-[#ec4899] shrink-0" />
+              <span className="text-[14px] text-gray-500 font-bold">Select a passport to continue</span>
+            </div>
+
             <button 
               onClick={handleConfirmConnect}
               disabled={!selectedPassportId}
-              className={`w-full mt-6 text-white font-bold py-4 rounded-xl transition-all shadow-md ${
+              className={`w-full py-4 text-[16px] font-extrabold text-white rounded-[20px] shadow-sm transition-all duration-200 ${
                 selectedPassportId 
-                  ? "bg-[#ec4899] hover:bg-[#db2777] active:scale-[0.98]" 
-                  : "bg-gray-300 cursor-not-allowed opacity-50"
+                  ? "bg-[#eb5e99] hover:bg-[#e14f8a] active:scale-[0.98]" 
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
               }`}
             >
               Connect Passport
