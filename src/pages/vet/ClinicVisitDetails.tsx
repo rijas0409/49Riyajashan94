@@ -671,7 +671,16 @@ const ClinicVisitDetails: React.FC = () => {
                     const isSelected = selectedPassportId === passport.id;
                     const pId = passport.passport_id || `#PP-${passport.id?.slice(0, 6).toUpperCase()}`;
                     const pName = passport.pet_name || "Unnamed Pet";
-                    const pBreed = `${passport.breed || "Breed"} · ${passport.gender || ""}`;
+                    
+                    let pAge = "";
+                    if (passport.approx_years !== null && passport.approx_years !== undefined) {
+                      pAge = `${passport.approx_years} yrs${passport.approx_months ? ` ${passport.approx_months} mos` : ""}`;
+                    } else if (passport.dob) {
+                      const years = new Date().getFullYear() - new Date(passport.dob).getFullYear();
+                      pAge = `${years} yrs`;
+                    }
+                    
+                    const pBreed = `${passport.breed || "Breed"} · ${passport.gender || ""}${pAge ? ` · ${pAge}` : ""}`;
                     const isCat = passport.species?.toLowerCase() === "cat";
                     
                     return (
