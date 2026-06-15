@@ -589,18 +589,34 @@ const BookingDetails = () => {
               
               // Get Age display
               const getAgeDisplay = (p: any) => {
-                if (p.approx_years !== null || p.approx_months !== null) {
-                  let y = p.approx_years || 0;
-                  let m = p.approx_months || 0;
-                  if (m >= 12) {
-                    y += Math.floor(m / 12);
-                    m = m % 12;
+                let y = 0;
+                let m = 0;
+                
+                if (p.dob) {
+                  const birthDate = new Date(p.dob);
+                  const today = new Date();
+                  y = today.getFullYear() - birthDate.getFullYear();
+                  m = today.getMonth() - birthDate.getMonth();
+                  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                    y--;
+                    m += 12;
                   }
-                  if (y > 0 && m > 0) return `${y} Yr${y > 1 ? 's' : ''} ${m} Mo${m > 1 ? 's' : ''}`;
-                  if (y > 0) return `${y} Yr${y > 1 ? 's' : ''}`;
-                  return `${m} Mo${m > 1 ? 's' : ''}`;
+                } else if (p.approx_years != null || p.approx_months != null) {
+                  y = p.approx_years || 0;
+                  m = p.approx_months || 0;
+                } else {
+                  return "Age Unknown";
                 }
-                return "Age Unknown";
+
+                if (m >= 12) {
+                  y += Math.floor(m / 12);
+                  m = m % 12;
+                }
+
+                if (y > 0 && m > 0) return `${y} Yr${y > 1 ? 's' : ''} ${m} Mo${m > 1 ? 's' : ''}`;
+                if (y > 0) return `${y} Yr${y > 1 ? 's' : ''}`;
+                if (m > 0) return `${m} Mo${m > 1 ? 's' : ''}`;
+                return "0 Mo";
               };
 
               return (
@@ -629,7 +645,7 @@ const BookingDetails = () => {
                     <div className="flex items-center gap-1 text-pink-500">
                       <Shield className="w-3.5 h-3.5" />
                       <p className="text-[11px] font-medium tracking-wide">
-                        {passport.passport_id?.split("-")[0].toUpperCase() || "PENDING"}
+                        {passport.passport_id || "PENDING"}
                       </p>
                     </div>
                     <p className="text-[10px] text-slate-500 truncate font-medium">
@@ -641,6 +657,7 @@ const BookingDetails = () => {
             })}
             
             {/* Create Passport Card */}
+            {!loadingPassports && (
             <button
               onClick={() => navigate("/buyer/pet-passport?create=true")}
               className="group w-56 h-[88px] flex-shrink-0 p-3.5 rounded-2xl border-[3px] border-dashed border-pink-500/30 bg-pink-500/5 hover:bg-pink-500/10 hover:border-pink-500/50 flex flex-col items-center justify-center cursor-pointer transition-all active:scale-[0.98] snap-start shrink-0 shadow-sm"
@@ -655,6 +672,7 @@ const BookingDetails = () => {
                   </div>
               </div>
             </button>
+            )}
           </div>
 
           {/* Security Message */}
