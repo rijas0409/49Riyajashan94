@@ -5,6 +5,16 @@ import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
+const getShortBookingId = (id: string | undefined): string => {
+  if (!id) return "...";
+  const clean = id.replace(/[-]/g, "");
+  if (clean.length >= 9) {
+    const slice = clean.slice(0, 9);
+    return `${slice.slice(0, 4)}-${slice.slice(4, 7)}-${slice.slice(7, 9)}`;
+  }
+  return id;
+};
+
 const ClinicBookingConfirmation = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,8 +47,13 @@ const ClinicBookingConfirmation = () => {
         setCurrentStep(2);
         toast.success("Consultation Scheduled Successfully!");
         setTimeout(() => {
-          navigate(visitType === "home" ? "/buyer/vet/home-visit-details" : "/buyer/vet/clinic-visit-details", { 
-            state: location.state
+          const bookingId = "SRV-84721";
+          navigate(visitType === "home" ? "/buyer/vet/home-visit-details" : `/buyer/vet/clinic-visit-details/${bookingId}`, { 
+            state: {
+              ...location.state,
+              realAppointmentId: "SRV-84721",
+              fromBookingFlow: true
+            }
           });
         }, 1500);
       }, 5000); // simulate vet accepting in 5 seconds
@@ -63,8 +78,13 @@ const ClinicBookingConfirmation = () => {
             toast.success("Appointment request accepted!");
             setCurrentStep(2);
             setTimeout(() => {
-               navigate(visitType === "home" ? "/buyer/vet/home-visit-details" : "/buyer/vet/clinic-visit-details", { 
-                 state: location.state
+               const bookingId = getShortBookingId(appointmentId);
+               navigate(visitType === "home" ? "/buyer/vet/home-visit-details" : `/buyer/vet/clinic-visit-details/${bookingId}`, { 
+                 state: {
+                   ...location.state,
+                   realAppointmentId: appointmentId,
+                   fromBookingFlow: true
+                 }
                });
             }, 1200);
           } else if (newStatus === 'cancelled' || newStatus === 'rejected') {

@@ -12,6 +12,16 @@ import { toast } from "sonner";
 import SplashScreen from "@/components/SplashScreen";
 import { supabase } from "@/integrations/supabase/client";
 
+const getShortBookingId = (id: string | undefined): string => {
+  if (!id) return "...";
+  const clean = id.replace(/[-]/g, "");
+  if (clean.length >= 9) {
+    const slice = clean.slice(0, 9);
+    return `${slice.slice(0, 4)}-${slice.slice(4, 7)}-${slice.slice(7, 9)}`;
+  }
+  return id;
+};
+
 interface ScheduleAppointment {
   id: string;
   date: string;
@@ -331,7 +341,7 @@ const VetSchedule = () => {
 
   const handleClinicVisitClick = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    navigate("/buyer/vet/clinic-visit-details", { 
+    navigate("/buyer/vet/clinic-visit-details/CV-124", { 
       state: { 
         visit: {
           id: "CV-124",
@@ -344,7 +354,9 @@ const VetSchedule = () => {
           reason: "Routine Checkup",
           image: "https://images.unsplash.com/photo-1593134257782-e89567b7718a?auto=format&fit=crop&w=300&q=80",
           distance: ""
-        } 
+        },
+        realAppointmentId: "CV-124",
+        fromBookingFlow: true
       } 
     });
   };
@@ -460,7 +472,8 @@ const VetSchedule = () => {
                     if (notes) parsedPaymentDetails = notes;
                   } catch(e) {}
                 }
-                navigate(apt.type === 'home' ? "/buyer/vet/home-visit-details" : "/buyer/vet/clinic-visit-details", {
+                const shortId = getShortBookingId(apt.id);
+                navigate(apt.type === 'home' ? "/buyer/vet/home-visit-details" : `/buyer/vet/clinic-visit-details/${shortId}`, {
                   state: {
                     visit: {
                       id: apt.id,
@@ -476,7 +489,9 @@ const VetSchedule = () => {
                       reason: "General Consultation & Checkup",
                       image: apt.image,
                       distance: apt.type === 'home' ? "1.2 MILES AWAY" : ""
-                    }
+                    },
+                    realAppointmentId: apt.id,
+                    fromBookingFlow: true
                   }
                 });
               }}
@@ -517,17 +532,9 @@ const VetSchedule = () => {
                     <User size={13} weight="fill" className="text-[#b0afb8]" /> {apt.ownerName}
                   </div>
                   
-                  {apt.consultation_notes && (() => {
-                     try {
-                       const notes = JSON.parse(apt.consultation_notes);
-                       if (notes.bookingId) return (
-                         <div className="text-[12px] text-[#92909e] font-[500] flex items-center gap-1.5">
-                           <span className="text-[#d1d0d6] font-bold">#</span> ID: {notes.bookingId}
-                         </div>
-                       );
-                     } catch(e){}
-                     return null;
-                  })()}
+                  <div className="text-[12px] text-[#92909e] font-[500] flex items-center gap-1.5 mt-1.5">
+                    <span className="text-[#d1d0d6] font-bold">#</span> ID: {getShortBookingId(apt.id)}
+                  </div>
                 </div>
               </div>
               
@@ -568,7 +575,8 @@ const VetSchedule = () => {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(apt.type === 'home' ? "/buyer/vet/home-visit-details" : "/buyer/vet/clinic-visit-details", {
+                       const shortId = getShortBookingId(apt.id);
+                       navigate(apt.type === 'home' ? "/buyer/vet/home-visit-details" : `/buyer/vet/clinic-visit-details/${shortId}`, {
                         state: {
                           visit: {
                             id: apt.id,
@@ -582,7 +590,9 @@ const VetSchedule = () => {
                             reason: "General Consultation & Checkup",
                             image: apt.image,
                             distance: apt.type === 'home' ? "1.2 MILES AWAY" : ""
-                          }
+                          },
+                          realAppointmentId: apt.id,
+                          fromBookingFlow: true
                         }
                       });
                     }}

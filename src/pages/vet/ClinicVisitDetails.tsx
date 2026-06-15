@@ -62,16 +62,69 @@ const PASSPORT_DATA = {
   },
 };
 
+const getFormattedPetAge = (approxYears: any, approxMonths: any, dob: any) => {
+  let yrs = 0;
+  let mos = 0;
+  let hasData = false;
+
+  if (approxYears !== null && approxYears !== undefined && !isNaN(parseInt(approxYears, 10))) {
+    yrs = parseInt(approxYears, 10);
+    mos = parseInt(approxMonths, 10) || 0;
+    hasData = true;
+  } else if (dob) {
+    const dobDate = new Date(dob);
+    if (!isNaN(dobDate.getTime())) {
+      const today = new Date();
+      yrs = today.getFullYear() - dobDate.getFullYear();
+      mos = today.getMonth() - dobDate.getMonth();
+      if (mos < 0) {
+        yrs--;
+        mos += 12;
+      }
+      hasData = true;
+    }
+  }
+
+  if (!hasData) {
+    return "1 yr";
+  }
+
+  // Formatting logic according to requirements
+  if (yrs <= 0) {
+    return `${mos || 1} mos`;
+  } else {
+    return `${yrs} yr${mos > 0 ? ` ${mos} mos` : ""}`;
+  }
+};
+
+const getShortBookingId = (id: string | undefined): string => {
+  if (!id) return "...";
+  const clean = id.replace(/[-]/g, "");
+  if (clean.length >= 9) {
+    const slice = clean.slice(0, 9);
+    return `${slice.slice(0, 4)}-${slice.slice(4, 7)}-${slice.slice(7, 9)}`;
+  }
+  return id;
+};
+
+const getVetPublicUrl = (photo: any) => {
+  if (!photo) return "";
+  const photoStr = typeof photo === "string" ? photo : String(photo);
+  if (photoStr.startsWith("http")) return photoStr;
+  return supabase.storage.from("vet-documents").getPublicUrl(photoStr).data.publicUrl;
+};
+
 const ClinicVisitDetails: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { appointmentId } = useParams();
+  const { appointmentId } = useParams(); // URL short Booking id
 
   // Get state passed from payment/booking or use exact default details from custom layout
   const { visit: stateVisit } = (location.state as ClinicVisitDetailsState) || {};
+  const realDbId = location.state?.realAppointmentId || stateVisit?.id || "SRV-84721";
 
   const [initialVisit, setInitialVisit] = useState({
-    id: stateVisit?.id || appointmentId || "SRV-84721",
+    id: realDbId,
     petName: stateVisit?.petName || "Luna",
     petBreed: stateVisit?.petBreed || "Golden Retriever",
     petAge: stateVisit?.petAge || "4 Years",
@@ -85,15 +138,16 @@ const ClinicVisitDetails: React.FC = () => {
   });
 
   useEffect(() => {
-    if (appointmentId && !stateVisit) {
+    if (realDbId && realDbId !== "SRV-84721" && !stateVisit) {
       const fetchApptData = async () => {
         const { data, error } = await supabase
           .from("vet_appointments")
           .select("*, user:profiles!vet_appointments_user_id_fkey(*)")
-          .eq("id", appointmentId)
+          .eq("id", realDbId)
           .single();
         
         if (!error && data) {
+          setDbVisit(data);
           const newVisit = {
             id: data.id,
             petName: data.pet_name || "Pet",
@@ -109,11 +163,26 @@ const ClinicVisitDetails: React.FC = () => {
           };
           setInitialVisit(newVisit);
           setCurrentVisitId(newVisit.id);
+
+          if (data.vet_id) {
+            const { data: vetProf } = await supabase
+               .from("vet_profiles")
+               .select("id")
+               .eq("user_id", data.vet_id)
+               .maybeSingle();
+
+            if (vetProf) {
+              setOrCreateVetDetails(vetProf.id);
+            }
+          }
         }
+      };
+      const setOrCreateVetDetails = (vpId: string) => {
+        setVetProfileId(vpId);
       };
       fetchApptData();
     }
-  }, [appointmentId, stateVisit]);
+  }, [realDbId, stateVisit]);
 
   // Database and Real-time States
   const [currentVisitId, setCurrentVisitId] = useState<string>(initialVisit.id);
@@ -121,25 +190,42 @@ const ClinicVisitDetails: React.FC = () => {
   const [paymentDetails, setPaymentDetails] = useState<any>(null);
 
   useEffect(() => {
-    const targetId = appointmentId || stateVisit?.id || "SRV-84721";
+    const targetId = currentVisitId || realDbId || "SRV-84721";
+    let loadedDetails: any = null;
+    
     const localPayStr = localStorage.getItem(`payment_details_${targetId}`);
     if (localPayStr) {
       try {
-        const parsed = JSON.parse(localPayStr);
-        setPaymentDetails(parsed);
-        setInitialVisit(prev => ({
-          ...prev,
-          petName: parsed.petName || prev.petName,
-          petBreed: parsed.petBreed || prev.petBreed,
-          petAge: parsed.petAge || prev.petAge,
-          address: parsed.address || prev.address,
-          time: parsed.time_display || prev.time,
-        }));
+        loadedDetails = JSON.parse(localPayStr);
       } catch (e) {
         console.error(e);
       }
     }
-  }, [appointmentId, stateVisit?.id]);
+
+    if (!loadedDetails && dbVisit?.consultation_notes) {
+      try {
+        if (typeof dbVisit.consultation_notes === "string") {
+          loadedDetails = JSON.parse(dbVisit.consultation_notes);
+        } else if (typeof dbVisit.consultation_notes === "object") {
+          loadedDetails = dbVisit.consultation_notes;
+        }
+      } catch (e) {
+        console.error("Error parsing consultation notes for payment:", e);
+      }
+    }
+
+    if (loadedDetails) {
+      setPaymentDetails(loadedDetails);
+      setInitialVisit(prev => ({
+        ...prev,
+        petName: loadedDetails.petName || prev.petName,
+        petBreed: loadedDetails.petBreed || prev.petBreed,
+        petAge: loadedDetails.petAge || prev.petAge,
+        address: loadedDetails.address || prev.address,
+        time: loadedDetails.time_display || prev.time,
+      }));
+    }
+  }, [currentVisitId, realDbId, stateVisit?.id, dbVisit]);
 
   const [vetProfileId, setVetProfileId] = useState<string | null>(null);
   const [doctorProfile, setDoctorProfile] = useState<any>(null);
@@ -159,6 +245,51 @@ const ClinicVisitDetails: React.FC = () => {
   const [connectedRecords, setConnectedRecords] = useState<any[]>([]);
   const [userPassports, setUserPassports] = useState<any[]>([]);
   const [loadingUserPassports, setLoadingUserPassports] = useState(false);
+
+  // Drag to dismiss pet passport bottom sheet state
+  const [sheetDragY, setSheetDragY] = useState(0);
+  const [isDraggingSheet, setIsDraggingSheet] = useState(false);
+  const sheetDragStartY = useRef(0);
+
+  useEffect(() => {
+    if (!isDraggingSheet) return;
+
+    const handleGlobalMove = (e: TouchEvent | MouseEvent) => {
+      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+      const offset = clientY - sheetDragStartY.current;
+      if (offset > 0) {
+        setSheetDragY(offset);
+      }
+    };
+
+    const handleGlobalEnd = () => {
+      setIsDraggingSheet(false);
+      if (sheetDragY > 100) {
+        setPassportOverlayOpen(false);
+        setSheetDragY(0);
+      } else {
+        setSheetDragY(0);
+      }
+    };
+
+    window.addEventListener("touchmove", handleGlobalMove, { passive: false });
+    window.addEventListener("touchend", handleGlobalEnd);
+    window.addEventListener("mousemove", handleGlobalMove);
+    window.addEventListener("mouseup", handleGlobalEnd);
+
+    return () => {
+      window.removeEventListener("touchmove", handleGlobalMove);
+      window.removeEventListener("touchend", handleGlobalEnd);
+      window.removeEventListener("mousemove", handleGlobalMove);
+      window.removeEventListener("mouseup", handleGlobalEnd);
+    };
+  }, [isDraggingSheet, sheetDragY]);
+
+  const handleStartDrag = (e: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>) => {
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    setIsDraggingSheet(true);
+    sheetDragStartY.current = clientY - sheetDragY;
+  };
 
   const fetchUserPassports = async () => {
     setLoadingUserPassports(true);
@@ -215,8 +346,9 @@ const ClinicVisitDetails: React.FC = () => {
         
         let query = supabase.from("vet_appointments").select("*");
         
-        if (stateVisit?.id) {
-          query = query.eq("id", stateVisit.id);
+        const targetId = realDbId || stateVisit?.id;
+        if (targetId) {
+          query = query.eq("id", targetId);
         } else {
           if (user?.id) {
             query = query.or(`user_id.eq.${user.id},vet_id.eq.${user.id}`);
@@ -328,11 +460,21 @@ const ClinicVisitDetails: React.FC = () => {
       try {
         const { data: vetProf, error: vetProfErr } = await supabase
           .from("vet_profiles")
-          .select("*, profiles!vet_profiles_user_id_fkey(name, full_name, profile_photo)")
+          .select("*")
           .eq("id", vetProfileId)
           .maybeSingle();
 
         if (vetProf && !vetProfErr) {
+          // Fetch corresponding user profile manually to avoid join limitations or RLS blocks
+          const { data: uProf } = await supabase
+            .from("profiles")
+            .select("name, full_name, profile_photo, is_admin_approved")
+            .eq("id", vetProf.user_id)
+            .maybeSingle();
+
+          if (uProf) {
+            vetProf.profiles = uProf;
+          }
           setDoctorProfile(vetProf);
         }
       } catch (err) {
@@ -484,7 +626,7 @@ const ClinicVisitDetails: React.FC = () => {
 
   // Clipboard copies
   const handleCopyBookingId = () => {
-    navigator.clipboard.writeText(currentVisitId);
+    navigator.clipboard.writeText(getShortBookingId(currentVisitId));
     toast.success("Booking ID copied to clipboard!");
   };
 
@@ -579,16 +721,8 @@ const ClinicVisitDetails: React.FC = () => {
       // Format EXACTLY in the layout schema so all downstream elements work perfect
       const pId = row.passport_id || `#PP-${row.id?.slice(0, 7).toUpperCase()}`;
       
-      let ageVal = "N/A";
-      let ageTextVal = "N/A";
-      if (row.approx_years !== null && row.approx_years !== undefined) {
-        ageVal = `${row.approx_years} Years${row.approx_months ? ` ${row.approx_months} Months` : ""}`;
-        ageTextVal = `${row.approx_years} yrs${row.approx_months ? ` ${row.approx_months} mos` : ""}`;
-      } else if (row.dob) {
-        const years = new Date().getFullYear() - new Date(row.dob).getFullYear();
-        ageVal = `${years} Years`;
-        ageTextVal = `${years} yrs`;
-      }
+      const ageTextVal = getFormattedPetAge(row.approx_years, row.approx_months, row.dob);
+      const ageVal = ageTextVal;
 
       const weightVal = row.weight ? `${row.weight} lbs` : "N/A";
       const dobVal = row.dob ? new Date(row.dob).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A";
@@ -625,6 +759,37 @@ const ClinicVisitDetails: React.FC = () => {
     }
   };
 
+  // Check if they came from the correct flow
+  const isDirectAccess = !location.state || !location.state.fromBookingFlow;
+
+  if (isDirectAccess) {
+    return (
+      <div className="w-full min-h-screen bg-[#f8f9fa] flex items-center justify-center p-4 font-sans text-gray-900">
+        <div className="w-full max-w-md bg-white border border-gray-200 rounded-[32px] p-8 shadow-[0_12px_40px_rgba(0,0,0,0.03)] text-center flex flex-col items-center">
+          {/* Animated Warning Icon Indicator */}
+          <div className="w-16 h-16 rounded-full bg-pink-50 border border-pink-100 flex items-center justify-center text-[#ec4899] mb-6 shadow-sm">
+            <Shield className="w-8 h-8 stroke-[2.2]" />
+          </div>
+          
+          <h1 className="text-xl font-extrabold tracking-tight text-gray-900 mb-3">
+            Direct Access Suspended
+          </h1>
+          
+          <p className="text-[13px] text-gray-500 font-medium leading-relaxed mb-8 px-2">
+            The visit details page can only be accessed through the standard consultation booking flow inside the application. For privacy and security reasons, direct link sharing is restricted.
+          </p>
+          
+          <button
+            onClick={() => navigate("/buyer/vet")}
+            className="w-full py-4 text-sm font-black text-white bg-[#ec4899] hover:bg-[#db2777] rounded-full shadow-lg shadow-pink-100 hover:shadow-none active:scale-95 transition-all duration-200"
+          >
+            Go to Veterinarians
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full min-h-screen bg-[#f8f9fa] text-[#1f1f1f] relative font-sans overflow-x-hidden">
       
@@ -635,22 +800,39 @@ const ClinicVisitDetails: React.FC = () => {
           onClick={() => setPassportOverlayOpen(false)}
         >
           <div 
-            className="w-full max-w-[500px] bg-white rounded-t-[2.2rem] md:rounded-[2.5rem] p-7 pb-8 animate-slide-up md:animate-zoom-in shadow-2xl mx-auto flex flex-col"
+            className="w-full max-w-[500px] bg-white rounded-t-[2.2rem] md:rounded-[2.5rem] rounded-b-none md:rounded-b-[2.5rem] p-5 md:p-7 pb-6 md:pb-8 animate-slide-up md:animate-zoom-in shadow-2xl mx-auto flex flex-col select-none relative"
+            style={{
+              transform: `translateY(${sheetDragY}px)`,
+              transition: isDraggingSheet ? "none" : "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+            }}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Absolute Bottom safe-area guard spacer to fix potential thin viewport bottom gaps */}
+            <div className="absolute top-[99%] left-0 right-0 h-40 bg-white md:hidden pointer-events-none" />
+
             {/* Grab handle */}
-            <div className="w-14 h-1.5 bg-[#e2e8f0] rounded-full mx-auto mb-6" />
+            <div 
+              className="w-14 h-1.5 bg-[#e2e8f0] rounded-full mx-auto mb-5 md:mb-6 cursor-grab active:cursor-grabbing hover:bg-gray-300 transition-colors py-0.5 touch-none"
+              onTouchStart={handleStartDrag}
+              onMouseDown={handleStartDrag}
+            />
             
-            <div className="flex items-center justify-between">
-              <h2 className="text-[26px] font-extrabold text-[#0c1322] tracking-tight leading-none">Select Pet Passport</h2>
-              <button 
-                onClick={() => setPassportOverlayOpen(false)}
-                className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-6 h-6" strokeWidth={2.5} />
-              </button>
+            <div 
+              className="cursor-grab active:cursor-grabbing select-none touch-none"
+              onTouchStart={handleStartDrag}
+              onMouseDown={handleStartDrag}
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl md:text-[26px] font-extrabold text-[#0c1322] tracking-tight leading-none pointer-events-none">Select Pet Passport</h2>
+                <button 
+                  onClick={() => setPassportOverlayOpen(false)}
+                  className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors pointer-events-auto"
+                >
+                  <X className="w-5 h-5 md:w-6 md:h-6" strokeWidth={2.5} />
+                </button>
+              </div>
+              <p className="text-xs md:text-[14px] text-gray-400 font-semibold mt-1 md:mt-1.5 mb-4 md:mb-6 pointer-events-none">Choose which passport to sync with this visit</p>
             </div>
-            <p className="text-[14px] text-gray-400 font-semibold mt-1.5 mb-6">Choose which passport to sync with this visit</p>
             
             <div className="flex-1">
               {loadingUserPassports ? (
@@ -667,22 +849,13 @@ const ClinicVisitDetails: React.FC = () => {
                   <p className="text-xs text-gray-500 max-w-[240px] mt-1">Please create a Pet Passport from your profile first.</p>
                 </div>
               ) : (
-                <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1 py-1">
+                <div className="space-y-3 md:space-y-4 max-h-[305px] overflow-y-auto pr-1 py-1 touch-auto">
                   {userPassports.map((passport) => {
                     const isSelected = selectedPassportId === passport.id;
                     const pId = (passport.passport_id || `SRV-${passport.id?.slice(0, 6).toUpperCase()}`).replace(/^#/, "");
                     const pName = passport.pet_name || "Unnamed Pet";
                     
-                    let pAge = "1 yr";
-                    if (passport.approx_years !== null && passport.approx_years !== undefined) {
-                      pAge = `${passport.approx_years} yr${passport.approx_years !== 1 ? "s" : ""}`;
-                      if (passport.approx_months) {
-                        pAge += ` ${passport.approx_months} mos`;
-                      }
-                    } else if (passport.dob) {
-                      const years = new Date().getFullYear() - new Date(passport.dob).getFullYear();
-                      pAge = `${years} yr${years !== 1 ? "s" : ""}`;
-                    }
+                    const pAge = getFormattedPetAge(passport.approx_years, passport.approx_months, passport.dob);
                     
                     const pBreed = passport.breed || "Breed";
                     const isCat = passport.species?.toLowerCase() === "cat";
@@ -692,14 +865,14 @@ const ClinicVisitDetails: React.FC = () => {
                       <div 
                         key={passport.id}
                         onClick={() => setSelectedPassportId(passport.id)}
-                        className={`border-2 rounded-[24px] p-4 cursor-pointer flex items-center gap-4 transition-all duration-200 ${
+                        className={`border-2 rounded-[20px] md:rounded-[24px] p-3 md:p-4 cursor-pointer flex items-center gap-3 md:gap-4 transition-all duration-200 ${
                           isSelected 
                             ? "border-[#f9a8d4] bg-[#fff5f8]" 
-                            : "border-gray-200/80 bg-white hover:border-gray-300 hover:bg-gray-50/50"
+                            : "border-gray-200/85 bg-white hover:border-gray-300 hover:bg-gray-50/50"
                         }`}
                       >
                         {/* Pet Photo on left */}
-                        <div className="w-[68px] h-[68px] rounded-[18px] overflow-hidden shrink-0 border border-gray-100 flex items-center justify-center bg-gray-50">
+                        <div className="w-[56px] h-[56px] md:w-[68px] md:h-[68px] rounded-[14px] md:rounded-[18px] overflow-hidden shrink-0 border border-gray-100 flex items-center justify-center bg-gray-50">
                           {passport.photo_url ? (
                             <img 
                               src={passport.photo_url} 
@@ -711,39 +884,39 @@ const ClinicVisitDetails: React.FC = () => {
                             <div className={`w-full h-full flex items-center justify-center ${
                               isCat ? "bg-amber-50 text-amber-500" : "bg-orange-50 text-orange-500"
                             }`}>
-                              <Activity className="w-6 h-6" />
+                              <Activity className="w-5 h-5 md:w-6 md:h-6" />
                             </div>
                           )}
                         </div>
 
                         {/* Details Middle */}
                         <div className="flex-1 min-w-0">
-                          <p className="font-extrabold text-[#0c1322] text-lg leading-tight mb-1">{pName}</p>
+                          <p className="font-extrabold text-[#0c1322] text-sm md:text-lg leading-tight mb-1">{pName}</p>
                           
-                          <div className="flex items-center text-xs text-gray-500 font-semibold gap-1 px-0.5">
-                            <FileText className="w-3.5 h-3.5 text-[#ec4899] shrink-0" />
+                          <div className="flex flex-wrap items-center text-[10px] md:text-xs text-gray-500 font-semibold gap-1 px-0.5">
+                            <FileText className="w-3 h-3 md:w-3.5 md:h-3.5 text-[#ec4899] shrink-0" />
                             <span className="truncate">{pId}</span>
                             <span className="text-gray-300 mx-1 font-extrabold">·</span>
-                            <PawPrint className="w-3.5 h-3.5 text-[#ec4899] shrink-0" />
+                            <PawPrint className="w-3 h-3 md:w-3.5 md:h-3.5 text-[#ec4899] shrink-0" />
                             <span className="truncate">{pBreed}</span>
                           </div>
 
                           {/* Chips Line */}
-                          <div className="flex items-center gap-2 mt-2">
+                          <div className="flex items-center gap-1.5 md:gap-2 mt-1.5 md:mt-2">
                             {/* Gender chip */}
                             {gender.toLowerCase() === "female" ? (
-                              <span className="bg-[#fff1f2] text-[#f43f5e] px-2.5 py-0.5 text-xs font-bold rounded-lg flex items-center gap-1">
-                                <span className="text-sm font-bold">♀</span> Female
+                              <span className="bg-[#fff1f2] text-[#f43f5e] px-2 md:px-2.5 py-0.5 text-[10px] md:text-xs font-bold rounded-md md:rounded-lg flex items-center gap-1">
+                                <span className="text-xs md:text-sm font-bold">♀</span> Female
                               </span>
                             ) : (
-                              <span className="bg-[#eff6ff] text-[#3b82f6] px-2.5 py-0.5 text-xs font-bold rounded-lg flex items-center gap-1">
-                                <span className="text-sm font-bold">♂</span> Male
+                              <span className="bg-[#eff6ff] text-[#3b82f6] px-2 md:px-2.5 py-0.5 text-[10px] md:text-xs font-bold rounded-md md:rounded-lg flex items-center gap-1">
+                                <span className="text-xs md:text-sm font-bold">♂</span> Male
                               </span>
                             )}
 
                             {/* Age chip */}
-                            <span className="bg-[#f0fdf4] text-[#16a34a] px-2.5 py-0.5 text-xs font-bold rounded-lg flex items-center gap-1">
-                              <Calendar className="w-3.5 h-3.5 text-[#16a34a]" /> {pAge}
+                            <span className="bg-[#f0fdf4] text-[#16a34a] px-2 md:px-2.5 py-0.5 text-[10px] md:text-xs font-bold rounded-md md:rounded-lg flex items-center gap-1">
+                              <Calendar className="w-3 h-3 md:w-3.5 md:h-3.5 text-[#16a34a]" /> {pAge}
                             </span>
                           </div>
                         </div>
@@ -751,11 +924,11 @@ const ClinicVisitDetails: React.FC = () => {
                         {/* Radio Button on right */}
                         <div className="shrink-0 ml-1">
                           {isSelected ? (
-                            <div className="w-[24px] h-[24px] rounded-full border-2 border-[#ec4899] flex items-center justify-center bg-white">
-                              <div className="w-[12px] h-[12px] rounded-full bg-[#ec4899]" />
+                            <div className="w-[20px] h-[20px] md:w-[24px] md:h-[24px] rounded-full border-2 border-[#ec4899] flex items-center justify-center bg-white">
+                              <div className="w-[10px] h-[10px] md:w-[12px] md:h-[12px] rounded-full bg-[#ec4899]" />
                             </div>
                           ) : (
-                            <div className="w-[24px] h-[24px] rounded-full border-2 border-slate-200 bg-white" />
+                            <div className="w-[20px] h-[20px] md:w-[24px] md:h-[24px] rounded-full border-2 border-slate-200 bg-white" />
                           )}
                         </div>
                       </div>
@@ -871,7 +1044,7 @@ const ClinicVisitDetails: React.FC = () => {
       <main className="w-full min-h-screen pb-48 flex flex-col relative bg-[#f8f9fa] overflow-x-hidden transition-all duration-300">
         
         {/* Header bar */}
-        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md px-4 md:px-6 py-4 flex items-center justify-between border-b border-gray-150 shadow-sm animate-fade-in">
+        <header className="fixed top-0 left-0 right-0 w-full z-40 bg-white/95 backdrop-blur-md px-4 md:px-6 py-4 flex items-center justify-between border-b border-gray-150 shadow-sm animate-fade-in">
           <button 
             onClick={() => navigate("/buyer/vet")}
             className="p-2 hover:bg-gray-100 rounded-full text-gray-800 transition-colors"
@@ -926,7 +1099,7 @@ const ClinicVisitDetails: React.FC = () => {
         </header>
 
         {/* Inner Content Padding */}
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-6 lg:py-8 space-y-6 flex-1 overflow-y-auto bg-slate-50/50">
+        <div className="w-full mt-[72px] px-4 sm:px-6 lg:px-8 py-5 sm:py-6 lg:py-8 space-y-6 flex-1 overflow-y-auto bg-slate-50/50">
           
           {/* Confirmed Indicator Badge */}
           <div className="flex items-center justify-center w-full">
@@ -1242,65 +1415,67 @@ const ClinicVisitDetails: React.FC = () => {
                   </div>
 
                   {/* Pet Passport */}
-                  <div className="space-y-3 mb-4">
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Pet Passport Details</h3>
-                    <div className="info-card p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-5">
-                      {/* Identification Section */}
-                      <div>
-                        <h4 className="text-xs font-extrabold text-[#ec4899] uppercase tracking-wide mb-2">I. Identification</h4>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Pet Name</p><p id="pp-name" className="font-bold text-gray-800 text-sm">{connectedPassport.name}</p></div>
-                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Passport ID</p><p id="pp-id" className="font-bold text-brand-pink text-[#ec4899] text-sm font-mono">{connectedPassport.id}</p></div>
-                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Species / Gender</p><p className="font-bold text-gray-800 text-sm capitalize">{connectedPassport.species} · {connectedPassport.gender}</p></div>
-                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Breed</p><p className="font-bold text-gray-800 text-sm">{connectedPassport.breed?.replace(/\s*·\s*(?:Male|Female|N\/A)?$/i, "") || "N/A"}</p></div>
-                          <div className="col-span-2"><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Appearance / Distinguishing Marks</p><p className="font-bold text-gray-700 text-xs leading-tight">{connectedPassport.appearance || "No distinctive marks registered"}</p></div>
-                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Date of Birth</p><p className="font-bold text-gray-800 text-sm">{connectedPassport.dob}</p></div>
-                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Age / Weight</p><p id="pp-age" className="font-bold text-gray-800 text-sm">{connectedPassport.age} · {connectedPassport.weight}</p></div>
-                          <div className="col-span-2"><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Issue Date</p><p className="font-bold text-gray-800 text-sm">{connectedPassport.issueDate}</p></div>
-                        </div>
+                  <div className="space-y-4 mb-4">
+                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Pet Passport Details</h3>
+                    
+                    {/* Card 1: Identification */}
+                    <div className="info-card p-5 rounded-2xl bg-white border border-gray-150 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] hover:border-gray-200 transition-all duration-200">
+                      <div className="flex items-center gap-2 mb-3 border-b border-gray-50 pb-2">
+                        <span className="w-1.5 h-3 bg-[#ec4899] rounded-full inline-block"></span>
+                        <h4 className="text-xs font-black text-gray-800 uppercase tracking-widest">I. Identification</h4>
                       </div>
-
-                      {/* Line Separator */}
-                      <hr className="border-gray-100" />
-
-                      {/* Ownership Section */}
-                      <div>
-                        <h4 className="text-xs font-extrabold text-[#ec4899] uppercase tracking-wide mb-2">II. Ownership & Legal Guardian</h4>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Owner Name</p><p className="font-bold text-gray-800 text-sm">{connectedPassport.ownerName}</p></div>
-                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Primary Phone</p><p className="font-bold text-gray-800 text-sm font-mono">{connectedPassport.primaryPhone}</p></div>
-                          <div className="col-span-2"><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Emergency Contact</p><p className="font-bold text-gray-800 text-sm">{connectedPassport.emergencyContactName} ({connectedPassport.emergencyRelationship || "Relationship not specified"})</p></div>
-                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Emergency Phone</p><p className="font-bold text-gray-800 text-sm font-mono">{connectedPassport.emergencyPhone}</p></div>
-                        </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Pet Name</p><p id="pp-name" className="font-bold text-gray-800 text-sm">{connectedPassport.name}</p></div>
+                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Passport ID</p><p id="pp-id" className="font-bold text-brand-pink text-[#ec4899] text-sm font-mono">{connectedPassport.id}</p></div>
+                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Species / Gender</p><p className="font-bold text-gray-800 text-sm capitalize">{connectedPassport.species} · {connectedPassport.gender}</p></div>
+                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Breed</p><p className="font-bold text-gray-800 text-sm">{connectedPassport.breed?.replace(/\s*·\s*(?:Male|Female|N\/A)?$/i, "") || "N/A"}</p></div>
+                        <div className="col-span-2"><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Appearance / Distinguishing Marks</p><p className="font-bold text-gray-700 text-xs leading-tight">{connectedPassport.appearance || "No distinctive marks registered"}</p></div>
+                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Date of Birth</p><p className="font-bold text-gray-800 text-sm">{connectedPassport.dob}</p></div>
+                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Age / Weight</p><p id="pp-age" className="font-bold text-gray-800 text-sm">{connectedPassport.age} · {connectedPassport.weight}</p></div>
+                        <div className="col-span-2"><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Issue Date</p><p className="font-bold text-gray-805 text-xs">{connectedPassport.issueDate}</p></div>
                       </div>
+                    </div>
 
-                      {/* Line Separator */}
-                      <hr className="border-gray-100" />
+                    {/* Card 2: Ownership & Legal Guardian */}
+                    <div className="info-card p-5 rounded-2xl bg-white border border-gray-150 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] hover:border-gray-200 transition-all duration-200">
+                      <div className="flex items-center gap-2 mb-3 border-b border-gray-50 pb-2">
+                        <span className="w-1.5 h-3 bg-[#ec4899] rounded-full inline-block"></span>
+                        <h4 className="text-xs font-black text-gray-800 uppercase tracking-widest">II. Ownership & Legal Guardian</h4>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Owner Name</p><p className="font-bold text-gray-800 text-sm">{connectedPassport.ownerName}</p></div>
+                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Primary Phone</p><p className="font-bold text-gray-800 text-sm font-mono">{connectedPassport.primaryPhone}</p></div>
+                        <div className="col-span-2"><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Emergency Contact</p><p className="font-bold text-gray-805 text-sm">{connectedPassport.emergencyContactName} ({connectedPassport.emergencyRelationship || "Relationship not specified"})</p></div>
+                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Emergency Phone</p><p className="font-bold text-gray-805 text-sm font-mono">{connectedPassport.emergencyPhone}</p></div>
+                      </div>
+                    </div>
 
-                      {/* Clinical Overview Notes from Medical Log */}
-                      <div>
-                        <h4 className="text-xs font-extrabold text-[#ec4899] uppercase tracking-wide mb-2">III. Clinical Notes & Allergies</h4>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                          <div className="col-span-2">
-                            <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Known Allergies</p>
-                            <p className="font-bold text-red-600 text-xs leading-relaxed">
-                              {connectedMedicalLog?.known_allergies || "No known allergies reported."}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Last Veterinary Visit</p>
-                            <p className="font-bold text-gray-800 text-xs">
-                              {connectedMedicalLog?.last_veterinary_visit ? new Date(connectedMedicalLog.last_veterinary_visit).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "None recorded"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Registered Conditions</p>
-                            <p className="font-bold text-gray-805 text-xs">
-                              {connectedConditions.length > 0 
-                                ? connectedConditions.map(c => c.condition_name || c.specify_other).join(", ") 
-                                : "None reported."}
-                            </p>
-                          </div>
+                    {/* Card 3: Clinical Notes & Allergies */}
+                    <div className="info-card p-5 rounded-2xl bg-white border border-gray-150 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] hover:border-gray-200 transition-all duration-200">
+                      <div className="flex items-center gap-2 mb-3 border-b border-gray-50 pb-2">
+                        <span className="w-1.5 h-3 bg-[#ec4899] rounded-full inline-block"></span>
+                        <h4 className="text-xs font-black text-gray-800 uppercase tracking-widest">III. Clinical Notes & Allergies</h4>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                        <div className="col-span-2">
+                          <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Known Allergies</p>
+                          <p className="font-bold text-red-600 text-xs leading-relaxed">
+                            {connectedMedicalLog?.known_allergies || "No known allergies reported."}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Last Veterinary Visit</p>
+                          <p className="font-bold text-gray-808 text-xs">
+                            {connectedMedicalLog?.last_veterinary_visit ? new Date(connectedMedicalLog.last_veterinary_visit).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "None recorded"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Registered Conditions</p>
+                          <p className="font-bold text-gray-808 text-xs">
+                            {connectedConditions.length > 0 
+                              ? connectedConditions.map(c => c.condition_name || c.specify_other).join(", ") 
+                              : "None reported."}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -1483,7 +1658,7 @@ const ClinicVisitDetails: React.FC = () => {
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Booking ID</p>
                   <p className="text-sm font-black text-[#ec4899] mt-0.5 tracking-wide font-mono">
-                    {dbVisit?.id || (appointmentId && appointmentId !== "SRV-84721" ? appointmentId : "") || "Loading Booking ID..."}
+                    {getShortBookingId(dbVisit?.id || appointmentId)}
                   </p>
                 </div>
               </div>
@@ -1505,43 +1680,52 @@ const ClinicVisitDetails: React.FC = () => {
                 
                 {/* Doctor Avatar + Scalloped Violet verified index */}
                 <div className="relative shrink-0">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md border-2 border-pink-100">
-                    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-                      <rect width="64" height="64" fill="#fdf2f8"/>
-                      {/* scrubs top */}
-                      <path d="M10 64 Q10 44 32 40 Q54 44 54 64Z" fill="#ec4899"/>
-                      {/* collar detail */}
-                      <path d="M26 40 L32 48 L38 40" fill="#f9a8d4" opacity="0.7"/>
-                      {/* neck */}
-                      <rect x="27" y="32" width="10" height="10" rx="4" fill="#fdba74"/>
-                      {/* head */}
-                      <ellipse cx="32" cy="26" rx="13" ry="14" fill="#fdba74"/>
-                      {/* hair */}
-                      <path d="M19 22 Q20 10 32 10 Q44 10 45 22 Q44 12 32 12 Q20 12 19 22Z" fill="#7c2d12"/>
-                      <path d="M19 22 Q17 28 19 32 Q18 24 20 21Z" fill="#7c2d12"/>
-                      <path d="M45 22 Q47 28 45 32 Q46 24 44 21Z" fill="#7c2d12"/>
-                      {/* bun */}
-                      <ellipse cx="32" cy="11" rx="7" ry="5" fill="#7c2d12"/>
-                      <circle cx="32" cy="9" r="3" fill="#92400e"/>
-                      {/* eyes */}
-                      <ellipse cx="26.5" cy="26" rx="2.5" ry="2.8" fill="#1f1f1f"/>
-                      <ellipse cx="37.5" cy="26" rx="2.5" ry="2.8" fill="#1f1f1f"/>
-                      <circle cx="27.3" cy="25.2" r="1" fill="white"/>
-                      <circle cx="38.3" cy="25.2" r="1" fill="white"/>
-                      {/* eyebrows */}
-                      <path d="M23.5 22.5 Q26.5 21 29.5 22.5" fill="none" stroke="#7c2d12" strokeWidth="1.3" strokeLinecap="round"/>
-                      <path d="M34.5 22.5 Q37.5 21 40.5 22.5" fill="none" stroke="#7c2d12" strokeWidth="1.3" strokeLinecap="round"/>
-                      {/* nose */}
-                      <path d="M30.5 29.5 Q32 31 33.5 29.5" fill="none" stroke="#c2845a" strokeWidth="1.2" strokeLinecap="round"/>
-                      {/* smile */}
-                      <path d="M27.5 33.5 Q32 37 36.5 33.5" fill="none" stroke="#c2845a" strokeWidth="1.4" strokeLinecap="round"/>
-                      {/* cheeks */}
-                      <ellipse cx="22" cy="31" rx="4" ry="2.5" fill="#fca5a5" opacity="0.45"/>
-                      <ellipse cx="42" cy="31" rx="4" ry="2.5" fill="#fca5a5" opacity="0.45"/>
-                      {/* stethoscope */}
-                      <path d="M24 44 Q22 52 28 55 Q32 57 36 55 Q42 52 40 44" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                      <circle cx="32" cy="57" r="3" fill="white" opacity="0.8"/>
-                    </svg>
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md border-2 border-pink-100 flex items-center justify-center bg-pink-50">
+                    {doctorProfile?.profiles?.profile_photo || doctorProfile?.profile_photo ? (
+                      <img 
+                        src={getVetPublicUrl(doctorProfile?.profiles?.profile_photo || doctorProfile?.profile_photo)} 
+                        alt={doctorProfile?.profiles?.full_name || doctorProfile?.profiles?.name || "Doctor"} 
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+                        <rect width="64" height="64" fill="#fdf2f8"/>
+                        {/* scrubs top */}
+                        <path d="M10 64 Q10 44 32 40 Q54 44 54 64Z" fill="#ec4899"/>
+                        {/* collar detail */}
+                        <path d="M26 40 L32 48 L38 40" fill="#f9a8d4" opacity="0.7"/>
+                        {/* neck */}
+                        <rect x="27" y="32" width="10" height="10" rx="4" fill="#fdba74"/>
+                        {/* head */}
+                        <ellipse cx="32" cy="26" rx="13" ry="14" fill="#fdba74"/>
+                        {/* hair */}
+                        <path d="M19 22 Q20 10 32 10 Q44 10 45 22 Q44 12 32 12 Q20 12 19 22Z" fill="#7c2d12"/>
+                        <path d="M19 22 Q17 28 19 32 Q18 24 20 21Z" fill="#7c2d12"/>
+                        <path d="M45 22 Q47 28 45 32 Q46 24 44 21Z" fill="#7c2d12"/>
+                        {/* bun */}
+                        <ellipse cx="32" cy="11" rx="7" ry="5" fill="#7c2d12"/>
+                        <circle cx="32" cy="9" r="3" fill="#92400e"/>
+                        {/* eyes */}
+                        <ellipse cx="26.5" cy="26" rx="2.5" ry="2.8" fill="#1f1f1f"/>
+                        <ellipse cx="37.5" cy="26" rx="2.5" ry="2.8" fill="#1f1f1f"/>
+                        <circle cx="27.3" cy="25.2" r="1" fill="white"/>
+                        <circle cx="38.3" cy="25.2" r="1" fill="white"/>
+                        {/* eyebrows */}
+                        <path d="M23.5 22.5 Q26.5 21 29.5 22.5" fill="none" stroke="#7c2d12" strokeWidth="1.3" strokeLinecap="round"/>
+                        <path d="M34.5 22.5 Q37.5 21 40.5 22.5" fill="none" stroke="#7c2d12" strokeWidth="1.3" strokeLinecap="round"/>
+                        {/* nose */}
+                        <path d="M30.5 29.5 Q32 31 33.5 29.5" fill="none" stroke="#c2845a" strokeWidth="1.2" strokeLinecap="round"/>
+                        {/* smile */}
+                        <path d="M27.5 33.5 Q32 37 36.5 33.5" fill="none" stroke="#c2845a" strokeWidth="1.4" strokeLinecap="round"/>
+                        {/* cheeks */}
+                        <ellipse cx="22" cy="31" rx="4" ry="2.5" fill="#fca5a5" opacity="0.45"/>
+                        <ellipse cx="42" cy="31" rx="4" ry="2.5" fill="#fca5a5" opacity="0.45"/>
+                        {/* stethoscope */}
+                        <path d="M24 44 Q22 52 28 55 Q32 57 36 55 Q42 52 40 44" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                        <circle cx="32" cy="57" r="3" fill="white" opacity="0.8"/>
+                      </svg>
+                    )}
                   </div>
                   
                   {/* Verified badge with exact custom image look (scalloped star checkmark icon) */}
@@ -1556,10 +1740,12 @@ const ClinicVisitDetails: React.FC = () => {
                     <p className="font-black text-gray-900 text-base leading-tight">
                       {doctorProfile?.profiles?.full_name || doctorProfile?.profiles?.name ? `Dr. ${doctorProfile.profiles.full_name || doctorProfile.profiles.name}` : "Dr. Anaya"}
                     </p>
-                    <span className="text-[10px] font-bold bg-pink-100 text-[#ec4899] px-2 py-0.5 rounded-full">BVSc</span>
+                    <span className="text-[10px] font-bold bg-pink-100 text-[#ec4899] px-2 py-0.5 rounded-full uppercase">
+                      {doctorProfile?.qualification || "BVSc"}
+                    </span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1 font-semibold">
-                    {doctorProfile?.specialization || "Verified Veterinarian"}
+                  <p className="text-xs text-slate-500 mt-1 font-semibold leading-snug">
+                    {doctorProfile?.specializations && doctorProfile.specializations.length > 0 ? doctorProfile.specializations.join(", ") : (doctorProfile?.specialization || "Verified Veterinarian")}
                   </p>
                   
                   {/* Star rating and feedback counts */}
@@ -1593,9 +1779,17 @@ const ClinicVisitDetails: React.FC = () => {
 
               {/* Tag section */}
               <div className="mt-4 pt-3.5 border-t border-pink-100 flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-black bg-white border border-gray-100 text-gray-500 px-2.5 py-1 rounded-full shadow-sm">Small Animals</span>
-                <span className="text-[10px] font-black bg-white border border-gray-100 text-gray-500 px-2.5 py-1 rounded-full shadow-sm">Home Visits</span>
-                <span className="text-[10px] font-black bg-white border border-gray-100 text-gray-500 px-2.5 py-1 rounded-full shadow-sm">Vaccinations</span>
+                {doctorProfile?.specializations && doctorProfile.specializations.length > 0 ? (
+                  doctorProfile.specializations.slice(0, 3).map((spec: string, idx: number) => (
+                    <span key={idx} className="text-[10px] font-black bg-white border border-gray-100 text-gray-500 px-2.5 py-1 rounded-full shadow-sm capitalize">{spec}</span>
+                  ))
+                ) : (
+                  <>
+                    <span className="text-[10px] font-black bg-white border border-gray-100 text-gray-500 px-2.5 py-1 rounded-full shadow-sm">Small Animals</span>
+                    <span className="text-[10px] font-black bg-white border border-gray-100 text-gray-500 px-2.5 py-1 rounded-full shadow-sm">Home Visits</span>
+                    <span className="text-[10px] font-black bg-white border border-gray-100 text-gray-500 px-2.5 py-1 rounded-full shadow-sm">Vaccinations</span>
+                  </>
+                )}
                 
                 <span className="ml-auto text-[10px] text-green-600 font-black flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse" />
@@ -1606,48 +1800,78 @@ const ClinicVisitDetails: React.FC = () => {
           </section>
 
             {/* ── PAYMENT SUMMARY DETAILS ── */}
-            <section className="pb-4 w-full">
-            <h2 className="text-xl font-bold mb-4 pl-1">Payment Summary</h2>
-            <div className="bg-white border border-gray-250 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-              <div className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600 font-medium">Consultation Fee</p>
-                  <p className="text-sm font-bold text-gray-800">₹{paymentDetails?.consultation_fee || dbVisit?.amount || 499}</p>
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600 font-medium">Night Surcharge</p>
-                  <p className="text-sm font-bold text-gray-800">₹{paymentDetails?.night_surcharge || 0}</p>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-sm text-gray-600 font-medium">Platform Fee</p>
-                    <span className="text-[10px] font-black bg-green-50 text-green-600 px-1.5 py-0.5 rounded-full border border-green-100">FREE</span>
-                  </div>
-                  <p className="text-sm font-bold text-gray-400 line-through">₹0</p>
-                </div>
-              </div>
-              
-              <div className="mx-4 border-t border-dashed border-gray-200" />
-              
-              <div className="flex items-center justify-between p-4">
-                <div>
-                  <p className="text-xs text-gray-400 mb-0.5 font-bold uppercase tracking-wider">Total Paid</p>
-                  <p className="text-2xl font-black text-gray-900">₹{paymentDetails?.amount || dbVisit?.amount || 549}</p>
-                </div>
-                <div className="flex items-center gap-1.5 bg-green-50 border border-green-100 text-green-700 text-xs font-black px-3.5 py-2 rounded-full shadow-inner">
-                  <CheckCircle2 className="w-4 h-4 text-green-600" strokeWidth={2.5} />
-                  Payment Done
-                </div>
-              </div>
+            {(() => {
+              const visitType = paymentDetails?.visit_type || dbVisit?.appointment_type || "clinic";
+              const platformFee = paymentDetails?.platform_fee != null ? Number(paymentDetails.platform_fee) : 0;
+              const appliedNightSurcharge = paymentDetails?.night_surcharge != null ? Number(paymentDetails.night_surcharge) : 0;
+              const discount = paymentDetails?.discount != null ? Number(paymentDetails.discount) : 0;
+              const totalAmount = paymentDetails?.amount != null ? Number(paymentDetails.amount) : (dbVisit?.amount != null ? Number(dbVisit.amount) : 499);
+              const visitFee = paymentDetails?.consultation_fee != null 
+                ? Number(paymentDetails.consultation_fee) 
+                : Math.max(0, totalAmount - platformFee - appliedNightSurcharge + discount);
 
-              {/* Bottom transaction receipt notes */}
-              <div className="bg-gray-50 border-t border-gray-100 px-4 py-3.5 flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-slate-400" />
-                <p className="text-xs text-slate-400">Paid via <span className="font-semibold text-gray-600">{paymentDetails?.payment_id ? `${paymentDetails.payment_method} · ID: ${paymentDetails.payment_id}` : (paymentDetails?.payment_method || "UPI · sarah@okicici")}</span></p>
-                <p className="ml-auto text-[10px] text-gray-400 font-mono">{paymentDetails?.created_at || (dbVisit?.created_at ? new Date(dbVisit.created_at).toLocaleDateString("en-IN") : "10 Jun, 1:48 PM")}</p>
-              </div>
-            </div>
-          </section>
+              return (
+                <section className="pb-4 w-full">
+                  <h2 className="text-xl font-bold mb-4 pl-1 text-slate-900 font-sans tracking-tight">Payment Summary</h2>
+                  <div className="bg-white rounded-[24px] border border-slate-100 p-5 shadow-[0_4px_24px_rgba(0,0,0,0.03)] space-y-4">
+                    {/* Content Rows */}
+                    <div className="space-y-4">
+                      <div className="flex justify-between text-[15px] text-slate-900 font-medium">
+                        <span>{visitType === "clinic" ? "Clinic Visit Fee" : "Home Visit Fee"}</span>
+                        <span>₹{visitFee.toFixed(2)}</span>
+                      </div>
+                      
+                      {discount > 0 && (
+                        <div className="flex justify-between text-[15px] text-green-600 font-medium">
+                          <span>Saving Corner Discount</span>
+                          <span>- ₹{discount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between text-[15px] text-slate-900 font-medium">
+                        <span>Platform Fee</span>
+                        <span>₹{platformFee.toFixed(2)}</span>
+                      </div>
+                      
+                      {appliedNightSurcharge > 0 && (
+                        <div className="flex justify-between text-[15px] items-center">
+                          <div className="flex items-center gap-1.5 text-slate-500 font-medium">
+                            <Moon className="w-[18px] h-[18px] text-slate-400" />
+                            <span>Late Night Fees</span>
+                          </div>
+                          <span className="font-medium text-slate-500">+ ₹{appliedNightSurcharge.toFixed(2)}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between text-[15px] text-slate-500/80 font-normal">
+                        <span>GST & Other Charges</span>
+                        <span>₹0.00</span>
+                      </div>
+                    </div>
+
+                    {/* Horizontal Dashed Divider Line */}
+                    <div className="border-t border-dashed border-slate-200" />
+
+                    {/* Bottom Total Block */}
+                    <div className="flex justify-between items-start pt-2 gap-3">
+                      <div className="space-y-0.5">
+                        <span className="font-bold text-slate-900 text-[16px]">Total Paid</span>
+                        <p className="text-[#0E8A4E] text-xs font-semibold leading-relaxed">Breakdown of your consultation below.</p>
+                      </div>
+                      <div className="text-right flex flex-col items-end shrink-0">
+                        <span className="font-extrabold text-slate-900 text-2xl tracking-tight leading-none mb-1">
+                          ₹{totalAmount.toFixed(2)}
+                        </span>
+                        <span className="inline-flex items-center gap-1 bg-green-50 text-[#0E8A4E] text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-green-150 shadow-sm">
+                          <Check className="w-3 h-3 text-[#0E8A4E]" strokeWidth={3} />
+                          Payment Done
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              );
+            })()}
 
           </div>
         </div>
@@ -1676,12 +1900,12 @@ const ClinicVisitDetails: React.FC = () => {
              <>
                <button 
                  onClick={() => setShowUserQr(true)} 
-                 className="w-full bg-[#151B32] hover:bg-neutral-800 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-neutral-200 transition-all active:scale-[0.98]"
+                 className="w-full bg-gradient-to-r from-[#ec4899] to-[#e56ba4] hover:opacity-95 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-pink-200 transition-all active:scale-[0.98]"
                >
                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
                  </svg>
-                 Verify with Vet (Generate QR)
+                 Verify with Vet
                </button>
                <p className="text-center text-[11px] text-gray-400 mt-3 flex items-center justify-center gap-1">
                  <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
@@ -1697,30 +1921,55 @@ const ClinicVisitDetails: React.FC = () => {
 
       {/* ═══════════════ BUYER GENERATED QR CODE OVERLAY ═══════════════ */}
       {showUserQr && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }} onClick={() => setShowUserQr(false)}>
-           <div className="bg-white p-8 rounded-[32px] flex flex-col items-center justify-center max-w-[320px] w-full mx-auto" onClick={(e) => e.stopPropagation()}>
-             <h2 className="text-xl font-black text-[#151B32] mb-1">Check-in QR Code</h2>
-             <p className="text-xs text-neutral-500 mb-6 text-center">Ask the veterinarian to scan this QR code.</p>
-             <div className="p-4 bg-white border-2 border-neutral-100 rounded-2xl shadow-sm mb-6">
-               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${currentVisitId}`} alt="Generated QR Code" className="w-[200px] h-[200px] object-contain" />
-             </div>
-             
-             <button onClick={() => setShowUserQr(false)} className="w-full bg-neutral-100 text-neutral-700 py-3 rounded-xl font-bold active:scale-95 transition-transform">
-                Close Code
-             </button>
-           </div>
+        <div 
+          className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-md flex items-center justify-center p-6 animate-fade-in"
+          onClick={() => setShowUserQr(false)}
+        >
+          <div 
+            className="bg-white rounded-[32px] p-6 w-full max-w-xs shadow-2xl border border-gray-100 text-center relative animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Grab handle bar */}
+            <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-5"></div>
+            
+            <h3 className="text-lg font-black tracking-tight text-gray-900 font-sans">Check-in QR Code</h3>
+            
+            <div className="text-xs font-bold font-mono text-[#ec4899] bg-pink-50 px-2.5 py-0.5 rounded-md w-fit mx-auto mt-1.5 uppercase">
+              ID: {getShortBookingId(currentVisitId)}
+            </div>
+            
+            <div className="my-6 p-4 bg-gray-50 border-2 border-dashed border-[#ec4899]/20 rounded-[24px] flex items-center justify-center aspect-square max-w-[220px] mx-auto shadow-inner">
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(currentVisitId)}&color=d95191`} 
+                alt="QR Code" 
+                className="w-full h-full object-contain rounded-md" 
+                referrerPolicy="no-referrer" 
+              />
+            </div>
+            
+            <p className="text-[11px] text-gray-500 leading-tight mb-5 font-medium">
+              Ask the veterinarian to scan this QR code to begin the consultation.
+            </p>
+            
+            <button 
+              onClick={() => setShowUserQr(false)} 
+              className="w-full bg-[#ec4899] text-white py-3.5 rounded-xl font-black text-sm active:scale-95 transition-all shadow-md shadow-pink-100"
+            >
+              Close Code
+            </button>
+          </div>
         </div>
       )}
 
       {/* ═══════════════ DETAILED HELP & SUPPORT VIEW OVERLAY ═══════════════ */}
       {helpScreenOpen && (
-        <div className="fixed inset-0 z-50 bg-[#eef0f5] flex flex-col overflow-y-auto animate-fade-in font-sans">
+        <div className="fixed inset-0 z-50 bg-[#f8f9fa] flex flex-col overflow-y-auto animate-fade-in font-sans">
           
           {/* Sticky header */}
-          <div className="sticky top-0 bg-[#eef0f5]/85 backdrop-blur-md z-10 padding-top-[52px] px-4 py-4 flex items-center gap-2 border-b border-gray-200/60 mt-8">
+          <div className="sticky top-0 bg-white/95 backdrop-blur-md z-20 px-4 py-4 flex items-center gap-2 border-b border-gray-150 shadow-sm">
             <button 
               onClick={() => setHelpScreenOpen(false)}
-              className="p-2 hover:bg-gray-200/50 rounded-full text-gray-800 transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-full text-gray-800 transition-colors"
             >
               <ArrowLeft className="w-5 h-5 text-gray-800" strokeWidth={2.5} />
             </button>
@@ -1731,25 +1980,31 @@ const ClinicVisitDetails: React.FC = () => {
 
             {/* SECTION 1: Active conversations */}
             <div className="px-4">
-              <p className="text-[11px] font-black tracking-widest text-gray-400 uppercase mb-3 px-1">Active Conversations</p>
+              <p className="text-[11px] font-black tracking-widest text-[#ec4899] uppercase mb-3 px-1">Active Conversations</p>
               
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-4.5 py-4">
-                  <p className="text-[13px] text-gray-400 font-bold uppercase tracking-wider">General Issues</p>
+                <div className="px-4 py-3.5 bg-gray-50/50 flex items-center justify-between">
+                  <p className="text-xs text-gray-500 font-extrabold uppercase tracking-widest">General Issues</p>
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>
                 </div>
-                <div className="border-t border-dashed border-gray-220 mx-4" />
+                <div className="border-t border-gray-100" />
                 
-                <div className="p-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-full bg-orange-400 flex items-center justify-center text-white shrink-0">
+                <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500 shrink-0">
                       <User className="w-5 h-5 fill-current" />
                     </div>
-                    <p className="text-[15px] font-extrabold text-gray-800 leading-tight flex-1">I have payment and refund<br/>related issues</p>
+                    <div>
+                      <p className="text-[14px] font-extrabold text-gray-800 leading-snug">
+                        I have payment and refund related issues
+                      </p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase mt-0.5">Support Ticket #SRV-908</p>
+                    </div>
                   </div>
                   
-                  <div className="flex items-center gap-1.5 text-[#16a34a] font-bold text-xs bg-green-50 px-2.5 py-1 rounded-full shrink-0 border border-green-100">
+                  <div className="flex items-center gap-1.5 text-[#16a34a] font-bold text-[11px] bg-green-50 px-3 py-1 rounded-full w-fit border border-green-100">
                     <span className="w-1.5 h-1.5 bg-[#16a34a] rounded-full animate-pulse" />
-                    <span>Active</span>
+                    <span>Active Support Session</span>
                   </div>
                 </div>
               </div>
@@ -1757,7 +2012,7 @@ const ClinicVisitDetails: React.FC = () => {
 
             {/* SECTION 2: General FAQ list */}
             <div className="px-4">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-105 divide-y divide-gray-100 overflow-hidden font-bold">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-100 overflow-hidden font-bold">
                 <div 
                   onClick={() => toast.info("Searching for your order coordinates...")}
                   className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
@@ -1784,7 +2039,7 @@ const ClinicVisitDetails: React.FC = () => {
 
             {/* SECTION 3: Past conversations archives */}
             <div className="px-4">
-              <p className="text-[11px] font-black tracking-widest text-gray-400 uppercase mb-3 px-1">Past Conversations</p>
+              <p className="text-[11px] font-black tracking-widest text-[#ec4899] uppercase mb-3 px-1">Past Conversations</p>
               
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
                 <div className="flex items-center justify-between gap-3">
