@@ -172,7 +172,7 @@ export default function AppointmentConfirmation() {
   }
 
   const vet = appointment.vet || appointment.vet_info || (location.state?.visit?.vet);
-  const vetProfile = appointment.vet_profile;
+  const vetProfile = appointment.vet_profile || appointment.vet?.vet_profile || location.state?.visit?.vet_profile;
 
   const payId = appointment.payment_details?.payment_id || ("pay_rzp_" + (appointmentId ? appointmentId.replace(/-/g, "").substring(0, 14).toUpperCase() : "QY82JKDLAJS"));
   const payMethod = appointment.payment_details?.payment_method || (appointment.appointment_type === 'home' ? "Card (Visa ending in 8124)" : "UPI (GPay)");
@@ -270,17 +270,19 @@ export default function AppointmentConfirmation() {
                         {vetProfile?.specialization || (vetProfile?.specializations && vetProfile.specializations[0])}{vetProfile?.qualification ? ` · ${vetProfile.qualification}` : ""}
                       </p>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <div className="flex items-center">
-                          <Star className="w-3 h-3 fill-[#F59E0B] text-[#F59E0B]" />
-                          <span className="text-[10.5px] font-bold text-slate-600 ml-1">
-                            {vetProfile?.average_rating}
-                          </span>
-                        </div>
-                        {vetProfile?.years_of_experience && (
+                        {vetProfile?.average_rating ? (
+                          <div className="flex items-center">
+                            <Star className="w-3 h-3 fill-[#F59E0B] text-[#F59E0B]" />
+                            <span className="text-[10.5px] font-bold text-slate-600 ml-1">
+                              {vetProfile.average_rating}
+                            </span>
+                          </div>
+                        ) : null}
+                        {vetProfile?.years_of_experience ? (
                           <span className="text-[10.5px] font-bold text-slate-400 ml-1">
-                            · {vetProfile.years_of_experience}+ yrs exp
+                            {vetProfile.average_rating ? "· " : ""}{vetProfile.years_of_experience}+ yrs exp
                           </span>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                     <div className="w-8 h-8 rounded-full bg-[#12B76A] flex items-center justify-center shadow-lg shadow-[#12B76A]/30 shrink-0">

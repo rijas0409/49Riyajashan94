@@ -96,16 +96,18 @@ const BookingDetails = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const res = await fetch(`/api/pet-passport?userId=${user.id}&_t=${Date.now()}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data)) {
-              setPassports(data);
-              if (data.length > 0) {
-                const preselectedPetName = location.state?.petName || location.state?.selectedPet?.name;
-                const match = data.find(p => p.pet_name === preselectedPetName || p.petName === preselectedPetName);
-                setSelectedPetPassport(match || data[0]);
-              }
+          const { data, error } = await supabase
+            .from("pet_passports")
+            .select("*")
+            .eq("owner_id", user.id)
+            .order("created_at", { ascending: false });
+            
+          if (!error && data) {
+            setPassports(data);
+            if (data.length > 0) {
+              const preselectedPetName = location.state?.petName || location.state?.selectedPet?.name;
+              const match = data.find((p: any) => p.pet_name === preselectedPetName || p.petName === preselectedPetName);
+              setSelectedPetPassport(match || data[0]);
             }
           }
         }
@@ -584,11 +586,26 @@ const BookingDetails = () => {
           <h3 className="text-base font-bold text-foreground">Who is this for?</h3>
           
           <div className="flex overflow-x-auto gap-3 py-1 no-scrollbar snap-x snap-mandatory">
-            {passports.map((passport) => {
-              const isSelected = selectedPetPassport?.id === passport.id;
-              
-              // Get Age display
-              const getAgeDisplay = (p: any) => {
+            {loadingPassports ? (
+              <>
+                {[1, 2].map((i) => (
+                  <div key={i} className="w-56 h-[88px] flex-shrink-0 p-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50 flex gap-3 animate-pulse snap-start">
+                    <div className="w-12 h-12 rounded-xl bg-slate-200 shrink-0" />
+                    <div className="flex-1 space-y-2 py-1">
+                      <div className="h-4 bg-slate-200 rounded w-3/4" />
+                      <div className="h-3 bg-slate-200 rounded w-1/2" />
+                      <div className="h-2.5 bg-slate-200 rounded w-2/3" />
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <>
+                {passports.map((passport) => {
+                  const isSelected = selectedPetPassport?.id === passport.id;
+                  
+                  // Get Age display
+                  const getAgeDisplay = (p: any) => {
                 let y = 0;
                 let m = 0;
                 
@@ -657,7 +674,6 @@ const BookingDetails = () => {
             })}
             
             {/* Create Passport Card */}
-            {!loadingPassports && (
             <button
               onClick={() => navigate("/buyer/pet-passport?create=true")}
               className="group w-56 h-[88px] flex-shrink-0 p-3.5 rounded-2xl border-[3px] border-dashed border-pink-500/30 bg-pink-500/5 hover:bg-pink-500/10 hover:border-pink-500/50 flex flex-col items-center justify-center cursor-pointer transition-all active:scale-[0.98] snap-start shrink-0 shadow-sm"
@@ -672,6 +688,7 @@ const BookingDetails = () => {
                   </div>
               </div>
             </button>
+              </>
             )}
           </div>
 
@@ -1517,9 +1534,22 @@ const BookingDetails = () => {
                                 visit: {
                                   id: realBookingId,
                                   vet: {
+                                    id: matchedVet?.id || dbVetData?.id,
                                     name: vetName,
+                                    full_name: vetName,
                                     image: vetImage,
-                                    specialization: vetSpecialization
+                                    profile_photo: vetImage,
+                                    specialization: vetSpecialization,
+                                    ...matchedVet,
+                                    ...dbVetData
+                                  },
+                                  vet_profile: {
+                                    specialization: vetSpecialization,
+                                    qualification: dbVetData?.qualification || matchedVet?.qualification || "",
+                                    years_of_experience: dbVetData?.years_of_experience || matchedVet?.years_of_experience || matchedVet?.experience || "",
+                                    average_rating: dbVetData?.average_rating || matchedVet?.average_rating || matchedVet?.rating || "",
+                                    ...matchedVet,
+                                    ...dbVetData
                                   },
                                   appointmentId: realBookingId,
                                   visitType: visitType,
