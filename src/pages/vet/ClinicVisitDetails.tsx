@@ -230,6 +230,11 @@ const ClinicVisitDetails: React.FC = () => {
   const [vetProfileId, setVetProfileId] = useState<string | null>(null);
   const [doctorProfile, setDoctorProfile] = useState<any>(null);
 
+  const doctorPhoto = useMemo(() => {
+    const rawPhoto = doctorProfile?.profiles?.profile_photo || doctorProfile?.profile_photo || stateVisit?.image || location.state?.vet?.image || "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=300&auto=format&fit=crop";
+    return getVetPublicUrl(rawPhoto);
+  }, [doctorProfile, stateVisit, location.state]);
+
   // View state controllers
   const [passportOverlayOpen, setPassportOverlayOpen] = useState(false);
   const [qrOverlayOpen, setQrOverlayOpen] = useState(false);
@@ -1681,9 +1686,9 @@ const ClinicVisitDetails: React.FC = () => {
                 {/* Doctor Avatar + Scalloped Violet verified index */}
                 <div className="relative shrink-0">
                   <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md border-2 border-pink-100 flex items-center justify-center bg-pink-50">
-                    {doctorProfile?.profiles?.profile_photo || doctorProfile?.profile_photo ? (
+                    {doctorPhoto ? (
                       <img 
-                        src={getVetPublicUrl(doctorProfile?.profiles?.profile_photo || doctorProfile?.profile_photo)} 
+                        src={doctorPhoto} 
                         alt={doctorProfile?.profiles?.full_name || doctorProfile?.profiles?.name || "Doctor"} 
                         className="w-full h-full object-cover"
                         referrerPolicy="no-referrer"

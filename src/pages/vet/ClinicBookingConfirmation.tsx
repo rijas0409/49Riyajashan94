@@ -53,7 +53,8 @@ const ClinicBookingConfirmation = () => {
               ...location.state,
               realAppointmentId: "SRV-84721",
               fromBookingFlow: true
-            }
+            },
+            replace: true
           });
         }, 1500);
       }, 5000); // simulate vet accepting in 5 seconds
@@ -79,13 +80,14 @@ const ClinicBookingConfirmation = () => {
             setCurrentStep(2);
             setTimeout(() => {
                const bookingId = getShortBookingId(appointmentId);
-               navigate(visitType === "home" ? "/buyer/vet/home-visit-details" : `/buyer/vet/clinic-visit-details/${bookingId}`, { 
-                 state: {
-                   ...location.state,
-                   realAppointmentId: appointmentId,
-                   fromBookingFlow: true
-                 }
-               });
+                navigate(visitType === "home" ? "/buyer/vet/home-visit-details" : `/buyer/vet/clinic-visit-details/${bookingId}`, { 
+                  state: {
+                    ...location.state,
+                    realAppointmentId: appointmentId,
+                    fromBookingFlow: true
+                  },
+                  replace: true
+                });
             }, 1200);
           } else if (newStatus === 'cancelled' || newStatus === 'rejected') {
             setIsRejected(true);

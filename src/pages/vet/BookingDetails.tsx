@@ -1466,7 +1466,7 @@ const BookingDetails = () => {
                             .eq("appointment_time", selectedSlot);
                             
                         const activeBookings = existingAppts ? existingAppts.filter(
-                          (appt: any) => !["cancelled", "rejected", "failed"].includes((appt.status || "").toLowerCase())
+                          (appt: any) => ["confirmed", "approved", "analyzing", "accepted", "rescheduled", "in_progress", "completed"].includes((appt.status || "").toLowerCase())
                         ) : [];
 
                         if (activeBookings.length > 0) {
