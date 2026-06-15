@@ -358,18 +358,8 @@ const ClinicVisitDetails: React.FC = () => {
         const targetId = realDbId || stateVisit?.id;
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetId || "");
 
-        if (targetId && targetId !== "SRV-84721") {
-          if (isUUID) {
-            query = query.eq("id", targetId);
-          } else {
-            // Handle short ID
-            const mappedId = localStorage.getItem(`booking_short_id_${targetId}`);
-            if (mappedId) {
-              query = query.eq("id", mappedId);
-            } else {
-              query = query.ilike("consultation_notes", `%${targetId}%`);
-            }
-          }
+        if (targetId && targetId !== "SRV-84721" && isUUID) {
+          query = query.eq("id", targetId);
         } else {
           if (user?.id) {
             query = query.or(`user_id.eq.${user.id},vet_id.eq.${user.id}`);

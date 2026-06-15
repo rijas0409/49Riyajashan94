@@ -42,27 +42,11 @@ export default function AppointmentConfirmation() {
     const fetchAppointment = async () => {
       try {
         setIsLoading(true);
-        
-        // Check if appointmentId is a UUID
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointmentId || "");
-        
-        let query = supabase
+        const { data, error } = await supabase
           .from("vet_appointments")
-          .select("*, vet:profiles!vet_appointments_vet_id_fkey(*)");
-
-        if (isUUID) {
-          query = query.eq("id", appointmentId);
-        } else {
-          const mappedId = localStorage.getItem(`booking_short_id_${appointmentId}`);
-          if (mappedId) {
-            query = query.eq("id", mappedId);
-          } else {
-            // Search by short ID in consultation_notes
-            query = query.ilike("consultation_notes", `%${appointmentId}%`);
-          }
-        }
-
-        const { data, error } = await query.maybeSingle();
+          .select("*, vet:profiles!vet_appointments_vet_id_fkey(*)")
+          .eq("id", appointmentId)
+          .maybeSingle();
 
         if (error) throw error;
         

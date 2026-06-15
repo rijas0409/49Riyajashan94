@@ -6,10 +6,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 const getShortBookingId = (id: string | undefined): string => {
-  // If we have a short ID mapped in local storage, use it
-  const mapped = localStorage.getItem(`booking_short_id_reverse_${id}`);
-  if (mapped) return mapped;
-
   if (!id) return "...";
   const clean = id.replace(/[-]/g, "");
   if (clean.length >= 9) {
