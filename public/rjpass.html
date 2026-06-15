@@ -3652,14 +3652,32 @@
       function loadPassportDataIntoUI(dataObj) {
         if (!dataObj) return;
 
-        // Support both structured { pet, medical, conditions, healthRecords } and plain payload
+        // Support both structured { pet, medical, conditions, healthRecords, appointments } and plain payload
         const payload = dataObj.pet || dataObj;
         const medical = dataObj.medical || {};
         const conditions = dataObj.conditions || [];
         const healthRecords = dataObj.healthRecords || [];
+        const appointments = dataObj.appointments || [];
+
+        // Formatting appointments as healthRecords items
+        const mappedAppointments = appointments.map(appt => {
+            let rType = 'Clinic Visit';
+            if (appt.appointment_type === 'video' || appt.appointment_type === 'Online Consultation') rType = 'Video Consultation';
+            else if (appt.appointment_type === 'home' || appt.appointment_type === 'Home Visit') rType = 'Home Visit';
+            else if (appt.appointment_type === 'clinic' || appt.appointment_type === 'Clinic Visit') rType = 'Clinic Visit';
+            
+            return {
+                id: appt.id,
+                record_type: rType,
+                record_date: appt.appointment_date,
+                prescribed_by: appt.vet_name,
+                record_description: `Status: ${appt.status} | Time: ${appt.appointment_time} ${appt.symptom_summary ? '| Symptom: ' + appt.symptom_summary : ''}`,
+                file_url: appt.digital_prescription_url || null 
+            };
+        });
 
         window.currentPassportId = payload.passport_id || payload.passportId || "";
-        window.currentHealthRecords = healthRecords || [];
+        window.currentHealthRecords = [...healthRecords, ...mappedAppointments];
 
         if (typeof renderDashboardDocuments === "function") {
           renderDashboardDocuments(healthRecords);
@@ -7417,7 +7435,16 @@
           
           // standard tiles
           if (searchContainer) searchContainer.classList.remove("hidden");
-          if (addButton) addButton.classList.remove("hidden");
+
+          // By default hide the Add button, unless it's a type that explicitly requires it
+          // Based on user request, hide for Health Records, Consultations, and Documents
+          if (addButton) {
+              if (["Health Records", "Consultations", "Documents", "Medicine Orders"].includes(tileType)) {
+                  addButton.classList.add("hidden");
+              } else {
+                  addButton.classList.remove("hidden");
+              }
+          }
           
           let records = [];
           
