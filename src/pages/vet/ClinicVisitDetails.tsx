@@ -1692,12 +1692,12 @@ const ClinicVisitDetails: React.FC = () => {
 
             {/* ── DR ANAYA DOCTOR PROFILE CARD ── */}
             <section className="w-full">
-            <div className="bg-white border border-pink-100 rounded-2xl p-4 shadow-sm" style={{ background: "linear-gradient(135deg, #fff 0%, #fdf2f8 100%)" }}>
-              <div className="flex items-center gap-4">
+            <div className="bg-white border border-pink-100 rounded-2xl p-3.5 sm:p-4 shadow-sm" style={{ background: "linear-gradient(135deg, #fff 0%, #fdf2f8 100%)" }}>
+              <div className="flex items-start sm:items-center gap-3 sm:gap-4">
                 
                 {/* Doctor Avatar + Scalloped Violet verified index */}
                 <div className="relative shrink-0">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md border-2 border-pink-100 flex items-center justify-center bg-pink-50">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden shadow-md border-2 border-pink-100 flex items-center justify-center bg-pink-50">
                     {doctorPhoto ? (
                       <img 
                         src={doctorPhoto} 
@@ -1746,39 +1746,39 @@ const ClinicVisitDetails: React.FC = () => {
                   </div>
                   
                   {/* Verified badge with exact custom image look (scalloped star checkmark icon) */}
-                  <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white flex items-center justify-center p-0.5 shadow-sm">
+                  <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white flex items-center justify-center p-0.5 shadow-sm">
                     <VerifiedBadge className="w-full h-full text-[#9A3EF8]" />
                   </div>
                 </div>
 
                 {/* Info block */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 pt-0.5 sm:pt-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-black text-gray-900 text-base leading-tight">
+                    <p className="font-black text-gray-900 text-sm sm:text-base leading-tight">
                       {doctorProfile?.profiles?.full_name || doctorProfile?.profiles?.name ? `Dr. ${doctorProfile.profiles.full_name || doctorProfile.profiles.name}` : "Dr. Anaya"}
                     </p>
-                    <span className="text-[10px] font-bold bg-pink-100 text-[#ec4899] px-2 py-0.5 rounded-full uppercase">
+                    <span className="text-[9px] sm:text-[10px] font-bold bg-pink-100 text-[#ec4899] px-2 py-0.5 rounded-full uppercase shrink-0">
                       {doctorProfile?.qualification || "BVSc"}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1 font-semibold leading-snug">
+                  <p className="text-[11px] sm:text-xs text-slate-500 mt-1 font-semibold leading-snug">
                     {doctorProfile?.specializations && doctorProfile.specializations.length > 0 ? doctorProfile.specializations.join(", ") : (doctorProfile?.specialization || "Verified Veterinarian")}
                   </p>
                   
                   {/* Star rating and feedback counts */}
-                  <div className="flex items-center gap-1.5 mt-1.5 text-slate-400">
+                  <div className="flex items-center gap-1 sm:gap-1.5 mt-1 sm:mt-1.5 text-slate-400">
                     <div className="flex text-amber-400 shrink-0">
-                      <Star className="w-3.5 h-3.5 fill-current" />
-                      <Star className="w-3.5 h-3.5 fill-current" />
-                      <Star className="w-3.5 h-3.5 fill-current" />
-                      <Star className="w-3.5 h-3.5 fill-current" />
-                      <Star className="w-3.5 h-3.5 fill-current text-amber-200" />
+                      <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
+                      <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
+                      <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
+                      <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
+                      <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current text-amber-200" />
                     </div>
-                    <span className="text-[11px] text-gray-800 font-extrabold">
+                    <span className="text-[10px] sm:text-[11px] text-gray-800 font-extrabold">
                       {doctorProfile?.average_rating != null ? doctorProfile.average_rating.toFixed(1) : "4.8"}
                     </span>
                     <span className="text-gray-300">·</span>
-                    <span className="text-[11px] text-gray-550 font-bold">
+                    <span className="text-[10px] sm:text-[11px] text-gray-550 font-bold">
                       {doctorProfile?.years_of_experience != null ? `${doctorProfile.years_of_experience}+ yrs exp` : "4+ yrs exp"}
                     </span>
                   </div>
@@ -1787,10 +1787,10 @@ const ClinicVisitDetails: React.FC = () => {
                 {/* View profile button triggers redirection back to profile details */}
                 <button 
                   onClick={() => navigate(vetProfileId ? `/vet/doctor/${vetProfileId}` : `/vet/doctor/any`)}
-                  className="shrink-0 flex items-center gap-0.5 text-[#ec4899] text-xs font-black hover:underline"
+                  className="shrink-0 flex items-center gap-0.5 text-[#ec4899] text-[11px] sm:text-xs font-black hover:underline self-start sm:self-center pt-1 sm:pt-0"
                 >
                   View
-                  <ChevronDown className="w-3.5 h-3.5 -rotate-90" />
+                  <ChevronDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 -rotate-90" />
                 </button>
               </div>
 
