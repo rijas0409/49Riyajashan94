@@ -153,6 +153,9 @@ const ClinicVisitDetails: React.FC = () => {
   // Functional interactive states
   const [selectedPassportId, setSelectedPassportId] = useState<string | null>(null);
   const [connectedPassport, setConnectedPassport] = useState<any | null>(null);
+  const [connectedMedicalLog, setConnectedMedicalLog] = useState<any | null>(null);
+  const [connectedConditions, setConnectedConditions] = useState<any[]>([]);
+  const [connectedRecords, setConnectedRecords] = useState<any[]>([]);
   const [userPassports, setUserPassports] = useState<any[]>([]);
   const [loadingUserPassports, setLoadingUserPassports] = useState(false);
 
@@ -545,32 +548,80 @@ const ClinicVisitDetails: React.FC = () => {
   };
 
   // Confirming Pet Passport connection
-  const handleConfirmConnect = () => {
+  const handleConfirmConnect = async () => {
     if (!selectedPassportId) return;
     const row = userPassports.find(p => p.id === selectedPassportId);
     if (!row) return;
 
-    // Format EXACTLY in the layout schema so all downstream elements work perfect
-    const pId = row.passport_id || `#PP-${row.id?.slice(0, 7).toUpperCase()}`;
-    const ageVal = row.approx_years !== null ? `${row.approx_years} Years` : (row.dob ? `${new Date().getFullYear() - new Date(row.dob).getFullYear()} Years` : "4 Years");
-    const ageTextVal = row.approx_years !== null ? `${row.approx_years} yrs` : (row.dob ? `${new Date().getFullYear() - new Date(row.dob).getFullYear()} yrs` : "4 yrs");
-    const weightVal = row.weight ? `${row.weight} lbs` : "65 lbs";
-    const dobVal = row.dob ? new Date(row.dob).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "Mar 2020";
+    try {
+      // Fetch details using direct tables
+      const [medicalRes, conditionsRes, recordsRes] = await Promise.all([
+        supabase
+          .from("pet_medical_logs")
+          .select("*")
+          .eq("pet_passport_id", row.id)
+          .maybeSingle(),
+        supabase
+          .from("pet_health_conditions")
+          .select("*")
+          .eq("pet_passport_id", row.id),
+        supabase
+          .from("pet_health_records_documents")
+          .select("*")
+          .eq("pet_passport_id", row.id)
+      ]);
 
-    const mappedPassport = {
-      id: pId,
-      name: row.pet_name || "Luna",
-      breed: `${row.breed || "Breed"} · ${row.gender || ""}`,
-      age: ageVal,
-      ageText: ageTextVal,
-      weight: weightVal,
-      dob: dobVal,
-      avatar: row.species?.toLowerCase() === "cat" ? "coco" : "luna"
-    };
+      setConnectedMedicalLog(medicalRes.data || null);
+      setConnectedConditions(conditionsRes.data || []);
+      setConnectedRecords(recordsRes.data || []);
 
-    setConnectedPassport(mappedPassport);
-    setPassportOverlayOpen(false);
-    toast.success(`${mappedPassport.name}'s Passport synced successfully!`);
+      // Format EXACTLY in the layout schema so all downstream elements work perfect
+      const pId = row.passport_id || `#PP-${row.id?.slice(0, 7).toUpperCase()}`;
+      
+      let ageVal = "N/A";
+      let ageTextVal = "N/A";
+      if (row.approx_years !== null && row.approx_years !== undefined) {
+        ageVal = `${row.approx_years} Years${row.approx_months ? ` ${row.approx_months} Months` : ""}`;
+        ageTextVal = `${row.approx_years} yrs${row.approx_months ? ` ${row.approx_months} mos` : ""}`;
+      } else if (row.dob) {
+        const years = new Date().getFullYear() - new Date(row.dob).getFullYear();
+        ageVal = `${years} Years`;
+        ageTextVal = `${years} yrs`;
+      }
+
+      const weightVal = row.weight ? `${row.weight} lbs` : "N/A";
+      const dobVal = row.dob ? new Date(row.dob).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A";
+      const issueDateVal = row.created_at ? new Date(row.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A";
+
+      const mappedPassport = {
+        id: pId,
+        rawId: row.id,
+        name: row.pet_name || "Unnamed Pet",
+        species: row.species || "N/A",
+        gender: row.gender || "N/A",
+        breed: `${row.breed || "Breed"} · ${row.gender || ""}`,
+        appearance: row.appearance || "N/A",
+        age: ageVal,
+        ageText: ageTextVal,
+        weight: weightVal,
+        dob: dobVal,
+        issueDate: issueDateVal,
+        ownerName: row.owner_name || "N/A",
+        primaryPhone: row.primary_phone || "N/A",
+        emergencyContactName: row.emergency_contact_name || "N/A",
+        emergencyPhone: row.emergency_phone || "N/A",
+        emergencyRelationship: row.emergency_relationship || "N/A",
+        photo_url: row.photo_url || null,
+        avatar: row.species?.toLowerCase() === "cat" ? "coco" : "luna"
+      };
+
+      setConnectedPassport(mappedPassport);
+      setPassportOverlayOpen(false);
+      toast.success(`${mappedPassport.name}'s Passport synced successfully!`);
+    } catch (err) {
+      console.error("Error setting up connected passport:", err);
+      toast.error("Failed to connect passport completely.");
+    }
   };
 
   return (
@@ -1024,64 +1075,75 @@ const ClinicVisitDetails: React.FC = () => {
                   {/* Pet Profile Card */}
                   <div className="info-card p-4 rounded-2xl mb-4 bg-white border border-gray-200 shadow-sm">
                     <div className="flex items-center gap-3">
-                      <div id="profile-avatar" className="w-14 h-14 rounded-2xl shrink-0 overflow-hidden bg-pink-50 border border-pink-100 shadow-sm">
-                        {/* Luna */}
-                        <svg 
-                          id="avatar-luna" 
-                          viewBox="0 0 56 56" 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          className={`w-full h-full ${connectedPassport.avatar === "luna" ? "" : "hidden"}`}
-                        >
-                          <rect width="56" height="56" fill="#fff7ed" />
-                          <ellipse cx="18" cy="20" rx="7" ry="10" fill="#f59e0b" transform="rotate(-15 18 20)" />
-                          <ellipse cx="38" cy="20" rx="7" ry="10" fill="#f59e0b" transform="rotate(15 38 20)" />
-                          <ellipse cx="18" cy="21" rx="4" ry="6.5" fill="#fbbf24" transform="rotate(-15 18 21)" />
-                          <ellipse cx="38" cy="21" rx="4" ry="6.5" fill="#fbbf24" transform="rotate(15 38 21)" />
-                          <ellipse cx="28" cy="30" rx="15" ry="14" fill="#fbbf24" />
-                          <ellipse cx="28" cy="36" rx="8" ry="5.5" fill="#f59e0b" />
-                          <ellipse cx="28" cy="33.5" rx="3.5" ry="2.5" fill="#1f1f1f" />
-                          <circle cx="26.5" cy="34" r="0.8" fill="#374151" />
-                          <circle cx="29.5" cy="34" r="0.8" fill="#374151" />
-                          <path d="M25 36.5 Q28 39 31 36.5" fill="none" stroke="#92400e" strokeWidth="1.2" strokeLinecap="round" />
-                          <circle cx="22" cy="28" r="3.5" fill="#1f1f1f" />
-                          <circle cx="34" cy="28" r="3.5" fill="#1f1f1f" />
-                          <circle cx="23" cy="27" r="1.2" fill="white" />
-                          <circle cx="35" cy="27" r="1.2" fill="white" />
-                        </svg>
-                        {/* Max */}
-                        <svg 
-                          id="avatar-max" 
-                          viewBox="0 0 56 56" 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          className={`w-full h-full ${connectedPassport.avatar === "max" ? "" : "hidden"}`}
-                        >
-                          <rect width="56" height="56" fill="#eff6ff" />
-                          <ellipse cx="17" cy="21" rx="7.5" ry="11" fill="#1e3a5f" transform="rotate(-10 17 21)" />
-                          <ellipse cx="39" cy="21" rx="7.5" ry="11" fill="#1e3a5f" transform="rotate(10 39 21)" />
-                          <ellipse cx="28" cy="30" rx="15" ry="14" fill="#374151" />
-                          <ellipse cx="28" cy="33.5" rx="3.5" ry="2.5" fill="#111827" />
-                          <path d="M25 37 Q28 39.5 31 37" fill="none" stroke="#1f2937" strokeWidth="1.2" strokeLinecap="round" />
-                          <circle cx="22" cy="27.5" r="3.5" fill="#111827" />
-                          <circle cx="34" cy="27.5" r="3.5" fill="#111827" />
-                          <circle cx="23" cy="26.5" r="1.2" fill="white" />
-                          <circle cx="35" cy="26.5" r="1.2" fill="white" />
-                        </svg>
-                        {/* Coco */}
-                        <svg 
-                          id="avatar-coco" 
-                          viewBox="0 0 56 56" 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          className={`w-full h-full ${connectedPassport.avatar === "coco" ? "" : "hidden"}`}
-                        >
-                          <rect width="56" height="56" fill="#fffbeb" />
-                          <ellipse cx="15" cy="26" rx="7" ry="13" fill="#92400e" transform="rotate(-5 15 26)" />
-                          <ellipse cx="41" cy="26" rx="7" ry="13" fill="#92400e" transform="rotate(5 41 26)" />
-                          <ellipse cx="28" cy="29" rx="15" ry="14" fill="#fef3c7" />
-                          <circle cx="22" cy="27" r="3.5" fill="#1f1f1f" />
-                          <circle cx="34" cy="27" r="3.5" fill="#1f1f1f" />
-                          <circle cx="23" cy="26" r="1.2" fill="white" />
-                          <circle cx="35" cy="26" r="1.2" fill="white" />
-                        </svg>
+                      <div id="profile-avatar" className="w-14 h-14 rounded-2xl shrink-0 overflow-hidden bg-pink-50 border border-pink-100 shadow-sm flex items-center justify-center">
+                        {connectedPassport.photo_url ? (
+                          <img 
+                            src={connectedPassport.photo_url} 
+                            alt={connectedPassport.name} 
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <>
+                            {/* Luna */}
+                            <svg 
+                              id="avatar-luna" 
+                              viewBox="0 0 56 56" 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              className={`w-full h-full ${connectedPassport.avatar === "luna" ? "" : "hidden"}`}
+                            >
+                              <rect width="56" height="56" fill="#fff7ed" />
+                              <ellipse cx="18" cy="20" rx="7" ry="10" fill="#f59e0b" transform="rotate(-15 18 20)" />
+                              <ellipse cx="38" cy="20" rx="7" ry="10" fill="#f59e0b" transform="rotate(15 38 20)" />
+                              <ellipse cx="18" cy="21" rx="4" ry="6.5" fill="#fbbf24" transform="rotate(-15 18 21)" />
+                              <ellipse cx="38" cy="21" rx="4" ry="6.5" fill="#fbbf24" transform="rotate(15 38 21)" />
+                              <ellipse cx="28" cy="30" rx="15" ry="14" fill="#fbbf24" />
+                              <ellipse cx="28" cy="36" rx="8" ry="5.5" fill="#f59e0b" />
+                              <ellipse cx="28" cy="33.5" rx="3.5" ry="2.5" fill="#1f1f1f" />
+                              <circle cx="26.5" cy="34" r="0.8" fill="#374151" />
+                              <circle cx="29.5" cy="34" r="0.8" fill="#374151" />
+                              <path d="M25 36.5 Q28 39 31 36.5" fill="none" stroke="#92400e" strokeWidth="1.2" strokeLinecap="round" />
+                              <circle cx="22" cy="28" r="3.5" fill="#1f1f1f" />
+                              <circle cx="34" cy="28" r="3.5" fill="#1f1f1f" />
+                              <circle cx="23" cy="27" r="1.2" fill="white" />
+                              <circle cx="35" cy="27" r="1.2" fill="white" />
+                            </svg>
+                            {/* Max */}
+                            <svg 
+                              id="avatar-max" 
+                              viewBox="0 0 56 56" 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              className={`w-full h-full ${connectedPassport.avatar === "max" ? "" : "hidden"}`}
+                            >
+                              <rect width="56" height="56" fill="#eff6ff" />
+                              <ellipse cx="17" cy="21" rx="7.5" ry="11" fill="#1e3a5f" transform="rotate(-10 17 21)" />
+                              <ellipse cx="39" cy="21" rx="7.5" ry="11" fill="#1e3a5f" transform="rotate(10 39 21)" />
+                              <ellipse cx="28" cy="30" rx="15" ry="14" fill="#374151" />
+                              <ellipse cx="28" cy="33.5" rx="3.5" ry="2.5" fill="#111827" />
+                              <path d="M25 37 Q28 39.5 31 37" fill="none" stroke="#1f2937" strokeWidth="1.2" strokeLinecap="round" />
+                              <circle cx="22" cy="27.5" r="3.5" fill="#111827" />
+                              <circle cx="34" cy="27.5" r="3.5" fill="#111827" />
+                              <circle cx="23" cy="26.5" r="1.2" fill="white" />
+                              <circle cx="35" cy="26.5" r="1.2" fill="white" />
+                            </svg>
+                            {/* Coco */}
+                            <svg 
+                              id="avatar-coco" 
+                              viewBox="0 0 56 56" 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              className={`w-full h-full ${connectedPassport.avatar === "coco" ? "" : "hidden"}`}
+                            >
+                              <rect width="56" height="56" fill="#fffbeb" />
+                              <ellipse cx="15" cy="26" rx="7" ry="13" fill="#92400e" transform="rotate(-5 15 26)" />
+                              <ellipse cx="41" cy="26" rx="7" ry="13" fill="#92400e" transform="rotate(5 41 26)" />
+                              <ellipse cx="28" cy="29" rx="15" ry="14" fill="#fef3c7" />
+                              <circle cx="22" cy="27" r="3.5" fill="#1f1f1f" />
+                              <circle cx="34" cy="27" r="3.5" fill="#1f1f1f" />
+                              <circle cx="23" cy="26" r="1.2" fill="white" />
+                              <circle cx="35" cy="26" r="1.2" fill="white" />
+                            </svg>
+                          </>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -1116,13 +1178,65 @@ const ClinicVisitDetails: React.FC = () => {
 
                   {/* Pet Passport */}
                   <div className="space-y-3 mb-4">
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Pet Passport</h3>
-                    <div className="info-card p-4 rounded-2xl bg-white border border-gray-200 shadow-sm">
-                      <div className="grid grid-cols-2 gap-y-4">
-                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Pet Name</p><p id="pp-name" className="font-bold text-gray-800">{connectedPassport.name}</p></div>
-                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Passport ID</p><p id="pp-id" className="font-bold text-brand-pink text-[#ec4899]">{connectedPassport.id}</p></div>
-                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Age</p><p id="pp-age" className="font-bold text-gray-800">{connectedPassport.age}</p></div>
-                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Issue Date</p><p className="font-bold text-gray-800">Jan 12, 2021</p></div>
+                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Pet Passport Details</h3>
+                    <div className="info-card p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-5">
+                      {/* Identification Section */}
+                      <div>
+                        <h4 className="text-xs font-extrabold text-[#ec4899] uppercase tracking-wide mb-2">I. Identification</h4>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Pet Name</p><p id="pp-name" className="font-bold text-gray-800 text-sm">{connectedPassport.name}</p></div>
+                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Passport ID</p><p id="pp-id" className="font-bold text-brand-pink text-[#ec4899] text-sm font-mono">{connectedPassport.id}</p></div>
+                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Species / Gender</p><p className="font-bold text-gray-800 text-sm capitalize">{connectedPassport.species} · {connectedPassport.gender}</p></div>
+                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Breed</p><p className="font-bold text-gray-800 text-sm">{connectedPassport.breed?.replace(/\s*·\s*(?:Male|Female|N\/A)?$/i, "") || "N/A"}</p></div>
+                          <div className="col-span-2"><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Appearance / Distinguishing Marks</p><p className="font-bold text-gray-700 text-xs leading-tight">{connectedPassport.appearance || "No distinctive marks registered"}</p></div>
+                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Date of Birth</p><p className="font-bold text-gray-800 text-sm">{connectedPassport.dob}</p></div>
+                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Age / Weight</p><p id="pp-age" className="font-bold text-gray-800 text-sm">{connectedPassport.age} · {connectedPassport.weight}</p></div>
+                          <div className="col-span-2"><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Issue Date</p><p className="font-bold text-gray-800 text-sm">{connectedPassport.issueDate}</p></div>
+                        </div>
+                      </div>
+
+                      {/* Line Separator */}
+                      <hr className="border-gray-100" />
+
+                      {/* Ownership Section */}
+                      <div>
+                        <h4 className="text-xs font-extrabold text-[#ec4899] uppercase tracking-wide mb-2">II. Ownership & Legal Guardian</h4>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Owner Name</p><p className="font-bold text-gray-800 text-sm">{connectedPassport.ownerName}</p></div>
+                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Primary Phone</p><p className="font-bold text-gray-800 text-sm font-mono">{connectedPassport.primaryPhone}</p></div>
+                          <div className="col-span-2"><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Emergency Contact</p><p className="font-bold text-gray-800 text-sm">{connectedPassport.emergencyContactName} ({connectedPassport.emergencyRelationship || "Relationship not specified"})</p></div>
+                          <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Emergency Phone</p><p className="font-bold text-gray-800 text-sm font-mono">{connectedPassport.emergencyPhone}</p></div>
+                        </div>
+                      </div>
+
+                      {/* Line Separator */}
+                      <hr className="border-gray-100" />
+
+                      {/* Clinical Overview Notes from Medical Log */}
+                      <div>
+                        <h4 className="text-xs font-extrabold text-[#ec4899] uppercase tracking-wide mb-2">III. Clinical Notes & Allergies</h4>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                          <div className="col-span-2">
+                            <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Known Allergies</p>
+                            <p className="font-bold text-red-600 text-xs leading-relaxed">
+                              {connectedMedicalLog?.known_allergies || "No known allergies reported."}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Last Veterinary Visit</p>
+                            <p className="font-bold text-gray-800 text-xs">
+                              {connectedMedicalLog?.last_veterinary_visit ? new Date(connectedMedicalLog.last_veterinary_visit).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "None recorded"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Registered Conditions</p>
+                            <p className="font-bold text-gray-805 text-xs">
+                              {connectedConditions.length > 0 
+                                ? connectedConditions.map(c => c.condition_name || c.specify_other).join(", ") 
+                                : "None reported."}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1134,26 +1248,38 @@ const ClinicVisitDetails: React.FC = () => {
                       <button className="text-xs font-bold text-brand-pink text-[#ec4899] hover:underline">View All</button>
                     </div>
                     <div className="space-y-2">
-                      <div className="info-card p-4 rounded-2xl flex items-center gap-4 bg-white border border-gray-100 shadow-sm">
-                        <div className="w-1 bg-pink-500 h-10 rounded-full"></div>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start">
-                            <p className="font-bold text-gray-800">Annual Wellness Exam</p>
-                            <p className="text-[10px] text-gray-400 font-bold">OCT 12, 2023</p>
-                          </div>
-                          <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">General health checkup, weight stable at {connectedPassport.weight}.</p>
+                      {connectedRecords.length === 0 ? (
+                        <div className="text-center py-6 bg-white border rounded-2xl border-gray-100 text-xs text-gray-400">
+                          No health or vaccination records found in the database for this pet.
                         </div>
-                      </div>
-                      <div className="info-card p-4 rounded-2xl flex items-center gap-4 bg-white border border-gray-100 shadow-sm">
-                        <div className="w-1 bg-gray-200 h-10 rounded-full"></div>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start">
-                            <p className="font-bold text-gray-800">Rabies Vaccination</p>
-                            <p className="text-[10px] text-gray-400 font-bold">JUN 04, 2023</p>
-                          </div>
-                          <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">3-year booster administered without reactions.</p>
-                        </div>
-                      </div>
+                      ) : (
+                        connectedRecords.map((rec) => {
+                          const dateStr = rec.date_administered 
+                            ? new Date(rec.date_administered).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })
+                            : (rec.issue_date 
+                              ? new Date(rec.issue_date).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })
+                              : "N/A");
+                          const title = rec.record_type === "vaccination" 
+                            ? (rec.vaccine_name || rec.specify_vaccine || "Vaccination")
+                            : (rec.record_type || "Medical Record");
+                          const detail = rec.record_type === "vaccination"
+                            ? `Next booster due: ${rec.next_due_date ? new Date(rec.next_due_date).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' }) : "N/A"}`
+                            : (rec.diagnosis ? `Diagnosis: ${rec.diagnosis}${rec.prescribed_by ? ` (by ${rec.prescribed_by})` : ""}` : "Clinical document record");
+
+                          return (
+                            <div key={rec.id} className="info-card p-4 rounded-2xl flex items-center gap-4 bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                              <div className={`w-1 h-10 rounded-full ${rec.record_type === 'vaccination' ? 'bg-pink-500' : 'bg-green-500'}`}></div>
+                              <div className="flex-1">
+                                <div className="flex justify-between items-start">
+                                  <p className="font-bold text-gray-850 text-sm capitalize">{title}</p>
+                                  <p className="text-[10px] text-gray-400 font-bold uppercase">{dateStr}</p>
+                                </div>
+                                <p className="text-xs text-gray-500 line-clamp-2 mt-1">{detail}</p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   </div>
                 </div>
