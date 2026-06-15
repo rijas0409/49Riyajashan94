@@ -1526,7 +1526,9 @@ const BookingDetails = () => {
                               const petTypeVal = selectedPetPassport?.species || location.state?.selectedPet?.type || "Dog";
                               const petBreedVal = selectedPetPassport ? `${selectedPetPassport.breed || "Unknown Breed"} • ${selectedPetPassport.gender || "Unknown"}` : (location.state?.selectedPet?.breed || "Golden Retriever • Female");
                               
-                              const bookingId = "BK-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+                              const bookingId = (Math.random().toString(36).substring(2, 6) + "-" + 
+                                                Math.random().toString(36).substring(2, 5) + "-" + 
+                                                Math.random().toString(36).substring(2, 4)).toLowerCase();
                               const paymentIdStr = "pay_rzp_" + Math.random().toString(36).substring(2, 16).toUpperCase();
                               
                               let displayMethodStr = "";
@@ -1603,7 +1605,9 @@ const BookingDetails = () => {
                               }
 
                               console.log("Real appointment successfully created:", insertResult);
-                              realBookingId = insertResult.id;
+                              localStorage.setItem(`booking_short_id_${bookingId}`, insertResult.id);
+                              localStorage.setItem(`booking_short_id_reverse_${insertResult.id}`, bookingId);
+                              realBookingId = bookingId;
 
                               // Immediately verify that we can query back this exact row
                               const { data: verifiedRow, error: verifyError } = await supabase
@@ -1657,6 +1661,7 @@ const BookingDetails = () => {
                                 address: visitType === "home" ? "123 Premium Residency, Indiranagar" : (dbVetData?.hospital_address || dbVetData?.clinic_address || dbVetData?.hospital_name || dbVetData?.clinic_name || "HSR Paws Clinic, Sector 2"),
                               };
                               localStorage.setItem(`payment_details_${realBookingId}`, JSON.stringify(paymentDetails));
+                              localStorage.setItem(`payment_details_${insertResult.id}`, JSON.stringify(paymentDetails));
 
                               toast.success("Payment successful! Requesting vet confirmation...");
                               navigate(`/vet/appointment-confirmation/${realBookingId}`, { 

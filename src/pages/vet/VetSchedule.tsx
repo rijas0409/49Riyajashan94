@@ -12,7 +12,13 @@ import { toast } from "sonner";
 import SplashScreen from "@/components/SplashScreen";
 import { supabase } from "@/integrations/supabase/client";
 
-const getShortBookingId = (id: string | undefined): string => {
+const getShortBookingId = (id: string | undefined, notes?: string | null): string => {
+  if (notes) {
+    try {
+      const parsed = JSON.parse(notes);
+      if (parsed.bookingId) return parsed.bookingId;
+    } catch (e) {}
+  }
   if (!id) return "...";
   const clean = id.replace(/[-]/g, "");
   if (clean.length >= 9) {
@@ -533,7 +539,7 @@ const VetSchedule = () => {
                   </div>
                   
                   <div className="text-[12px] text-[#92909e] font-[500] flex items-center gap-1.5 mt-1.5">
-                    <span className="text-[#d1d0d6] font-bold">#</span> ID: {getShortBookingId(apt.id)}
+                    <span className="text-[#d1d0d6] font-bold">#</span> ID: {getShortBookingId(apt.id, apt.consultation_notes)}
                   </div>
                 </div>
               </div>
@@ -575,7 +581,7 @@ const VetSchedule = () => {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                       const shortId = getShortBookingId(apt.id);
+                       const shortId = getShortBookingId(apt.id, apt.consultation_notes);
                        navigate(apt.type === 'home' ? "/buyer/vet/home-visit-details" : `/buyer/vet/clinic-visit-details/${shortId}`, {
                         state: {
                           visit: {
