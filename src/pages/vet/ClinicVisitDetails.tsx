@@ -151,8 +151,37 @@ const ClinicVisitDetails: React.FC = () => {
   const [helpScreenOpen, setHelpScreenOpen] = useState(false);
 
   // Functional interactive states
-  const [selectedPassportId, setSelectedPassportId] = useState<"luna" | "max" | "coco" | null>(null);
-  const [connectedPassport, setConnectedPassport] = useState<typeof PASSPORT_DATA.luna | null>(null);
+  const [selectedPassportId, setSelectedPassportId] = useState<string | null>(null);
+  const [connectedPassport, setConnectedPassport] = useState<any | null>(null);
+  const [userPassports, setUserPassports] = useState<any[]>([]);
+  const [loadingUserPassports, setLoadingUserPassports] = useState(false);
+
+  const fetchUserPassports = async () => {
+    setLoadingUserPassports(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Please login to connect passport.");
+        setLoadingUserPassports(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from("pet_passports")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (error) {
+        console.error("Error fetching user passports:", error);
+        toast.error("Failed to load pet passports.");
+      } else {
+        setUserPassports(data || []);
+      }
+    } catch (err) {
+      console.error("Error loading passports exception:", err);
+    } finally {
+      setLoadingUserPassports(false);
+    }
+  };
   
   const [chiefComplaint, setChiefComplaint] = useState(initialVisit.reason);
   const [isEditingReason, setIsEditingReason] = useState(false);
@@ -518,10 +547,30 @@ const ClinicVisitDetails: React.FC = () => {
   // Confirming Pet Passport connection
   const handleConfirmConnect = () => {
     if (!selectedPassportId) return;
-    const d = PASSPORT_DATA[selectedPassportId];
-    setConnectedPassport(d);
+    const row = userPassports.find(p => p.id === selectedPassportId);
+    if (!row) return;
+
+    // Format EXACTLY in the layout schema so all downstream elements work perfect
+    const pId = row.passport_id || `#PP-${row.id?.slice(0, 7).toUpperCase()}`;
+    const ageVal = row.approx_years !== null ? `${row.approx_years} Years` : (row.dob ? `${new Date().getFullYear() - new Date(row.dob).getFullYear()} Years` : "4 Years");
+    const ageTextVal = row.approx_years !== null ? `${row.approx_years} yrs` : (row.dob ? `${new Date().getFullYear() - new Date(row.dob).getFullYear()} yrs` : "4 yrs");
+    const weightVal = row.weight ? `${row.weight} lbs` : "65 lbs";
+    const dobVal = row.dob ? new Date(row.dob).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "Mar 2020";
+
+    const mappedPassport = {
+      id: pId,
+      name: row.pet_name || "Luna",
+      breed: `${row.breed || "Breed"} · ${row.gender || ""}`,
+      age: ageVal,
+      ageText: ageTextVal,
+      weight: weightVal,
+      dob: dobVal,
+      avatar: row.species?.toLowerCase() === "cat" ? "coco" : "luna"
+    };
+
+    setConnectedPassport(mappedPassport);
     setPassportOverlayOpen(false);
-    toast.success(`${d.name}'s Passport synced successfully!`);
+    toast.success(`${mappedPassport.name}'s Passport synced successfully!`);
   };
 
   return (
@@ -552,36 +601,58 @@ const ClinicVisitDetails: React.FC = () => {
             <p className="text-xs text-gray-400 mb-5">Choose which passport to sync with this visit</p>
             
             <div className="space-y-3">
-              {Object.entries(PASSPORT_DATA).map(([key, data]) => {
-                const isSelected = selectedPassportId === key;
-                return (
-                  <div 
-                    key={key}
-                    onClick={() => setSelectedPassportId(key as "luna" | "max" | "coco")}
-                    className={`border-2 rounded-2xl p-4 cursor-pointer flex items-center gap-3.5 transition-all duration-200 ${
-                      isSelected 
-                        ? "border-[#ec4899] bg-[#fdf2f8]" 
-                        : "border-gray-200 hover:border-[#f9a8d4] hover:bg-[#fff0f6]"
-                    }`}
-                  >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      key === "luna" ? "bg-orange-50 text-orange-500" : key === "max" ? "bg-blue-50 text-blue-500" : "bg-amber-50 text-amber-500"
-                    }`}>
-                      <Activity className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-gray-800 text-sm">{data.name}</p>
-                      <p className="text-xs text-gray-400">{data.id} · {data.breed}</p>
-                    </div>
-                    
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                      isSelected ? "bg-[#ec4899] border-[#ec4899]" : "border-gray-300"
-                    }`}>
-                      {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
-                    </div>
+              {loadingUserPassports ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ec4899]"></div>
+                  <p className="text-xs text-gray-500 font-medium">Fetching passports from database...</p>
+                </div>
+              ) : userPassports.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center select-none">
+                  <div className="w-12 h-12 rounded-xl bg-pink-50 flex items-center justify-center text-[#ec4899] mb-3">
+                    <AlertCircle className="w-6 h-6" />
                   </div>
-                );
-              })}
+                  <p className="text-sm font-bold text-gray-800">No passports found</p>
+                  <p className="text-xs text-gray-500 max-w-[240px] mt-1">Please create a Pet Passport from your profile first.</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                  {userPassports.map((passport) => {
+                    const isSelected = selectedPassportId === passport.id;
+                    const pId = passport.passport_id || `#PP-${passport.id?.slice(0, 6).toUpperCase()}`;
+                    const pName = passport.pet_name || "Unnamed Pet";
+                    const pBreed = `${passport.breed || "Breed"} · ${passport.gender || ""}`;
+                    const isCat = passport.species?.toLowerCase() === "cat";
+                    
+                    return (
+                      <div 
+                        key={passport.id}
+                        onClick={() => setSelectedPassportId(passport.id)}
+                        className={`border-2 rounded-2xl p-4 cursor-pointer flex items-center gap-3.5 transition-all duration-200 ${
+                          isSelected 
+                            ? "border-[#ec4899] bg-[#fdf2f8]" 
+                            : "border-gray-200 hover:border-[#f9a8d4] hover:bg-[#fff0f6]"
+                        }`}
+                      >
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                          isCat ? "bg-amber-50 text-amber-500" : "bg-orange-50 text-orange-500"
+                        }`}>
+                          <Activity className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-800 text-sm">{pName}</p>
+                          <p className="text-xs text-gray-400 font-mono">{pId} · {pBreed}</p>
+                        </div>
+                        
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                          isSelected ? "bg-[#ec4899] border-[#ec4899]" : "border-gray-300"
+                        }`}>
+                          {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <button 
@@ -742,7 +813,7 @@ const ClinicVisitDetails: React.FC = () => {
         <div className="w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-6 lg:py-8 space-y-6 flex-1 overflow-y-auto bg-slate-50/50">
           
           {/* Confirmed Indicator Badge */}
-          <div className="flex items-center justify-start">
+          <div className="flex items-center justify-center w-full">
             <div className="bg-[#dcfce7] text-[#16a34a] flex items-center px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-sm border border-green-200">
               <span className="w-2 h-2 rounded-full mr-2 bg-[#16a34a] animate-pulse" />
               Consultation Confirmed
@@ -938,6 +1009,7 @@ const ClinicVisitDetails: React.FC = () => {
                     onClick={() => {
                       setSelectedPassportId(null);
                       setPassportOverlayOpen(true);
+                      fetchUserPassports();
                     }}
                     className="bg-white text-[#ec4899] text-xs font-bold px-4 py-2 rounded-lg border border-pink-100 shadow-sm active:scale-95 transition-transform"
                   >
@@ -1156,8 +1228,8 @@ const ClinicVisitDetails: React.FC = () => {
             </div>
           </section>
 
-            {/* ── APPOINTMENT SUMMARY CARD PANEL ── */}
-            <section className="w-full">
+          {/* ── APPOINTMENT SUMMARY CARD PANEL ── */}
+          <section className="w-full">
             <h2 className="text-xl font-bold mb-3 pl-1">Appointment Summary</h2>
             
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
@@ -1167,7 +1239,9 @@ const ClinicVisitDetails: React.FC = () => {
                   <Building2 className="w-4 h-4" />
                 </div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Type</p>
-                <p className="text-sm font-black text-gray-900 mt-0.5">Clinic Visit</p>
+                <p className="text-sm font-black text-gray-900 mt-0.5 capitalize">
+                  {dbVisit?.appointment_type ? `${dbVisit.appointment_type} Visit` : "Clinic Visit"}
+                </p>
               </div>
 
               {/* Card 2: Date */}
@@ -1176,7 +1250,16 @@ const ClinicVisitDetails: React.FC = () => {
                   <Calendar className="w-4 h-4" />
                 </div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</p>
-                <p className="text-sm font-black text-gray-900 mt-0.5">10 Jun 2026</p>
+                <p className="text-sm font-black text-gray-900 mt-0.5">
+                  {dbVisit?.appointment_date ? (() => {
+                    try {
+                      const dObj = new Date(dbVisit.appointment_date);
+                      return isNaN(dObj.getTime()) ? dbVisit.appointment_date : dObj.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+                    } catch {
+                      return dbVisit.appointment_date;
+                    }
+                  })() : (initialVisit.time?.split(",")[0] || "10 Jun 2026")}
+                </p>
               </div>
 
               {/* Card 3: Time */}
@@ -1185,7 +1268,9 @@ const ClinicVisitDetails: React.FC = () => {
                   <Clock className="w-4 h-4" />
                 </div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Time</p>
-                <p className="text-sm font-black text-gray-900 mt-0.5">2:30 – 3:00 PM</p>
+                <p className="text-sm font-black text-gray-900 mt-0.5">
+                  {dbVisit?.appointment_time || (initialVisit.time?.includes(",") ? initialVisit.time.split(",")[1]?.trim() : initialVisit.time) || "02:30 PM - 03:00 PM"}
+                </p>
               </div>
 
               {/* Card 4: Duration */}
@@ -1206,7 +1291,9 @@ const ClinicVisitDetails: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Booking ID</p>
-                  <p className="text-sm font-black text-[#ec4899] mt-0.5 tracking-wide font-mono">{currentVisitId}</p>
+                  <p className="text-sm font-black text-[#ec4899] mt-0.5 tracking-wide font-mono">
+                    {dbVisit?.id || (appointmentId && appointmentId !== "SRV-84721" ? appointmentId : "") || "Loading Booking ID..."}
+                  </p>
                 </div>
               </div>
               

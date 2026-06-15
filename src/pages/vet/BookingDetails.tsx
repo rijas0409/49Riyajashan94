@@ -153,7 +153,7 @@ const BookingDetails = () => {
       if (matchedVet?.id) {
         const { data, error } = await supabase
           .from("vet_profiles")
-          .select("user_id, consultation_type, clinic_name, clinic_address, hospital_name, hospital_address")
+          .select("consultation_type, clinic_name, clinic_address, hospital_name, hospital_address")
           .eq("id", matchedVet.id)
           .maybeSingle();
         if (data && !error) {
@@ -191,79 +191,6 @@ const BookingDetails = () => {
     return isClinicStr ? "clinic" : (isHomeStr ? "home" : "clinic");
   });
 
-  const [disabledSlots, setDisabledSlots] = useState<string[]>([]);
-  
-  const currentIsoDateStr = useMemo(() => {
-    try {
-      if (selectedDate && selectedDate instanceof Date && !isNaN(selectedDate.getTime())) {
-        const d = new Date(selectedDate);
-        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-        return d.toISOString().split(" ")[0] || d.toISOString().split("T")[0];
-      }
-    } catch {}
-    return new Date().toISOString().split("T")[0];
-  }, [selectedDate]);
-
-  useEffect(() => {
-    const targetUserId = dbVetData?.user_id || vet?.userId || vet?.user_id;
-    if (!targetUserId) return;
-
-    const fetchBookedSlots = async () => {
-      const { data, error } = await supabase
-        .from("vet_appointments")
-        .select("appointment_time")
-        .eq("vet_id", targetUserId)
-        .eq("appointment_date", currentIsoDateStr)
-        .in("status", ["pending", "confirmed", "approved", "completed", "in_progress"]);
-
-      if (data && !error) {
-        setDisabledSlots(data.map((row: any) => row.appointment_time));
-      }
-    };
-
-    fetchBookedSlots();
-
-    const channel = supabase.channel(`vet_appointments_sync_${targetUserId}_${currentIsoDateStr}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "vet_appointments",
-          filter: `vet_id=eq.${targetUserId}`
-        },
-        (payload) => {
-          const newRow = payload.new as any;
-          const oldRow = payload.old as any;
-          
-          if (newRow && newRow.appointment_date === currentIsoDateStr) {
-            setDisabledSlots(prev => {
-              const isActiveBooking = ["pending", "confirmed", "approved", "completed", "in_progress"].includes(newRow.status);
-              
-              const updated = [...prev];
-              if (isActiveBooking && !updated.includes(newRow.appointment_time)) {
-                updated.push(newRow.appointment_time);
-              } else if (!isActiveBooking) {
-                const index = updated.indexOf(newRow.appointment_time);
-                if (index > -1) updated.splice(index, 1);
-              }
-              return updated;
-            });
-          }
-          
-          // Case where appointment is deleted
-          if (payload.eventType === "DELETE" && oldRow && oldRow.appointment_date === currentIsoDateStr) {
-            setDisabledSlots(prev => prev.filter(t => t !== oldRow.appointment_time));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [currentIsoDateStr, dbVetData?.user_id, vet?.userId, vet?.user_id]);
-
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -294,6 +221,7 @@ const BookingDetails = () => {
     return d;
   });
   const [selectedSlot, setSelectedSlot] = useState("");
+  const [disabledSlots, setDisabledSlots] = useState<string[]>([]);
   const [selectedCoupon, setSelectedCoupon] = useState<typeof COUPONS[0] | null>(null);
   const [showCoupons, setShowCoupons] = useState(false);
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
@@ -309,6 +237,110 @@ const BookingDetails = () => {
   const [simulatedWallet, setSimulatedWallet] = useState("Paytm Wallet");
 
   const vet = useMemo(() => matchedVet || {}, [matchedVet]);
+
+  // Read booked slots in real-time
+  useEffect(() => {
+    let active = true;
+    let subChannel: any = null;
+
+    const initAndSubscribe = async () => {
+      let resolvedUserId = vet?.user_id || vet?.userId;
+      const profileId = vet?.id || vet?.vetProfileId;
+      
+      if (!resolvedUserId && profileId) {
+        // Query the vet_profiles table to get user_id of this profile
+        const { data: vp } = await supabase
+          .from("vet_profiles")
+          .select("user_id")
+          .eq("id", profileId)
+          .maybeSingle();
+        if (vp?.user_id) {
+          resolvedUserId = vp.user_id;
+        }
+      }
+
+      if (!resolvedUserId) {
+        console.warn("[BookingDetails] Could not find user_id for vet profile:", profileId);
+        return;
+      }
+
+      if (!active) return;
+
+      // We only care about the currently selected date based on timezone formatting used in the app, let's format safely
+      const fetchDate = new Date(selectedDate);
+      fetchDate.setMinutes(fetchDate.getMinutes() - fetchDate.getTimezoneOffset());
+      const dateStr = fetchDate.toISOString().split("T")[0];
+
+      const loadBookedSlots = async () => {
+        const { data, error } = await supabase
+          .from("vet_appointments")
+          .select("appointment_time, status")
+          .eq("vet_id", resolvedUserId)
+          .eq("appointment_date", dateStr);
+
+        if (!error && data && active) {
+          const acceptedTypes = ["confirmed", "approved", "analyzing", "accepted", "rescheduled", "in_progress", "completed"];
+          const booked = data
+            .filter((d: any) => acceptedTypes.includes(d.status?.toLowerCase()))
+            .map((d: any) => d.appointment_time);
+          setDisabledSlots(booked);
+        }
+      };
+      await loadBookedSlots();
+
+      if (!active) return;
+
+      const sub = supabase.channel(`bookings-${resolvedUserId}-${dateStr}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "vet_appointments",
+            filter: `vet_id=eq.${resolvedUserId}`
+          },
+          (payload: any) => {
+            if (!active) return;
+            if (payload.new && payload.new.appointment_date === dateStr) {
+              const status = payload.new.status;
+              const acceptedTypes = ["confirmed", "approved", "analyzing", "accepted", "rescheduled", "in_progress", "completed"];
+              const isBooked = acceptedTypes.includes(status?.toLowerCase());
+              
+              setDisabledSlots(prev => {
+                const time = payload.new.appointment_time;
+                
+                if (isBooked) {
+                  // Deselect automatically if another user just booked it
+                  setSelectedSlot(curr => curr === time ? "" : curr);
+                }
+
+                if (isBooked && !prev.includes(time)) {
+                  return [...prev, time];
+                } else if (!isBooked && prev.includes(time)) {
+                  return prev.filter(t => t !== time);
+                }
+                return prev;
+              });
+            }
+            if (payload.eventType === "DELETE" && payload.old && payload.old.appointment_date === dateStr) {
+              setDisabledSlots(prev => prev.filter(t => t !== payload.old.appointment_time));
+            }
+          }
+        )
+        .subscribe();
+
+      subChannel = sub;
+    };
+
+    initAndSubscribe();
+
+    return () => {
+      active = false;
+      if (subChannel) {
+        supabase.removeChannel(subChannel);
+      }
+    };
+  }, [vet?.id, vet?.vetProfileId, vet?.user_id, vet?.userId, selectedDate]);
 
   // Safely parse weekly_availability if it gets serialised as a string
   const weeklyAvailabilityObject = useMemo(() => {
@@ -473,8 +505,6 @@ const BookingDetails = () => {
 
     return baseSlots;
   }, [selectedDate, weeklyAvailabilityObject, hasNightZoneActive, safeFormatSelectedDate, safeFormatDate]);
-
-  // Real disabled slots are managed by state at the top
 
   const clinicFee = Number(vet.online_fee !== undefined ? vet.online_fee : (vet.onlineFee !== undefined ? vet.onlineFee : (vet.fee || 500)));
   const homeFee = Number(vet.offline_fee !== undefined ? vet.offline_fee : (vet.offlineFee !== undefined ? vet.offlineFee : 800));
@@ -891,7 +921,7 @@ const BookingDetails = () => {
                           disabled={isTopDisabled} 
                           onClick={() => setSelectedSlot(pair.top!)}
                           className="py-3 rounded-2xl text-[13px] sm:text-sm font-semibold transition-all border-2 text-center"
-                          style={isTopSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isTopDisabled ? { border: '2px dashed hsl(var(--border))', color: 'hsl(var(--muted-foreground))', opacity: 0.5, cursor: 'not-allowed' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}
+                          style={isTopSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isTopDisabled ? { border: '2px dashed hsl(var(--border))', color: 'hsl(var(--muted-foreground))', opacity: 0.45, cursor: 'not-allowed' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}
                         >
                           {pair.top}
                         </button>
@@ -906,7 +936,7 @@ const BookingDetails = () => {
                           disabled={isBottomDisabled} 
                           onClick={() => setSelectedSlot(pair.bottom!)}
                           className="py-3 rounded-2xl text-[13px] sm:text-sm font-semibold transition-all border-2 text-center"
-                          style={isBottomSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isBottomDisabled ? { border: '2px dashed hsl(var(--border))', color: 'hsl(var(--muted-foreground))', opacity: 0.5, cursor: 'not-allowed' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}
+                          style={isBottomSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isBottomDisabled ? { border: '2px dashed hsl(var(--border))', color: 'hsl(var(--muted-foreground))', opacity: 0.45, cursor: 'not-allowed' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}
                         >
                           {pair.bottom}
                         </button>
@@ -928,7 +958,7 @@ const BookingDetails = () => {
                 return (
                   <button key={slot} disabled={isDisabled} onClick={() => setSelectedSlot(slot)}
                     className="py-3 rounded-2xl text-[13px] sm:text-sm font-semibold transition-all border-2"
-                    style={isSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isDisabled ? { border: '2px dashed hsl(var(--border))', color: 'hsl(var(--muted-foreground))', opacity: 0.5, cursor: 'not-allowed' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}>
+                    style={isSelected ? { background: 'linear-gradient(135deg, #C084FC, #F472B6)', border: '2px solid transparent', color: 'white' } : isDisabled ? { border: '2px dashed hsl(var(--border))', color: 'hsl(var(--muted-foreground))', opacity: 0.45, cursor: 'not-allowed' } : { border: '2px solid #F1F5F9', background: '#ffffff', color: 'hsl(var(--foreground))' }}>
                     {slot}
                   </button>
                 );
@@ -1170,11 +1200,6 @@ const BookingDetails = () => {
             onClick={() => {
               if (!selectedSlot) {
                 toast.error("Please select a time slot to continue booking.");
-                return;
-              }
-              if (disabledSlots.includes(selectedSlot)) {
-                toast.error("This slot is already booked. Please select another time.");
-                setSelectedSlot("");
                 return;
               }
               // Open beautiful Razorpay simulation overlay
@@ -1435,13 +1460,16 @@ const BookingDetails = () => {
                         const appointmentDate = safeFormatSelectedDate("yyyy-MM-dd");
                         const { data: existingAppts } = await supabase
                             .from("vet_appointments")
-                            .select("id")
+                            .select("id, status")
                             .eq("vet_id", dbVet.user_id)
                             .eq("appointment_date", appointmentDate)
-                            .eq("appointment_time", selectedSlot)
-                            .in("status", ["pending", "confirmed", "approved", "completed", "in_progress"]);
+                            .eq("appointment_time", selectedSlot);
                             
-                        if (existingAppts && existingAppts.length > 0) {
+                        const activeBookings = existingAppts ? existingAppts.filter(
+                          (appt: any) => !["cancelled", "rejected", "failed"].includes((appt.status || "").toLowerCase())
+                        ) : [];
+
+                        if (activeBookings.length > 0) {
                             toast.error("Slot already taken by another user just now! Please select another slot.");
                             setRazorpayOpen(false);
                             return;
