@@ -1279,9 +1279,9 @@ const BuyerVisitDetails: React.FC = () => {
                   </svg>
                   Start Navigation
                 </button>
-                {/* QR button next to navigation — same scanner */}
+                {/* QR button next to navigation — shows check-in QR code */}
                 <button 
-                  onClick={() => setQrOverlayOpen(true)}
+                  onClick={() => setShowUserQr(true)}
                   className="bg-gray-100 p-3.5 rounded-xl flex items-center justify-center text-gray-700 hover:bg-pink-50 hover:text-[#ec4899] hover:text-brand-pink transition-colors"
                 >
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
