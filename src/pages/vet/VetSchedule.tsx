@@ -321,7 +321,7 @@ const VetSchedule = () => {
 
   const handleHomeVisitClick = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    navigate("/buyer/vet/home-visit-details", { 
+    navigate("/vet/schedule/visit-details/HV-123", { 
       state: { 
         visit: {
           id: "HV-123",
@@ -341,7 +341,7 @@ const VetSchedule = () => {
 
   const handleClinicVisitClick = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    navigate("/buyer/vet/clinic-visit-details/CV-124", { 
+    navigate("/vet/schedule/visit-details/CV-124", { 
       state: { 
         visit: {
           id: "CV-124",
@@ -473,7 +473,7 @@ const VetSchedule = () => {
                   } catch(e) {}
                 }
                 const shortId = getShortBookingId(apt.id);
-                navigate(apt.type === 'home' ? `/buyer/vet/home-visit-details/${shortId}` : `/buyer/vet/clinic-visit-details/${shortId}`, {
+                navigate(`/vet/schedule/visit-details/${shortId}`, {
                   state: {
                     visit: {
                       id: apt.id,
@@ -576,7 +576,7 @@ const VetSchedule = () => {
                     onClick={(e) => {
                       e.stopPropagation();
                        const shortId = getShortBookingId(apt.id);
-                       navigate(apt.type === 'home' ? `/buyer/vet/home-visit-details/${shortId}` : `/buyer/vet/clinic-visit-details/${shortId}`, {
+                       navigate(`/vet/schedule/visit-details/${shortId}`, {
                         state: {
                           visit: {
                             id: apt.id,
@@ -598,7 +598,7 @@ const VetSchedule = () => {
                     }}
                     className="flex-1 bg-[#a428f0] text-white py-3.5 px-5 text-center rounded-[30px] text-[15px] font-[600] shadow-[0_8px_25px_rgba(164,40,240,0.3)] active:scale-95 transition-all"
                   >
-                    View Details
+                    {apt.type === 'home' ? 'View Route' : 'View Details'}
                   </button>
                 </div>
               )}

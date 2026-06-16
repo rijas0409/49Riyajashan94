@@ -48,7 +48,7 @@ const ClinicBookingConfirmation = () => {
         toast.success("Consultation Scheduled Successfully!");
         setTimeout(() => {
           const bookingId = "SRV-84721";
-          navigate(visitType === "home" ? "/buyer/vet/home-visit-details" : `/buyer/vet/clinic-visit-details/${bookingId}`, { 
+          navigate(`/buyer/vet/visit-details/${bookingId}`, { 
             state: {
               ...location.state,
               realAppointmentId: "SRV-84721",
@@ -80,7 +80,7 @@ const ClinicBookingConfirmation = () => {
             setCurrentStep(2);
             setTimeout(() => {
                const bookingId = getShortBookingId(appointmentId);
-                navigate(visitType === "home" ? "/buyer/vet/home-visit-details" : `/buyer/vet/clinic-visit-details/${bookingId}`, { 
+                navigate(`/buyer/vet/visit-details/${bookingId}`, { 
                   state: {
                     ...location.state,
                     realAppointmentId: appointmentId,

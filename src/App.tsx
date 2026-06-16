@@ -84,9 +84,9 @@ import ClinicDetails from "./pages/vet/ClinicDetails";
 import AllSpecializedVets from "./pages/vet/AllSpecializedVets";
 import ConsultationDetail from "./pages/vet/ConsultationDetail";
 import ConsultationAnalysisSummary from "./pages/vet/ConsultationAnalysisSummary";
-import HomeVisitDetails from "./pages/vet/HomeVisitDetails";
+import BuyerVisitDetails from "./pages/vet/BuyerVisitDetails";
+import VetScheduleVisitDetails from "./pages/vet/VetScheduleVisitDetails";
 import AppointmentConfirmation from "./pages/vet/AppointmentConfirmation";
-import ClinicVisitDetails from "./pages/vet/ClinicVisitDetails";
 import VideoCall from "./pages/vet/VideoCall";
 
 import VetSchedule from "./pages/vet/VetSchedule";
@@ -194,10 +194,10 @@ const App = () => (
                 <Route path="/vet/profile" element={<VetProfile />} />
                 <Route path="/vet/virtual-consults" element={<VirtualConsults />} />
                 <Route path="/vet/consultation-detail" element={<ConsultationDetail />} />
-                <Route path="/buyer/vet/home-visit-details" element={<HomeVisitDetails />} />
-                <Route path="/buyer/vet/home-visit-details/:appointmentId" element={<HomeVisitDetails />} />
-                <Route path="/buyer/vet/clinic-visit-details" element={<ClinicVisitDetails />} />
-                <Route path="/buyer/vet/clinic-visit-details/:appointmentId" element={<ClinicVisitDetails />} />
+                <Route path="/buyer/vet/visit-details" element={<BuyerVisitDetails />} />
+                <Route path="/buyer/vet/visit-details/:appointmentId" element={<BuyerVisitDetails />} />
+                <Route path="/vet/schedule/visit-details" element={<VetScheduleVisitDetails />} />
+                <Route path="/vet/schedule/visit-details/:appointmentId" element={<VetScheduleVisitDetails />} />
                 <Route path="/vet/appointment-confirmation/:appointmentId" element={<AppointmentConfirmation />} />
                  <Route path="/vet-earnings" element={<Navigate to="/vet/earnings" replace />} />
                 <Route path="/vet-schedule" element={<Navigate to="/vet/schedule" replace />} />

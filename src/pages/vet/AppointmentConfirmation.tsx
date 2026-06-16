@@ -147,8 +147,7 @@ export default function AppointmentConfirmation() {
     setShowSuccessOverlay(true);
     setTimeout(() => setProgressWidth(100), 100);
     setTimeout(() => {
-      const routeType = appointment?.appointment_type === "home" ? "home" : "clinic";
-      navigate(`/buyer/vet/${routeType}-visit-details/${appointmentId}`, { 
+      navigate(`/buyer/vet/visit-details/${appointmentId}`, { 
         replace: true,
         state: { fromBookingFlow: true }
       });
