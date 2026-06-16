@@ -648,13 +648,7 @@ const VetScheduleVisitDetails: React.FC = () => {
 
         {/* Floating QR Squircle Button */}
         <button 
-          onClick={() => {
-            if (isHomeVisit) {
-              setShowQrModal(true);
-            } else {
-              openImmersiveScanner();
-            }
-          }} 
+          onClick={openImmersiveScanner} 
           className="absolute bottom-[160px] right-6 w-[56px] h-[56px] bg-[#f3e8ff] text-[#9d4edd] rounded-[22px] shadow-[0_8px_20px_-4px_rgba(157,78,221,0.2)] flex items-center justify-center text-[22px] transition transform hover:scale-105 active:scale-95 z-20" 
           title="Scan QR"
         >
