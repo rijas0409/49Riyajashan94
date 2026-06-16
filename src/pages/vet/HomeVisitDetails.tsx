@@ -1,7 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { 
+  X, Activity, FileText, PawPrint, AlertTriangle, Info, Calendar
+} from "lucide-react";
 
 // Custom styles to achieve exactly the same styling and grid textures as homie.html
 const styleContent = `
@@ -82,6 +86,12 @@ const HomeVisitDetails = () => {
   const [medicalLog, setMedicalLog] = useState<any>(null);
   const [healthRecords, setHealthRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Passport selection states
+  const [userPassports, setUserPassports] = useState<any[]>([]);
+  const [passportOverlayOpen, setPassportOverlayOpen] = useState(false);
+  const [selectedPassportId, setSelectedPassportId] = useState<string | null>(null);
+  const [loadingUserPassports, setLoadingUserPassports] = useState(false);
 
   // Interaction/Mutation states
   const [chiefComplaint, setChiefComplaint] = useState("Kiro is fainting I need emergency help.");
@@ -279,24 +289,7 @@ const HomeVisitDetails = () => {
               .eq("user_id", appt.user_id);
             
             if (passports && passports.length > 0) {
-              // Try to find matching passport by pet name
-              const matchedPassport = passports.find(p => p.pet_name?.toLowerCase() === appt.pet_name?.toLowerCase()) || passports[0];
-              setPetPassport(matchedPassport);
-
-              // Fetch medical log & health records for this passport
-              const { data: medLog } = await supabase
-                .from("pet_medical_logs")
-                .select("*")
-                .eq("pet_passport_id", matchedPassport.id)
-                .maybeSingle();
-              if (medLog) setMedicalLog(medLog);
-
-              const { data: docs } = await supabase
-                .from("pet_health_records_documents")
-                .select("*")
-                .eq("pet_passport_id", matchedPassport.id)
-                .order("created_at", { ascending: false });
-              if (docs) setHealthRecords(docs);
+              setUserPassports(passports);
             }
           }
         }
@@ -310,6 +303,38 @@ const HomeVisitDetails = () => {
 
     fetchAllData();
   }, [realDbId]);
+
+  // Handle confirming passport connection & fetching medical logs/records for selected passport
+  const handleConfirmConnect = async () => {
+    if (!selectedPassportId) return;
+    const matchedPassport = userPassports.find(p => p.id === selectedPassportId);
+    if (!matchedPassport) return;
+
+    try {
+      setPetPassport(matchedPassport);
+
+      // Fetch medical log & health records for this passport
+      const { data: medLog } = await supabase
+        .from("pet_medical_logs")
+        .select("*")
+        .eq("pet_passport_id", matchedPassport.id)
+        .maybeSingle();
+      if (medLog) setMedicalLog(medLog);
+
+      const { data: docs } = await supabase
+        .from("pet_health_records_documents")
+        .select("*")
+        .eq("pet_passport_id", matchedPassport.id)
+        .order("created_at", { ascending: false });
+      if (docs) setHealthRecords(docs || []);
+
+      setPassportOverlayOpen(false);
+      toast.success(`${matchedPassport.pet_name || "Pet"}'s Passport successfully connected!`);
+    } catch (err) {
+      console.error("Error connecting pet passport:", err);
+      toast.error("Failed to connect pet passport.");
+    }
+  };
 
   // Handle saving the modified Chief Complaint back to supabase DB
   const handleSaveReason = async () => {
@@ -691,199 +716,230 @@ const HomeVisitDetails = () => {
             </div>
           </div>
 
-          {/* Clinical Overview Card */}
-          <div className="mx-5 mt-4">
-            <h2 className="text-[16px] font-bold text-[#1a1f36] mb-2 px-0.5 tracking-tight">Clinical Overview</h2>
-            <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center gap-3.5">
-              <img 
-                src={resolvedPhoto} 
-                alt={petName} 
-                className="w-[54px] h-[54px] rounded-xl object-cover"
-              />
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[15px] font-bold text-[#1a1f36]">{petName}</span>
-                  <span className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase scale-90 origin-left">Active</span>
+          {/* Clinical Overview Card & Connect Passport */}
+          {!petPassport ? (
+            <div className="mx-5 mt-4">
+              <h2 className="text-[16px] font-bold text-[#1a1f36] mb-2 px-0.5 tracking-tight">Clinical Overview</h2>
+              <div id="connect-passport-card" className="p-4 rounded-[20px] bg-pink-50/50 border border-pink-100 flex items-center justify-between shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] bg-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#ec4899] text-white rounded-xl flex items-center justify-center shadow-sm shadow-pink-200">
+                    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">Connect Passport</p>
+                    <p className="text-xs text-gray-500">Sync digital medical records</p>
+                  </div>
                 </div>
-                <p className="text-[13px] text-gray-700 font-semibold mt-0.5">
-                  {specBreedDisplay} • {petPassport?.gender || "Female"}
-                </p>
-                <div className="flex items-center gap-3 text-[#8b92a5] text-[11px] mt-1 font-medium">
-                  <span className="flex items-center gap-1"><i className="far fa-clock text-[10px]"></i> {ageStr}</span>
-                  <span className="flex items-center gap-1"><i className="fas fa-weight-hanging text-[10px]"></i> {petPassport?.weight ? `${petPassport.weight} lbs` : "4.9 lbs"}</span>
-                  <span className="flex items-center gap-1">
-                    <i className="far fa-calendar text-[10px]"></i> {petPassport?.dob ? new Date(petPassport.dob).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Jun 29, 2024"}
-                  </span>
+                <button 
+                  onClick={() => {
+                    setSelectedPassportId(null);
+                    setPassportOverlayOpen(true);
+                  }}
+                  className="bg-white text-[#ec4899] text-xs font-bold px-4 py-2 rounded-lg border border-pink-100 shadow-sm active:scale-95 transition-transform"
+                >
+                  Connect
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Clinical Overview Card */}
+              <div className="mx-5 mt-4">
+                <h2 className="text-[16px] font-bold text-[#1a1f36] mb-2 px-0.5 tracking-tight">Clinical Overview</h2>
+                <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center gap-3.5">
+                  <img 
+                    src={resolvedPhoto} 
+                    alt={petName} 
+                    className="w-[54px] h-[54px] rounded-xl object-cover"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[15px] font-bold text-[#1a1f36]">{petName}</span>
+                      <span className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase scale-90 origin-left">Active</span>
+                    </div>
+                    <p className="text-[13px] text-gray-700 font-semibold mt-0.5">
+                      {specBreedDisplay} • {petPassport?.gender || "Female"}
+                    </p>
+                    <div className="flex items-center gap-3 text-[#8b92a5] text-[11px] mt-1 font-medium">
+                      <span className="flex items-center gap-1"><i className="far fa-clock text-[10px]"></i> {ageStr}</span>
+                      <span className="flex items-center gap-1"><i className="fas fa-weight-hanging text-[10px]"></i> {petPassport?.weight ? `${petPassport.weight} lbs` : "4.9 lbs"}</span>
+                      <span className="flex items-center gap-1">
+                        <i className="far fa-calendar text-[10px]"></i> {petPassport?.dob ? new Date(petPassport.dob).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Jun 29, 2024"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Pet Passport Components Heading */}
-          <div className="mx-5 mt-5">
-            <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase px-0.5">Pet Passport Details</p>
-          </div>
+              {/* Pet Passport Components Heading */}
+              <div className="mx-5 mt-5">
+                <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase px-0.5">Pet Passport Details</p>
+              </div>
 
-          {/* Identification Card */}
-          <div className="mx-5 mt-2 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
-            <div className="flex items-center gap-1.5 mb-3.5">
-              <div className="w-1 h-3.5 bg-pink-500 rounded-full"></div>
-              <h4 className="text-[11px] font-bold text-[#1a1f36] tracking-wider uppercase">I. Identification</h4>
-            </div>
-            <div className="grid grid-cols-2 gap-y-3.5 gap-x-2">
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Pet Name</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{petName}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Passport ID</p>
-                <p className="text-[13px] text-pink-500 font-bold mt-0.5">
-                  {petPassport?.passport_id || (petPassport?.id ? `SRV-${petPassport.id.slice(0, 7).toUpperCase()}` : "SRV-K25-AG8")}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Species / Gender</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
-                  {petPassport?.species || "Cat"} • {petPassport?.gender || "Female"}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Breed</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{specBreedDisplay}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Appearance / Distinguishing Marks</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{petPassport?.appearance || "Grey whitish, soft coat patterns"}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Date of Birth</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
-                  {petPassport?.dob ? new Date(petPassport.dob).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Jun 29, 2024"}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Age / Weight</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
-                  {ageStr} • {petPassport?.weight ? `${petPassport.weight} lbs` : "4.9 lbs"}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Issue Date</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
-                  {petPassport?.created_at ? new Date(petPassport.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Jun 13, 2026"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Ownership & Legal Guardian Card */}
-          <div className="mx-5 mt-3.5 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
-            <div className="flex items-center gap-1.5 mb-3.5">
-              <div className="w-1 h-3.5 bg-pink-500 rounded-full"></div>
-              <h4 className="text-[11px] font-bold text-[#1a1f36] tracking-wider uppercase">II. Ownership & Legal Guardian</h4>
-            </div>
-            <div className="grid grid-cols-2 gap-y-3.5 gap-x-2">
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Owner Name</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
-                  {petPassport?.owner_name || userProfile?.full_name || userProfile?.name || "Jari Pabla"}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Primary Phone</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
-                  {petPassport?.primary_phone || userProfile?.phone || "8349153416"}
-                </p>
-              </div>
-              <div>
-                <p class="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Emergency Contact</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
-                  {petPassport?.emergency_contact_name || "Riya (Wife)"}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Emergency Phone</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
-                  {petPassport?.emergency_phone || "8349153416"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Clinical Notes & Allergies Card */}
-          <div className="mx-5 mt-3.5 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
-            <div className="flex items-center gap-1.5 mb-3.5">
-              <div className="w-1 h-3.5 bg-pink-500 rounded-full"></div>
-              <h4 className="text-[11px] font-bold text-[#1a1f36] tracking-wider uppercase">III. Clinical Notes & Allergies</h4>
-            </div>
-            <div className="grid grid-cols-2 gap-y-3.5 gap-x-2">
-              <div className="col-span-2">
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Known Allergies</p>
-                <p className="text-[13px] text-red-500 font-bold mt-0.5">
-                  {medicalLog?.known_allergies || "Pollen / environmental allergens"}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Last Veterinary Visit</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
-                  {medicalLog?.last_veterinary_visit ? new Date(medicalLog.last_veterinary_visit).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Jun 13, 2026"}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Registered Conditions</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">None registered</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Health Records Section */}
-          <div className="mx-5 mt-4">
-            <div className="flex justify-between items-center mb-2 px-0.5">
-              <h3 className="text-[11px] font-bold text-gray-400 tracking-widest uppercase">Health Records</h3>
-              <button className="text-pink-500 font-bold text-[11px] hover:underline">View All</button>
-            </div>
-            <div className="flex flex-col gap-2">
-              {healthRecords.length > 0 ? (
-                healthRecords.map((doc, idx) => (
-                  <div key={doc.id || idx} className="bg-white rounded-[16px] p-3.5 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1 h-8 bg-emerald-500 rounded-full"></div>
-                      <div>
-                        <p className="text-[13px] text-[#1a1f36] font-bold">{doc.document_type || "Vaccination"}</p>
-                        <p className="text-[11px] text-[#8b92a5] font-medium">{doc.notes || "Clinical document record"}</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold text-[#8b92a5] uppercase">
-                      {doc.created_at ? new Date(doc.created_at).toLocaleDateString("en-US", { day: 'numeric', month: 'short', year: 'numeric' }) : "13 Jun 2026"}
-                    </span>
+              {/* Identification Card */}
+              <div className="mx-5 mt-2 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
+                <div className="flex items-center gap-1.5 mb-3.5">
+                  <div className="w-1 h-3.5 bg-pink-500 rounded-full"></div>
+                  <h4 className="text-[11px] font-bold text-[#1a1f36] tracking-wider uppercase">I. Identification</h4>
+                </div>
+                <div className="grid grid-cols-2 gap-y-3.5 gap-x-2">
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Pet Name</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{petName}</p>
                   </div>
-                ))
-              ) : (
-                <>
-                  <div className="bg-white rounded-[16px] p-3.5 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1 h-8 bg-emerald-500 rounded-full"></div>
-                      <div>
-                        <p className="text-[13px] text-[#1a1f36] font-bold">Vaccination</p>
-                        <p className="text-[11px] text-[#8b92a5] font-medium">Clinical document record</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold text-[#8b92a5] uppercase">13 Jun 2026</span>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Passport ID</p>
+                    <p className="text-[13px] text-pink-500 font-bold mt-0.5">
+                      {petPassport?.passport_id || (petPassport?.id ? `SRV-${petPassport.id.slice(0, 7).toUpperCase()}` : "SRV-K25-AG8")}
+                    </p>
                   </div>
-                  <div className="bg-white rounded-[16px] p-3.5 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1 h-8 bg-emerald-500 rounded-full"></div>
-                      <div>
-                        <p className="text-[13px] text-[#1a1f36] font-bold">Vaccination</p>
-                        <p className="text-[11px] text-[#8b92a5] font-medium">Clinical document record</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold text-[#8b92a5] uppercase">13 Jun 2026</span>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Species / Gender</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
+                      {petPassport?.species || "Cat"} • {petPassport?.gender || "Female"}
+                    </p>
                   </div>
-                </>
-              )}
-            </div>
-          </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Breed</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{specBreedDisplay}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Appearance / Distinguishing Marks</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{petPassport?.appearance || "Grey whitish, soft coat patterns"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Date of Birth</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
+                      {petPassport?.dob ? new Date(petPassport.dob).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Jun 29, 2024"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Age / Weight</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
+                      {ageStr} • {petPassport?.weight ? `${petPassport.weight} lbs` : "4.9 lbs"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Issue Date</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
+                      {petPassport?.created_at ? new Date(petPassport.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Jun 13, 2026"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ownership & Legal Guardian Card */}
+              <div className="mx-5 mt-3.5 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
+                <div className="flex items-center gap-1.5 mb-3.5">
+                  <div className="w-1 h-3.5 bg-pink-500 rounded-full"></div>
+                  <h4 className="text-[11px] font-bold text-[#1a1f36] tracking-wider uppercase">II. Ownership & Legal Guardian</h4>
+                </div>
+                <div className="grid grid-cols-2 gap-y-3.5 gap-x-2">
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Owner Name</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
+                      {petPassport?.owner_name || userProfile?.full_name || userProfile?.name || "Jari Pabla"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Primary Phone</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
+                      {petPassport?.primary_phone || userProfile?.phone || "8349153416"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Emergency Contact</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
+                      {petPassport?.emergency_contact_name || "Riya (Wife)"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Emergency Phone</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
+                      {petPassport?.emergency_phone || "8349153416"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Clinical Notes & Allergies Card */}
+              <div className="mx-5 mt-3.5 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
+                <div className="flex items-center gap-1.5 mb-3.5">
+                  <div className="w-1 h-3.5 bg-pink-500 rounded-full"></div>
+                  <h4 className="text-[11px] font-bold text-[#1a1f36] tracking-wider uppercase">III. Clinical Notes & Allergies</h4>
+                </div>
+                <div className="grid grid-cols-2 gap-y-3.5 gap-x-2">
+                  <div className="col-span-2">
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Known Allergies</p>
+                    <p className="text-[13px] text-red-500 font-bold mt-0.5">
+                      {medicalLog?.known_allergies || "Pollen / environmental allergens"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Last Veterinary Visit</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
+                      {medicalLog?.last_veterinary_visit ? new Date(medicalLog.last_veterinary_visit).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Jun 13, 2026"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Registered Conditions</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">None registered</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Health Records Section */}
+              <div className="mx-5 mt-4">
+                <div className="flex justify-between items-center mb-2 px-0.5">
+                  <h3 className="text-[11px] font-bold text-gray-400 tracking-widest uppercase">Health Records</h3>
+                  <button className="text-pink-500 font-bold text-[11px] hover:underline">View All</button>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {healthRecords.length > 0 ? (
+                    healthRecords.map((doc, idx) => (
+                      <div key={doc.id || idx} className="bg-white rounded-[16px] p-3.5 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-1 h-8 bg-emerald-500 rounded-full"></div>
+                          <div>
+                            <p className="text-[13px] text-[#1a1f36] font-bold">{doc.document_type || "Vaccination"}</p>
+                            <p className="text-[11px] text-[#8b92a5] font-medium">{doc.notes || "Clinical document record"}</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-[#8b92a5] uppercase">
+                          {doc.created_at ? new Date(doc.created_at).toLocaleDateString("en-US", { day: 'numeric', month: 'short', year: 'numeric' }) : "13 Jun 2026"}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="bg-white rounded-[16px] p-3.5 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-1 h-8 bg-emerald-500 rounded-full"></div>
+                          <div>
+                            <p className="text-[13px] text-[#1a1f36] font-bold">Vaccination</p>
+                            <p className="text-[11px] text-[#8b92a5] font-medium">Clinical document record</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-[#8b92a5] uppercase">13 Jun 2026</span>
+                      </div>
+                      <div className="bg-white rounded-[16px] p-3.5 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-1 h-8 bg-emerald-500 rounded-full"></div>
+                          <div>
+                            <p className="text-[13px] text-[#1a1f36] font-bold">Vaccination</p>
+                            <p className="text-[11px] text-[#8b92a5] font-medium">Clinical document record</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-[#8b92a5] uppercase">13 Jun 2026</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Owner Information Card */}
           <div className="mx-5 mt-4 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
@@ -1041,6 +1097,148 @@ const HomeVisitDetails = () => {
         </div>
 
       </div>
+
+      {/* ═══════════════ PASSPORT BOTTOM SHEET OVERLAY ═══════════════ */}
+      {passportOverlayOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-[#000000]/45 backdrop-blur-[3px] flex items-end md:items-center justify-center transition-all duration-300"
+          onClick={() => setPassportOverlayOpen(false)}
+        >
+          <div 
+            className="w-full max-w-[500px] bg-white rounded-t-[2.2rem] md:rounded-[2.5rem] rounded-b-none md:rounded-b-[2.5rem] p-5 md:p-7 pb-6 md:pb-8 shadow-2xl mx-auto flex flex-col select-none relative animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Grab handle */}
+            <div className="w-14 h-1.5 bg-[#e2e8f0] rounded-full mx-auto mb-5 md:mb-6" />
+
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl md:text-[26px] font-extrabold text-[#0c1322] tracking-tight leading-none text-gray-850">Select Pet Passport</h2>
+              <button 
+                onClick={() => setPassportOverlayOpen(false)}
+                className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5 md:w-6 md:h-6" strokeWidth={2.5} />
+              </button>
+            </div>
+            <p className="text-xs md:text-[14px] text-gray-405 font-bold mb-4 pointer-events-none text-[#8b92a5]">Choose which passport to sync with this visit</p>
+
+            <div className="flex-1 overflow-y-auto max-h-[300px] space-y-3 pr-1 py-1">
+              {loadingUserPassports ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-3">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ec4899]"></div>
+                  <p className="text-xs text-gray-500 font-medium">Fetching passports...</p>
+                </div>
+              ) : userPassports.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="w-12 h-12 rounded-xl bg-pink-50 flex items-center justify-center text-[#ec4899] mb-3">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <p className="text-sm font-bold text-gray-850">No passports found</p>
+                  <p className="text-xs text-gray-400 max-w-[240px] mt-1">This user hasn't created a Pet Passport yet.</p>
+                </div>
+              ) : (
+                userPassports.map((passport) => {
+                  const isSelected = selectedPassportId === passport.id;
+                  const pId = (passport.passport_id || `SRV-${passport.id?.slice(0, 6).toUpperCase()}`).replace(/^#/, "");
+                  const pName = passport.pet_name || "Unnamed Pet";
+                  const pBreed = passport.breed || "Breed";
+                  const pAge = getFormattedPetAge(passport.approx_years, passport.approx_months, passport.dob);
+                  const isCat = passport.species?.toLowerCase() === "cat";
+                  const gender = passport.gender || "Male";
+
+                  return (
+                    <div 
+                      key={passport.id}
+                      onClick={() => setSelectedPassportId(passport.id)}
+                      className={`border-2 rounded-[20px] p-3 md:p-4 cursor-pointer flex items-center gap-3 md:gap-4 transition-all duration-200 ${
+                        isSelected 
+                          ? "border-[#f9a8d4] bg-[#fff5f8]" 
+                          : "border-gray-250 bg-white hover:border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      {/* Pet Photo on left */}
+                      <div className="w-[56px] h-[56px] rounded-[14px] overflow-hidden shrink-0 border border-gray-100 flex items-center justify-center bg-gray-50">
+                        {passport.photo_url ? (
+                          <img 
+                            src={passport.photo_url} 
+                            alt={pName} 
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className={`w-full h-full flex items-center justify-center ${
+                            isCat ? "bg-amber-50 text-amber-500" : "bg-orange-50 text-orange-500"
+                          }`}>
+                            <Activity className="w-5 h-5" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Details Middle */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-extrabold text-[#0c1322] text-sm md:text-lg leading-tight mb-1">{pName}</p>
+                        
+                        <div className="flex flex-wrap items-center text-[10px] md:text-xs text-gray-400 font-semibold gap-1 px-0.5">
+                          <FileText className="w-3 h-3 text-[#ec4899] shrink-0" />
+                          <span className="truncate">{pId}</span>
+                          <span className="text-gray-300 mx-1 font-extrabold">·</span>
+                          <PawPrint className="w-3 h-3 text-[#ec4899] shrink-0" />
+                          <span className="truncate">{pBreed}</span>
+                        </div>
+
+                        {/* Chips Line */}
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          {gender.toLowerCase() === "female" ? (
+                            <span className="bg-[#fff1f2] text-[#f43f5e] px-2 py-0.5 text-[10px] font-bold rounded-md flex items-center gap-1">
+                              <span className="text-xs">♀</span> Female
+                            </span>
+                          ) : (
+                            <span className="bg-[#eff6ff] text-[#3b82f6] px-2 py-0.5 text-[10px] font-bold rounded-md flex items-center gap-1">
+                              <span className="text-xs">♂</span> Male
+                            </span>
+                          )}
+
+                          <span className="bg-[#f0fdf4] text-[#16a34a] px-2 py-0.5 text-[10px] font-bold rounded-md flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-[#16a34a]" /> {pAge}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Radio button on right */}
+                      <div className="shrink-0 ml-1">
+                        {isSelected ? (
+                          <div className="w-[20px] h-[20px] rounded-full border-2 border-[#ec4899] flex items-center justify-center bg-white">
+                            <div className="w-[10px] h-[10px] rounded-full bg-[#ec4899]" />
+                          </div>
+                        ) : (
+                          <div className="w-[20px] h-[20px] rounded-full border-2 border-slate-200 bg-white" />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 mt-4 mb-4 px-1">
+              <Info className="w-5 h-5 text-[#ec4899] shrink-0" />
+              <span className="text-[13px] text-gray-500 font-bold">Select a passport to continue</span>
+            </div>
+
+            <button 
+              onClick={handleConfirmConnect}
+              disabled={!selectedPassportId}
+              className={`w-full py-3.5 text-[16px] font-extrabold text-white rounded-[20px] shadow-sm transition-all duration-200 ${
+                selectedPassportId 
+                  ? "bg-[#eb5e99] hover:bg-[#e14f8a] active:scale-[0.98]" 
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              Connect Passport
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ═══════════════ QR SCANNER OVERLAY ═══════════════ */}
       {qrOverlayOpen && (
