@@ -1,2065 +1,619 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { 
-  ArrowLeft, MoreHorizontal, Moon, Shield, Copy, 
-  CheckCircle2, Play, Calendar, Wallet, User, Home,
-  MessageSquare, Star, MapPin, Clock, Compass, Plus, 
-  Minus, Sparkles, Check, ChevronUp, ChevronDown, 
-  Activity, Video, Phone, Tag, Trash, AlertTriangle, LifeBuoy, Info, X, Hourglass, Building2,
-  FileText, PawPrint
-} from "lucide-react";
 import { toast } from "sonner";
-import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { supabase } from "@/integrations/supabase/client";
-
-interface ClinicVisitDetailsState {
-  visit?: {
-    id: string;
-    petName: string;
-    petBreed: string;
-    petAge: string;
-    ownerName: string;
-    ownerPhone: string;
-    address: string;
-    time: string;
-    reason: string;
-    image: string;
-    distance: string;
-  };
-}
-
-const PASSPORT_DATA = {
-  luna: { 
-    name: "Luna", 
-    id: "#PP-88291", 
-    age: "4 Years", 
-    breed: "Golden Retriever · Female", 
-    ageText: "4 yrs", 
-    weight: "65 lbs", 
-    dob: "Mar 2020", 
-    avatar: "luna" 
-  },
-  max: { 
-    name: "Max", 
-    id: "#PP-44103", 
-    age: "2 Years", 
-    breed: "Labrador · Male", 
-    ageText: "2 yrs", 
-    weight: "55 lbs", 
-    dob: "Jan 2022", 
-    avatar: "max"  
-  },
-  coco: { 
-    name: "Coco", 
-    id: "#PP-76540", 
-    age: "6 Years", 
-    breed: "Beagle · Female", 
-    ageText: "6 yrs", 
-    weight: "22 lbs", 
-    dob: "Sep 2018", 
-    avatar: "coco" 
-  },
-};
-
-const getFormattedPetAge = (approxYears: any, approxMonths: any, dob: any) => {
-  let yrs = 0;
-  let mos = 0;
-  let hasData = false;
-
-  if (approxYears !== null && approxYears !== undefined && !isNaN(parseInt(approxYears, 10))) {
-    yrs = parseInt(approxYears, 10);
-    mos = parseInt(approxMonths, 10) || 0;
-    hasData = true;
-  } else if (dob) {
-    const dobDate = new Date(dob);
-    if (!isNaN(dobDate.getTime())) {
-      const today = new Date();
-      yrs = today.getFullYear() - dobDate.getFullYear();
-      mos = today.getMonth() - dobDate.getMonth();
-      if (mos < 0) {
-        yrs--;
-        mos += 12;
-      }
-      hasData = true;
-    }
-  }
-
-  if (!hasData) {
-    return "1 yr";
-  }
-
-  // Formatting logic according to requirements
-  if (yrs <= 0) {
-    return `${mos || 1} mos`;
-  } else {
-    return `${yrs} yr${mos > 0 ? ` ${mos} mos` : ""}`;
-  }
-};
-
-const getShortBookingId = (id: string | undefined): string => {
-  if (!id) return "...";
-  const clean = id.replace(/[-]/g, "");
-  if (clean.length >= 9) {
-    const slice = clean.slice(0, 9);
-    return `${slice.slice(0, 4)}-${slice.slice(4, 7)}-${slice.slice(7, 9)}`;
-  }
-  return id;
-};
-
-const getVetPublicUrl = (photo: any) => {
-  if (!photo) return "";
-  const photoStr = typeof photo === "string" ? photo : String(photo);
-  if (photoStr.startsWith("http")) return photoStr;
-  return supabase.storage.from("vet-documents").getPublicUrl(photoStr).data.publicUrl;
-};
 
 const VetScheduleVisitDetails: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { appointmentId } = useParams(); // URL short Booking id or real id
-  
-  // Get state passed from payment/booking or use exact default details from custom layout
+  const { appointmentId } = useParams();
+
+  // Dynamic state extracted from route, falling back gracefully to the provided gorgeous mockup specifications
   const { visit: stateVisit } = (location.state as any) || {};
-  const realDbId = location.state?.realAppointmentId || stateVisit?.id || appointmentId || "SRV-84721";
 
-  const [initialVisit, setInitialVisit] = useState({
-    id: realDbId,
-    petName: stateVisit?.petName || "Luna",
-    petBreed: stateVisit?.petBreed || "Golden Retriever",
-    petAge: stateVisit?.petAge || "4 Years",
-    ownerName: stateVisit?.ownerName || "Sarah Jenkins",
-    ownerPhone: stateVisit?.ownerPhone || "+91 98765 43210",
-    address: stateVisit?.address || "123 Pet Lane, Springfield",
-    time: stateVisit?.time || "Today, 2:30 PM – 3:00 PM",
-    reason: stateVisit?.reason || "Luna has reduced appetite for last 2 days.",
-    image: stateVisit?.image || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
-    distance: "12 mins (4.2 miles)"
-  });
+  const petName = stateVisit?.petName || "Bella";
+  const petBreed = stateVisit?.petBreed || "Golden Retriever";
+  const petAge = stateVisit?.petAge || "3 Years";
+  const chiefComplaint = stateVisit?.reason || "Kiro is fainting I need emergency help.";
+  const petImage = stateVisit?.image || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&q=80&w=200&h=200";
+  const address = stateVisit?.address || "124 Maple Street, Apt 4B";
+  const scheduledTime = stateVisit?.time || "Today, 11:30 AM";
+  const ownerName = stateVisit?.ownerName || "Mark Thompson";
+  const ownerPhone = stateVisit?.ownerPhone || "+1 (555) 234-5678";
 
+  // Load Font Awesome on Mount
   useEffect(() => {
-    if (realDbId && realDbId !== "SRV-84721" && !stateVisit) {
-      const fetchApptData = async () => {
-        const { data, error } = await supabase
-          .from("vet_appointments")
-          .select("*, user:profiles!vet_appointments_user_id_fkey(*)")
-          .eq("id", realDbId)
-          .single();
-        
-        if (!error && data) {
-          setDbVisit(data);
-          const newVisit = {
-            id: data.id,
-            petName: data.pet_name || "Pet",
-            petBreed: data.pet_breed || "Breed",
-            petAge: "4 Years",
-            ownerName: data.user?.full_name || data.user?.name || "Owner",
-            ownerPhone: data.user?.phone || "+91 98765 43210",
-            address: data.appointment_type === 'home' ? "123 Premium Residency, Indiranagar" : "HSR Paws Clinic, Sector 2",
-            time: `${data.appointment_date}, ${data.appointment_time}`,
-            reason: "General Consultation & Checkup",
-            image: data.user?.profile_photo || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
-            distance: data.appointment_type === 'home' ? "1.2 miles away" : "12 mins (4.2 miles)"
-          };
-          setInitialVisit(newVisit);
-          setCurrentVisitId(newVisit.id);
-
-          if (data.vet_id) {
-            const { data: vetProf } = await supabase
-               .from("vet_profiles")
-               .select("id")
-               .eq("user_id", data.vet_id)
-               .maybeSingle();
-
-            if (vetProf) {
-              setOrCreateVetDetails(vetProf.id);
-            }
-          }
-        }
-      };
-      const setOrCreateVetDetails = (vpId: string) => {
-        setVetProfileId(vpId);
-      };
-      fetchApptData();
-    }
-  }, [realDbId, stateVisit]);
-
-  // Database and Real-time States
-  const [currentVisitId, setCurrentVisitId] = useState<string>(initialVisit.id);
-  const [dbVisit, setDbVisit] = useState<any>(null);
-  const [paymentDetails, setPaymentDetails] = useState<any>(null);
-
-  useEffect(() => {
-    const targetId = currentVisitId || realDbId || "SRV-84721";
-    let loadedDetails: any = null;
-    
-    const localPayStr = localStorage.getItem(`payment_details_${targetId}`);
-    if (localPayStr) {
+    const link = document.createElement("link");
+    link.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css";
+    link.rel = "stylesheet";
+    document.head.appendChild(link);
+    return () => {
       try {
-        loadedDetails = JSON.parse(localPayStr);
+        document.head.removeChild(link);
       } catch (e) {
-        console.error(e);
+        console.warn("Could not remove FontAwesome link:", e);
       }
-    }
+    };
+  }, []);
 
-    if (!loadedDetails && dbVisit?.consultation_notes) {
-      try {
-        if (typeof dbVisit.consultation_notes === "string") {
-          loadedDetails = JSON.parse(dbVisit.consultation_notes);
-        } else if (typeof dbVisit.consultation_notes === "object") {
-          loadedDetails = dbVisit.consultation_notes;
-        }
-      } catch (e) {
-        console.error("Error parsing consultation notes for payment:", e);
-      }
-    }
+  // Interactivity States
+  const [isSwipeMode, setIsSwipeMode] = useState(false);
+  const [swipeTranslation, setSwipeTranslation] = useState(0);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
 
-    if (loadedDetails) {
-      setPaymentDetails(loadedDetails);
-      setInitialVisit(prev => ({
-        ...prev,
-        petName: loadedDetails.petName || prev.petName,
-        petBreed: loadedDetails.petBreed || prev.petBreed,
-        petAge: loadedDetails.petAge || prev.petAge,
-        address: loadedDetails.address || prev.address,
-        time: loadedDetails.time_display || prev.time,
-      }));
-    }
-  }, [currentVisitId, realDbId, stateVisit?.id, dbVisit]);
-
-  const [vetProfileId, setVetProfileId] = useState<string | null>(null);
-  const [doctorProfile, setDoctorProfile] = useState<any>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [isOwnerOrVet, setIsOwnerOrVet] = useState(false);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
-
-  const doctorPhoto = useMemo(() => {
-    const rawPhoto = doctorProfile?.profiles?.profile_photo || doctorProfile?.profile_photo || stateVisit?.image || location.state?.vet?.image || "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=300&auto=format&fit=crop";
-    return getVetPublicUrl(rawPhoto);
-  }, [doctorProfile, stateVisit, location.state]);
-
-  // View state controllers
-  const [passportOverlayOpen, setPassportOverlayOpen] = useState(false);
-  const [qrOverlayOpen, setQrOverlayOpen] = useState(false);
-  const [showUserQr, setShowUserQr] = useState(false);
-  const [headerDropdownOpen, setHeaderDropdownOpen] = useState(false);
-  const [helpScreenOpen, setHelpScreenOpen] = useState(false);
-
-  // Functional interactive states
-  const [selectedPassportId, setSelectedPassportId] = useState<string | null>(null);
-  const [connectedPassport, setConnectedPassport] = useState<any | null>(null);
-  const [connectedMedicalLog, setConnectedMedicalLog] = useState<any | null>(null);
-  const [connectedConditions, setConnectedConditions] = useState<any[]>([]);
-  const [connectedRecords, setConnectedRecords] = useState<any[]>([]);
-  const [userPassports, setUserPassports] = useState<any[]>([]);
-  const [loadingUserPassports, setLoadingUserPassports] = useState(false);
-
-  // Drag to dismiss pet passport bottom sheet state
-  const [sheetDragY, setSheetDragY] = useState(0);
-  const [isDraggingSheet, setIsDraggingSheet] = useState(false);
-  const sheetDragStartY = useRef(0);
+  const handleRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const [maxTrack, setMaxTrack] = useState(280);
 
   useEffect(() => {
-    if (!isDraggingSheet) return;
-
-    const handleGlobalMove = (e: TouchEvent | MouseEvent) => {
-      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-      const offset = clientY - sheetDragStartY.current;
-      if (offset > 0) {
-        setSheetDragY(offset);
-      }
-    };
-
-    const handleGlobalEnd = () => {
-      setIsDraggingSheet(false);
-      if (sheetDragY > 100) {
-        setPassportOverlayOpen(false);
-        setSheetDragY(0);
-      } else {
-        setSheetDragY(0);
-      }
-    };
-
-    window.addEventListener("touchmove", handleGlobalMove, { passive: false });
-    window.addEventListener("touchend", handleGlobalEnd);
-    window.addEventListener("mousemove", handleGlobalMove);
-    window.addEventListener("mouseup", handleGlobalEnd);
-
-    return () => {
-      window.removeEventListener("touchmove", handleGlobalMove);
-      window.removeEventListener("touchend", handleGlobalEnd);
-      window.removeEventListener("mousemove", handleGlobalMove);
-      window.removeEventListener("mouseup", handleGlobalEnd);
-    };
-  }, [isDraggingSheet, sheetDragY]);
-
-  const handleStartDrag = (e: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>) => {
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-    setIsDraggingSheet(true);
-    sheetDragStartY.current = clientY - sheetDragY;
-  };
-
-  const fetchUserPassports = async () => {
-    setLoadingUserPassports(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("Please login to connect passport.");
-        setLoadingUserPassports(false);
-        return;
-      }
-      const { data, error } = await supabase
-        .from("pet_passports")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-      if (error) {
-        console.error("Error fetching user passports:", error);
-        toast.error("Failed to load pet passports.");
-      } else {
-        setUserPassports(data || []);
-      }
-    } catch (err) {
-      console.error("Error loading passports exception:", err);
-    } finally {
-      setLoadingUserPassports(false);
+    if (isSwipeMode && containerRef.current && handleRef.current) {
+      const containerWidth = containerRef.current.clientWidth;
+      const handleWidth = handleRef.current.clientWidth;
+      setMaxTrack(containerWidth - handleWidth - 12);
     }
+  }, [isSwipeMode]);
+
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    if (isCompleted) return;
+    isDragging.current = true;
+    const clientX = "touches" in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    startX.current = clientX - swipeTranslation;
   };
-  
-  const [chiefComplaint, setChiefComplaint] = useState(initialVisit.reason);
-  const [isEditingReason, setIsEditingReason] = useState(false);
-  const [reasonInput, setReasonInput] = useState(initialVisit.reason);
-  const [flashOn, setFlashOn] = useState(false);
 
-  // Camera & Video Scanner States
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [cameraError, setCameraError] = useState(false);
-
-  // Synchronize database values to local state when available
   useEffect(() => {
-    if (dbVisit?.consultation_notes) {
-      setChiefComplaint(dbVisit.consultation_notes);
-      setReasonInput(dbVisit.consultation_notes);
-    }
-  }, [dbVisit?.consultation_notes]);
-
-  // 1. Fetching appointment and veterinarian details
-  useEffect(() => {
-    let active = true;
-
-    const fetchAppointmentAndVet = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) setCurrentUser(user);
-        
-        let query = supabase.from("vet_appointments").select("*");
-        
-        const targetId = realDbId || stateVisit?.id;
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetId || "");
-
-        if (targetId && targetId !== "SRV-84721" && isUUID) {
-          query = query.eq("id", targetId);
-        } else {
-          if (user?.id) {
-            query = query.or(`user_id.eq.${user.id},vet_id.eq.${user.id}`);
-          }
-          query = query.order("created_at", { ascending: false }).limit(1);
-        }
-
-        const { data: apptData, error: apptError } = await query;
-        if (apptError) {
-          console.error("Error fetching appointment:", apptError);
-          return;
-        }
-
-        if (apptData && apptData.length > 0) {
-          const appt = apptData[0];
-          if (!active) return;
-          setDbVisit(appt);
-          setCurrentVisitId(appt.id);
-
-          if (user && (user.id === appt.user_id || user.id === appt.vet_id)) {
-            setIsOwnerOrVet(true);
-          }
-          setIsAuthLoading(false);
-
-          // Fetch the corresponding vet's profile ID
-          if (appt.vet_id) {
-            const { data: vetProf, error: vetProfErr } = await supabase
-               .from("vet_profiles")
-               .select("id")
-               .eq("user_id", appt.vet_id)
-               .maybeSingle();
-
-            if (vetProf && !vetProfErr) {
-              setVetProfileId(vetProf.id);
-            }
-          }
-        } else {
-          setIsAuthLoading(false);
-          // Fallback to use first veterinarian profile if no appointment exists
-          const { data: fallbackVet } = await supabase
-            .from("vet_profiles")
-            .select("id")
-            .limit(1)
-            .maybeSingle();
-
-          if (fallbackVet && active) {
-            setVetProfileId(fallbackVet.id);
-          }
-        }
-      } catch (err) {
-        console.error("Error in fetchAppointmentAndVet:", err);
-      }
-    };
-
-    fetchAppointmentAndVet();
-
-    return () => {
-      active = false;
-    };
-  }, [stateVisit?.id]);
-
-  // 2. Real-time subscription to appointment table updates
-  useEffect(() => {
-    if (!currentVisitId || currentVisitId === "SRV-84721") return;
-
-    const channel = supabase
-      .channel("clinic_visit_details_changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "vet_appointments",
-          filter: `id=eq.${currentVisitId}`,
-        },
-        async (payload) => {
-          console.log("Realtime appointment update received:", payload);
-          if (payload.new) {
-            setDbVisit(payload.new as any);
-            
-            // Redirect automatically if consultation started
-            if (payload.new.status === "in_progress") {
-               toast.success("Consultation Started! Proceeding...");
-               setTimeout(() => {
-                 navigate(`/vet/consultation-detail`, { state: { visitId: currentVisitId } });
-               }, 1000);
-            }
-
-            if (payload.new.vet_id) {
-              const { data: vetProf } = await supabase
-                .from("vet_profiles")
-                .select("id")
-                .eq("user_id", payload.new.vet_id)
-                .maybeSingle();
-
-              if (vetProf) {
-                setVetProfileId(vetProf.id);
-              }
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [currentVisitId]);
-
-  // 3. Fetch Doctor details once vetProfileId is resolved
-  useEffect(() => {
-    if (!vetProfileId) return;
-    
-    const fetchDoctorProfile = async () => {
-      try {
-        const { data: vetProf, error: vetProfErr } = await supabase
-          .from("vet_profiles")
-          .select("*")
-          .eq("id", vetProfileId)
-          .maybeSingle();
-
-        if (vetProf && !vetProfErr) {
-          // Fetch corresponding user profile manually to avoid join limitations or RLS blocks
-          const { data: uProf } = await supabase
-            .from("profiles")
-            .select("name, full_name, profile_photo, is_admin_approved")
-            .eq("id", vetProf.user_id)
-            .maybeSingle();
-
-          if (uProf) {
-            vetProf.profiles = uProf;
-          }
-          setDoctorProfile(vetProf);
-        }
-      } catch (err) {
-        console.error("Error fetching doctor profile details:", err);
-      }
-    };
-
-    fetchDoctorProfile();
-  }, [vetProfileId]);
-
-  // 4. Camera access handler for QR Overlay starts here
-  useEffect(() => {
-    let active = true;
-    let autoScanTimeout: NodeJS.Timeout | null = null;
-
-    const startCamera = async () => {
-      try {
-        setCameraError(false);
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" }
-        });
-        if (!active) {
-          stream.getTracks().forEach(track => track.stop());
-          return;
-        }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(e => console.error("Video play failed", e));
-        }
-
-        // Apply torch state if camera supports it and flash is on
-        const track = stream.getVideoTracks()[0];
-        if (track) {
-          try {
-            await track.applyConstraints({
-              advanced: [{ torch: flashOn }]
-            } as any);
-          } catch (e) {
-            console.log("Torch constraint fail", e);
-          }
-        }
-
-        // Simulated QR Auto scan completion after 3.2 seconds
-        autoScanTimeout = setTimeout(() => {
-          if (active) {
-            handleSimulateQRSuccess();
-          }
-        }, 3200);
-
-      } catch (err) {
-        console.error("Camera access failed:", err);
-        setCameraError(true);
-      }
-    };
-
-    if (qrOverlayOpen) {
-      startCamera();
-    } else {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
-    }
-
-    return () => {
-      active = false;
-      if (autoScanTimeout) clearTimeout(autoScanTimeout);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
-    };
-  }, [qrOverlayOpen]);
-
-  // Handle flashOn changes with media stream constraints
-  useEffect(() => {
-    if (streamRef.current) {
-      const track = streamRef.current.getVideoTracks()[0];
-      if (track) {
-        try {
-          track.applyConstraints({
-            advanced: [{ torch: flashOn }]
-          } as any);
-        } catch (e) {
-          console.log("Torch toggle fail:", e);
-        }
-      }
-    }
-  }, [flashOn]);
-
-  const openQRScanner = () => {
-    setQrOverlayOpen(true);
-  };
-
-  // Map interactive states
-  const [scale, setScale] = useState(1);
-  const [translateX, setTranslateX] = useState(0);
-  const [translateY, setTranslateY] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-
-  // Map pan limit calculations
-  const applyTransform = (newScale: number, newTx: number, newTy: number) => {
-    // Clamping the pan translation bounds for safety
-    const maxTx = 0;
-    const minTx = Math.min(0, 360 - 840 * newScale);
-    const maxTy = 0;
-    const minTy = Math.min(0, 192 - 384 * newScale);
-
-    const clampedTx = Math.max(minTx, Math.min(maxTx, newTx));
-    const clampedTy = Math.max(minTy, Math.min(maxTy, newTy));
-
-    setScale(newScale);
-    setTranslateX(clampedTx);
-    setTranslateY(clampedTy);
-  };
-
-  const handleZoomIn = () => {
-    const newScale = Math.min(3, scale + 0.3);
-    applyTransform(newScale, translateX, translateY);
-  };
-
-  const handleZoomOut = () => {
-    const newScale = Math.max(0.5, scale - 0.3);
-    applyTransform(newScale, translateX, translateY);
-  };
-
-  const handleRecenter = () => {
-    applyTransform(1, 0, 0);
-  };
-
-  // Drag handlers for the map
-  const handleMapMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - translateX, y: e.clientY - translateY });
-  };
-
-  const handleMapMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    const nextTx = e.clientX - dragStart.x;
-    const nextTy = e.clientY - dragStart.y;
-    applyTransform(scale, nextTx, nextTy);
-  };
-
-  const handleMapMouseUpOrLeave = () => {
-    setIsDragging(false);
-  };
-
-  // Clipboard copies
-  const handleCopyBookingId = () => {
-    navigator.clipboard.writeText(getShortBookingId(currentVisitId));
-    toast.success("Booking ID copied to clipboard!");
-  };
-
-  const handleCopyAddress = () => {
-    navigator.clipboard.writeText(dbVisit?.address || initialVisit.address);
-    toast.success("Address copied to clipboard!");
-  };
-
-  // QR trigger simulates success
-  const handleSimulateQRSuccess = async () => {
-    setQrOverlayOpen(false);
-    toast.custom((t) => (
-      <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xl flex items-center gap-3 animate-slide-in pointer-events-auto">
-        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-          <Check className="w-5 h-5 text-white" strokeWidth={3} />
-        </div>
-        <div>
-          <p className="font-bold text-gray-900 text-sm">Consultation Started!</p>
-          <p className="text-xs text-slate-500 mt-0.5">Verified securely.</p>
-        </div>
-      </div>
-    ), { duration: 4000 });
-
-    if (currentVisitId && currentVisitId !== "SRV-84721") {
-      try {
-        await supabase.from("vet_appointments").update({ status: "in_progress" }).eq("id", currentVisitId);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    
-    // Redirect to final consultation view
-    setTimeout(() => {
-      navigate(`/vet/consultation-detail`, { state: { visitId: currentVisitId } });
-    }, 1200);
-  };
-
-  // Editing Chief Complaint
-  const handleSaveReason = async () => {
-    setChiefComplaint(reasonInput);
-    setIsEditingReason(false);
-    toast.success("Visit reason updated successfully!");
-
-    if (currentVisitId && currentVisitId !== "SRV-84721") {
-      try {
-        const { error } = await supabase
-          .from("vet_appointments")
-          .update({ consultation_notes: reasonInput })
-          .eq("id", currentVisitId);
-        if (error) {
-          console.error("Error updating consultation notes:", error);
-        }
-      } catch (err) {
-        console.error("Failed to update database consultation notes:", err);
-      }
-    }
-  };
-
-  const handleCancelReason = () => {
-    setReasonInput(chiefComplaint);
-    setIsEditingReason(false);
-  };
-
-  // Confirming Pet Passport connection
-  const handleConfirmConnect = async () => {
-    if (!selectedPassportId) return;
-    const row = userPassports.find(p => p.id === selectedPassportId);
-    if (!row) return;
-
-    try {
-      // Fetch details using direct tables
-      const [medicalRes, conditionsRes, recordsRes] = await Promise.all([
-        supabase
-          .from("pet_medical_logs")
-          .select("*")
-          .eq("pet_passport_id", row.id)
-          .maybeSingle(),
-        supabase
-          .from("pet_health_conditions")
-          .select("*")
-          .eq("pet_passport_id", row.id),
-        supabase
-          .from("pet_health_records_documents")
-          .select("*")
-          .eq("pet_passport_id", row.id)
-      ]);
-
-      setConnectedMedicalLog(medicalRes.data || null);
-      setConnectedConditions(conditionsRes.data || []);
-      setConnectedRecords(recordsRes.data || []);
-
-      // Format EXACTLY in the layout schema so all downstream elements work perfect
-      const pId = row.passport_id || `#PP-${row.id?.slice(0, 7).toUpperCase()}`;
+    const handleCompleteConsultation = async () => {
+      toast.success("Consultation Completed Successfully!");
       
-      const ageTextVal = getFormattedPetAge(row.approx_years, row.approx_months, row.dob);
-      const ageVal = ageTextVal;
+      // Attempt status update on supabase if valid UUID is present
+      if (appointmentId && appointmentId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        try {
+          await supabase
+            .from("vet_appointments")
+            .update({ status: "completed" })
+            .eq("id", appointmentId);
+        } catch (err) {
+          console.error(err);
+        }
+      }
 
-      const weightVal = row.weight ? `${row.weight} lbs` : "N/A";
-      const dobVal = row.dob ? new Date(row.dob).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A";
-      const issueDateVal = row.created_at ? new Date(row.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A";
+      setTimeout(() => {
+        navigate("/vet/schedule");
+      }, 1500);
+    };
 
-      const mappedPassport = {
-        id: pId,
-        rawId: row.id,
-        name: row.pet_name || "Unnamed Pet",
-        species: row.species || "N/A",
-        gender: row.gender || "N/A",
-        breed: `${row.breed || "Breed"} · ${row.gender || ""}`,
-        appearance: row.appearance || "N/A",
-        age: ageVal,
-        ageText: ageTextVal,
-        weight: weightVal,
-        dob: dobVal,
-        issueDate: issueDateVal,
-        ownerName: row.owner_name || "N/A",
-        primaryPhone: row.primary_phone || "N/A",
-        emergencyContactName: row.emergency_contact_name || "N/A",
-        emergencyPhone: row.emergency_phone || "N/A",
-        emergencyRelationship: row.emergency_relationship || "N/A",
-        photo_url: row.photo_url || null,
-        avatar: row.species?.toLowerCase() === "cat" ? "coco" : "luna"
-      };
+    const handleDragMove = (e: MouseEvent | TouchEvent) => {
+      if (!isDragging.current || isCompleted) return;
+      const clientX = "touches" in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+      let deltaX = clientX - startX.current;
 
-      setConnectedPassport(mappedPassport);
-      setPassportOverlayOpen(false);
-      toast.success(`${mappedPassport.name}'s Passport synced successfully!`);
-    } catch (err) {
-      console.error("Error setting up connected passport:", err);
-      toast.error("Failed to connect passport completely.");
-    }
+      if (deltaX < 0) deltaX = 0;
+      if (deltaX > maxTrack) deltaX = maxTrack;
+
+      setSwipeTranslation(deltaX);
+    };
+
+    const handleDragEnd = () => {
+      if (!isDragging.current || isCompleted) return;
+      isDragging.current = false;
+
+      if (swipeTranslation >= maxTrack * 0.85) {
+        setSwipeTranslation(maxTrack);
+        setIsCompleted(true);
+        handleCompleteConsultation();
+      } else {
+        setSwipeTranslation(0);
+      }
+    };
+
+    const handleMove = (e: MouseEvent | TouchEvent) => handleDragMove(e);
+    const handleEnd = () => handleDragEnd();
+
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleEnd);
+    window.addEventListener("touchmove", handleMove, { passive: false });
+    window.addEventListener("touchend", handleEnd);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleEnd);
+      window.removeEventListener("touchmove", handleMove);
+      window.removeEventListener("touchend", handleEnd);
+    };
+  }, [swipeTranslation, maxTrack, isCompleted, appointmentId, navigate]);
+
+  const handleStartNavigation = () => {
+    toast.info("Starting navigation to owner's address...");
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, "_blank");
   };
-
-  // Check if they came from the correct flow
-  const isDirectAccess = (!location.state || !location.state.fromBookingFlow) && !isOwnerOrVet;
-
-  if (isDirectAccess && !isAuthLoading) {
-    return (
-      <div className="w-full min-h-screen bg-[#f8f9fa] flex items-center justify-center p-4 font-sans text-gray-900">
-        <div className="w-full max-w-md bg-white border border-gray-200 rounded-[32px] p-8 shadow-[0_12px_40px_rgba(0,0,0,0.03)] text-center flex flex-col items-center">
-          {/* Animated Warning Icon Indicator */}
-          <div className="w-16 h-16 rounded-full bg-pink-50 border border-pink-100 flex items-center justify-center text-[#ec4899] mb-6 shadow-sm">
-            <Shield className="w-8 h-8 stroke-[2.2]" />
-          </div>
-          
-          <h1 className="text-xl font-extrabold tracking-tight text-gray-900 mb-3">
-            Consultation Details Protected
-          </h1>
-          
-          <p className="text-[13px] text-gray-500 font-medium leading-relaxed mb-8 px-2">
-            This consultation can only be accessed through the official appointment flow within Sruvo. Access is restricted to ensure the privacy, security, and integrity of consultation records.
-          </p>
-          
-          <button
-            onClick={() => navigate("/vet/schedule")}
-            className="w-full py-4 text-sm font-black text-white bg-[#ec4899] hover:bg-[#db2777] rounded-full shadow-lg shadow-pink-100 hover:shadow-none active:scale-95 transition-all duration-200"
-          >
-            Go to Vet Schedule
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="w-full min-h-screen bg-[#f8f9fa] text-[#1f1f1f] relative font-sans overflow-x-hidden">
-      
-      {/* ═══════════════ PASSPORT BOTTOM SHEET OVERLAY ═══════════════ */}
-      {passportOverlayOpen && (
-        <div 
-          className="fixed inset-0 z-50 bg-[#000000]/45 backdrop-blur-[3px] flex items-end md:items-center justify-center transition-all duration-300"
-          onClick={() => setPassportOverlayOpen(false)}
-        >
-          <div 
-            className="w-full max-w-[500px] bg-white rounded-t-[2.2rem] md:rounded-[2.5rem] rounded-b-none md:rounded-b-[2.5rem] p-5 md:p-7 pb-6 md:pb-8 animate-slide-up md:animate-zoom-in shadow-2xl mx-auto flex flex-col select-none relative"
-            style={{
-              transform: `translateY(${sheetDragY}px)`,
-              transition: isDraggingSheet ? "none" : "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Absolute Bottom safe-area guard spacer to fix potential thin viewport bottom gaps */}
-            <div className="absolute top-[99%] left-0 right-0 h-40 bg-white md:hidden pointer-events-none" />
+    <div className="bg-gray-200 flex justify-center antialiased select-none min-h-screen">
+      {/* Dynamic styles injector */}
+      <style>{`
+        .map-bg {
+          background-color: #f0f2f5;
+          background-image: linear-gradient(#e5e7eb 2px, transparent 2px), linear-gradient(90deg, #e5e7eb 2px, transparent 2px);
+          background-size: 40px 40px;
+        }
+        @keyframes subtleShimmer {
+          0%, 100% { opacity: 0.15; }
+          50% { opacity: 0.35; }
+        }
+        .shimmer-track {
+          animation: subtleShimmer 3s infinite ease-in-out;
+        }
+      `}</style>
 
-            {/* Grab handle */}
-            <div 
-              className="w-14 h-1.5 bg-[#e2e8f0] rounded-full mx-auto mb-5 md:mb-6 cursor-grab active:cursor-grabbing hover:bg-gray-300 transition-colors py-0.5 touch-none"
-              onTouchStart={handleStartDrag}
-              onMouseDown={handleStartDrag}
-            />
-            
-            <div 
-              className="cursor-grab active:cursor-grabbing select-none touch-none"
-              onTouchStart={handleStartDrag}
-              onMouseDown={handleStartDrag}
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl md:text-[26px] font-extrabold text-[#0c1322] tracking-tight leading-none pointer-events-none">Select Pet Passport</h2>
-                <button 
-                  onClick={() => setPassportOverlayOpen(false)}
-                  className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors pointer-events-auto"
-                >
-                  <X className="w-5 h-5 md:w-6 md:h-6" strokeWidth={2.5} />
-                </button>
-              </div>
-              <p className="text-xs md:text-[14px] text-gray-400 font-semibold mt-1 md:mt-1.5 mb-4 md:mb-6 pointer-events-none">Choose which passport to sync with this visit</p>
-            </div>
-            
-            <div className="flex-1">
-              {loadingUserPassports ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-3">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ec4899]"></div>
-                  <p className="text-xs text-gray-500 font-medium">Fetching passports from database...</p>
-                </div>
-              ) : userPassports.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center select-none">
-                  <div className="w-12 h-12 rounded-xl bg-pink-50 flex items-center justify-center text-[#ec4899] mb-3">
-                    <AlertTriangle className="w-6 h-6" />
-                  </div>
-                  <p className="text-sm font-bold text-gray-800">No passports found</p>
-                  <p className="text-xs text-gray-500 max-w-[240px] mt-1">Please create a Pet Passport from your profile first.</p>
-                </div>
-              ) : (
-                <div className="space-y-3 md:space-y-4 max-h-[305px] overflow-y-auto pr-1 py-1 touch-auto">
-                  {userPassports.map((passport) => {
-                    const isSelected = selectedPassportId === passport.id;
-                    const pId = (passport.passport_id || `SRV-${passport.id?.slice(0, 6).toUpperCase()}`).replace(/^#/, "");
-                    const pName = passport.pet_name || "Unnamed Pet";
-                    
-                    const pAge = getFormattedPetAge(passport.approx_years, passport.approx_months, passport.dob);
-                    
-                    const pBreed = passport.breed || "Breed";
-                    const isCat = passport.species?.toLowerCase() === "cat";
-                    const gender = passport.gender || "Male";
-                    
-                    return (
-                      <div 
-                        key={passport.id}
-                        onClick={() => setSelectedPassportId(passport.id)}
-                        className={`border-2 rounded-[20px] md:rounded-[24px] p-3 md:p-4 cursor-pointer flex items-center gap-3 md:gap-4 transition-all duration-200 ${
-                          isSelected 
-                            ? "border-[#f9a8d4] bg-[#fff5f8]" 
-                            : "border-gray-200/85 bg-white hover:border-gray-300 hover:bg-gray-50/50"
-                        }`}
-                      >
-                        {/* Pet Photo on left */}
-                        <div className="w-[56px] h-[56px] md:w-[68px] md:h-[68px] rounded-[14px] md:rounded-[18px] overflow-hidden shrink-0 border border-gray-100 flex items-center justify-center bg-gray-50">
-                          {passport.photo_url ? (
-                            <img 
-                              src={passport.photo_url} 
-                              alt={pName} 
-                              className="w-full h-full object-cover"
-                              referrerPolicy="no-referrer"
-                            />
-                          ) : (
-                            <div className={`w-full h-full flex items-center justify-center ${
-                              isCat ? "bg-amber-50 text-amber-500" : "bg-orange-50 text-orange-500"
-                            }`}>
-                              <Activity className="w-5 h-5 md:w-6 md:h-6" />
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Details Middle */}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-extrabold text-[#0c1322] text-sm md:text-lg leading-tight mb-1">{pName}</p>
-                          
-                          <div className="flex flex-wrap items-center text-[10px] md:text-xs text-gray-500 font-semibold gap-1 px-0.5">
-                            <FileText className="w-3 h-3 md:w-3.5 md:h-3.5 text-[#ec4899] shrink-0" />
-                            <span className="truncate">{pId}</span>
-                            <span className="text-gray-300 mx-1 font-extrabold">·</span>
-                            <PawPrint className="w-3 h-3 md:w-3.5 md:h-3.5 text-[#ec4899] shrink-0" />
-                            <span className="truncate">{pBreed}</span>
-                          </div>
-
-                          {/* Chips Line */}
-                          <div className="flex items-center gap-1.5 md:gap-2 mt-1.5 md:mt-2">
-                            {/* Gender chip */}
-                            {gender.toLowerCase() === "female" ? (
-                              <span className="bg-[#fff1f2] text-[#f43f5e] px-2 md:px-2.5 py-0.5 text-[10px] md:text-xs font-bold rounded-md md:rounded-lg flex items-center gap-1">
-                                <span className="text-xs md:text-sm font-bold">♀</span> Female
-                              </span>
-                            ) : (
-                              <span className="bg-[#eff6ff] text-[#3b82f6] px-2 md:px-2.5 py-0.5 text-[10px] md:text-xs font-bold rounded-md md:rounded-lg flex items-center gap-1">
-                                <span className="text-xs md:text-sm font-bold">♂</span> Male
-                              </span>
-                            )}
-
-                            {/* Age chip */}
-                            <span className="bg-[#f0fdf4] text-[#16a34a] px-2 md:px-2.5 py-0.5 text-[10px] md:text-xs font-bold rounded-md md:rounded-lg flex items-center gap-1">
-                              <Calendar className="w-3 h-3 md:w-3.5 md:h-3.5 text-[#16a34a]" /> {pAge}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Radio Button on right */}
-                        <div className="shrink-0 ml-1">
-                          {isSelected ? (
-                            <div className="w-[20px] h-[20px] md:w-[24px] md:h-[24px] rounded-full border-2 border-[#ec4899] flex items-center justify-center bg-white">
-                              <div className="w-[10px] h-[10px] md:w-[12px] md:h-[12px] rounded-full bg-[#ec4899]" />
-                            </div>
-                          ) : (
-                            <div className="w-[20px] h-[20px] md:w-[24px] md:h-[24px] rounded-full border-2 border-slate-200 bg-white" />
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Helper status text */}
-            <div className="flex items-center gap-2 mt-5 mb-5 px-1">
-              <Info className="w-5 h-5 text-[#ec4899] shrink-0" />
-              <span className="text-[14px] text-gray-500 font-bold">Select a passport to continue</span>
-            </div>
-
-            <button 
-              onClick={handleConfirmConnect}
-              disabled={!selectedPassportId}
-              className={`w-full py-4 text-[16px] font-extrabold text-white rounded-[20px] shadow-sm transition-all duration-200 ${
-                selectedPassportId 
-                  ? "bg-[#eb5e99] hover:bg-[#e14f8a] active:scale-[0.98]" 
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-              }`}
-            >
-              Connect Passport
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ═══════════════ QR SCANNER OVERLAY ═══════════════ */}
-      {qrOverlayOpen && (
-        <div id="qr-overlay" style={{ position: "fixed", inset: 0, zIndex: 50, background: "black", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <style>{`
-            @keyframes scan-line-anim {
-              0% { transform: translateY(0); }
-              50% { transform: translateY(226px); }
-              100% { transform: translateY(0); }
-            }
-          `}</style>
-          
-          {/* Video feed */}
-          <video 
-            id="qr-video" 
-            ref={videoRef}
-            autoPlay 
-            playsInline 
-            muted 
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: cameraError ? "none" : "block" }}
-          ></video>
-          {cameraError && (
-             <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", background: "linear-gradient(45deg, #111827, #000)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                <p style={{ color: "#ec4899", fontFamily: "monospace", fontSize: "12px", letterSpacing: "1px", marginBottom: "8px" }}>CAMERA UNAVAILABLE</p>
-                <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "10px" }}>Permission denied or device missing</p>
-             </div>
-          )}
-
-          {/* Dark vignette corners */}
-          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, transparent 38%, rgba(0,0,0,0.72) 100%)", pointerEvents: "none" }}></div>
-
-          {/* Top bar */}
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "52px 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 2 }}>
-            <button 
-              onClick={() => setQrOverlayOpen(false)} 
-              style={{ width: "40px", height: "40px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-            >
-              <svg width="20" height="20" fill="none" stroke="white" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5"/></svg>
-            </button>
-            <span style={{ color: "white", fontWeight: 700, fontSize: "16px", letterSpacing: ".3px" }}>Scan Vet's QR Code</span>
-            
-            {/* Flashlight toggle */}
-            <button 
-              id="flash-btn" 
-              onClick={() => setFlashOn(!flashOn)} 
-              style={{ width: "40px", height: "40px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-            >
-              {!flashOn ? (
-                <svg id="flash-off-icon" width="20" height="20" fill="none" stroke="white" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/></svg>
-              ) : (
-                <svg id="flash-on-icon" width="20" height="20" fill="#facc15" stroke="#facc15" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/></svg>
-              )}
-            </button>
-          </div>
-
-          {/* Scan frame */}
-          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -56%)", width: "240px", height: "240px" }}>
-            {/* Corners */}
-            <div className="qr-frame-corner" style={{ position: "absolute", top: 0, left: 0, borderWidth: "4px 0 0 4px", borderColor: "#ec4899", borderStyle: "solid", borderRadius: "8px 0 0 0", width: "30px", height: "30px" }}></div>
-            <div className="qr-frame-corner" style={{ position: "absolute", top: 0, right: 0, borderWidth: "4px 4px 0 0", borderColor: "#ec4899", borderStyle: "solid", borderRadius: "0 8px 0 0", width: "30px", height: "30px" }}></div>
-            <div className="qr-frame-corner" style={{ position: "absolute", bottom: 0, left: 0, borderWidth: "0 0 4px 4px", borderColor: "#ec4899", borderStyle: "solid", borderRadius: "0 0 0 8px", width: "30px", height: "30px" }}></div>
-            <div className="qr-frame-corner" style={{ position: "absolute", bottom: 0, right: 0, borderWidth: "0 4px 4px 0", borderColor: "#ec4899", borderStyle: "solid", borderRadius: "0 0 8px 0", width: "30px", height: "30px" }}></div>
-            {/* Scan line */}
-            <div id="scan-line" style={{ position: "absolute", left: "6px", right: "6px", height: "2px", background: "linear-gradient(90deg, transparent, #ec4899, transparent)", borderRadius: "2px", boxShadow: "0 0 8px #ec4899", animation: "scan-line-anim 3s infinite linear" }}></div>
-          </div>
-
-          {/* Bottom hint */}
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "24px 24px 48px", textAlign: "center" }}>
-            <p style={{ color: "rgba(255,255,255,0.9)", fontSize: "14px", fontWeight: 600, marginBottom: "6px" }}>Point camera at veterinarian's QR code</p>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "12px" }}>Hold steady — auto-detects within frame</p>
-
-            {/* Demo: simulate success */}
-            <button 
-              onClick={handleSimulateQRSuccess} 
-              style={{ marginTop: "20px", background: "rgba(236,72,153,0.25)", border: "1px solid rgba(236,72,153,0.5)", color: "white", fontSize: "12px", fontWeight: 700, padding: "10px 28px", borderRadius: "50px", cursor: "pointer", backdropFilter: "blur(8px)" }}
-            >
-              Simulate Scan ✓
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ═══════════════ MAIN SCROLLABLE APP LAYOUT ═══════════════ */}
-      <main className="w-full min-h-screen pb-48 flex flex-col relative bg-[#f8f9fa] overflow-x-hidden transition-all duration-300">
+      <div className="relative w-full max-w-[400px] bg-[#f6f7fb] h-screen overflow-hidden shadow-2xl sm:border sm:border-gray-300 sm:rounded-3xl flex flex-col">
         
-        {/* Header bar */}
-        <header className="fixed top-0 left-0 right-0 w-full z-40 bg-white/95 backdrop-blur-md px-4 md:px-6 py-4 flex items-center justify-between border-b border-gray-150 shadow-sm animate-fade-in">
+        {/* Header */}
+        <header className="flex justify-between items-center px-6 py-4 bg-white sm:rounded-t-3xl z-20 relative shrink-0">
           <button 
             onClick={() => navigate("/vet/schedule")}
-            className="p-2 hover:bg-gray-100 rounded-full text-gray-800 transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-50 border border-gray-100 text-gray-700 hover:bg-gray-100 transition"
           >
-            <ArrowLeft className="w-5 h-5 text-gray-800" strokeWidth={2.5} />
+            <i className="fas fa-arrow-left text-[14px]"></i>
           </button>
-          <h1 className="text-lg font-black tracking-tight text-gray-900">Visit Details</h1>
-          
-          <div className="relative">
-            <button 
-              onClick={() => setHeaderDropdownOpen(!headerDropdownOpen)}
-              className="p-2 hover:bg-gray-100 rounded-full text-gray-800 transition-colors"
-            >
-              <MoreHorizontal className="w-5 h-5 text-gray-800" strokeWidth={2.5} />
-            </button>
-
-            {/* Header Dropdown Menu */}
-            {headerDropdownOpen && (
-              <>
-                <div className="fixed inset-0 z-30" onClick={() => setHeaderDropdownOpen(false)} />
-                <div className="absolute right-0 top-full mt-1.5 bg-white border border-gray-200 rounded-[14px] shadow-xl min-width-[170px] overflow-hidden z-40 animate-slide-down">
-                  {/* Help */}
-                  <div 
-                    onClick={() => {
-                      setHeaderDropdownOpen(false);
-                      setHelpScreenOpen(true);
-                    }}
-                    className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 cursor-pointer font-bold text-sm text-gray-800 border-b border-gray-100"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-pink-50 flex items-center justify-center text-[#ec4899]">
-                      <LifeBuoy className="w-4 h-4" />
-                    </div>
-                    <span>Help</span>
-                  </div>
-                  {/* Info */}
-                  <div 
-                    onClick={() => {
-                      setHeaderDropdownOpen(false);
-                      toast.info("Visit status is confirmed by Sruvo Clinic Network.");
-                    }}
-                    className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 cursor-pointer font-bold text-sm text-gray-800"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
-                      <Info className="w-4 h-4" />
-                    </div>
-                    <span>Info</span>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+          <h1 className="text-[16px] font-bold text-[#1a1f36]">Visit Details</h1>
+          <button className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-50 border border-gray-100 text-gray-700 hover:bg-gray-100 transition">
+            <i className="fas fa-ellipsis-vertical text-[14px]"></i>
+          </button>
         </header>
 
-        {/* Inner Content Padding */}
-        <div className="w-full mt-[72px] px-4 sm:px-6 lg:px-8 py-5 sm:py-6 lg:py-8 space-y-6 flex-1 overflow-y-auto bg-slate-50/50">
-          
-          {/* Confirmed Indicator Badge */}
-          <div className="flex items-center justify-center w-full">
-            <div className="bg-[#dcfce7] text-[#16a34a] flex items-center px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-sm border border-green-200">
-              <span className="w-2 h-2 rounded-full mr-2 bg-[#16a34a] animate-pulse" />
-              Consultation Confirmed
+        {/* Main Scrollable Content */}
+        <main className="flex-1 overflow-y-auto pb-[240px] relative z-0 scrollbar-none" style={{ scrollbarWidth: 'none' }}>
+            
+          {/* Pet Profile Section */}
+          <div className="flex flex-col items-center pt-3 pb-2">
+            <div className="relative w-[100px] h-[100px]">
+              <img 
+                src={petImage} 
+                alt={petName} 
+                className="w-full h-full object-cover rounded-full border-[3px] border-white shadow-sm"
+              />
+              <div className="absolute bottom-1 right-1 w-[20px] h-[20px] bg-[#22c55e] border-[3px] border-white rounded-full"></div>
+            </div>
+            <h2 className="text-[26px] font-bold text-[#1a1f36] mt-2 tracking-tight">{petName}</h2>
+            <p className="text-[#8b92a5] font-medium text-[14px] mt-0.5">{petBreed} • {petAge}</p>
+            
+            <div className="mt-2.5 bg-[#f3e8ff] text-[#9d4edd] px-3 py-1 rounded-full flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 bg-[#9d4edd] rounded-full"></div>
+              <span className="text-[10px] font-bold tracking-widest uppercase">Consultation Confirmed</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 xl:gap-8 items-start pb-8">
-
-            {/* ── INTERACTIVE PARKLANE MAP CARD ── */}
-            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col w-full">
-              
-              {/* Interactive map box */}
-              <div 
-                className="relative h-48 md:h-64 w-full bg-[#dce8d4] overflow-hidden cursor-grab active:cursor-grabbing select-none"
-              onMouseDown={handleMapMouseDown}
-              onMouseMove={handleMapMouseMove}
-              onMouseUp={handleMapMouseUpOrLeave}
-              onMouseLeave={handleMapMouseUpOrLeave}
-            >
-              <svg 
-                viewBox="0 0 420 192" 
-                className="absolute top-0 left-0 transition-transform duration-75"
-                style={{
-                  width: "840px",
-                  height: "384px",
-                  transformOrigin: "0 0",
-                  transform: `translate(${translateX}px, ${translateY}px) scale(${scale})`,
-                }}
-              >
-                <rect width="420" height="192" fill="#dce8d4" />
-                <ellipse cx="60" cy="210" rx="110" ry="90" fill="#b5cc9e" />
-                <ellipse cx="200" cy="220" rx="130" ry="85" fill="#c2d4a8" />
-                <ellipse cx="360" cy="205" rx="100" ry="80" fill="#a8bf8c" />
-                <ellipse cx="420" cy="215" rx="90" ry="80" fill="#b0c594" />
-                <ellipse cx="80" cy="170" rx="60" ry="30" fill="#ccddb5" opacity="0.6" />
-                <ellipse cx="300" cy="175" rx="80" ry="35" fill="#d0ddb8" opacity="0.5" />
-                
-                {/* Standard Roads Layout exactly matching original source design */}
-                <path d="M0 115 Q80 108 160 112 Q240 116 320 110 Q370 107 420 112" stroke="#f5f0e0" strokeWidth="9" fill="none" strokeLinecap="round" />
-                <path d="M0 115 Q80 108 160 112 Q240 116 320 110 Q370 107 420 112" stroke="#e8e0c8" strokeWidth="7" fill="none" strokeLinecap="round" />
-                <path d="M0 115 Q80 108 160 112 Q240 116 320 110 Q370 107 420 112" stroke="#fff" strokeWidth="1.5" fill="none" strokeDasharray="12,10" strokeLinecap="round" />
-                
-                <path d="M130 0 Q128 50 132 115 Q133 150 130 192" stroke="#f5f0e0" strokeWidth="8" fill="none" strokeLinecap="round" />
-                <path d="M130 0 Q128 50 132 115 Q133 150 130 192" stroke="#e8e0c8" strokeWidth="6" fill="none" strokeLinecap="round" />
-                <path d="M130 0 Q128 50 132 115 Q133 150 130 192" stroke="#fff" strokeWidth="1.5" fill="none" strokeDasharray="12,10" strokeLinecap="round" />
-                
-                <path d="M260 0 Q280 40 300 80 Q310 95 320 110" stroke="#f5f0e0" strokeWidth="7" fill="none" strokeLinecap="round" />
-                <path d="M260 0 Q280 40 300 80 Q310 95 320 110" stroke="#e8e0c8" strokeWidth="5" fill="none" strokeLinecap="round" />
-                <path d="M320 110 Q360 100 420 95" stroke="#f5f0e0" strokeWidth="6" fill="none" strokeLinecap="round" />
-                <path d="M320 110 Q360 100 420 95" stroke="#e8e0c8" strokeWidth="4" fill="none" strokeLinecap="round" />
-                
-                {/* Visual Foliage elements */}
-                <circle cx="30" cy="95" r="10" fill="#7aaa60" />
-                <circle cx="44" cy="88" r="8" fill="#6a9a52" />
-                <circle cx="20" cy="88" r="7" fill="#82b468" />
-                <circle cx="55" cy="95" r="9" fill="#72a25a" />
-                <circle cx="360" cy="55" r="10" fill="#7aaa60" />
-                <circle cx="374" cy="48" r="8" fill="#6a9a52" />
-                <circle cx="348" cy="50" r="9" fill="#82b468" />
-                <ellipse cx="190" cy="82" rx="22" ry="12" fill="#90bce0" opacity="0.75" />
-                <ellipse cx="190" cy="82" rx="18" ry="8" fill="#a8d0f0" opacity="0.5" />
-                <rect x="280" y="90" width="12" height="10" rx="1" fill="#c8c0b0" />
-                <rect x="294" y="93" width="9" height="7" rx="1" fill="#d4ccbc" />
-                <rect x="305" y="89" width="11" height="11" rx="1" fill="#c0b8a8" />
-                
-                {/* Dotted path */}
-                <path d="M100 142 Q140 130 180 118 Q220 110 260 112 Q290 113 308 112" stroke="#3b82f6" strokeWidth="3" fill="none" strokeDasharray="7,5" strokeLinecap="round" opacity="0.85" />
-                
-                {/* Moving Pink Car marker */}
-                <g className="animate-car-drive" transform="translate(80,130)">
-                  <rect x="-10" y="-7" width="20" height="13" rx="3" fill="#ec4899" />
-                  <rect x="-6" y="-12" width="12" height="7" rx="2" fill="#f9a8d4" />
-                  <circle cx="-5" cy="6" r="3.5" fill="#1f1f1f" />
-                  <circle cx="5" cy="6" r="3.5" fill="#1f1f1f" />
-                  <circle cx="-5" cy="6" r="1.5" fill="#666" />
-                  <circle cx="5" cy="6" r="1.5" fill="#666" />
-                  <rect x="8" y="-3" width="3" height="2" rx="1" fill="#fef08a" />
-                </g>
-                
-                {/* Glowing target pin node representing Springfield Clinic destination */}
-                <g transform="translate(315,108)">
-                  <circle cx="0" cy="0" r="16" fill="white" opacity="0.92" />
-                  <circle cx="0" cy="0" r="16" stroke="#ec4899" strokeWidth="2.5" fill="none" />
-                  <circle cx="0" cy="0" r="8" stroke="#ec4899" strokeWidth="2" fill="none" />
-                  <circle cx="0" cy="0" r="3" fill="#ec4899" />
-                  <line x1="-16" y1="0" x2="-10" y2="0" stroke="#ec4899" strokeWidth="2" strokeLinecap="round" />
-                  <line x1="10" y1="0" x2="16" y2="0" stroke="#ec4899" strokeWidth="2" strokeLinecap="round" />
-                  <line x1="0" y1="-16" x2="0" y2="-10" stroke="#ec4899" strokeWidth="2" strokeLinecap="round" />
-                  <line x1="0" y1="10" x2="0" y2="16" stroke="#ec4899" strokeWidth="2" strokeLinecap="round" />
-                </g>
-                <circle cx="315" cy="108" r="14" fill="none" stroke="#ec4899" strokeWidth="2.5" className="animate-pin-ring" />
-                
-                {/* 123 Pet Lane Label tag */}
-                <rect x="270" y="75" width="92" height="20" rx="5" fill="white" opacity="0.9" />
-                <text x="316" y="89" textAnchor="middle" fontSize="9.5" fontWeight="700" fill="#1f1f1f">123 Pet Lane</text>
-                
-                {/* Compass Marker */}
-                <g transform="translate(22,22)">
-                  <circle cx="0" cy="0" r="12" fill="white" opacity="0.85" />
-                  <text x="0" y="-5" textAnchor="middle" fontSize="7" fontWeight="800" fill="#1f1f1f">N</text>
-                  <polygon points="0,-9 2,-2 0,1 -2,-2" fill="#ec4899" />
-                  <polygon points="0,9 2,2 0,-1 -2,2" fill="#9ca3af" />
-                </g>
+          {/* Navigation Card (Terrain) */}
+          <div className="mx-5 mt-2 bg-white rounded-[20px] overflow-hidden shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
+            <div className="p-4 pb-3 flex justify-between items-center">
+              <h3 className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Navigation to Owner</h3>
+              <span className="text-[11px] font-bold text-[#9d4edd] tracking-wide uppercase">2.4 Miles Away</span>
+            </div>
+            
+            <div className="relative h-[160px] map-bg w-full border-t border-gray-100">
+              <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+                <path d="M 60,130 L 160,130 L 160,50 L 320,50" fill="none" stroke="#9d4edd" strokeWidth="3" strokeLinejoin="round"/>
               </svg>
-
-              {/* Map controls */}
-              <div className="absolute right-3 top-3 flex flex-col gap-1.5">
-                <button 
-                  onClick={handleZoomIn}
-                  className="w-8 h-8 bg-white rounded-lg shadow-md border border-gray-100 flex items-center justify-center text-gray-700 font-bold hover:bg-gray-50 active:scale-95 transition-transform"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={handleZoomOut}
-                  className="w-8 h-8 bg-white rounded-lg shadow-md border border-gray-100 flex items-center justify-center text-gray-700 font-bold hover:bg-gray-50 active:scale-95 transition-transform"
-                >
-                  <Minus className="w-4 h-4" />
-                </button>
+              <div className="absolute bottom-[26px] left-[54px] w-3 h-3 bg-blue-500 border-[2px] border-white rounded-full shadow-md"></div>
+              <div className="absolute top-[44px] right-[74px] w-3 h-3 bg-[#9d4edd] border-[2px] border-white rounded-full shadow-md"></div>
+              <div className="absolute top-[20px] right-[45px] bg-[#9d4edd] text-white text-[9px] font-bold px-2 py-1 rounded-md shadow-md">
+                Owner's Home
               </div>
-
+              
               <button 
-                onClick={handleRecenter}
-                className="absolute bottom-3 right-3 bg-white p-2 rounded-lg shadow-md border border-gray-100 text-[#ec4899] active:scale-95 transition-transform"
+                onClick={handleStartNavigation}
+                className="absolute bottom-3 right-3 bg-gradient-to-r from-[#a855f7] to-[#8b5cf6] text-white px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-[0_15px_35px_-5px_rgba(157,78,221,0.3)] transition transform hover:scale-105 active:scale-95"
               >
-                <Compass className="w-5 h-5 text-[#ec4899]" />
+                <i className="fas fa-location-arrow text-[11px]"></i>
+                <span className="text-[12px] font-bold">Start Navigation</span>
               </button>
             </div>
+          </div>
 
-            {/* Address detail strings and copy handlers */}
-            <div className="p-4 space-y-4">
-              <div className="flex items-start justify-between">
-                <div className="flex gap-3">
-                  <div className="w-10 h-10 bg-pink-50 rounded-lg flex items-center justify-center shrink-0">
-                    <svg className="h-5 w-5 text-[#ec4899] text-brand-pink" fill="currentColor" viewBox="0 0 20 20">
-                      <path clipRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" fillRule="evenodd"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold">{doctorProfile?.hospital_address || doctorProfile?.clinic_address || doctorProfile?.hospital_name || doctorProfile?.clinic_name || dbVisit?.address || initialVisit.address}</h2>
-                    <p className="text-gray-500 text-xs mt-0.5">Estimated arrival: <span className="text-[#ec4899] text-brand-pink font-semibold">{initialVisit.distance.split('(')[0]}</span> {initialVisit.distance.includes('(') ? `(${initialVisit.distance.split('(')[1]}` : ''}</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={handleCopyAddress}
-                  className="text-gray-400 p-1 hover:text-gray-650 transition-colors"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
-                  </svg>
-                </button>
+          {/* Reason For Visit Card */}
+          <div className="mx-5 mt-4">
+            <div className="flex justify-between items-center mb-2 px-0.5">
+              <h2 className="text-[16px] font-bold text-[#1a1f36] tracking-tight">Reason for Visit</h2>
+              <button 
+                onClick={() => toast.info("Complaint modification not available currently.")}
+                className="text-pink-500 font-semibold text-[11px] flex items-center gap-1"
+              >
+                <i className="fas fa-edit text-[10px]"></i> Edit
+              </button>
+            </div>
+            <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-start gap-3">
+              <div className="w-5 h-5 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-[10px] shrink-0 mt-0.5">
+                <i className="fas fa-exclamation-circle"></i>
               </div>
-              <div className="flex gap-3">
-                <button className="flex-1 bg-pink-50 text-[#ec4899] text-brand-pink font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 border border-pink-100 hover:bg-[#fff0f6] hover:bg-pink-100 transition-colors">
-                  <svg className="h-4 w-4 rotate-45" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
-                  </svg>
-                  Start Navigation
-                </button>
-                {/* QR button next to navigation — same scanner */}
-                <button 
-                  onClick={() => setQrOverlayOpen(true)}
-                  className="bg-gray-100 p-3.5 rounded-xl flex items-center justify-center text-gray-700 hover:bg-pink-50 hover:text-[#ec4899] hover:text-brand-pink transition-colors"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
-                  </svg>
-                </button>
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">Chief Complaint</p>
+                <p className="text-[13px] text-gray-700 font-medium leading-relaxed">{chiefComplaint}</p>
               </div>
             </div>
           </div>
 
-            {/* ── CLINICAL OVERVIEW MODULE ── */}
-            <section className="w-full">
-            <h2 className="text-xl font-bold mb-4">Clinical Overview</h2>
-            <div className="space-y-4">
-              
-              {/* Connect Passport */}
-              {!connectedPassport && (
-                <div id="connect-passport-card" className="info-card p-4 rounded-2xl bg-pink-50/50 border border-pink-100 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#ec4899] text-white rounded-xl flex items-center justify-center shadow-sm shadow-pink-200">
-                      <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-800">Connect Passport</p>
-                      <p className="text-xs text-gray-500">Sync digital medical records</p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      setSelectedPassportId(null);
-                      setPassportOverlayOpen(true);
-                      fetchUserPassports();
-                    }}
-                    className="bg-white text-[#ec4899] text-xs font-bold px-4 py-2 rounded-lg border border-pink-100 shadow-sm active:scale-95 transition-transform"
-                  >
-                    Connect
-                  </button>
-                </div>
-              )}
-
-              {/* Connected Active Passport State Displays */}
-              {connectedPassport && (
-                <div id="medical-sections" className="animate-fade-in space-y-4">
-                  {/* Pet Profile Card */}
-                  <div className="info-card p-4 rounded-2xl mb-4 bg-white border border-gray-200 shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <div id="profile-avatar" className="w-14 h-14 rounded-2xl shrink-0 overflow-hidden bg-pink-50 border border-pink-100 shadow-sm flex items-center justify-center">
-                        {connectedPassport.photo_url ? (
-                          <img 
-                            src={connectedPassport.photo_url} 
-                            alt={connectedPassport.name} 
-                            className="w-full h-full object-cover"
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          <>
-                            {/* Luna */}
-                            <svg 
-                              id="avatar-luna" 
-                              viewBox="0 0 56 56" 
-                              xmlns="http://www.w3.org/2000/svg" 
-                              className={`w-full h-full ${connectedPassport.avatar === "luna" ? "" : "hidden"}`}
-                            >
-                              <rect width="56" height="56" fill="#fff7ed" />
-                              <ellipse cx="18" cy="20" rx="7" ry="10" fill="#f59e0b" transform="rotate(-15 18 20)" />
-                              <ellipse cx="38" cy="20" rx="7" ry="10" fill="#f59e0b" transform="rotate(15 38 20)" />
-                              <ellipse cx="18" cy="21" rx="4" ry="6.5" fill="#fbbf24" transform="rotate(-15 18 21)" />
-                              <ellipse cx="38" cy="21" rx="4" ry="6.5" fill="#fbbf24" transform="rotate(15 38 21)" />
-                              <ellipse cx="28" cy="30" rx="15" ry="14" fill="#fbbf24" />
-                              <ellipse cx="28" cy="36" rx="8" ry="5.5" fill="#f59e0b" />
-                              <ellipse cx="28" cy="33.5" rx="3.5" ry="2.5" fill="#1f1f1f" />
-                              <circle cx="26.5" cy="34" r="0.8" fill="#374151" />
-                              <circle cx="29.5" cy="34" r="0.8" fill="#374151" />
-                              <path d="M25 36.5 Q28 39 31 36.5" fill="none" stroke="#92400e" strokeWidth="1.2" strokeLinecap="round" />
-                              <circle cx="22" cy="28" r="3.5" fill="#1f1f1f" />
-                              <circle cx="34" cy="28" r="3.5" fill="#1f1f1f" />
-                              <circle cx="23" cy="27" r="1.2" fill="white" />
-                              <circle cx="35" cy="27" r="1.2" fill="white" />
-                            </svg>
-                            {/* Max */}
-                            <svg 
-                              id="avatar-max" 
-                              viewBox="0 0 56 56" 
-                              xmlns="http://www.w3.org/2000/svg" 
-                              className={`w-full h-full ${connectedPassport.avatar === "max" ? "" : "hidden"}`}
-                            >
-                              <rect width="56" height="56" fill="#eff6ff" />
-                              <ellipse cx="17" cy="21" rx="7.5" ry="11" fill="#1e3a5f" transform="rotate(-10 17 21)" />
-                              <ellipse cx="39" cy="21" rx="7.5" ry="11" fill="#1e3a5f" transform="rotate(10 39 21)" />
-                              <ellipse cx="28" cy="30" rx="15" ry="14" fill="#374151" />
-                              <ellipse cx="28" cy="33.5" rx="3.5" ry="2.5" fill="#111827" />
-                              <path d="M25 37 Q28 39.5 31 37" fill="none" stroke="#1f2937" strokeWidth="1.2" strokeLinecap="round" />
-                              <circle cx="22" cy="27.5" r="3.5" fill="#111827" />
-                              <circle cx="34" cy="27.5" r="3.5" fill="#111827" />
-                              <circle cx="23" cy="26.5" r="1.2" fill="white" />
-                              <circle cx="35" cy="26.5" r="1.2" fill="white" />
-                            </svg>
-                            {/* Coco */}
-                            <svg 
-                              id="avatar-coco" 
-                              viewBox="0 0 56 56" 
-                              xmlns="http://www.w3.org/2000/svg" 
-                              className={`w-full h-full ${connectedPassport.avatar === "coco" ? "" : "hidden"}`}
-                            >
-                              <rect width="56" height="56" fill="#fffbeb" />
-                              <ellipse cx="15" cy="26" rx="7" ry="13" fill="#92400e" transform="rotate(-5 15 26)" />
-                              <ellipse cx="41" cy="26" rx="7" ry="13" fill="#92400e" transform="rotate(5 41 26)" />
-                              <ellipse cx="28" cy="29" rx="15" ry="14" fill="#fef3c7" />
-                              <circle cx="22" cy="27" r="3.5" fill="#1f1f1f" />
-                              <circle cx="34" cy="27" r="3.5" fill="#1f1f1f" />
-                              <circle cx="23" cy="26" r="1.2" fill="white" />
-                              <circle cx="35" cy="26" r="1.2" fill="white" />
-                            </svg>
-                          </>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p id="profile-name" className="font-bold text-gray-900 text-base leading-tight">{connectedPassport.name}</p>
-                          <span className="text-[10px] font-bold bg-green-50 text-green-600 px-2 py-0.5 rounded-full border border-green-100">Active</span>
-                        </div>
-                        <p id="profile-breed" className="text-sm text-gray-600 font-medium font-semibold">{connectedPassport.breed}</p>
-                        
-                        <div className="flex items-center gap-3 mt-1.5 text-gray-400">
-                          <span className="flex items-center gap-1 text-xs">
-                            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"/>
-                            </svg>
-                            <span id="profile-age-text">{connectedPassport.ageText}</span>
-                          </span>
-                          <span className="flex items-center gap-1 text-xs">
-                            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
-                            </svg>
-                            <span id="profile-weight">{connectedPassport.weight}</span>
-                          </span>
-                          <span className="flex items-center gap-1 text-xs">
-                            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd"/>
-                            </svg>
-                            <span id="profile-dob">{connectedPassport.dob}</span>
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Pet Passport */}
-                  <div className="space-y-4 mb-4">
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Pet Passport Details</h3>
-                    
-                    {/* Card 1: Identification */}
-                    <div className="info-card p-5 rounded-2xl bg-white border border-gray-150 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] hover:border-gray-200 transition-all duration-200">
-                      <div className="flex items-center gap-2 mb-3 border-b border-gray-50 pb-2">
-                        <span className="w-1.5 h-3 bg-[#ec4899] rounded-full inline-block"></span>
-                        <h4 className="text-xs font-black text-gray-800 uppercase tracking-widest">I. Identification</h4>
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Pet Name</p><p id="pp-name" className="font-bold text-gray-800 text-sm">{connectedPassport.name}</p></div>
-                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Passport ID</p><p id="pp-id" className="font-bold text-brand-pink text-[#ec4899] text-sm font-mono">{connectedPassport.id}</p></div>
-                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Species / Gender</p><p className="font-bold text-gray-800 text-sm capitalize">{connectedPassport.species} · {connectedPassport.gender}</p></div>
-                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Breed</p><p className="font-bold text-gray-800 text-sm">{connectedPassport.breed?.replace(/\s*·\s*(?:Male|Female|N\/A)?$/i, "") || "N/A"}</p></div>
-                        <div className="col-span-2"><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Appearance / Distinguishing Marks</p><p className="font-bold text-gray-700 text-xs leading-tight">{connectedPassport.appearance || "No distinctive marks registered"}</p></div>
-                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Date of Birth</p><p className="font-bold text-gray-800 text-sm">{connectedPassport.dob}</p></div>
-                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Age / Weight</p><p id="pp-age" className="font-bold text-gray-800 text-sm">{connectedPassport.age} · {connectedPassport.weight}</p></div>
-                        <div className="col-span-2"><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Issue Date</p><p className="font-bold text-gray-805 text-xs">{connectedPassport.issueDate}</p></div>
-                      </div>
-                    </div>
-
-                    {/* Card 2: Ownership & Legal Guardian */}
-                    <div className="info-card p-5 rounded-2xl bg-white border border-gray-150 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] hover:border-gray-200 transition-all duration-200">
-                      <div className="flex items-center gap-2 mb-3 border-b border-gray-50 pb-2">
-                        <span className="w-1.5 h-3 bg-[#ec4899] rounded-full inline-block"></span>
-                        <h4 className="text-xs font-black text-gray-800 uppercase tracking-widest">II. Ownership & Legal Guardian</h4>
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Owner Name</p><p className="font-bold text-gray-800 text-sm">{connectedPassport.ownerName}</p></div>
-                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Primary Phone</p><p className="font-bold text-gray-800 text-sm font-mono">{connectedPassport.primaryPhone}</p></div>
-                        <div className="col-span-2"><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Emergency Contact</p><p className="font-bold text-gray-805 text-sm">{connectedPassport.emergencyContactName} ({connectedPassport.emergencyRelationship || "Relationship not specified"})</p></div>
-                        <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Emergency Phone</p><p className="font-bold text-gray-805 text-sm font-mono">{connectedPassport.emergencyPhone}</p></div>
-                      </div>
-                    </div>
-
-                    {/* Card 3: Clinical Notes & Allergies */}
-                    <div className="info-card p-5 rounded-2xl bg-white border border-gray-150 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] hover:border-gray-200 transition-all duration-200">
-                      <div className="flex items-center gap-2 mb-3 border-b border-gray-50 pb-2">
-                        <span className="w-1.5 h-3 bg-[#ec4899] rounded-full inline-block"></span>
-                        <h4 className="text-xs font-black text-gray-800 uppercase tracking-widest">III. Clinical Notes & Allergies</h4>
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                        <div className="col-span-2">
-                          <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Known Allergies</p>
-                          <p className="font-bold text-red-600 text-xs leading-relaxed">
-                            {connectedMedicalLog?.known_allergies || "No known allergies reported."}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Last Veterinary Visit</p>
-                          <p className="font-bold text-gray-808 text-xs">
-                            {connectedMedicalLog?.last_veterinary_visit ? new Date(connectedMedicalLog.last_veterinary_visit).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "None recorded"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Registered Conditions</p>
-                          <p className="font-bold text-gray-808 text-xs">
-                            {connectedConditions.length > 0 
-                              ? connectedConditions.map(c => c.condition_name || c.specify_other).join(", ") 
-                              : "None reported."}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Health Records */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Health Records</h3>
-                      <button className="text-xs font-bold text-brand-pink text-[#ec4899] hover:underline">View All</button>
-                    </div>
-                    <div className="space-y-2">
-                      {connectedRecords.length === 0 ? (
-                        <div className="text-center py-6 bg-white border rounded-2xl border-gray-100 text-xs text-gray-400">
-                          No health or vaccination records found in the database for this pet.
-                        </div>
-                      ) : (
-                        connectedRecords.map((rec) => {
-                          const dateStr = rec.date_administered 
-                            ? new Date(rec.date_administered).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })
-                            : (rec.issue_date 
-                              ? new Date(rec.issue_date).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })
-                              : "N/A");
-                          const title = rec.record_type === "vaccination" 
-                            ? (rec.vaccine_name || rec.specify_vaccine || "Vaccination")
-                            : (rec.record_type || "Medical Record");
-                          const detail = rec.record_type === "vaccination"
-                            ? `Next booster due: ${rec.next_due_date ? new Date(rec.next_due_date).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' }) : "N/A"}`
-                            : (rec.diagnosis ? `Diagnosis: ${rec.diagnosis}${rec.prescribed_by ? ` (by ${rec.prescribed_by})` : ""}` : "Clinical document record");
-
-                          return (
-                            <div key={rec.id} className="info-card p-4 rounded-2xl flex items-center gap-4 bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                              <div className={`w-1 h-10 rounded-full ${rec.record_type === 'vaccination' ? 'bg-pink-500' : 'bg-green-500'}`}></div>
-                              <div className="flex-1">
-                                <div className="flex justify-between items-start">
-                                  <p className="font-bold text-gray-850 text-sm capitalize">{title}</p>
-                                  <p className="text-[10px] text-gray-400 font-bold uppercase">{dateStr}</p>
-                                </div>
-                                <p className="text-xs text-gray-500 line-clamp-2 mt-1">{detail}</p>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+          {/* Visit Information Card */}
+          <div className="mx-5 mt-4 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
+            <div className="flex justify-between items-center mb-3.5">
+              <h3 className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Visit Information</h3>
+              <div className="w-5 h-5 rounded-full bg-[#9d4edd] flex items-center justify-center text-white text-[9px]">
+                <i className="fas fa-info"></i>
+              </div>
             </div>
-          </section>
-
-            {/* ── REASON FOR VISIT ── */}
-            <section className="w-full">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-bold">Reason for Visit</h2>
-              {!isEditingReason && (
-                <button 
-                  id="reason-edit-btn" 
-                  onClick={() => {
-                    setReasonInput(chiefComplaint);
-                    setIsEditingReason(true);
-                  }} 
-                  className="text-xs font-bold text-brand-pink text-[#ec4899] flex items-center gap-1 hover:underline"
-                >
-                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
-                  </svg>
-                  Edit
-                </button>
-              )}
-            </div>
-            <div className="info-card rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-sm">
-              {!isEditingReason ? (
-                /* View mode */
-                <div id="reason-view" className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0 mt-0.5">
-                      <svg className="h-4 w-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Chief Complaint</p>
-                      <p id="reason-text" className="text-sm text-gray-800 leading-relaxed">{chiefComplaint}</p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* Edit mode */
-                <div id="reason-edit" className="p-4">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Chief Complaint</p>
-                  <textarea 
-                    id="reason-input" 
-                    rows={3}
-                    value={reasonInput}
-                    onChange={(e) => setReasonInput(e.target.value)}
-                    className="w-full text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:border-brand-pink focus:border-[#ec4899] focus:ring-1 focus:ring-pink-200 leading-relaxed placeholder-gray-300"
-                    placeholder="Describe the reason for this visit…"
-                  />
-                  <div className="flex gap-2 mt-3">
-                    <button 
-                      onClick={handleCancelReason} 
-                      className="flex-1 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-50 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      onClick={handleSaveReason} 
-                      className="flex-1 py-2 rounded-xl bg-brand-pink bg-[#ec4899] text-white text-sm font-bold hover:bg-pink-600 hover:bg-[#db2777] transition-colors shadow-sm shadow-pink-100"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* ── APPOINTMENT SUMMARY CARD PANEL ── */}
-          <section className="w-full">
-            <h2 className="text-xl font-bold mb-3 pl-1">Appointment Summary</h2>
             
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-              {/* Card 1: Type */}
-              <div className="bg-white border border-gray-250 p-4 rounded-2xl shadow-sm">
-                <div className="w-7 h-7 rounded-lg bg-pink-50 flex items-center justify-center text-[#ec4899] mb-2">
-                  <Building2 className="w-4 h-4" />
-                </div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Type</p>
-                <p className="text-sm font-black text-gray-900 mt-0.5 capitalize">
-                  {dbVisit?.appointment_type ? `${dbVisit.appointment_type} Visit` : "Clinic Visit"}
-                </p>
-              </div>
-
-              {/* Card 2: Date */}
-              <div className="bg-white border border-gray-250 p-4 rounded-2xl shadow-sm">
-                <div className="w-7 h-7 rounded-lg bg-pink-50 flex items-center justify-center text-[#ec4899] mb-2">
-                  <Calendar className="w-4 h-4" />
-                </div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</p>
-                <p className="text-sm font-black text-gray-900 mt-0.5">
-                  {dbVisit?.appointment_date ? (() => {
-                    try {
-                      const dObj = new Date(dbVisit.appointment_date);
-                      return isNaN(dObj.getTime()) ? dbVisit.appointment_date : dObj.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-                    } catch {
-                      return dbVisit.appointment_date;
-                    }
-                  })() : (initialVisit.time?.split(",")[0] || "10 Jun 2026")}
-                </p>
-              </div>
-
-              {/* Card 3: Time */}
-              <div className="bg-white border border-gray-250 p-4 rounded-2xl shadow-sm">
-                <div className="w-7 h-7 rounded-lg bg-pink-50 flex items-center justify-center text-[#ec4899] mb-2">
-                  <Clock className="w-4 h-4" />
-                </div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Time</p>
-                <p className="text-sm font-black text-gray-900 mt-0.5">
-                  {dbVisit?.appointment_time || (initialVisit.time?.includes(",") ? initialVisit.time.split(",")[1]?.trim() : initialVisit.time) || "02:30 PM - 03:00 PM"}
-                </p>
-              </div>
-
-              {/* Card 4: Duration */}
-              <div className="bg-white border border-gray-250 p-4 rounded-2xl shadow-sm">
-                <div className="w-7 h-7 rounded-lg bg-pink-50 flex items-center justify-center text-[#ec4899] mb-2">
-                  <Hourglass className="w-4 h-4" />
-                </div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Duration</p>
-                <p className="text-sm font-black text-gray-900 mt-0.5">30 Minutes</p>
-              </div>
-            </div>
-
-            {/* Row 3: Booking ID with absolute copying */}
-            <div className="bg-white border border-gray-250 p-4 rounded-2xl shadow-sm flex items-center justify-between">
+            <div className="flex flex-col gap-3.5">
+              {/* Visit Type */}
               <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-lg bg-pink-50 flex items-center justify-center text-[#ec4899] shrink-0">
-                  <Tag className="w-4 h-4" />
+                <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-md shrink-0">
+                  <i className="fas fa-house-chimney-medical"></i>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Booking ID</p>
-                  <p className="text-sm font-black text-[#ec4899] mt-0.5 tracking-wide font-mono">
-                    {getShortBookingId(dbVisit?.id || appointmentId)}
-                  </p>
+                  <p className="text-[11px] text-gray-400 font-medium">Visit Type</p>
+                  <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">Home Visit</p>
                 </div>
               </div>
-              
+
+              {/* Reason for Visit */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center text-md shrink-0">
+                  <i className="fas fa-syringe"></i>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-400 font-medium">Reason for Visit</p>
+                  <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">Home Vaccination</p>
+                </div>
+              </div>
+
+              {/* Scheduled Time */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center text-md shrink-0">
+                  <i className="fas fa-clock"></i>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-400 font-medium">Scheduled Time</p>
+                  <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">{scheduledTime} <span className="text-[#9d4edd] font-medium">(In 20 mins)</span></p>
+                </div>
+              </div>
+
+              {/* Owner Address */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#f3e8ff] text-[#9d4edd] flex items-center justify-center text-md shrink-0">
+                  <i className="fas fa-location-dot"></i>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-400 font-medium">Owner Address</p>
+                  <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">{address}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Clinical Overview Card */}
+          <div className="mx-5 mt-4">
+            <h2 className="text-[16px] font-bold text-[#1a1f36] mb-2 px-0.5 tracking-tight">Clinical Overview</h2>
+            <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center gap-3.5">
+              <img 
+                src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=150&h=150" 
+                alt="Kiro" 
+                className="w-[54px] h-[54px] rounded-xl object-cover"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[15px] font-bold text-[#1a1f36]">Kiro</span>
+                  <span className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase scale-90 origin-left">Active</span>
+                </div>
+                <p className="text-[13px] text-gray-700 font-semibold mt-0.5">British Shorthair • Female</p>
+                <div className="flex items-center gap-3 text-[#8b92a5] text-[11px] mt-1 font-medium">
+                  <span className="flex items-center gap-1"><i className="far fa-clock text-[10px]"></i> 2 yr</span>
+                  <span className="flex items-center gap-1"><i className="fas fa-weight-hanging text-[10px]"></i> 4.9 lbs</span>
+                  <span className="flex items-center gap-1"><i className="far fa-calendar text-[10px]"></i> Jun 29, 2024</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Pet Passport Components Heading */}
+          <div className="mx-5 mt-5">
+            <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase px-0.5">Pet Passport Details</p>
+          </div>
+
+          {/* Identification Card */}
+          <div className="mx-5 mt-2 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
+            <div className="flex items-center gap-1.5 mb-3.5">
+              <div className="w-1 h-3.5 bg-pink-500 rounded-full"></div>
+              <h4 className="text-[11px] font-bold text-[#1a1f36] tracking-wider uppercase">I. Identification</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-y-3.5 gap-x-2">
+              <div>
+                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Pet Name</p>
+                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">Kiro</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Passport ID</p>
+                <p className="text-[13px] text-pink-500 font-bold mt-0.5">SRV-K25-AG8</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Species / Gender</p>
+                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">Cat • Female</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Breed</p>
+                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">British Shorthair</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Appearance / Marks</p>
+                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">Grey whitish</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Date of Birth</p>
+                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">Jun 29, 2024</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Age / Weight</p>
+                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">2 yr • 4.9 lbs</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Issue Date</p>
+                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">Jun 13, 2026</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Ownership & Legal Guardian Card */}
+          <div className="mx-5 mt-3.5 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
+            <div className="flex items-center gap-1.5 mb-3.5">
+              <div className="w-1 h-3.5 bg-pink-500 rounded-full"></div>
+              <h4 className="text-[11px] font-bold text-[#1a1f36] tracking-wider uppercase">II. Ownership & Legal Guardian</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-y-3.5 gap-x-2">
+              <div>
+                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Owner Name</p>
+                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">Jari Pabla</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Primary Phone</p>
+                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">8349153416</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Emergency Contact</p>
+                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">Riya (Wife)</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Emergency Phone</p>
+                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">8349153416</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Clinical Notes & Allergies Card */}
+          <div className="mx-5 mt-3.5 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
+            <div className="flex items-center gap-1.5 mb-3.5">
+              <div className="w-1 h-3.5 bg-pink-500 rounded-full"></div>
+              <h4 className="text-[11px] font-bold text-[#1a1f36] tracking-wider uppercase">III. Clinical Notes & Allergies</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-y-3.5 gap-x-2">
+              <div className="col-span-2">
+                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Known Allergies</p>
+                <p className="text-[13px] text-red-500 font-bold mt-0.5">Pollen</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Last Veterinary Visit</p>
+                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">Jun 13, 2026</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Registered Conditions</p>
+                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">none</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Health Records Section */}
+          <div className="mx-5 mt-4">
+            <div className="flex justify-between items-center mb-2 px-0.5">
+              <h3 className="text-[11px] font-bold text-gray-400 tracking-widest uppercase">Health Records</h3>
               <button 
-                onClick={handleCopyBookingId}
-                className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-700 bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg active:scale-95 transition-all"
+                onClick={() => toast.info("Viewing all records...")}
+                className="text-pink-500 font-bold text-[11px] hover:underline"
               >
-                <Copy className="w-3.5 h-3.5" />
-                Copy
+                View All
               </button>
             </div>
-          </section>
-
-            {/* ── DR ANAYA DOCTOR PROFILE CARD ── */}
-            <section className="w-full">
-            <div className="bg-white border border-pink-100 rounded-2xl p-3.5 sm:p-4 shadow-sm" style={{ background: "linear-gradient(135deg, #fff 0%, #fdf2f8 100%)" }}>
-              <div className="flex items-start sm:items-center gap-3 sm:gap-4">
-                
-                {/* Doctor Avatar + Scalloped Violet verified index */}
-                <div className="relative shrink-0">
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden shadow-md border-2 border-pink-100 flex items-center justify-center bg-pink-50">
-                    {doctorPhoto ? (
-                      <img 
-                        src={doctorPhoto} 
-                        alt={doctorProfile?.profiles?.full_name || doctorProfile?.profiles?.name || "Doctor"} 
-                        className="w-full h-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-                        <rect width="64" height="64" fill="#fdf2f8"/>
-                        {/* scrubs top */}
-                        <path d="M10 64 Q10 44 32 40 Q54 44 54 64Z" fill="#ec4899"/>
-                        {/* collar detail */}
-                        <path d="M26 40 L32 48 L38 40" fill="#f9a8d4" opacity="0.7"/>
-                        {/* neck */}
-                        <rect x="27" y="32" width="10" height="10" rx="4" fill="#fdba74"/>
-                        {/* head */}
-                        <ellipse cx="32" cy="26" rx="13" ry="14" fill="#fdba74"/>
-                        {/* hair */}
-                        <path d="M19 22 Q20 10 32 10 Q44 10 45 22 Q44 12 32 12 Q20 12 19 22Z" fill="#7c2d12"/>
-                        <path d="M19 22 Q17 28 19 32 Q18 24 20 21Z" fill="#7c2d12"/>
-                        <path d="M45 22 Q47 28 45 32 Q46 24 44 21Z" fill="#7c2d12"/>
-                        {/* bun */}
-                        <ellipse cx="32" cy="11" rx="7" ry="5" fill="#7c2d12"/>
-                        <circle cx="32" cy="9" r="3" fill="#92400e"/>
-                        {/* eyes */}
-                        <ellipse cx="26.5" cy="26" rx="2.5" ry="2.8" fill="#1f1f1f"/>
-                        <ellipse cx="37.5" cy="26" rx="2.5" ry="2.8" fill="#1f1f1f"/>
-                        <circle cx="27.3" cy="25.2" r="1" fill="white"/>
-                        <circle cx="38.3" cy="25.2" r="1" fill="white"/>
-                        {/* eyebrows */}
-                        <path d="M23.5 22.5 Q26.5 21 29.5 22.5" fill="none" stroke="#7c2d12" strokeWidth="1.3" strokeLinecap="round"/>
-                        <path d="M34.5 22.5 Q37.5 21 40.5 22.5" fill="none" stroke="#7c2d12" strokeWidth="1.3" strokeLinecap="round"/>
-                        {/* nose */}
-                        <path d="M30.5 29.5 Q32 31 33.5 29.5" fill="none" stroke="#c2845a" strokeWidth="1.2" strokeLinecap="round"/>
-                        {/* smile */}
-                        <path d="M27.5 33.5 Q32 37 36.5 33.5" fill="none" stroke="#c2845a" strokeWidth="1.4" strokeLinecap="round"/>
-                        {/* cheeks */}
-                        <ellipse cx="22" cy="31" rx="4" ry="2.5" fill="#fca5a5" opacity="0.45"/>
-                        <ellipse cx="42" cy="31" rx="4" ry="2.5" fill="#fca5a5" opacity="0.45"/>
-                        {/* stethoscope */}
-                        <path d="M24 44 Q22 52 28 55 Q32 57 36 55 Q42 52 40 44" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                        <circle cx="32" cy="57" r="3" fill="white" opacity="0.8"/>
-                      </svg>
-                    )}
-                  </div>
-                  
-                  {/* Verified badge with exact custom image look (scalloped star checkmark icon) */}
-                  <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white flex items-center justify-center p-0.5 shadow-sm">
-                    <VerifiedBadge className="w-full h-full text-[#9A3EF8]" />
+            <div className="flex flex-col gap-2">
+              <div className="bg-white rounded-[16px] p-3.5 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-8 bg-emerald-500 rounded-full"></div>
+                  <div>
+                    <span className="text-[13px] text-[#1a1f36] font-bold block">Vaccination</span>
+                    <span className="text-[11px] text-[#8b92a5] font-medium block">Clinical document record</span>
                   </div>
                 </div>
-
-                {/* Info block */}
-                <div className="flex-1 min-w-0 pt-0.5 sm:pt-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-black text-gray-900 text-sm sm:text-base leading-tight">
-                      {doctorProfile?.profiles?.full_name || doctorProfile?.profiles?.name ? `Dr. ${doctorProfile.profiles.full_name || doctorProfile.profiles.name}` : "Dr. Anaya"}
-                    </p>
-                    <span className="text-[9px] sm:text-[10px] font-bold bg-pink-100 text-[#ec4899] px-2 py-0.5 rounded-full uppercase shrink-0">
-                      {doctorProfile?.qualification || "BVSc"}
-                    </span>
-                  </div>
-                  <p className="text-[11px] sm:text-xs text-slate-500 mt-1 font-semibold leading-snug">
-                    {doctorProfile?.specializations && doctorProfile.specializations.length > 0 ? doctorProfile.specializations.join(", ") : (doctorProfile?.specialization || "Verified Veterinarian")}
-                  </p>
-                  
-                  {/* Star rating and feedback counts */}
-                  <div className="flex items-center gap-1 sm:gap-1.5 mt-1 sm:mt-1.5 text-slate-400">
-                    <div className="flex text-amber-400 shrink-0">
-                      {[1, 2, 3, 4, 5].map((starIdx) => {
-                        const rating = doctorProfile?.average_rating || 0;
-                        const isFull = starIdx <= Math.floor(rating);
-                        const isHalf = !isFull && (starIdx - 0.5) <= rating;
-                        
-                        return (
-                          <div key={starIdx} className="relative">
-                            <Star 
-                              className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isFull ? "fill-current" : "text-amber-200"}`} 
-                            />
-                            {isHalf && (
-                              <div className="absolute inset-0 overflow-hidden w-[50%]">
-                                <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <span className="text-[10px] sm:text-[11px] text-gray-800 font-extrabold">
-                      {doctorProfile?.average_rating != null ? doctorProfile.average_rating.toFixed(1) : "0.0"}
-                    </span>
-                    <span className="text-gray-300">·</span>
-                    <span className="text-[10px] sm:text-[11px] text-gray-550 font-bold">
-                      {doctorProfile?.years_of_experience != null ? `${doctorProfile.years_of_experience}+ yrs exp` : "0+ yrs exp"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* View profile button triggers redirection back to profile details */}
-                <button 
-                  onClick={() => navigate(vetProfileId ? `/vet/doctor/${vetProfileId}` : `/vet/doctor/any`)}
-                  className="shrink-0 flex items-center gap-0.5 text-[#ec4899] text-[11px] sm:text-xs font-black hover:underline self-start sm:self-center pt-1 sm:pt-0"
-                >
-                  View
-                  <ChevronDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 -rotate-90" />
-                </button>
+                <span className="text-[10px] font-bold text-[#8b92a5] uppercase">13 Jun 2026</span>
               </div>
+              <div className="bg-white rounded-[16px] p-3.5 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-8 bg-emerald-500 rounded-full"></div>
+                  <div>
+                    <span className="text-[13px] text-[#1a1f36] font-bold block">Vaccination</span>
+                    <span className="text-[11px] text-[#8b92a5] font-medium block">Clinical document record</span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-[#8b92a5] uppercase">13 Jun 2026</span>
+              </div>
+            </div>
+          </div>
 
-              {/* Tag section */}
-              <div className="mt-4 pt-3.5 border-t border-pink-100 flex items-center gap-2 flex-wrap">
-                {doctorProfile?.specializations && doctorProfile.specializations.length > 0 ? (
-                  doctorProfile.specializations.slice(0, 3).map((spec: string, idx: number) => (
-                    <span key={idx} className="text-[10px] font-black bg-white border border-gray-100 text-gray-500 px-2.5 py-1 rounded-full shadow-sm capitalize">{spec}</span>
-                  ))
-                ) : (
-                  <>
-                    <span className="text-[10px] font-black bg-white border border-gray-100 text-gray-500 px-2.5 py-1 rounded-full shadow-sm">Small Animals</span>
-                    <span className="text-[10px] font-black bg-white border border-gray-100 text-gray-500 px-2.5 py-1 rounded-full shadow-sm">Home Visits</span>
-                    <span className="text-[10px] font-black bg-white border border-gray-100 text-gray-500 px-2.5 py-1 rounded-full shadow-sm">Vaccinations</span>
-                  </>
-                )}
-                
-                <span className="ml-auto text-[10px] text-green-600 font-black flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse" />
-                  Available Now
+          {/* Owner Information Card */}
+          <div className="mx-5 mt-4 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Owner Information</h3>
+              <a 
+                href={`tel:${ownerPhone}`}
+                className="w-7 h-7 rounded-full bg-[#f3e8ff] flex items-center justify-center text-[#9d4edd] text-[11px] cursor-pointer"
+              >
+                <i className="fas fa-phone"></i>
+              </a>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <img 
+                src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100&h=100" 
+                alt="Owner" 
+                className="w-[45px] h-[45px] rounded-full object-cover"
+              />
+              <div>
+                <p className="text-[15px] text-[#1a1f36] font-bold">{ownerName}</p>
+                <p className="text-[13px] text-[#8b92a5] font-medium mt-0.5">{ownerPhone}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Medical Background Card */}
+          <div className="mx-5 mt-4 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
+            <h3 className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-3">Medical Background</h3>
+            
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-2.5 items-start">
+                <div className="mt-0.5 w-[16px] h-[16px] rounded-full bg-[#22c55e] text-white flex items-center justify-center text-[9px] shrink-0">
+                  <i className="fas fa-check"></i>
+                </div>
+                <p className="text-[13px] text-gray-700 font-medium leading-snug">Last Deworming: 2 months ago (Up to date)</p>
+              </div>
+              
+              <div className="flex gap-2.5 items-start">
+                <div className="mt-0.5 w-[16px] h-[16px] rounded-full bg-[#22c55e] text-white flex items-center justify-center text-[9px] shrink-0">
+                  <i className="fas fa-check"></i>
+                </div>
+                <p className="text-[13px] text-gray-700 font-medium leading-snug">Vaccination Status: All current</p>
+              </div>
+              
+              <div className="flex gap-2.5 items-start">
+                <div className="text-orange-500 text-[16px] shrink-0">
+                  <i className="fas fa-triangle-exclamation"></i>
+                </div>
+                <p className="text-[13px] text-gray-700 font-medium leading-snug">Allergy: Penicillin-based antibiotics</p>
+              </div>
+            </div>
+          </div>
+            
+        </main>
+
+        {/* Floating QR Squircle Button */}
+        <button 
+          onClick={() => setShowQrModal(true)} 
+          className="absolute bottom-[160px] right-6 w-[56px] h-[56px] bg-[#f3e8ff] text-[#9d4edd] rounded-[22px] shadow-[0_8px_20px_-4px_rgba(157,78,221,0.2)] flex items-center justify-center text-[22px] transition transform hover:scale-105 active:scale-95 z-20" 
+          title="Scan QR"
+        >
+          <i className="fas fa-qrcode"></i>
+        </button>
+
+        {/* Dynamic Footer Action Container */}
+        <div className="absolute bottom-0 left-0 w-full px-5 pb-6 pt-10 bg-gradient-to-t from-[#f6f7fb] via-[#f6f7fb] to-transparent z-10 sm:rounded-b-3xl">
+            
+          {/* Phase 1: Initial Action Buttons */}
+          {!isSwipeMode && (
+            <div id="initialActions" className="flex flex-col gap-2.5">
+              <button 
+                onClick={() => setIsSwipeMode(true)} 
+                className="w-full bg-gradient-to-r from-[#a855f7] to-[#8b5cf6] text-white py-[16px] rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2.5 shadow-[0_15px_35px_-5px_rgba(157,78,221,0.3)] transition transform active:scale-95 cursor-pointer"
+              >
+                <div className="bg-white rounded-full w-4 h-4 flex items-center justify-center">
+                  <i className="fas fa-play text-[#8b5cf6] text-[8px] ml-[2px]"></i>
+                </div>
+                Start Consultation
+              </button>
+              <button 
+                onClick={() => toast.info("Medical history view loaded successfully.")}
+                className="w-full bg-white text-gray-600 py-[16px] rounded-2xl font-bold text-[15px] border border-gray-200 hover:bg-gray-50 transition transform active:scale-95 cursor-pointer shadow-sm"
+              >
+                View Medical History
+              </button>
+            </div>
+          )}
+
+          {/* Phase 2: Upgraded Premium Swipe Slider */}
+          {isSwipeMode && (
+            <div 
+              ref={containerRef}
+              id="swipeContainer" 
+              className={`relative w-full h-[64px] bg-white bg-opacity-80 backdrop-blur-md rounded-full border border-purple-100 p-1.5 flex items-center overflow-hidden shadow-[0_10px_30px_-6px_rgba(157,78,221,0.25)] transition-all duration-300 ${isCompleted ? 'opacity-0 translate-y-[15px]' : ''}`}
+            >
+              {/* Dynamic Shimmer Track Glow */}
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 shimmer-track opacity-20 pointer-events-none"></div>
+
+              {/* Single Line Centered Text Element */}
+              <div 
+                id="swipeText" 
+                className="absolute inset-0 flex items-center justify-center pointer-events-none transition-all duration-150 z-0 pl-10"
+                style={{
+                  opacity: 1 - (swipeTranslation / maxTrack) * 1.6,
+                  transform: `scale(${1 - (swipeTranslation / maxTrack) * 0.15})`
+                }}
+              >
+                <span className="text-[13px] font-extrabold text-[#9d4edd] tracking-wide uppercase whitespace-nowrap select-none">
+                  Swipe to Complete Consultation
                 </span>
               </div>
+              
+              {/* Slider Dynamic Background Progress Color Mask */}
+              <div 
+                id="swipeFill" 
+                className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-l-full opacity-10 pointer-events-none z-0" 
+                style={{ width: `${swipeTranslation + 26}px` }}
+              ></div>
+
+              {/* Round High-Fidelity Handle/Trigger Button */}
+              <div 
+                ref={handleRef}
+                id="swipeHandle" 
+                onMouseDown={handleDragStart}
+                onTouchStart={handleDragStart}
+                className="w-[52px] h-[52px] bg-gradient-to-br from-[#b166fc] via-[#9d4edd] to-[#7b2cbf] rounded-full flex items-center justify-center text-white text-[15px] shadow-[0_4px_15px_-2px_rgba(139,92,246,0.5)] cursor-grab active:cursor-grabbing transition-transform duration-75 ease-out z-10 border border-white border-opacity-30"
+                style={{ transform: `translateX(${swipeTranslation}px)` }}
+              >
+                <i className="fas fa-angles-right"></i>
+              </div>
             </div>
-          </section>
+          )}
 
-            {/* ── PAYMENT SUMMARY DETAILS ── */}
-            {(() => {
-              const visitType = paymentDetails?.visit_type || dbVisit?.appointment_type || "clinic";
-              const platformFee = paymentDetails?.platform_fee != null ? Number(paymentDetails.platform_fee) : 0;
-              const appliedNightSurcharge = paymentDetails?.night_surcharge != null ? Number(paymentDetails.night_surcharge) : 0;
-              const discount = paymentDetails?.discount != null ? Number(paymentDetails.discount) : 0;
-              const totalAmount = paymentDetails?.amount != null ? Number(paymentDetails.amount) : (dbVisit?.amount != null ? Number(dbVisit.amount) : 499);
-              const visitFee = paymentDetails?.consultation_fee != null 
-                ? Number(paymentDetails.consultation_fee) 
-                : Math.max(0, totalAmount - platformFee - appliedNightSurcharge + discount);
-
-              return (
-                <section className="pb-4 w-full">
-                  <h2 className="text-xl font-bold mb-4 pl-1 text-slate-900 font-sans tracking-tight">Payment Summary</h2>
-                  <div className="bg-white rounded-[24px] border border-slate-100 p-5 shadow-[0_4px_24px_rgba(0,0,0,0.03)] space-y-4">
-                    {/* Content Rows */}
-                    <div className="space-y-4">
-                      <div className="flex justify-between text-[15px] text-slate-900 font-medium">
-                        <span>{visitType === "clinic" ? "Clinic Visit Fee" : "Home Visit Fee"}</span>
-                        <span>₹{visitFee.toFixed(2)}</span>
-                      </div>
-                      
-                      {discount > 0 && (
-                        <div className="flex justify-between text-[15px] text-green-600 font-medium">
-                          <span>Saving Corner Discount</span>
-                          <span>- ₹{discount.toFixed(2)}</span>
-                        </div>
-                      )}
-                      
-                      <div className="flex justify-between text-[15px] text-slate-900 font-medium">
-                        <span>Platform Fee</span>
-                        <span>₹{platformFee.toFixed(2)}</span>
-                      </div>
-                      
-                      {appliedNightSurcharge > 0 && (
-                        <div className="flex justify-between text-[15px] items-center">
-                          <div className="flex items-center gap-1.5 text-slate-500 font-medium">
-                            <Moon className="w-[18px] h-[18px] text-slate-400" />
-                            <span>Late Night Fees</span>
-                          </div>
-                          <span className="font-medium text-slate-500">+ ₹{appliedNightSurcharge.toFixed(2)}</span>
-                        </div>
-                      )}
-                      
-                      <div className="flex justify-between text-[15px] text-slate-500/80 font-normal">
-                        <span>GST & Other Charges</span>
-                        <span>₹0.00</span>
-                      </div>
-                    </div>
-
-                    {/* Horizontal Dashed Divider Line */}
-                    <div className="border-t border-dashed border-slate-200" />
-
-                    {/* Bottom Total Block */}
-                    <div className="flex justify-between items-start pt-2 gap-3">
-                      <div className="space-y-0.5">
-                        <span className="font-bold text-slate-900 text-[16px]">Total Paid</span>
-                        <p className="text-[#0E8A4E] text-xs font-semibold leading-relaxed">Breakdown of your consultation below.</p>
-                      </div>
-                      <div className="text-right flex flex-col items-end shrink-0">
-                        <span className="font-extrabold text-slate-900 text-2xl tracking-tight leading-none mb-1">
-                          ₹{totalAmount.toFixed(2)}
-                        </span>
-                        <span className="inline-flex items-center gap-1 bg-green-50 text-[#0E8A4E] text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-green-150 shadow-sm">
-                          <Check className="w-3 h-3 text-[#0E8A4E]" strokeWidth={3} />
-                          Payment Done
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-              );
-            })()}
-
-          </div>
         </div>
 
-        {/* ── STICKY ACTION BAR ── */}
-        <div className="fixed bottom-0 left-0 right-0 w-full px-4 sm:px-6 lg:px-8 py-4 bg-white/80 backdrop-blur-md border-t border-gray-100 z-40 transition-all duration-300">
-          <button 
-            onClick={openQRScanner} 
-            className="w-full bg-brand-pink hover:bg-pink-600 bg-[#ec4899] hover:bg-[#db2777] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-pink-200 transition-all active:scale-[0.98]"
-          >
-            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
-            </svg>
-            Scan Client's QR
-          </button>
-          <p className="text-center text-[11px] text-gray-400 mt-3 flex items-center justify-center gap-1">
-            <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
-              <path clipRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" fillRule="evenodd"/>
-            </svg>
-            Scan the user's QR code to begin consultation.
-          </p>
-        </div>
+      </div>
 
-      </main>
-
-      {/* ═══════════════ BUYER GENERATED QR CODE OVERLAY ═══════════════ */}
-      {showUserQr && (
-        <div 
-          className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-md flex items-center justify-center p-6 animate-fade-in"
-          onClick={() => setShowUserQr(false)}
-        >
-          <div 
-            className="bg-white rounded-[32px] p-6 w-full max-w-xs shadow-2xl border border-gray-100 text-center relative animate-scale-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Grab handle bar */}
-            <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-5"></div>
+      {/* QR Code Scan/Show Overlay Modal */}
+      {showQrModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-[340px] w-full text-center shadow-2xl relative animate-fade-in">
+            <button 
+              onClick={() => setShowQrModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+            <h3 className="text-lg font-black text-gray-900 tracking-tight">Consultation Check-In</h3>
+            <p className="text-xs text-gray-400 mt-1">Point the scanner at the client's companion QR code</p>
             
-            <h3 className="text-lg font-black tracking-tight text-gray-900 font-sans">Check-in QR Code</h3>
-            
-            <div className="text-xs font-bold font-mono text-[#ec4899] bg-pink-50 px-2.5 py-0.5 rounded-md w-fit mx-auto mt-1.5 uppercase">
-              ID: {getShortBookingId(currentVisitId)}
+            <div className="my-6 flex justify-center">
+              <div className="p-4 bg-[#f3e8ff] rounded-3xl border-2 border-[#9d4edd] shadow-lg">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(appointmentId || "VET-VISIT")}&color=9d4edd`} 
+                  alt="Companion QR" 
+                  className="w-48 h-48 rounded-xl object-contain"
+                />
+              </div>
             </div>
-            
-            <div className="my-6 p-4 bg-gray-50 border-2 border-dashed border-[#ec4899]/20 rounded-[24px] flex items-center justify-center aspect-square max-w-[220px] mx-auto shadow-inner">
-              <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(currentVisitId)}&color=d95191`} 
-                alt="QR Code" 
-                className="w-full h-full object-contain rounded-md" 
-                referrerPolicy="no-referrer" 
-              />
-            </div>
-            
-            <p className="text-[11px] text-gray-500 leading-tight mb-5 font-medium">
-              Ask the veterinarian to scan this QR code to begin the consultation.
-            </p>
             
             <button 
-              onClick={() => setShowUserQr(false)} 
-              className="w-full bg-[#ec4899] text-white py-3.5 rounded-xl font-black text-sm active:scale-95 transition-all shadow-md shadow-pink-100"
+              onClick={() => {
+                setShowQrModal(false);
+                toast.success("QR Code verified successfully!");
+              }}
+              className="w-full bg-gradient-to-r from-[#a855f7] to-[#8b5cf6] text-white py-3.5 rounded-2xl font-bold hover:opacity-95 transition active:scale-95 shadow-lg shadow-purple-150"
             >
-              Close Code
+              Verify QR Code & Proceed
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* ═══════════════ DETAILED HELP & SUPPORT VIEW OVERLAY ═══════════════ */}
-      {helpScreenOpen && (
-        <div className="fixed inset-0 z-50 bg-[#f8f9fa] flex flex-col overflow-y-auto animate-fade-in font-sans">
-          
-          {/* Sticky header */}
-          <div className="sticky top-0 bg-white/95 backdrop-blur-md z-20 px-4 py-4 flex items-center gap-2 border-b border-gray-150 shadow-sm">
-            <button 
-              onClick={() => setHelpScreenOpen(false)}
-              className="p-2 hover:bg-gray-100 rounded-full text-gray-800 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-800" strokeWidth={2.5} />
-            </button>
-            <h1 className="text-xl font-black text-gray-900 ml-1">Help &amp; Support</h1>
-          </div>
-
-          <div className="py-6 space-y-6 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8">
-
-            {/* SECTION 1: Active conversations */}
-            <div className="px-4">
-              <p className="text-[11px] font-black tracking-widest text-[#ec4899] uppercase mb-3 px-1">Active Conversations</p>
-              
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-4 py-3.5 bg-gray-50/50 flex items-center justify-between">
-                  <p className="text-xs text-gray-500 font-extrabold uppercase tracking-widest">General Issues</p>
-                  <span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>
-                </div>
-                <div className="border-t border-gray-100" />
-                
-                <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500 shrink-0">
-                      <User className="w-5 h-5 fill-current" />
-                    </div>
-                    <div>
-                      <p className="text-[14px] font-extrabold text-gray-800 leading-snug">
-                        I have payment and refund related issues
-                      </p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase mt-0.5">Support Ticket #SRV-908</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-1.5 text-[#16a34a] font-bold text-[11px] bg-green-50 px-3 py-1 rounded-full w-fit border border-green-100">
-                    <span className="w-1.5 h-1.5 bg-[#16a34a] rounded-full animate-pulse" />
-                    <span>Active Support Session</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION 2: General FAQ list */}
-            <div className="px-4">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-100 overflow-hidden font-bold">
-                <div 
-                  onClick={() => toast.info("Searching for your order coordinates...")}
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
-                >
-                  <span className="text-[15px] text-gray-800">I did not receive this order</span>
-                  <ChevronDown className="w-5 h-5 text-gray-400 -rotate-90" strokeWidth={2.5} />
-                </div>
-                <div 
-                  onClick={() => toast.info("Refund request is created for validation.")}
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
-                >
-                  <span className="text-[15px] text-gray-800">I want to return items in my order</span>
-                  <ChevronDown className="w-5 h-5 text-gray-400 -rotate-90" strokeWidth={2.5} />
-                </div>
-                <div 
-                  onClick={() => toast.success("Connected with our agent.")}
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
-                >
-                  <span className="text-[15px] text-gray-800">I have payment and refund related issues</span>
-                  <ChevronDown className="w-5 h-5 text-gray-400" strokeWidth={2.5} />
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION 3: Past conversations archives */}
-            <div className="px-4">
-              <p className="text-[11px] font-black tracking-widest text-[#ec4899] uppercase mb-3 px-1">Past Conversations</p>
-              
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[17px] font-black text-gray-900 leading-tight">Where is my order?</p>
-                  <ChevronDown className="w-5 h-5 text-gray-400 -rotate-90" strokeWidth={2.5} />
-                </div>
-                <div className="border-t border-dashed border-gray-200 my-3.5" />
-                <p className="text-xs text-slate-500 font-bold"><span className="text-slate-800 font-black">Opened on: </span>May 10, 2026, 10:30 PM</p>
-                <p className="text-xs text-slate-500 font-bold mt-1.5"><span className="text-slate-800 font-black">Closed on: </span>May 10, 2026, 10:36 PM</p>
-              </div>
-            </div>
-
           </div>
         </div>
       )}
