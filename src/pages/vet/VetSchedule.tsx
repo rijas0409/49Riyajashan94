@@ -210,7 +210,7 @@ const VetSchedule = () => {
           return {
             id: apt.id,
             date: apt.appointment_date,
-            type: (apt.appointment_type || "clinic").toLowerCase(),
+            type: apt.appointment_type || "clinic",
             petName: apt.pet_name || "Luna",
             breed: apt.pet_breed || (apt.pet_type ? `${apt.pet_type}` : "Dog"),
             ownerName: userProfile.full_name || userProfile.name || "Sarah Jenkins",
@@ -598,7 +598,7 @@ const VetSchedule = () => {
                     }}
                     className="flex-1 bg-[#a428f0] text-white py-3.5 px-5 text-center rounded-[30px] text-[15px] font-[600] shadow-[0_8px_25px_rgba(164,40,240,0.3)] active:scale-95 transition-all"
                   >
-                    {apt.type === 'home' ? 'View Route' : 'View Details'}
+                    View Details
                   </button>
                 </div>
               )}
