@@ -195,6 +195,7 @@ const App = () => (
                 <Route path="/vet/virtual-consults" element={<VirtualConsults />} />
                 <Route path="/vet/consultation-detail" element={<ConsultationDetail />} />
                 <Route path="/buyer/vet/home-visit-details" element={<HomeVisitDetails />} />
+                <Route path="/buyer/vet/home-visit-details/:appointmentId" element={<HomeVisitDetails />} />
                 <Route path="/buyer/vet/clinic-visit-details" element={<ClinicVisitDetails />} />
                 <Route path="/buyer/vet/clinic-visit-details/:appointmentId" element={<ClinicVisitDetails />} />
                 <Route path="/vet/appointment-confirmation/:appointmentId" element={<AppointmentConfirmation />} />

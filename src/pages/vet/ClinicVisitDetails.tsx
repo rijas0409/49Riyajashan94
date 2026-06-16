@@ -1768,18 +1768,31 @@ const ClinicVisitDetails: React.FC = () => {
                   {/* Star rating and feedback counts */}
                   <div className="flex items-center gap-1 sm:gap-1.5 mt-1 sm:mt-1.5 text-slate-400">
                     <div className="flex text-amber-400 shrink-0">
-                      <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
-                      <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
-                      <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
-                      <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
-                      <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current text-amber-200" />
+                      {[1, 2, 3, 4, 5].map((starIdx) => {
+                        const rating = doctorProfile?.average_rating || 0;
+                        const isFull = starIdx <= Math.floor(rating);
+                        const isHalf = !isFull && (starIdx - 0.5) <= rating;
+                        
+                        return (
+                          <div key={starIdx} className="relative">
+                            <Star 
+                              className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isFull ? "fill-current" : "text-amber-200"}`} 
+                            />
+                            {isHalf && (
+                              <div className="absolute inset-0 overflow-hidden w-[50%]">
+                                <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                     <span className="text-[10px] sm:text-[11px] text-gray-800 font-extrabold">
-                      {doctorProfile?.average_rating != null ? doctorProfile.average_rating.toFixed(1) : "4.8"}
+                      {doctorProfile?.average_rating != null ? doctorProfile.average_rating.toFixed(1) : "0.0"}
                     </span>
                     <span className="text-gray-300">·</span>
                     <span className="text-[10px] sm:text-[11px] text-gray-550 font-bold">
-                      {doctorProfile?.years_of_experience != null ? `${doctorProfile.years_of_experience}+ yrs exp` : "4+ yrs exp"}
+                      {doctorProfile?.years_of_experience != null ? `${doctorProfile.years_of_experience}+ yrs exp` : "0+ yrs exp"}
                     </span>
                   </div>
                 </div>

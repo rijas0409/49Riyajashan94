@@ -210,7 +210,7 @@ const VetSchedule = () => {
           return {
             id: apt.id,
             date: apt.appointment_date,
-            type: apt.appointment_type || "clinic",
+            type: (apt.appointment_type || "clinic").toLowerCase(),
             petName: apt.pet_name || "Luna",
             breed: apt.pet_breed || (apt.pet_type ? `${apt.pet_type}` : "Dog"),
             ownerName: userProfile.full_name || userProfile.name || "Sarah Jenkins",
@@ -473,7 +473,7 @@ const VetSchedule = () => {
                   } catch(e) {}
                 }
                 const shortId = getShortBookingId(apt.id);
-                navigate(apt.type === 'home' ? "/buyer/vet/home-visit-details" : `/buyer/vet/clinic-visit-details/${shortId}`, {
+                navigate(apt.type === 'home' ? `/buyer/vet/home-visit-details/${shortId}` : `/buyer/vet/clinic-visit-details/${shortId}`, {
                   state: {
                     visit: {
                       id: apt.id,
@@ -576,7 +576,7 @@ const VetSchedule = () => {
                     onClick={(e) => {
                       e.stopPropagation();
                        const shortId = getShortBookingId(apt.id);
-                       navigate(apt.type === 'home' ? "/buyer/vet/home-visit-details" : `/buyer/vet/clinic-visit-details/${shortId}`, {
+                       navigate(apt.type === 'home' ? `/buyer/vet/home-visit-details/${shortId}` : `/buyer/vet/clinic-visit-details/${shortId}`, {
                         state: {
                           visit: {
                             id: apt.id,
