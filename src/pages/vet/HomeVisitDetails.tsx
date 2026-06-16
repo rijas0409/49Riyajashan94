@@ -81,7 +81,7 @@ const HomeVisitDetails = () => {
   const [petPassport, setPetPassport] = useState<any>(null);
   const [medicalLog, setMedicalLog] = useState<any>(null);
   const [healthRecords, setHealthRecords] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Interaction/Mutation states
   const [chiefComplaint, setChiefComplaint] = useState("Kiro is fainting I need emergency help.");
@@ -89,7 +89,13 @@ const HomeVisitDetails = () => {
   const [reasonInput, setReasonInput] = useState("");
   const [isSwipeMode, setIsSwipeMode] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [showQRModal, setShowQRModal] = useState(false);
+  
+  // Camera & Video Scanner States
+  const [qrOverlayOpen, setQrOverlayOpen] = useState(false);
+  const [flashOn, setFlashOn] = useState(false);
+  const [cameraError, setCameraError] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Swipe slider Ref & Drag metrics
   const swipeContainerRef = useRef<HTMLDivElement | null>(null);
@@ -100,20 +106,102 @@ const HomeVisitDetails = () => {
   const isDraggingRef = useRef(false);
   const startXRef = useRef(0);
 
+  // Camera access handler for QR Overlay
+  useEffect(() => {
+    let active = true;
+    let autoScanTimeout: NodeJS.Timeout | null = null;
+
+    const startCamera = async () => {
+      try {
+        setCameraError(false);
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" }
+        });
+        if (!active) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(e => console.error("Video play failed", e));
+        }
+
+        // Apply torch state if camera supports it and flash is on
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+          try {
+            await track.applyConstraints({
+              advanced: [{ torch: flashOn }]
+            } as any);
+          } catch (e) {
+            console.log("Torch constraint fail", e);
+          }
+        }
+
+        // Simulated QR Auto scan completion after 3.2 seconds
+        autoScanTimeout = setTimeout(() => {
+          if (active) {
+            handleSimulateQRSuccess();
+          }
+        }, 3200);
+
+      } catch (err) {
+        console.error("Camera access failed:", err);
+        setCameraError(true);
+      }
+    };
+
+    if (qrOverlayOpen) {
+      startCamera();
+    } else {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    }
+
+    return () => {
+      active = false;
+      if (autoScanTimeout) clearTimeout(autoScanTimeout);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    };
+  }, [qrOverlayOpen, flashOn]);
+
+  // Handle flashOn changes with media stream constraints
+  useEffect(() => {
+    if (streamRef.current) {
+      const track = streamRef.current.getVideoTracks()[0];
+      if (track) {
+        try {
+          track.applyConstraints({
+            advanced: [{ torch: flashOn }]
+          } as any);
+        } catch (e) {
+          console.log("Torch toggle fail:", e);
+        }
+      }
+    }
+  }, [flashOn]);
+
+  const handleSimulateQRSuccess = () => {
+    setQrOverlayOpen(false);
+    toast.success("Passport successfully verified via QR scan!");
+  };
+
   // 1. Fetch live database values for the appointment & associated records
   useEffect(() => {
     const fetchAllData = async () => {
       try {
-        setLoading(true);
-
         if (!realDbId) {
-          // Fallback to offline defaults or URL patterns if no real ID is passed
-          setLoading(false);
           return;
         }
 
         // Fetch appointment details
-        let targetId = realDbId;
+        const targetId = realDbId;
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetId || "");
 
         let apptQuery = supabase.from("vet_appointments").select("*");
@@ -330,7 +418,7 @@ const HomeVisitDetails = () => {
     if (!handle || !container) return;
 
     const maxTrackWidth = container.clientWidth - handle.clientWidth - 12;
-    let finalX = Math.max(0, Math.min(deltaX, maxTrackWidth));
+    const finalX = Math.max(0, Math.min(deltaX, maxTrackWidth));
 
     handle.style.transform = `translateX(${finalX}px)`;
     if (fill) fill.style.width = `${finalX + 26}px`;
@@ -422,17 +510,6 @@ const HomeVisitDetails = () => {
     if (appStatus === "completed") return "Consultation Completed";
     return appStatus.toUpperCase();
   }, [appStatus]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-200">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 font-bold">Fetching real-time home visit records...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="bg-gray-200 flex justify-center antialiased select-none min-h-screen">
@@ -874,7 +951,7 @@ const HomeVisitDetails = () => {
         {/* Floating QR Squircle Button */}
         <button 
           onClick={() => {
-            setShowQRModal(true);
+            setQrOverlayOpen(true);
             toast.info("Opening scanner...");
           }}
           id="qrButton" 
@@ -965,50 +1042,83 @@ const HomeVisitDetails = () => {
 
       </div>
 
-      {/* QR Code Scanner Overlay Modal */}
-      {showQRModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl relative">
+      {/* ═══════════════ QR SCANNER OVERLAY ═══════════════ */}
+      {qrOverlayOpen && (
+        <div id="qr-overlay" style={{ position: "fixed", inset: 0, zIndex: 100, background: "black", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <style>{`
+            @keyframes scan-line-anim {
+              0% { transform: translateY(0); }
+              50% { transform: translateY(226px); }
+              100% { transform: translateY(0); }
+            }
+          `}</style>
+          
+          {/* Video feed */}
+          <video 
+            id="qr-video" 
+            ref={videoRef}
+            autoPlay 
+            playsInline 
+            muted 
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: cameraError ? "none" : "block" }}
+          ></video>
+          {cameraError && (
+             <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", background: "linear-gradient(45deg, #111827, #000)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <p style={{ color: "#ec4899", fontFamily: "monospace", fontSize: "12px", letterSpacing: "1px", marginBottom: "8px" }}>CAMERA UNAVAILABLE</p>
+                <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "10px" }}>Permission denied or device missing</p>
+             </div>
+          )}
+
+          {/* Dark vignette corners */}
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, transparent 38%, rgba(0,0,0,0.72) 100%)", pointerEvents: "none" }}></div>
+
+          {/* Top bar */}
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "52px 20px 16px", display: "flex", alignItems: "center", justifyBetween: "space-between", zIndex: 102 }}>
             <button 
-              onClick={() => setShowQRModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-lg"
+              onClick={() => setQrOverlayOpen(false)} 
+              style={{ width: "40px", height: "40px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
             >
-              <i className="fas fa-times"></i>
+              <svg width="20" height="20" fill="none" stroke="white" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5"/></svg>
             </button>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-                <i className="fas fa-qrcode text-xl"></i>
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-1">Verify Passport QR</h3>
-              <p className="text-xs text-gray-500 mb-6">Scan the pet's electronic tag collar or passport card to instantly verify secure medical credentials.</p>
-              
-              {/* Simulated camera scanning frame */}
-              <div className="relative w-48 h-48 mx-auto bg-gray-950 border-2 border-purple-500 rounded-2xl overflow-hidden flex items-center justify-center mb-6">
-                <div className="absolute inset-3 border border-purple-400 border-dashed rounded-lg animate-pulse" />
-                <div className="absolute inset-x-0 h-0.5 bg-purple-400 animate-bounce" style={{ top: "40%" }} />
-                <div className="text-center font-mono text-[9px] text-purple-300">
-                  [ CAMERA READY ]
-                </div>
-              </div>
-              
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => setShowQRModal(false)}
-                  className="flex-1 py-2.5 border border-gray-200 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={() => {
-                    setShowQRModal(false);
-                    toast.success("Passport successfully verified via QR scan!");
-                  }}
-                  className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl text-xs font-bold text-white shadow-md hover:opacity-90"
-                >
-                  Simulate Success
-                </button>
-              </div>
-            </div>
+            <span style={{ color: "white", fontWeight: 700, fontSize: "16px", letterSpacing: ".3px" }}>Scan Vet's QR Code</span>
+            
+            {/* Flashlight toggle */}
+            <button 
+              id="flash-btn" 
+              onClick={() => setFlashOn(!flashOn)} 
+              style={{ width: "40px", height: "40px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+            >
+              {!flashOn ? (
+                <svg id="flash-off-icon" width="20" height="20" fill="none" stroke="white" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/></svg>
+              ) : (
+                <svg id="flash-on-icon" width="20" height="20" fill="#facc15" stroke="#facc15" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/></svg>
+              )}
+            </button>
+          </div>
+
+          {/* Scan frame */}
+          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -56%)", width: "240px", height: "240px" }}>
+            {/* Corners */}
+            <div className="qr-frame-corner" style={{ position: "absolute", top: 0, left: 0, borderWidth: "4px 0 0 4px", borderColor: "#ec4899", borderStyle: "solid", borderRadius: "8px 0 0 0", width: "30px", height: "30px" }}></div>
+            <div className="qr-frame-corner" style={{ position: "absolute", top: 0, right: 0, borderWidth: "4px 4px 0 0", borderColor: "#ec4899", borderStyle: "solid", borderRadius: "0 8px 0 0", width: "30px", height: "30px" }}></div>
+            <div className="qr-frame-corner" style={{ position: "absolute", bottom: 0, left: 0, borderWidth: "0 0 4px 4px", borderColor: "#ec4899", borderStyle: "solid", borderRadius: "0 0 0 8px", width: "30px", height: "30px" }}></div>
+            <div className="qr-frame-corner" style={{ position: "absolute", bottom: 0, right: 0, borderWidth: "0 4px 4px 0", borderColor: "#ec4899", borderStyle: "solid", borderRadius: "0 0 8px 0", width: "30px", height: "30px" }}></div>
+            {/* Scan line */}
+            <div id="scan-line" style={{ position: "absolute", left: "6px", right: "6px", height: "2px", background: "linear-gradient(90deg, transparent, #ec4899, transparent)", borderRadius: "2px", boxShadow: "0 0 8px #ec4899", animation: "scan-line-anim 3s infinite linear" }}></div>
+          </div>
+
+          {/* Bottom hint */}
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "24px 24px 48px", textAlign: "center" }}>
+            <p style={{ color: "rgba(255,255,255,0.9)", fontSize: "14px", fontWeight: 600, marginBottom: "6px" }}>Point camera at veterinarian's QR code</p>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "12px" }}>Hold steady — auto-detects within frame</p>
+
+            {/* Demo: simulate success */}
+            <button 
+              onClick={handleSimulateQRSuccess} 
+              style={{ marginTop: "20px", background: "rgba(236,72,153,0.25)", border: "1px solid rgba(236,72,153,0.5)", color: "white", fontSize: "12px", fontWeight: 700, padding: "10px 28px", borderRadius: "50px", cursor: "pointer", backdropFilter: "blur(8px)" }}
+            >
+              Simulate Scan ✓
+            </button>
           </div>
         </div>
       )}
