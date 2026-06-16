@@ -325,6 +325,7 @@ const VetSchedule = () => {
       state: { 
         visit: {
           id: "HV-123",
+          type: "home",
           petName: "Bella",
           petBreed: "Golden Retriever • 2Y",
           ownerName: "Sarah Jenkins",
@@ -345,6 +346,7 @@ const VetSchedule = () => {
       state: { 
         visit: {
           id: "CV-124",
+          type: "clinic",
           petName: "Gabru",
           petBreed: "Labrador • 3Y",
           ownerName: "Michael Ross",
@@ -477,6 +479,7 @@ const VetSchedule = () => {
                   state: {
                     visit: {
                       id: apt.id,
+                      type: apt.type,
                       bookingId: currentBookingId,
                       paymentDetails: parsedPaymentDetails,
                       petName: apt.petName,
@@ -580,6 +583,7 @@ const VetSchedule = () => {
                         state: {
                           visit: {
                             id: apt.id,
+                            type: apt.type,
                             petName: apt.petName,
                             petBreed: apt.breed,
                             petAge: "4 Years",

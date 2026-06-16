@@ -22,6 +22,9 @@ const VetScheduleVisitDetails: React.FC = () => {
   const ownerName = stateVisit?.ownerName || "Mark Thompson";
   const ownerPhone = stateVisit?.ownerPhone || "+1 (555) 234-5678";
 
+  // Determine if it is a Home Visit or a Clinic Visit
+  const isHomeVisit = stateVisit?.type === "clinic" || appointmentId?.startsWith("CV") ? false : true;
+
   // Load Font Awesome on Mount
   useEffect(() => {
     const link = document.createElement("link");
@@ -41,7 +44,11 @@ const VetScheduleVisitDetails: React.FC = () => {
   const [isSwipeMode, setIsSwipeMode] = useState(false);
   const [swipeTranslation, setSwipeTranslation] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
+  
+  // Modals
   const [showQrModal, setShowQrModal] = useState(false);
+  const [showImmersiveScanner, setShowImmersiveScanner] = useState(false);
+  const [isScannerAnimating, setIsScannerAnimating] = useState(false);
 
   const handleRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -130,6 +137,27 @@ const VetScheduleVisitDetails: React.FC = () => {
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, "_blank");
   };
 
+  const openImmersiveScanner = () => {
+    setShowImmersiveScanner(true);
+    setTimeout(() => {
+      setIsScannerAnimating(true);
+    }, 10);
+  };
+
+  const closeImmersiveScanner = () => {
+    setIsScannerAnimating(false);
+    setTimeout(() => {
+      setShowImmersiveScanner(false);
+    }, 300);
+  };
+
+  const executeMockScan = () => {
+    closeImmersiveScanner();
+    setTimeout(() => {
+      toast.success("✨ QR Code Detected: Kiro's Passport synchronized successfully!");
+    }, 400);
+  };
+
   return (
     <div className="bg-gray-200 flex justify-center antialiased select-none min-h-screen">
       {/* Dynamic styles injector */}
@@ -145,6 +173,14 @@ const VetScheduleVisitDetails: React.FC = () => {
         }
         .shimmer-track {
           animation: subtleShimmer 3s infinite ease-in-out;
+        }
+        @keyframes laserMove {
+          0% { top: 6%; }
+          50% { top: 94%; }
+          100% { top: 6%; }
+        }
+        .laser-line {
+          animation: laserMove 2s infinite linear;
         }
       `}</style>
 
@@ -186,134 +222,244 @@ const VetScheduleVisitDetails: React.FC = () => {
             </div>
           </div>
 
-          {/* Navigation Card (Terrain) */}
-          <div className="mx-5 mt-2 bg-white rounded-[20px] overflow-hidden shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
-            <div className="p-4 pb-3 flex justify-between items-center">
-              <h3 className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Navigation to Owner</h3>
-              <span className="text-[11px] font-bold text-[#9d4edd] tracking-wide uppercase">2.4 Miles Away</span>
-            </div>
-            
-            <div className="relative h-[160px] map-bg w-full border-t border-gray-100">
-              <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-                <path d="M 60,130 L 160,130 L 160,50 L 320,50" fill="none" stroke="#9d4edd" strokeWidth="3" strokeLinejoin="round"/>
-              </svg>
-              <div className="absolute bottom-[26px] left-[54px] w-3 h-3 bg-blue-500 border-[2px] border-white rounded-full shadow-md"></div>
-              <div className="absolute top-[44px] right-[74px] w-3 h-3 bg-[#9d4edd] border-[2px] border-white rounded-full shadow-md"></div>
-              <div className="absolute top-[20px] right-[45px] bg-[#9d4edd] text-white text-[9px] font-bold px-2 py-1 rounded-md shadow-md">
-                Owner's Home
-              </div>
-              
-              <button 
-                onClick={handleStartNavigation}
-                className="absolute bottom-3 right-3 bg-gradient-to-r from-[#a855f7] to-[#8b5cf6] text-white px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-[0_15px_35px_-5px_rgba(157,78,221,0.3)] transition transform hover:scale-105 active:scale-95"
-              >
-                <i className="fas fa-location-arrow text-[11px]"></i>
-                <span className="text-[12px] font-bold">Start Navigation</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Reason For Visit Card */}
-          <div className="mx-5 mt-4">
-            <div className="flex justify-between items-center mb-2 px-0.5">
-              <h2 className="text-[16px] font-bold text-[#1a1f36] tracking-tight">Reason for Visit</h2>
-              <button 
-                onClick={() => toast.info("Complaint modification not available currently.")}
-                className="text-pink-500 font-semibold text-[11px] flex items-center gap-1"
-              >
-                <i className="fas fa-edit text-[10px]"></i> Edit
-              </button>
-            </div>
-            <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-start gap-3">
-              <div className="w-5 h-5 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-[10px] shrink-0 mt-0.5">
-                <i className="fas fa-exclamation-circle"></i>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">Chief Complaint</p>
-                <p className="text-[13px] text-gray-700 font-medium leading-relaxed">{chiefComplaint}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Visit Information Card */}
-          <div className="mx-5 mt-4 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
-            <div className="flex justify-between items-center mb-3.5">
-              <h3 className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Visit Information</h3>
-              <div className="w-5 h-5 rounded-full bg-[#9d4edd] flex items-center justify-center text-white text-[9px]">
-                <i className="fas fa-info"></i>
-              </div>
-            </div>
-            
-            <div className="flex flex-col gap-3.5">
-              {/* Visit Type */}
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-md shrink-0">
-                  <i className="fas fa-house-chimney-medical"></i>
+          {isHomeVisit ? (
+            /* ==================== HOME VISIT LAYOUT (homie.html) ==================== */
+            <>
+              {/* Navigation Card (Terrain) */}
+              <div className="mx-5 mt-2 bg-white rounded-[20px] overflow-hidden shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
+                <div className="p-4 pb-3 flex justify-between items-center">
+                  <h3 className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Navigation to Owner</h3>
+                  <span className="text-[11px] font-bold text-[#9d4edd] tracking-wide uppercase">2.4 Miles Away</span>
                 </div>
-                <div>
-                  <p className="text-[11px] text-gray-400 font-medium">Visit Type</p>
-                  <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">Home Visit</p>
+                
+                <div className="relative h-[160px] map-bg w-full border-t border-gray-100">
+                  <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+                    <path d="M 60,130 L 160,130 L 160,50 L 320,50" fill="none" stroke="#9d4edd" strokeWidth="3" strokeLinejoin="round"/>
+                  </svg>
+                  <div className="absolute bottom-[26px] left-[54px] w-3 h-3 bg-blue-500 border-[2px] border-white rounded-full shadow-md"></div>
+                  <div className="absolute top-[44px] right-[74px] w-3 h-3 bg-[#9d4edd] border-[2px] border-white rounded-full shadow-md"></div>
+                  <div className="absolute top-[20px] right-[45px] bg-[#9d4edd] text-white text-[9px] font-bold px-2 py-1 rounded-md shadow-md">
+                    Owner's Home
+                  </div>
+                  
+                  <button 
+                    onClick={handleStartNavigation}
+                    className="absolute bottom-3 right-3 bg-gradient-to-r from-[#a855f7] to-[#8b5cf6] text-white px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-[0_15px_35px_-5px_rgba(157,78,221,0.3)] transition transform hover:scale-105 active:scale-95"
+                  >
+                    <i className="fas fa-location-arrow text-[11px]"></i>
+                    <span className="text-[12px] font-bold">Start Navigation</span>
+                  </button>
                 </div>
               </div>
 
-              {/* Reason for Visit */}
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center text-md shrink-0">
-                  <i className="fas fa-syringe"></i>
+              {/* Reason For Visit Card */}
+              <div className="mx-5 mt-4">
+                <div className="flex justify-between items-center mb-2 px-0.5">
+                  <h2 className="text-[16px] font-bold text-[#1a1f36] tracking-tight">Reason for Visit</h2>
+                  <button 
+                    onClick={() => toast.info("Complaint modification not available currently.")}
+                    className="text-pink-500 font-semibold text-[11px] flex items-center gap-1"
+                  >
+                    <i className="fas fa-edit text-[10px]"></i> Edit
+                  </button>
                 </div>
-                <div>
-                  <p className="text-[11px] text-gray-400 font-medium">Reason for Visit</p>
-                  <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">Home Vaccination</p>
+                <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-[10px] shrink-0 mt-0.5">
+                    <i className="fas fa-exclamation-circle"></i>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">Chief Complaint</p>
+                    <p className="text-[13px] text-gray-700 font-medium leading-relaxed">{chiefComplaint}</p>
+                  </div>
                 </div>
               </div>
 
-              {/* Scheduled Time */}
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center text-md shrink-0">
-                  <i className="fas fa-clock"></i>
+              {/* Visit Information Card */}
+              <div className="mx-5 mt-4 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
+                <div className="flex justify-between items-center mb-3.5">
+                  <h3 className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Visit Information</h3>
+                  <div className="w-5 h-5 rounded-full bg-[#9d4edd] flex items-center justify-center text-white text-[9px]">
+                    <i className="fas fa-info"></i>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[11px] text-gray-400 font-medium">Scheduled Time</p>
-                  <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">{scheduledTime} <span className="text-[#9d4edd] font-medium">(In 20 mins)</span></p>
+                
+                <div className="flex flex-col gap-3.5">
+                  {/* Visit Type */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-md shrink-0">
+                      <i className="fas fa-house-chimney-medical"></i>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-gray-400 font-medium">Visit Type</p>
+                      <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">Home Visit</p>
+                    </div>
+                  </div>
+
+                  {/* Reason for Visit */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center text-md shrink-0">
+                      <i className="fas fa-syringe"></i>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-gray-400 font-medium">Reason for Visit</p>
+                      <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">Home Vaccination</p>
+                    </div>
+                  </div>
+
+                  {/* Scheduled Time */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center text-md shrink-0">
+                      <i className="fas fa-clock"></i>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-gray-400 font-medium">Scheduled Time</p>
+                      <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">{scheduledTime} <span className="text-[#9d4edd] font-medium">(In 20 mins)</span></p>
+                    </div>
+                  </div>
+
+                  {/* Owner Address */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#f3e8ff] text-[#9d4edd] flex items-center justify-center text-md shrink-0">
+                      <i className="fas fa-location-dot"></i>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-gray-400 font-medium">Owner Address</p>
+                      <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">{address}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Owner Address */}
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#f3e8ff] text-[#9d4edd] flex items-center justify-center text-md shrink-0">
-                  <i className="fas fa-location-dot"></i>
-                </div>
-                <div>
-                  <p className="text-[11px] text-gray-400 font-medium">Owner Address</p>
-                  <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">{address}</p>
+              {/* Clinical Overview Card */}
+              <div className="mx-5 mt-4">
+                <h2 className="text-[16px] font-bold text-[#1a1f36] mb-2 px-0.5 tracking-tight">Clinical Overview</h2>
+                <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center gap-3.5">
+                  <img 
+                    src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=150&h=150" 
+                    alt="Kiro" 
+                    className="w-[54px] h-[54px] rounded-xl object-cover"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[15px] font-bold text-[#1a1f36]">Kiro</span>
+                      <span className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase scale-90 origin-left">Active</span>
+                    </div>
+                    <p className="text-[13px] text-gray-700 font-semibold mt-0.5">British Shorthair • Female</p>
+                    <div className="flex items-center gap-3 text-[#8b92a5] text-[11px] mt-1 font-medium">
+                      <span className="flex items-center gap-1"><i className="far fa-clock text-[10px]"></i> 2 yr</span>
+                      <span className="flex items-center gap-1"><i className="fas fa-weight-hanging text-[10px]"></i> 4.9 lbs</span>
+                      <span className="flex items-center gap-1"><i className="far fa-calendar text-[10px]"></i> Jun 29, 2024</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </>
+          ) : (
+            /* ==================== CLINIC VISIT LAYOUT (clinio.html) ==================== */
+            <>
+              {/* [1] Visit Information Card */}
+              <div className="mx-5 mt-3 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
+                <div className="flex justify-between items-center mb-3.5">
+                  <h3 className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Visit Information</h3>
+                  <div className="w-5 h-5 rounded-full bg-[#9d4edd] flex items-center justify-center text-white text-[9px]">
+                    <i className="fas fa-info"></i>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col gap-3.5">
+                  {/* Visit Type */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-md shrink-0">
+                      <i className="fas fa-hospital-user"></i>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-gray-400 font-medium">Visit Type</p>
+                      <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">Clinic Visit</p>
+                    </div>
+                  </div>
 
-          {/* Clinical Overview Card */}
-          <div className="mx-5 mt-4">
-            <h2 className="text-[16px] font-bold text-[#1a1f36] mb-2 px-0.5 tracking-tight">Clinical Overview</h2>
-            <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center gap-3.5">
-              <img 
-                src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=150&h=150" 
-                alt="Kiro" 
-                className="w-[54px] h-[54px] rounded-xl object-cover"
-              />
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[15px] font-bold text-[#1a1f36]">Kiro</span>
-                  <span className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase scale-90 origin-left">Active</span>
-                </div>
-                <p className="text-[13px] text-gray-700 font-semibold mt-0.5">British Shorthair • Female</p>
-                <div className="flex items-center gap-3 text-[#8b92a5] text-[11px] mt-1 font-medium">
-                  <span className="flex items-center gap-1"><i className="far fa-clock text-[10px]"></i> 2 yr</span>
-                  <span className="flex items-center gap-1"><i className="fas fa-weight-hanging text-[10px]"></i> 4.9 lbs</span>
-                  <span className="flex items-center gap-1"><i className="far fa-calendar text-[10px]"></i> Jun 29, 2024</span>
+                  {/* Reason for Visit */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-purple-50 text-[#9d4edd] flex items-center justify-center text-md shrink-0">
+                      <i className="fas fa-syringe"></i>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-gray-400 font-medium">Reason for Visit</p>
+                      <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">Regular Vaccination</p>
+                    </div>
+                  </div>
+
+                  {/* Scheduled Time */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center text-md shrink-0">
+                      <i className="fas fa-clock"></i>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-gray-400 font-medium">Scheduled Time</p>
+                      <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">{scheduledTime} <span className="text-[#9d4edd] font-medium">(In 20 mins)</span></p>
+                    </div>
+                  </div>
+
+                  {/* Owner Address */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#f3e8ff] text-[#9d4edd] flex items-center justify-center text-md shrink-0">
+                      <i className="fas fa-location-dot"></i>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-gray-400 font-medium">Owner Address</p>
+                      <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">{address}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+
+              {/* [2] Reason For Visit Card */}
+              <div className="mx-5 mt-4">
+                <div className="flex justify-between items-center mb-2 px-0.5">
+                  <h2 className="text-[16px] font-bold text-[#1a1f36] tracking-tight">Reason for Visit</h2>
+                  <button 
+                    onClick={() => toast.info("Complaint modification not available currently.")}
+                    className="text-pink-500 font-semibold text-[11px] flex items-center gap-1"
+                  >
+                    <i className="fas fa-edit text-[10px]"></i> Edit
+                  </button>
+                </div>
+                <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-[10px] shrink-0 mt-0.5">
+                    <i className="fas fa-exclamation-circle"></i>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">Chief Complaint</p>
+                    <p className="text-[13px] text-gray-700 font-medium leading-relaxed">{chiefComplaint}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* [3] Clinical Overview Card */}
+              <div className="mx-5 mt-4">
+                <h2 className="text-[16px] font-bold text-[#1a1f36] mb-2 px-0.5 tracking-tight">Clinical Overview</h2>
+                <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center gap-3.5">
+                  <img 
+                    src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=150&h=150" 
+                    alt="Kiro" 
+                    className="w-[54px] h-[54px] rounded-xl object-cover"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[15px] font-bold text-[#1a1f36]">Kiro</span>
+                      <span className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase scale-90 origin-left">Active</span>
+                    </div>
+                    <p className="text-[13px] text-gray-700 font-semibold mt-0.5">British Shorthair • Female</p>
+                    <div className="flex items-center gap-3 text-[#8b92a5] text-[11px] mt-1 font-medium">
+                      <span className="flex items-center gap-1"><i className="far fa-clock text-[10px]"></i> 2 yr</span>
+                      <span className="flex items-center gap-1"><i className="fas fa-weight-hanging text-[10px]"></i> 4.9 lbs</span>
+                      <span className="flex items-center gap-1"><i className="far fa-calendar text-[10px]"></i> Jun 29, 2024</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Pet Passport Components Heading */}
           <div className="mx-5 mt-5">
@@ -502,7 +648,13 @@ const VetScheduleVisitDetails: React.FC = () => {
 
         {/* Floating QR Squircle Button */}
         <button 
-          onClick={() => setShowQrModal(true)} 
+          onClick={() => {
+            if (isHomeVisit) {
+              setShowQrModal(true);
+            } else {
+              openImmersiveScanner();
+            }
+          }} 
           className="absolute bottom-[160px] right-6 w-[56px] h-[56px] bg-[#f3e8ff] text-[#9d4edd] rounded-[22px] shadow-[0_8px_20px_-4px_rgba(157,78,221,0.2)] flex items-center justify-center text-[22px] transition transform hover:scale-105 active:scale-95 z-20" 
           title="Scan QR"
         >
@@ -582,10 +734,74 @@ const VetScheduleVisitDetails: React.FC = () => {
 
       </div>
 
+      {/* [REFINED] High-Fidelity Google Pay Immersive Scanner (Theme Matched) */}
+      {showImmersiveScanner && (
+        <div 
+          onClick={executeMockScan}
+          className={`fixed inset-0 bg-black z-50 flex flex-col justify-between transition-all duration-300 ease-out cursor-pointer sm:border sm:border-gray-805 sm:rounded-3xl max-w-[400px] mx-auto h-screen ${isScannerAnimating ? 'opacity-100' : 'opacity-0'}`}
+          title="Tap screen to simulate successful QR detection"
+        >
+          {/* Live Simulated Camera Viewport */}
+          <div className="absolute inset-0 w-full h-full bg-[#121016] overflow-hidden sm:rounded-3xl">
+            {/* Camera Fine Matrix Grid Overlay */}
+            <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)", backgroundSize: "18px 18px" }}></div>
+            
+            {/* Google Pay Ergonomic Offset Target Overlay (Slightly Upwards) */}
+            <div className="absolute inset-x-0 top-0 bottom-[10%] flex items-center justify-center pointer-events-none">
+              
+              {/* Expanded Width Theme-Matched Targeting Square Box */}
+              <div className="w-[250px] h-[250px] rounded-2xl bg-transparent relative border border-white/5 shadow-[0_0_20px_rgba(157,78,221,0.3)]">
+                {/* Simulated deep outer black mask */}
+                <div className="absolute inset-0 rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.70)] pointer-events-none"></div>
+
+                {/* Premium Brand Purple Premium Corner Brackets */}
+                <div className="absolute -top-[2px] -left-[2px] w-7 h-7 border-t-[4px] border-l-[4px] border-[#9d4edd] rounded-tl-xl"></div>
+                <div className="absolute -top-[2px] -right-[2px] w-7 h-7 border-t-[4px] border-r-[4px] border-[#9d4edd] rounded-tr-xl"></div>
+                <div className="absolute -bottom-[2px] -left-[2px] w-7 h-7 border-b-[4px] border-l-[4px] border-[#9d4edd] rounded-bl-xl"></div>
+                <div className="absolute -bottom-[2px] -right-[2px] w-7 h-7 border-b-[4px] border-r-[4px] border-[#9d4edd] rounded-br-xl"></div>
+                
+                {/* Smooth Laser Track Line matched with App Brand Accent Color */}
+                <div className="absolute left-3 right-3 h-[2.5px] bg-gradient-to-r from-transparent via-purple-400 to-transparent shadow-[0_0_12px_#9d4edd] laser-line"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sleek Header Controls Layer */}
+          <div className="px-6 pt-6 pb-4 flex justify-between items-center w-full z-10 bg-gradient-to-b from-black/60 to-transparent flex-row">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                closeImmersiveScanner();
+              }} 
+              className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md text-white/90 flex items-center justify-center hover:bg-white/20 transition active:scale-95"
+            >
+              <i className="fas fa-arrow-left text-[15px]"></i>
+            </button>
+            <p className="text-white/90 text-[13px] font-semibold tracking-wider uppercase bg-black/20 px-3 py-1.5 rounded-full backdrop-blur-sm">Scan consultation QR</p>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                toast.info("Flashlight toggled.");
+              }}
+              className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md text-white/90 flex items-center justify-center hover:bg-white/20 transition"
+            >
+              <i className="fas fa-bolt text-[14px]"></i>
+            </button>
+          </div>
+
+          {/* Clean Bottom Subtext Layer */}
+          <div className="p-12 flex flex-col items-center justify-center w-full z-10 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none">
+            <p className="text-white/40 text-[11px] font-medium tracking-wide text-center max-w-[210px] leading-relaxed">
+              Align QR code within the frame to instantly verify visit
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* QR Code Scan/Show Overlay Modal */}
       {showQrModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-[340px] w-full text-center shadow-2xl relative animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-[340px] w-full text-center shadow-2xl relative animate-fade-in flex flex-col items-center justify-center">
             <button 
               onClick={() => setShowQrModal(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100"
