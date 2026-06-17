@@ -36,10 +36,10 @@ const PendingTimer = ({ onExpire }: { onExpire: () => void }) => {
     return () => clearInterval(timerId);
   }, [timeLeft, onExpire]);
 
-  const formattedTime = `0${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`;
+  const formattedTime = `EXPIRES IN ${timeLeft}s`;
 
   return (
-    <div className="absolute top-0 right-0 bg-[#fff6ed] text-[#ea580c] px-4 py-2 rounded-bl-[20px] rounded-tr-[36px] text-[12px] font-[800] tracking-[0.5px] flex items-center gap-1.5 min-w-[70px] justify-center z-10 border-l border-b border-[#ffe0cc]">
+    <div className="absolute top-0 right-0 bg-[#fff5f5] text-[#e03131] px-4 py-2 rounded-bl-[20px] rounded-tr-[36px] text-[11px] font-[900] tracking-[0.5px] flex items-center gap-1.5 min-w-[70px] justify-center z-10 border-l border-b border-[#ffe3e3]">
       <Timer size={14} weight="bold" className="animate-pulse" /> {formattedTime}
     </div>
   );

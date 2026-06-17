@@ -53,14 +53,6 @@ const VetDashboard = () => {
   const fetchPendingCount = useCallback(async () => {
     if (!user) return;
     try {
-      // Get real-time consultation types from DB
-      const { data: vp } = await supabase
-        .from("vet_profiles")
-        .select("consultation_type")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      const allowed = (vp?.consultation_type || "").toLowerCase();
-
       const { data, error } = await supabase
         .from('vet_appointments')
         .select('*')
@@ -68,15 +60,7 @@ const VetDashboard = () => {
         .eq('status', 'pending');
       
       if (!error && data) {
-        // Enforce real-time consultation type filter
-        const filtered = data.filter(apt => {
-          const type = (apt.appointment_type || "").toLowerCase();
-          if (type === "clinic") return allowed.includes("clinic");
-          if (type === "home") return allowed.includes("home");
-          if (type === "video") return allowed.includes("video");
-          return false;
-        });
-        setPendingCount(filtered.length);
+        setPendingCount(data.length);
       }
     } catch (err) {
       console.error("Error fetching pending count:", err);
@@ -86,47 +70,47 @@ const VetDashboard = () => {
   const fetchUpcoming = useCallback(async () => {
     if (!user) return;
     try {
-      // Get real-time consultation types from DB
-      const { data: vp } = await supabase
-        .from("vet_profiles")
-        .select("consultation_type")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      const allowed = (vp?.consultation_type || "").toLowerCase();
-
       const { data, error } = await supabase
         .from('vet_appointments')
-        .select(`
-          *,
-          user:profiles!vet_appointments_user_id_fkey(name, full_name, profile_photo, phone)
-        `)
+        .select('*')
         .eq('vet_id', user.id)
         .in('status', ['pending', 'confirmed'])
         .order('appointment_date', { ascending: true })
         .limit(20);
 
       if (!error && data) {
-        // Enforce real-time consultation type filter
-        const filteredData = data.filter(apt => {
-          const type = (apt.appointment_type || "").toLowerCase();
-          if (type === "clinic") return allowed.includes("clinic");
-          if (type === "home") return allowed.includes("home");
-          if (type === "video") return allowed.includes("video");
-          return false;
-        });
+        // Fetch users manually to avoid foreign key relation errors with PostgREST
+        const userIds = [...new Set(data.map(apt => apt.user_id))];
+        let profilesMap: Record<string, any> = {};
+        
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, name, full_name, profile_photo, phone")
+            .in("id", userIds);
+            
+          if (profiles) {
+            profiles.forEach(p => {
+              profilesMap[p.id] = p;
+            });
+          }
+        }
 
-        const mapped = (filteredData as unknown[] as DbAppointmentRaw[]).map((apt: DbAppointmentRaw) => ({
-          id: apt.id,
-          time: apt.appointment_time || "11:30 AM",
-          name: apt.pet_name || "Luna",
-          breed: apt.pet_breed || "Golden Retriever",
-          type: apt.appointment_type || "clinic",
-          image: apt.user?.profile_photo || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=100&q=80",
-          ownerName: apt.user?.full_name || apt.user?.name || "Sarah Jenkins",
-          ownerPhone: apt.user?.phone || "+91 98765 43210",
-          date: apt.appointment_date,
-          status: apt.status
-        }));
+        const mapped = data.map((apt: any) => {
+          const userProfile = profilesMap[apt.user_id] || {};
+          return {
+            id: apt.id,
+            time: apt.appointment_time || "11:30 AM",
+            name: apt.pet_name || "Luna",
+            breed: apt.pet_breed || (apt.pet_type ? `${apt.pet_type}` : "Dog"),
+            type: apt.appointment_type || "clinic",
+            image: userProfile.profile_photo || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80",
+            ownerName: userProfile.full_name || userProfile.name || "Sarah Jenkins",
+            ownerPhone: userProfile.phone || "+91 98765 43210",
+            date: apt.appointment_date,
+            status: apt.status
+          };
+        });
         setUpcomingAppointments(mapped.slice(0, 5));
       }
     } catch (err) {
@@ -393,10 +377,28 @@ const VetDashboard = () => {
                       </div>
                       <div className="flex items-center gap-3 grow pl-3.5 min-w-0">
                         <img src={apt.image} alt={apt.name} className="w-[38px] h-[38px] rounded-full object-cover flex-shrink-0" />
-                        <div className="min-w-0">
-                          <h5 className="text-[14.5px] font-extrabold text-[#1a1a24] mb-[3px] truncate">{apt.name}</h5>
-                          <p className="text-[11.5px] text-[#8f8f9d] font-medium flex items-center gap-1 truncate uppercase">
-                            {apt.breed} • {apt.type === 'home' ? <House size={14} weight="fill" className="inline-block" /> : <Buildings size={14} weight="fill" className="inline-block" />} {apt.type} Visit
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-[3px] flex-wrap sm:flex-nowrap">
+                            <h5 className="text-[14.5px] font-extrabold text-[#1a1a24] truncate">{apt.name}</h5>
+                            {apt.type === 'home' ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-600 font-bold text-[9px] uppercase tracking-wider shrink-0">
+                                <House size={11} weight="fill" />
+                                Home Visit
+                              </span>
+                            ) : apt.type === 'video' ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-600 font-bold text-[9px] uppercase tracking-wider shrink-0">
+                                <VideoCamera size={11} weight="fill" />
+                                Video Call
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#eef4ff] text-[#4b83ff] font-bold text-[9px] uppercase tracking-wider shrink-0">
+                                <Buildings size={11} weight="fill" />
+                                Clinic Visit
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11.5px] text-[#8f8f9d] font-medium truncate uppercase">
+                            {apt.breed}
                           </p>
                         </div>
                       </div>
