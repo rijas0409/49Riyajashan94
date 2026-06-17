@@ -195,6 +195,7 @@ const VetScheduleVisitDetails: React.FC = () => {
     const offlineStart = localStorage.getItem(`gp_appt_start_${currentApptId}`);
     if (offlineStatus === "in_progress") {
       setIsVerified(true);
+      setIsSwipeMode(true);
       if (offlineStart) {
         setTimerStartEpoch(Number(offlineStart));
       }
@@ -291,6 +292,7 @@ const VetScheduleVisitDetails: React.FC = () => {
 
           if (matchedData.status === "in_progress") {
             setIsVerified(true);
+            setIsSwipeMode(true);
             if (matchedData.call_duration) {
               setTimerStartEpoch(matchedData.call_duration);
               localStorage.setItem(`gp_appt_start_${currentApptId}`, String(matchedData.call_duration));
@@ -326,6 +328,7 @@ const VetScheduleVisitDetails: React.FC = () => {
               setDbAppointment(updated);
               if (updated.status === "in_progress") {
                 setIsVerified(true);
+                setIsSwipeMode(true);
                 if (updated.call_duration) {
                   setTimerStartEpoch(updated.call_duration);
                   localStorage.setItem(`gp_appt_start_${currentApptId}`, String(updated.call_duration));
@@ -442,7 +445,12 @@ const VetScheduleVisitDetails: React.FC = () => {
       }
 
       setTimeout(() => {
-        navigate("/vet/schedule");
+        navigate("/vet/digital-prescription", { 
+          state: { 
+            appointmentId: appointmentId || stateVisit?.id,
+            petName: dbAppointment?.pet_name || "Pet"
+          }
+        });
       }, 1500);
     };
 

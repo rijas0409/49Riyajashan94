@@ -2007,11 +2007,14 @@ const BuyerVisitDetails: React.FC = () => {
             </>
           ) : (
             <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between shadow-sm animate-fade-in font-sans">
-              <div className="flex items-center gap-2.5">
-                <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping"></div>
+              <div className="flex items-center gap-3">
+                <div className="relative flex items-center justify-center shrink-0 w-2.5 h-2.5">
+                  <div className="absolute w-full h-full bg-emerald-500 rounded-full opacity-75 animate-ping"></div>
+                  <div className="relative w-1.5 h-1.5 bg-emerald-600 rounded-full"></div>
+                </div>
                 <div>
                   <h4 className="text-[13.5px] text-emerald-900 font-bold leading-tight">Live Consultation Active</h4>
-                  <p className="text-[11px] text-emerald-600/90 font-medium">Verified check-in duration synchronized with Vet.</p>
+                  <p className="text-[11px] text-emerald-600/90 font-medium">Your consultation has been verified and is currently in progress.</p>
                 </div>
               </div>
               <div className="font-mono bg-emerald-100 text-emerald-950 font-black px-3.5 py-1.5 rounded-xl text-[16px] border border-emerald-200">
