@@ -424,12 +424,7 @@ const VetScheduleVisitDetails: React.FC = () => {
           }
         }
 
-        // Simulated QR Auto scan completion after 5 seconds to help developers test easily without physical camera
-        autoScanTimeout = setTimeout(() => {
-          if (active) {
-            executeMockScan();
-          }
-        }, 5000);
+        // Wait for jsQR to decode naturally; autoScan timeout removed for production rules.
 
       } catch (err) {
         console.error("Camera access failed:", err);
@@ -1160,35 +1155,11 @@ const VetScheduleVisitDetails: React.FC = () => {
             </button>
           </div>
 
-          {/* Clean Bottom Actions Layer with Sandbox Buttons */}
-          <div className="p-6 pb-12 flex flex-col gap-3 w-full z-10 bg-gradient-to-t from-black via-black/80 to-transparent">
-            <p className="text-white/40 text-[11px] font-medium tracking-wide text-center leading-relaxed mb-1">
-              Align QR code on the buyer's screen inside standard frame
+          {/* Clean Bottom Subtext Layer */}
+          <div className="p-12 flex flex-col items-center justify-center w-full z-10 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none">
+            <p className="text-white/40 text-[11px] font-medium tracking-wide text-center max-w-[210px] leading-relaxed">
+              Align QR code within the frame to instantly verify visit
             </p>
-            <div className="flex gap-2.5">
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  executeMockScan();
-                }}
-                className="flex-1 bg-[#9d4edd] text-white text-[12px] font-bold py-3 px-1 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition"
-              >
-                <i className="fas fa-check-circle text-[13px]"></i>
-                Simulate Valid QR
-              </button>
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  executeMockScanFailed();
-                }}
-                className="flex-1 bg-rose-600 text-white text-[12px] font-bold py-3 px-1 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition"
-              >
-                <i className="fas fa-times-circle text-[13px]"></i>
-                Simulate Invalid QR
-              </button>
-            </div>
           </div>
         </div>
       )}
