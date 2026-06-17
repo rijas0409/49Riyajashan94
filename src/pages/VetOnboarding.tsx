@@ -101,7 +101,7 @@ const InfoTooltip = ({ message }: { message: string }) => {
 const VetOnboarding = () => {
   const navigate = useNavigate();
   const { profile, refreshProfile } = useAuth();
-  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -1556,14 +1556,6 @@ const VetOnboarding = () => {
     );
   };
 
-  if (isCheckingStatus) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-soft select-none">
-        <Loader2 className="w-10 h-10 animate-spin text-[#9d4edd] mb-4" />
-        <p className="text-slate-600 font-medium text-sm animate-pulse">Syncing verification status...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-soft">
@@ -1633,7 +1625,7 @@ const VetOnboarding = () => {
               {/* ══════ STEP 1 – Personal Info ══════ */}
               {currentStep === 1 && (
                 <div className="space-y-4 animate-fade-in relative">
-                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-4 px-4 rounded-b-2xl shadow-sm">
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 mb-6">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
@@ -1647,9 +1639,9 @@ const VetOnboarding = () => {
                       Step 1 of 6
                     </div>
                   </div>
-                                    <div className="flex flex-row w-full gap-[9px] pt-[94px] md:pt-[98px] mb-4">
+                                    <div className="flex flex-row w-full gap-[9px] items-center mb-6">
                     {/* Full Name */}
-                    <div className="w-[64%] md:w-[80%] space-y-1.5">
+                    <div className="w-[64%] md:w-[80%] space-y-1.5 mt-[57px]">
                       <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
                         <User className="w-4 h-4 text-primary shrink-0" />
                         Full Name
@@ -1659,11 +1651,12 @@ const VetOnboarding = () => {
                         onChange={e => setFormData({ ...formData, fullName: e.target.value })} 
                         placeholder="RJ" 
                         className="rounded-xl border border-[#E2E8F0] px-3.5 text-[#1E293B] font-medium h-11 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-slate-300 shadow-none" 
+                        id="fullname-input"
                       />
                     </div>
 
                     {/* Photo Upload Card */}
-                    <div className="w-[29%] md:w-[20%] flex flex-col items-center justify-center shrink-0 -mt-[82px] md:-mt-[86px] ml-auto md:ml-0">
+                    <div className="w-[29%] md:w-[20%] flex flex-col items-center justify-center shrink-0 ml-auto md:ml-0">
                       <input 
                         type="file" 
                         accept="image/*" 
@@ -2089,7 +2082,7 @@ const VetOnboarding = () => {
               {/* ══════ STEP 2 – Identity Verification ══════ */}
               {currentStep === 2 && (
                 <div className="space-y-6 animate-fade-in relative">
-                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-4 px-4 rounded-b-2xl shadow-sm">
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 mb-6">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
@@ -2148,7 +2141,7 @@ const VetOnboarding = () => {
               {currentStep === 3 && (
                 <div className="space-y-6 animate-fade-in relative">
                   {/* Step Header exactly matching Step 1 */}
-                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 mb-2 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-4 px-4 rounded-b-2xl shadow-sm">
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 mb-6">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
@@ -2366,7 +2359,7 @@ const VetOnboarding = () => {
               {/* ══════ STEP 4 – Professional Practice ══════ */}
               {currentStep === 4 && (
                 <div className="space-y-6 animate-fade-in relative">
-                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-4 px-4 rounded-b-2xl shadow-sm">
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 mb-6">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
@@ -2815,7 +2808,7 @@ const VetOnboarding = () => {
               {/* ══════ STEP 5 – Availability & Fees ══════ */}
               {currentStep === 5 && (
                 <div className="space-y-4 animate-fade-in relative">
-                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-4 px-4 rounded-b-2xl shadow-sm">
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 mb-6">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
@@ -3558,7 +3551,7 @@ const VetOnboarding = () => {
               {currentStep === 6 && (
                 <div className="space-y-4 animate-fade-in relative">
                   {/* Step Header exactly matching Step 1 */}
-                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 sticky top-[205px] z-30 bg-card/95 backdrop-blur-md -mx-4 px-4 rounded-b-2xl shadow-sm">
+                  <div className="flex flex-row justify-between items-center gap-4 pb-6 pt-2 border-b border-slate-100/80 mb-6">
                     <div className="space-y-1">
                       <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#0F172A] tracking-tight flex items-center gap-2">
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">

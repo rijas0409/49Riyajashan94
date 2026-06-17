@@ -19,7 +19,7 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
   
   const cachedRole = localStorage.getItem("sruvo_user_role");
   const cachedApproved = localStorage.getItem("sruvo_admin_approved") === "true";
-  const hasCachedAccess = !!(cachedRole && allowedRoles.includes(cachedRole as AllowedRole) && (!requireAdminApproval || cachedApproved));
+  const hasCachedAccess = !!(cachedRole && allowedRoles.includes(cachedRole as AllowedRole));
 
   const [isLoading, setIsLoading] = useState(!hasCachedAccess);
   const [showSpinner, setShowSpinner] = useState(false);
