@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, MapPin, Clock, Loader2, CheckCircle2, Calendar, PhoneCall, RefreshCw, ChevronRight } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, Loader2, CheckCircle2, Calendar, PhoneCall, RefreshCw, ChevronRight, Search, Video, MessageSquare } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -239,38 +239,78 @@ const ClinicBookingConfirmation = () => {
 
           </>
         ) : (
-          /* Rejected / Unable to confirm state */
-          <div className="flex flex-col items-center justify-center pt-8 animate-fade-in text-center">
-             <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mb-6 border border-red-100 shadow-sm">
-                <Calendar className="w-10 h-10 text-red-500 opacity-60" />
-                <div className="absolute w-8 h-8 bg-white rounded-full flex items-center justify-center -bottom-1 -right-1 shadow-sm">
-                  <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
-                    <span className="text-red-600 font-bold text-sm">✕</span>
-                  </div>
-                </div>
-             </div>
-             <h1 className="text-2xl font-black mb-3 text-gray-900">Unable to Confirm Appointment</h1>
-             <p className="text-sm text-gray-500 mb-8 max-w-[280px]">
-               Dr. {currentVet.name} is currently unavailable for this timeslot. Your payment has been refunded or held as credits.
-             </p>
+          /* Rejected / Unable to confirm state - perfectly full screen */
+          <div className="fixed inset-0 z-[200] bg-[#F7F7FB] flex flex-col items-center justify-center p-6 text-center">
+            {/* Top Navigation Row */}
+            <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between z-10">
+              <button 
+                onClick={() => navigate(-1)}
+                className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center cursor-pointer active:scale-95 transition-all"
+              >
+                <ArrowLeft className="w-5 h-5 text-slate-800" />
+              </button>
+              <span className="font-bold text-base text-slate-800">Status</span>
+              <div className="w-10"></div>
+            </div>
 
-             <div className="w-full space-y-3">
-               <button 
-                 onClick={() => navigate("/buyer/vet")}
-                 className="w-full py-4 bg-gray-900 text-white font-bold rounded-2xl flex items-center justify-center gap-2"
-               >
-                 Find Another Vet
-               </button>
-               <button 
-                 onClick={() => navigate("/vet/virtual-consults")}
-                 className="w-full py-4 bg-purple-50 text-purple-700 border border-purple-100 font-bold rounded-2xl flex items-center justify-center gap-2"
-               >
-                 <PhoneCall className="w-4 h-4" /> Instant Video Consultation
-               </button>
-               <button className="w-full py-4 text-gray-500 font-bold rounded-2xl">
-                 Contact Support
-               </button>
-             </div>
+            {/* Centered Content */}
+            <div className="w-full max-w-sm space-y-6 flex flex-col items-center justify-center">
+              {/* Alert Badge */}
+              <div className="inline-flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-2">
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-xs font-black text-red-600 uppercase tracking-widest leading-none">Veterinarian Unavailable</span>
+              </div>
+
+              {/* Title & Description */}
+              <div className="text-center">
+                <h3 className="text-[24px] font-black text-[#18181B] leading-tight tracking-tight">
+                  Veterinarian Unavailable
+                </h3>
+                <p className="text-sm text-[#52525B] font-medium leading-relaxed mt-3 max-w-[320px] mx-auto">
+                  Dr. {currentVet.name} is currently unavailable. No worries! Here's what you can do right now to get your pet seen quickly.
+                </p>
+              </div>
+
+              {/* Refund Info */}
+              <div className="bg-[#12B76A]/10 border border-[#12B76A]/20 rounded-2xl p-4 flex items-center gap-3 w-full text-left">
+                <CheckCircle2 className="w-5 h-5 text-[#12B76A] shrink-0" strokeWidth={3} />
+                <p className="text-[13px] text-[#0A6640] font-bold">Your payment has been processed for a full refund within 24 hours.</p>
+              </div>
+
+              {/* Action Cards */}
+              <div className="grid grid-cols-2 gap-4 w-full">
+                <button 
+                  onClick={() => navigate("/vet/all-specialists")}
+                  className="bg-[linear-gradient(135deg,#E8336D,#7C3AED)] text-white p-5 rounded-2xl text-left flex flex-col gap-3 shadow-lg shadow-[#E8336D]/20 active:scale-95 transition-transform cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Search className="w-5 h-5 text-white" strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <div className="text-[14px] font-black tracking-tight leading-snug">Find Another Vet</div>
+                    <div className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-1">Available Now</div>
+                  </div>
+                </button>
+                <button 
+                  onClick={() => navigate("/vet/consultation-plan")}
+                  className="bg-white border border-[#E8336D]/15 text-[#E8336D] p-5 rounded-2xl text-left flex flex-col gap-3 shadow-[0_4px_12px_rgba(0,0,0,0.02)] active:scale-95 transition-transform cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#FFF0F5] flex items-center justify-center">
+                    <Video className="w-5 h-5 text-[#E8336D]" strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <div className="text-[14px] font-black tracking-tight leading-snug">Instant Video</div>
+                    <div className="text-[10px] font-bold text-[#52525B]/70 uppercase tracking-widest mt-1">Ready in {"< 2min"}</div>
+                  </div>
+                </button>
+              </div>
+              
+              <button className="w-full h-14 bg-white border border-slate-100 rounded-xl flex items-center px-4 gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
+                <MessageSquare className="w-4 h-4 text-[#A1A1AA]" />
+                <span className="flex-1 text-[14px] font-bold text-[#52525B] text-left">Need help? Contact Support</span>
+                <ChevronRight className="w-4 h-4 text-[#D4D4D8]" />
+              </button>
+            </div>
           </div>
         )}
       </main>

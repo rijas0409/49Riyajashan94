@@ -423,73 +423,86 @@ export default function AppointmentConfirmation() {
         </button>
       </div>
 
-      {/* REJECTION SHEET */}
+      {/* REJECTION SCREEN */}
       <AnimatePresence>
         {showRejectSheet && (
-          <div className="fixed inset-0 z-[200] flex items-end justify-center px-4">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }}
-              onClick={() => setShowRejectSheet(false)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="bg-white w-full max-w-md rounded-t-[32px] p-6 pb-12 relative z-10 border-t border-black/5"
-            >
-              <div className="w-9 h-1 bg-black/5 rounded-full mx-auto mb-6" />
-              <div className="space-y-5">
-                <div className="inline-flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-[11px] font-black text-red-600 uppercase tracking-widest leading-none">Appointment Declined</span>
-                </div>
-                <div>
-                  <h3 className="text-[20px] font-black text-[#18181B] leading-tight tracking-tight">
-                    Unable to Confirm<br/>Appointment
-                  </h3>
-                  <p className="text-[13.5px] text-[#52525B] font-medium leading-relaxed mt-2">
-                    {getVetDisplayName()} is currently unavailable. Here's what you can do right now to get your pet seen quickly.
-                  </p>
-                </div>
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-[#F7F7FB] flex flex-col items-center justify-center p-6 text-center"
+          >
+            {/* Top Navigation Row */}
+            <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between z-10">
+              <button 
+                onClick={() => navigate(-1)}
+                className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center cursor-pointer active:scale-95 transition-all"
+              >
+                <ArrowLeft className="w-5 h-5 text-slate-800" />
+              </button>
+              <span className="font-bold text-base text-slate-800">Status</span>
+              <div className="w-10"></div>
+            </div>
 
-                <div className="bg-[#12B76A]/10 border border-[#12B76A]/20 rounded-2xl p-4 flex items-center gap-3">
-                  <CheckCircle2 className="w-4 h-4 text-[#12B76A]" strokeWidth={3} />
-                  <p className="text-[13px] text-[#0A6640] font-bold">Your full refund of <span className="font-black">₹{payAmount}</span> will be processed within 24 hours</p>
-                </div>
+            {/* Centered Content */}
+            <div className="w-full max-w-sm space-y-6 flex flex-col items-center justify-center">
+              {/* Alert Badge */}
+              <div className="inline-flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-2">
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-xs font-black text-red-600 uppercase tracking-widest leading-none">Veterinarian Unavailable</span>
+              </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <button className="bg-[linear-gradient(135deg,#E8336D,#7C3AED)] text-white p-4 rounded-2xl text-left flex flex-col gap-3 shadow-lg shadow-[#E8336D]/20 active:scale-95 transition-transform">
-                    <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-                      <Search className="w-4.5 h-4.5 text-white" strokeWidth={2.5} />
-                    </div>
-                    <div>
-                      <div className="text-[14px] font-black tracking-tight">Find Another Vet</div>
-                      <div className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-0.5">Available Now</div>
-                    </div>
-                  </button>
-                  <button className="bg-[#FFF0F5] border border-[#E8336D]/15 text-[#E8336D] p-4 rounded-2xl text-left flex flex-col gap-3 active:scale-95 transition-transform">
-                    <div className="w-8 h-8 rounded-lg bg-[#E8336D]/10 flex items-center justify-center">
-                      <Video className="w-4.5 h-4.5 text-[#E8336D]" strokeWidth={2.5} />
-                    </div>
-                    <div>
-                      <div className="text-[14px] font-black tracking-tight">Instant Video</div>
-                      <div className="text-[10px] font-bold text-[#52525B]/70 uppercase tracking-widest mt-0.5">Ready in {"< 2min"}</div>
-                    </div>
-                  </button>
-                </div>
-                
-                <button className="w-full h-14 bg-black/[0.02] border border-black/5 rounded-xl flex items-center px-4 gap-3">
-                  <MessageSquare className="w-4 h-4 text-[#A1A1AA]" />
-                  <span className="flex-1 text-[14px] font-bold text-[#52525B]">Need help? Contact Support</span>
-                  <ChevronRight className="w-4 h-4 text-[#D4D4D8]" />
+              {/* Title & Description */}
+              <div className="text-center">
+                <h3 className="text-[24px] font-black text-[#18181B] leading-tight tracking-tight">
+                  Veterinarian Unavailable
+                </h3>
+                <p className="text-sm text-[#52525B] font-medium leading-relaxed mt-3 max-w-[320px] mx-auto">
+                  {getVetDisplayName()} is currently unavailable. No worries! Here's what you can do right now to get your pet seen quickly.
+                </p>
+              </div>
+
+              {/* Refund Info */}
+              <div className="bg-[#12B76A]/10 border border-[#12B76A]/20 rounded-2xl p-4 flex items-center gap-3 w-full text-left">
+                <CheckCircle2 className="w-5 h-5 text-[#12B76A] shrink-0" strokeWidth={3} />
+                <p className="text-[13px] text-[#0A6640] font-bold">Your full refund of <span className="font-black">₹{payAmount}</span> will be processed within 24 hours</p>
+              </div>
+
+              {/* Action Cards */}
+              <div className="grid grid-cols-2 gap-4 w-full">
+                <button 
+                  onClick={() => navigate("/vet/all-specialists")}
+                  className="bg-[linear-gradient(135deg,#E8336D,#7C3AED)] text-white p-5 rounded-2xl text-left flex flex-col gap-3 shadow-lg shadow-[#E8336D]/20 active:scale-95 transition-transform cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Search className="w-5 h-5 text-white" strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <div className="text-[14px] font-black tracking-tight leading-snug">Find Another Vet</div>
+                    <div className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-1">Available Now</div>
+                  </div>
+                </button>
+                <button 
+                  onClick={() => navigate("/vet/consultation-plan")}
+                  className="bg-white border border-[#E8336D]/15 text-[#E8336D] p-5 rounded-2xl text-left flex flex-col gap-3 shadow-[0_4px_12px_rgba(0,0,0,0.02)] active:scale-95 transition-transform cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#FFF0F5] flex items-center justify-center">
+                    <Video className="w-5 h-5 text-[#E8336D]" strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <div className="text-[14px] font-black tracking-tight leading-snug">Instant Video</div>
+                    <div className="text-[10px] font-bold text-[#52525B]/70 uppercase tracking-widest mt-1">Ready in {"< 2min"}</div>
+                  </div>
                 </button>
               </div>
-            </motion.div>
-          </div>
+              
+              <button className="w-full h-14 bg-white border border-slate-100 rounded-xl flex items-center px-4 gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
+                <MessageSquare className="w-4 h-4 text-[#A1A1AA]" />
+                <span className="flex-1 text-[14px] font-bold text-[#52525B] text-left">Need help? Contact Support</span>
+                <ChevronRight className="w-4 h-4 text-[#D4D4D8]" />
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
