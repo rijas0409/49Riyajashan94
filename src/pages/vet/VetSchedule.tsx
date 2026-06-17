@@ -22,6 +22,29 @@ const getShortBookingId = (id: string | undefined): string => {
   return id;
 };
 
+const PendingTimer = ({ onExpire }: { onExpire: () => void }) => {
+  const [timeLeft, setTimeLeft] = useState(94);
+
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      onExpire();
+      return;
+    }
+    const timerId = setInterval(() => {
+      setTimeLeft(prev => prev - 1);
+    }, 1000);
+    return () => clearInterval(timerId);
+  }, [timeLeft, onExpire]);
+
+  const formattedTime = `0${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`;
+
+  return (
+    <div className="absolute top-0 right-0 bg-[#fff6ed] text-[#ea580c] px-4 py-2 rounded-bl-[20px] rounded-tr-[36px] text-[12px] font-[800] tracking-[0.5px] flex items-center gap-1.5 min-w-[70px] justify-center z-10 border-l border-b border-[#ffe0cc]">
+      <Timer size={14} weight="bold" className="animate-pulse" /> {formattedTime}
+    </div>
+  );
+};
+
 interface ScheduleAppointment {
   id: string;
   date: string;
@@ -514,6 +537,9 @@ const VetSchedule = () => {
                 <div className="absolute top-0 right-0 bg-red-50 text-red-600 px-4 py-2 rounded-bl-[20px] rounded-tr-[36px] text-[11px] font-[700] tracking-[0.5px] flex items-center gap-1.5 uppercase">
                   CANCELLED
                 </div>
+              )}
+              {apt.status === 'pending' && activeTab === 'Upcoming' && (
+                <PendingTimer onExpire={() => updateAppointmentStatus(apt.id, "cancelled")} />
               )}
 
               <div className="flex gap-4 mt-3">

@@ -2018,15 +2018,7 @@ const BuyerVisitDetails: React.FC = () => {
             
             <div className="my-6 p-4 bg-gray-50 border-2 border-dashed border-[#ec4899]/20 rounded-[24px] flex items-center justify-center aspect-square max-w-[220px] mx-auto shadow-inner">
               <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
-                  JSON.stringify({
-                    consultationId: currentVisitId,
-                    appointmentId: currentVisitId,
-                    buyerId: session?.user?.id || initialVisit.assigned_user_id || "BUYER_" + Date.now(),
-                    vetId: doctorProfile?.id || dbVisit?.vet_id || "VET_UNKNOWN",
-                    verificationToken: `TOK_${currentVisitId}_${Math.floor(Date.now() / 1000)}`
-                  })
-                )}&color=d95191`} 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(currentVisitId)}&color=d95191`} 
                 alt="QR Code" 
                 className="w-full h-full object-contain rounded-md" 
                 referrerPolicy="no-referrer" 
