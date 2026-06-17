@@ -138,51 +138,69 @@ const BuyerVisitDetails: React.FC = () => {
   });
 
   useEffect(() => {
-    if (realDbId && realDbId !== "SRV-84721" && !stateVisit) {
-      const fetchApptData = async () => {
-        const { data, error } = await supabase
-          .from("vet_appointments")
-          .select("*, user:profiles!vet_appointments_user_id_fkey(*)")
-          .eq("id", realDbId)
-          .single();
+    const fetchApptData = async () => {
+      try {
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(realDbId);
+        let foundData: any = null;
+
+        if (isUUID) {
+          const { data, error } = await supabase
+            .from("vet_appointments")
+            .select("*, user:profiles!vet_appointments_user_id_fkey(*)")
+            .eq("id", realDbId)
+            .single();
+          if (!error && data) foundData = data;
+        } else {
+          // Resolve short ID by fetching last 100 and matching
+          const { data, error } = await supabase
+            .from("vet_appointments")
+            .select("*, user:profiles!vet_appointments_user_id_fkey(*)")
+            .limit(100);
+          
+          if (!error && data) {
+            foundData = data.find(apt => getShortBookingId(apt.id) === realDbId || apt.id === realDbId);
+          }
+        }
         
-        if (!error && data) {
-          setDbVisit(data);
+        if (foundData) {
+          setDbVisit(foundData);
+          setCurrentVisitId(foundData.id); // Ensure we use UUID for realtime sync
           const newVisit = {
-            id: data.id,
-            petName: data.pet_name || "Pet",
-            petBreed: data.pet_breed || "Breed",
+            id: foundData.id,
+            petName: foundData.pet_name || "Pet",
+            petBreed: foundData.pet_breed || "Breed",
             petAge: "4 Years",
-            ownerName: data.user?.full_name || data.user?.name || "Owner",
-            ownerPhone: data.user?.phone || "+91 98765 43210",
-            address: data.appointment_type === 'home' ? "123 Premium Residency, Indiranagar" : "HSR Paws Clinic, Sector 2",
-            time: `${data.appointment_date}, ${data.appointment_time}`,
+            ownerName: foundData.user?.full_name || foundData.user?.name || "Owner",
+            ownerPhone: foundData.user?.phone || "+91 98765 43210",
+            address: foundData.appointment_type === "home" ? "123 Premium Residency, Indiranagar" : "HSR Paws Clinic, Sector 2",
+            time: `${foundData.appointment_date}, ${foundData.appointment_time}`,
             reason: "General Consultation & Checkup",
-            image: data.user?.profile_photo || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
-            distance: data.appointment_type === 'home' ? "1.2 miles away" : "12 mins (4.2 miles)"
+            image: foundData.user?.profile_photo || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
+            distance: foundData.appointment_type === "home" ? "1.2 miles away" : "12 mins (4.2 miles)"
           };
           setInitialVisit(newVisit);
-          setCurrentVisitId(newVisit.id);
 
-          if (data.vet_id) {
+          if (foundData.vet_id) {
             const { data: vetProf } = await supabase
                .from("vet_profiles")
                .select("id")
-               .eq("user_id", data.vet_id)
+               .eq("user_id", foundData.vet_id)
                .maybeSingle();
 
             if (vetProf) {
-              setOrCreateVetDetails(vetProf.id);
+              setVetProfileId(vetProf.id);
             }
           }
         }
-      };
-      const setOrCreateVetDetails = (vpId: string) => {
-        setVetProfileId(vpId);
-      };
+      } catch (err) {
+        console.error("Fetch error:", err);
+      }
+    };
+
+    if (realDbId && realDbId !== "SRV-84721") {
       fetchApptData();
     }
-  }, [realDbId, stateVisit]);
+  }, [realDbId, stateVisit, getShortBookingId]);
 
   // Database and Real-time States
   const [currentVisitId, setCurrentVisitId] = useState<string>(initialVisit.id);
@@ -433,15 +451,23 @@ const BuyerVisitDetails: React.FC = () => {
   useEffect(() => {
     if (!currentVisitId || currentVisitId === "SRV-84721") return;
 
+    // Handle initial state if database already says in_progress
+    if (dbVisit?.status === "in_progress" && !timerStartEpoch) {
+      const startVal = dbVisit.call_duration || Math.floor(Date.now() / 1000);
+      setTimerStartEpoch(startVal);
+      localStorage.setItem(`gp_appt_start_${currentVisitId}`, String(startVal));
+      localStorage.setItem(`gp_appt_status_${currentVisitId}`, "in_progress");
+    }
+
     // Read local cache first for low-latency sync
     const offlineStatus = localStorage.getItem(`gp_appt_status_${currentVisitId}`);
     const offlineStart = localStorage.getItem(`gp_appt_start_${currentVisitId}`);
-    if (offlineStatus === "in_progress" && offlineStart) {
+    if (offlineStatus === "in_progress" && offlineStart && !timerStartEpoch) {
       setTimerStartEpoch(Number(offlineStart));
     }
 
     const channel = supabase
-      .channel("clinic_visit_details_changes")
+      .channel(`clinic_visit_details_${currentVisitId}`)
       .on(
         "postgres_changes",
         {
@@ -485,7 +511,7 @@ const BuyerVisitDetails: React.FC = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentVisitId]);
+  }, [currentVisitId, dbVisit?.status, dbVisit?.call_duration, timerStartEpoch]);
 
   // Synchronize with storage events across multiple buyer/vet browser tabs
   useEffect(() => {

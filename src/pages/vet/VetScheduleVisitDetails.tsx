@@ -126,15 +126,37 @@ const VetScheduleVisitDetails: React.FC = () => {
       return false;
     }
 
-    // Unlocked phase
+    // Unlocked phase - Only unlock, don't start timer yet
     setIsVerified(true);
+    
+    toast.success("✨ QR Code Verified!", {
+      description: "Consultation is now unlocked. Please click 'Start Consultation' to begin the session.",
+      duration: 4000
+    });
+
+    closeImmersiveScanner();
+    return true;
+  };
+
+  const handleStartConsultation = async () => {
+    const currentApptId = appointmentId || stateVisit?.id;
+    if (!currentApptId) return;
+
+    if (timerStartEpoch) {
+      toast.info("Session is already in progress.");
+      return;
+    }
+
     const startTimestamp = Math.floor(Date.now() / 1000);
     setTimerStartEpoch(startTimestamp);
     localStorage.setItem(`gp_appt_start_${currentApptId}`, String(startTimestamp));
     localStorage.setItem(`gp_appt_status_${currentApptId}`, "in_progress");
 
+    // Resolve the actual database UUID for the update if currentApptId is a short ID
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentApptId);
-    if (isUUID) {
+    const targetId = isUUID ? currentApptId : (dbAppointment?.id || "");
+
+    if (targetId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId)) {
       try {
         const { error } = await supabase
           .from("vet_appointments")
@@ -142,23 +164,25 @@ const VetScheduleVisitDetails: React.FC = () => {
             status: "in_progress",
             call_duration: startTimestamp
           })
-          .eq("id", currentApptId);
+          .eq("id", targetId);
         
         if (error) {
           console.error("Supabase update error:", error);
+          toast.error("Failed to sync consultation start.");
+        } else {
+          toast.success("🚀 Consultation Started!", {
+            description: "Real-time timer is now active on both sides.",
+          });
+          setIsSwipeMode(true);
         }
       } catch (err) {
         console.error("Failed to write to database:", err);
       }
+    } else {
+      console.warn("Could not determine UUID for database update.");
+      // Still start locally for UX
+      setIsSwipeMode(true);
     }
-
-    toast.success("✨ QR Code Verified!", {
-      description: "Consultation unlocked. Timer started successfully.",
-      duration: 4000
-    });
-
-    closeImmersiveScanner();
-    return true;
   };
 
   // 1. Fetch initial status & setup Supabase Realtime channel
@@ -1181,12 +1205,12 @@ const VetScheduleVisitDetails: React.FC = () => {
                   <button 
                     onClick={() => {
                       if (isVerified) {
-                        setIsSwipeMode(true);
+                        handleStartConsultation();
                       }
                     }} 
-                    disabled={!isVerified}
+                    disabled={!isVerified || !!timerStartEpoch}
                     className={`w-full py-[16px] rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2.5 transition transform shadow-md ${
-                      isVerified 
+                      isVerified && !timerStartEpoch
                         ? "bg-gradient-to-r from-[#a855f7] to-[#8b5cf6] text-white active:scale-95 shadow-[0_15px_35px_-5px_rgba(157,78,221,0.3)] cursor-pointer" 
                         : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
                     }`}
