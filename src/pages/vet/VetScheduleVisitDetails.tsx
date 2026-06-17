@@ -50,6 +50,11 @@ const VetScheduleVisitDetails: React.FC = () => {
   const [showImmersiveScanner, setShowImmersiveScanner] = useState(false);
   const [isScannerAnimating, setIsScannerAnimating] = useState(false);
 
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [flashOn, setFlashOn] = useState(false);
+  const [cameraError, setCameraError] = useState(false);
+
   const handleRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -138,6 +143,7 @@ const VetScheduleVisitDetails: React.FC = () => {
   };
 
   const openImmersiveScanner = () => {
+    setFlashOn(false);
     setShowImmersiveScanner(true);
     setTimeout(() => {
       setIsScannerAnimating(true);
@@ -157,6 +163,88 @@ const VetScheduleVisitDetails: React.FC = () => {
       toast.success("✨ QR Code Detected: Kiro's Passport synchronized successfully!");
     }, 400);
   };
+
+  // Setup media stream capture on immersive scanner show
+  useEffect(() => {
+    let active = true;
+    let autoScanTimeout: NodeJS.Timeout;
+
+    const startCamera = async () => {
+      try {
+        setCameraError(false);
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" }
+        });
+        if (!active) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch((e) => console.error("Video play failed", e));
+        }
+
+        // Apply torch state if camera supports it and flash is on
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+          try {
+            await track.applyConstraints({
+              advanced: [{ torch: flashOn }]
+            } as any);
+          } catch (e) {
+            console.log("Torch constraint fail", e);
+          }
+        }
+
+        // Simulated QR Auto scan completion after 3.2 seconds
+        autoScanTimeout = setTimeout(() => {
+          if (active) {
+            executeMockScan();
+          }
+        }, 3200);
+
+      } catch (err) {
+        console.error("Camera access failed:", err);
+        setCameraError(true);
+      }
+    };
+
+    if (showImmersiveScanner) {
+      startCamera();
+    } else {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+    }
+
+    return () => {
+      active = false;
+      if (autoScanTimeout) clearTimeout(autoScanTimeout);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showImmersiveScanner]);
+
+  // Handle flashOn changes with media stream constraints
+  useEffect(() => {
+    if (streamRef.current) {
+      const track = streamRef.current.getVideoTracks()[0];
+      if (track) {
+        try {
+          track.applyConstraints({
+            advanced: [{ torch: flashOn }]
+          } as any);
+        } catch (e) {
+          console.log("Torch toggle fail:", e);
+        }
+      }
+    }
+  }, [flashOn]);
 
   return (
     <div className="bg-gray-200 flex justify-center antialiased select-none min-h-screen">
@@ -737,6 +825,26 @@ const VetScheduleVisitDetails: React.FC = () => {
         >
           {/* Live Simulated Camera Viewport */}
           <div className="absolute inset-0 w-full h-full bg-[#121016] overflow-hidden sm:rounded-3xl">
+            <video 
+              ref={videoRef}
+              playsInline
+              muted
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ transform: "scale(1.15)" }}
+            />
+
+            {/* Flash Light Ambient Ray effect */}
+            {flashOn && (
+              <div className="absolute inset-0 bg-white/10 pointer-events-none mix-blend-screen shadow-[inset_0_0_120px_rgba(253,224,71,0.35)] transition-all z-10"></div>
+            )}
+
+            {cameraError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10 bg-[#121016]">
+                <i className="fas fa-video-slash text-white/30 text-3xl mb-3"></i>
+                <p className="text-white/40 text-[11px] leading-relaxed">Camera stream unavailable.<br/>Securely using simulation sandbox mode.</p>
+              </div>
+            )}
+
             {/* Camera Fine Matrix Grid Overlay */}
             <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)", backgroundSize: "18px 18px" }}></div>
             
@@ -775,9 +883,15 @@ const VetScheduleVisitDetails: React.FC = () => {
             <button 
               onClick={(e) => {
                 e.stopPropagation();
-                toast.info("Flashlight toggled.");
+                const newFlash = !flashOn;
+                setFlashOn(newFlash);
+                toast.info(newFlash ? "🔦 Flashlight turned on" : "🔦 Flashlight turned off");
               }}
-              className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md text-white/90 flex items-center justify-center hover:bg-white/20 transition"
+              className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center transition active:scale-95 duration-250 ${
+                flashOn 
+                  ? "bg-amber-400 text-amber-950 shadow-[0_0_15px_rgba(251,191,36,0.6)]" 
+                  : "bg-white/10 text-white/90 hover:bg-white/20"
+              }`}
             >
               <i className="fas fa-bolt text-[14px]"></i>
             </button>
