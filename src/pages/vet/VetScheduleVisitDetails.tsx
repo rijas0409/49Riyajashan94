@@ -57,13 +57,27 @@ const VetScheduleVisitDetails: React.FC = () => {
       return false;
     }
 
-    const cleanScanned = scannedCode.trim().toLowerCase();
-    const cleanCurrent = currentApptId.trim().toLowerCase();
+    let isValid = false;
+    
+    try {
+      // First try to parse as JSON (New Secure Format)
+      const scannedPayload = JSON.parse(scannedCode);
+      if (scannedPayload.consultationId && scannedPayload.consultationId === currentApptId) {
+        isValid = true;
+      }
+    } catch (e) {
+      // Fallback for simple ID matching
+      const cleanScanned = scannedCode.trim().toLowerCase();
+      const cleanCurrent = currentApptId.trim().toLowerCase();
+      if (cleanScanned === cleanCurrent) {
+        isValid = true;
+      }
+    }
 
     // Secure requirement: Reject codes that belong to any other appointment, previous, or third-party appointments
-    if (cleanScanned !== cleanCurrent) {
+    if (!isValid) {
       toast.error(`❌ Verification Failed!`, {
-        description: `This QR code does not belong to this consultation ID. Scanned: ${scannedCode.slice(0, 15)}...`,
+        description: `This QR code does not belong to this consultation ID. Invalid scan detected.`,
         duration: 5000
       });
       return false;
@@ -349,17 +363,28 @@ const VetScheduleVisitDetails: React.FC = () => {
 
   const executeMockScan = () => {
     const targetId = appointmentId || stateVisit?.id || "SRV-84721";
-    handleVerifyCode(targetId, true);
+    handleVerifyCode(JSON.stringify({
+      consultationId: targetId,
+      appointmentId: targetId,
+      buyerId: "SIMULATED_TEST_BUYER",
+      vetId: "SIMULATED_TEST_VET",
+      verificationToken: `MOCK_TOK_${Date.now()}`
+    }), true);
   };
 
   const executeMockScanFailed = () => {
-    handleVerifyCode("INVALID_DIFFERENT_APPOINTMENT_ID_12345", true);
+    handleVerifyCode(JSON.stringify({
+      consultationId: "INVALID_DIFFERENT_APPOINTMENT_ID_12345",
+      appointmentId: "INVALID_DIFFERENT_APPOINTMENT_ID_12345",
+      buyerId: "SIMULATED_TEST_BUYER",
+      vetId: "SIMULATED_TEST_VET",
+      verificationToken: `MOCK_TOK_${Date.now()}`
+    }), true);
   };
 
   // Setup media stream capture and live jsQR frame scanning
   useEffect(() => {
     let active = true;
-    let autoScanTimeout: NodeJS.Timeout;
     let animationFrameId: number;
 
     const canvas = document.createElement("canvas");
@@ -443,7 +468,6 @@ const VetScheduleVisitDetails: React.FC = () => {
 
     return () => {
       active = false;
-      if (autoScanTimeout) clearTimeout(autoScanTimeout);
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
