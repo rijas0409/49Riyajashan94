@@ -53,6 +53,7 @@
     "embla-carousel-react": "^8.6.0",
     "express": "^5.2.1",
     "input-otp": "^1.4.2",
+    "jsqr": "^1.4.0",
     "lovable-tagger": "^1.1.11",
     "lucide-react": "^0.462.0",
     "motion": "^12.38.0",

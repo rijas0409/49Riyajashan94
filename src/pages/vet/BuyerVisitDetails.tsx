@@ -242,6 +242,14 @@ const BuyerVisitDetails: React.FC = () => {
   const [passportOverlayOpen, setPassportOverlayOpen] = useState(false);
   const [qrOverlayOpen, setQrOverlayOpen] = useState(false);
   const [showUserQr, setShowUserQr] = useState(false);
+  const [timerStartEpoch, setTimerStartEpoch] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+
+  const formatTimer = (secs: number) => {
+    const m = Math.floor(secs / 60).toString().padStart(2, "0");
+    const s = (secs % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
   const [headerDropdownOpen, setHeaderDropdownOpen] = useState(false);
   const [helpScreenOpen, setHelpScreenOpen] = useState(false);
 
@@ -421,9 +429,16 @@ const BuyerVisitDetails: React.FC = () => {
     };
   }, [stateVisit?.id]);
 
-  // 2. Real-time subscription to appointment table updates
+  // 2. Real-time subscription to appointment table updates and localized timer initialization
   useEffect(() => {
     if (!currentVisitId || currentVisitId === "SRV-84721") return;
+
+    // Read local cache first for low-latency sync
+    const offlineStatus = localStorage.getItem(`gp_appt_status_${currentVisitId}`);
+    const offlineStart = localStorage.getItem(`gp_appt_start_${currentVisitId}`);
+    if (offlineStatus === "in_progress" && offlineStart) {
+      setTimerStartEpoch(Number(offlineStart));
+    }
 
     const channel = supabase
       .channel("clinic_visit_details_changes")
@@ -438,21 +453,24 @@ const BuyerVisitDetails: React.FC = () => {
         async (payload) => {
           console.log("Realtime appointment update received:", payload);
           if (payload.new) {
-            setDbVisit(payload.new as any);
+            const updated = payload.new as any;
+            setDbVisit(updated);
             
-            // Redirect automatically if consultation started
-            if (payload.new.status === "in_progress") {
-               toast.success("Consultation Started! Proceeding...");
-               setTimeout(() => {
-                 navigate(`/vet/consultation-detail`, { state: { visitId: currentVisitId } });
-               }, 1000);
+            // If consultation starts: Close QR popup and start the ticking active timer!
+            if (updated.status === "in_progress") {
+               setShowUserQr(false);
+               const startVal = updated.call_duration || Math.floor(Date.now() / 1000);
+               setTimerStartEpoch(startVal);
+               localStorage.setItem(`gp_appt_start_${currentVisitId}`, String(startVal));
+               localStorage.setItem(`gp_appt_status_${currentVisitId}`, "in_progress");
+               toast.success("✨ Vet has verified your QR Code: Consultation is now Active!");
             }
 
-            if (payload.new.vet_id) {
+            if (updated.vet_id) {
               const { data: vetProf } = await supabase
                 .from("vet_profiles")
                 .select("id")
-                .eq("user_id", payload.new.vet_id)
+                .eq("user_id", updated.vet_id)
                 .maybeSingle();
 
               if (vetProf) {
@@ -468,6 +486,48 @@ const BuyerVisitDetails: React.FC = () => {
       supabase.removeChannel(channel);
     };
   }, [currentVisitId]);
+
+  // Synchronize with storage events across multiple buyer/vet browser tabs
+  useEffect(() => {
+    if (!currentVisitId) return;
+
+    const syncStorage = (e: StorageEvent) => {
+      if (e.key === `gp_appt_status_${currentVisitId}`) {
+        if (e.newValue === "in_progress") {
+          setShowUserQr(false);
+          const start = localStorage.getItem(`gp_appt_start_${currentVisitId}`);
+          if (start) {
+            setTimerStartEpoch(Number(start));
+          }
+        }
+      }
+      if (e.key === `gp_appt_start_${currentVisitId}`) {
+        if (e.newValue) {
+          setTimerStartEpoch(Number(e.newValue));
+        }
+      }
+    };
+
+    window.addEventListener("storage", syncStorage);
+    return () => {
+      window.removeEventListener("storage", syncStorage);
+    };
+  }, [currentVisitId]);
+
+  // Handle active countdown / tick up timer
+  useEffect(() => {
+    if (!timerStartEpoch) return;
+
+    const tick = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const elapsed = Math.max(0, now - timerStartEpoch);
+      setElapsedSeconds(elapsed);
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [timerStartEpoch]);
 
   // 3. Fetch Doctor details once vetProfileId is resolved
   useEffect(() => {
@@ -1908,21 +1968,38 @@ const BuyerVisitDetails: React.FC = () => {
 
         {/* ── STICKY ACTION BAR ── */}
         <div className="fixed bottom-0 left-0 right-0 w-full px-4 sm:px-6 lg:px-8 py-4 bg-white/80 backdrop-blur-md border-t border-gray-100 z-40 transition-all duration-300">
-          <button 
-            onClick={() => setShowUserQr(true)} 
-            className="w-full bg-gradient-to-r from-[#ec4899] to-[#e56ba4] hover:opacity-95 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-pink-200 transition-all active:scale-[0.98]"
-          >
-            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
-            </svg>
-            Verify with Vet
-          </button>
-          <p className="text-center text-[11px] text-gray-400 mt-3 flex items-center justify-center gap-1">
-            <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
-              <path clipRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" fillRule="evenodd"/>
-            </svg>
-            Show this QR at the clinic.
-          </p>
+          {!timerStartEpoch ? (
+            <>
+              <button 
+                onClick={() => setShowUserQr(true)} 
+                className="w-full bg-gradient-to-r from-[#ec4899] to-[#e56ba4] hover:opacity-95 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-pink-200 transition-all active:scale-[0.98]"
+              >
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                </svg>
+                Verify with Vet
+              </button>
+              <p className="text-center text-[11px] text-gray-400 mt-3 flex items-center justify-center gap-1 font-sans">
+                <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path clipRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" fillRule="evenodd"/>
+                </svg>
+                Show this QR at the clinic or to home visit doctor.
+              </p>
+            </>
+          ) : (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between shadow-sm animate-fade-in font-sans">
+              <div className="flex items-center gap-2.5">
+                <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping"></div>
+                <div>
+                  <h4 className="text-[13.5px] text-emerald-900 font-bold leading-tight">Live Consultation Active</h4>
+                  <p className="text-[11px] text-emerald-600/90 font-medium">Verified check-in duration synchronized with Vet.</p>
+                </div>
+              </div>
+              <div className="font-mono bg-emerald-100 text-emerald-950 font-black px-3.5 py-1.5 rounded-xl text-[16px] border border-emerald-200">
+                {formatTimer(elapsedSeconds)}
+              </div>
+            </div>
+          )}
         </div>
 
       </main>

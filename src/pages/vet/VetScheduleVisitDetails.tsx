@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import jsQR from "jsqr";
 
 const VetScheduleVisitDetails: React.FC = () => {
   const navigate = useNavigate();
@@ -45,6 +46,194 @@ const VetScheduleVisitDetails: React.FC = () => {
   const [swipeTranslation, setSwipeTranslation] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
+  const [timerStartEpoch, setTimerStartEpoch] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+  const [dbAppointment, setDbAppointment] = useState<any>(null);
+
+  const handleVerifyCode = async (scannedCode: string, isFromSimulation = false) => {
+    const currentApptId = appointmentId || stateVisit?.id;
+    if (!currentApptId) {
+      toast.error("Error: No active appointment context found!");
+      return false;
+    }
+
+    const cleanScanned = scannedCode.trim().toLowerCase();
+    const cleanCurrent = currentApptId.trim().toLowerCase();
+
+    // Secure requirement: Reject codes that belong to any other appointment, previous, or third-party appointments
+    if (cleanScanned !== cleanCurrent) {
+      toast.error(`❌ Verification Failed!`, {
+        description: `This QR code does not belong to this consultation ID. Scanned: ${scannedCode.slice(0, 15)}...`,
+        duration: 5000
+      });
+      return false;
+    }
+
+    // Unlocked phase
+    setIsVerified(true);
+    const startTimestamp = Math.floor(Date.now() / 1000);
+    setTimerStartEpoch(startTimestamp);
+    localStorage.setItem(`gp_appt_start_${currentApptId}`, String(startTimestamp));
+    localStorage.setItem(`gp_appt_status_${currentApptId}`, "in_progress");
+
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentApptId);
+    if (isUUID) {
+      try {
+        const { error } = await supabase
+          .from("vet_appointments")
+          .update({
+            status: "in_progress",
+            call_duration: startTimestamp
+          })
+          .eq("id", currentApptId);
+        
+        if (error) {
+          console.error("Supabase update error:", error);
+        }
+      } catch (err) {
+        console.error("Failed to write to database:", err);
+      }
+    }
+
+    toast.success("✨ QR Code Verified!", {
+      description: "Consultation unlocked. Timer started successfully.",
+      duration: 4000
+    });
+
+    closeImmersiveScanner();
+    return true;
+  };
+
+  // 1. Fetch initial status & setup Supabase Realtime channel
+  useEffect(() => {
+    const currentApptId = appointmentId || stateVisit?.id;
+    if (!currentApptId) return;
+
+    // Read local cache first for low-latency
+    const offlineStatus = localStorage.getItem(`gp_appt_status_${currentApptId}`);
+    const offlineStart = localStorage.getItem(`gp_appt_start_${currentApptId}`);
+    if (offlineStatus === "in_progress") {
+      setIsVerified(true);
+      if (offlineStart) {
+        setTimerStartEpoch(Number(offlineStart));
+      }
+    }
+
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentApptId);
+    if (isUUID) {
+      const fetchInitial = async () => {
+        try {
+          const { data, error } = await supabase
+            .from("vet_appointments")
+            .select("*")
+            .eq("id", currentApptId)
+            .single();
+
+          if (!error && data) {
+            setDbAppointment(data);
+            if (data.status === "in_progress") {
+              setIsVerified(true);
+              if (data.call_duration) {
+                setTimerStartEpoch(data.call_duration);
+                localStorage.setItem(`gp_appt_start_${currentApptId}`, String(data.call_duration));
+              }
+              localStorage.setItem(`gp_appt_status_${currentApptId}`, "in_progress");
+            } else if (data.status === "completed") {
+              setIsCompleted(true);
+            }
+          }
+        } catch (e) {
+          console.error("Error fetching db appointment:", e);
+        }
+      };
+
+      fetchInitial();
+
+      // Subscribe to live DB updates
+      const channel = supabase
+        .channel(`vet_appt_detail_${currentApptId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "vet_appointments",
+            filter: `id=eq.${currentApptId}`
+          },
+          (payload) => {
+            console.log("Realtime update received in Vet schedule details:", payload);
+            if (payload.new) {
+              const updated = payload.new as any;
+              setDbAppointment(updated);
+              if (updated.status === "in_progress") {
+                setIsVerified(true);
+                if (updated.call_duration) {
+                  setTimerStartEpoch(updated.call_duration);
+                  localStorage.setItem(`gp_appt_start_${currentApptId}`, String(updated.call_duration));
+                }
+                localStorage.setItem(`gp_appt_status_${currentApptId}`, "in_progress");
+              } else if (updated.status === "completed") {
+                setIsCompleted(true);
+              }
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [appointmentId, stateVisit?.id]);
+
+  // 2. Synchronize across local tabs instantly
+  useEffect(() => {
+    const currentApptId = appointmentId || stateVisit?.id;
+    if (!currentApptId) return;
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === `gp_appt_status_${currentApptId}`) {
+        if (e.newValue === "in_progress") {
+          setIsVerified(true);
+          const start = localStorage.getItem(`gp_appt_start_${currentApptId}`);
+          if (start) {
+            setTimerStartEpoch(Number(start));
+          }
+        }
+      }
+      if (e.key === `gp_appt_start_${currentApptId}`) {
+        if (e.newValue) {
+          setTimerStartEpoch(Number(e.newValue));
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [appointmentId, stateVisit?.id]);
+
+  // 3. Perfect Clock Tick Timer
+  useEffect(() => {
+    if (!isVerified || !timerStartEpoch) return;
+
+    const tick = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const elapsed = Math.max(0, now - timerStartEpoch);
+      setElapsedSeconds(elapsed);
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [isVerified, timerStartEpoch]);
+
+  const formatTimer = (secs: number) => {
+    const m = Math.floor(secs / 60).toString().padStart(2, "0");
+    const s = (secs % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
   
   // Modals
   const [showQrModal, setShowQrModal] = useState(false);
@@ -159,17 +348,50 @@ const VetScheduleVisitDetails: React.FC = () => {
   };
 
   const executeMockScan = () => {
-    closeImmersiveScanner();
-    setIsVerified(true);
-    setTimeout(() => {
-      toast.success("✨ QR Code Detected: Kiro's Passport synchronized successfully!");
-    }, 400);
+    const targetId = appointmentId || stateVisit?.id || "SRV-84721";
+    handleVerifyCode(targetId, true);
   };
 
-  // Setup media stream capture on immersive scanner show
+  const executeMockScanFailed = () => {
+    handleVerifyCode("INVALID_DIFFERENT_APPOINTMENT_ID_12345", true);
+  };
+
+  // Setup media stream capture and live jsQR frame scanning
   useEffect(() => {
     let active = true;
     let autoScanTimeout: NodeJS.Timeout;
+    let animationFrameId: number;
+
+    const canvas = document.createElement("canvas");
+
+    const scanFrame = () => {
+      if (!active || !showImmersiveScanner || !streamRef.current || !videoRef.current) return;
+
+      const video = videoRef.current;
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          try {
+            const decoded = jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: "dontInvert"
+            });
+            if (decoded && decoded.data) {
+              console.log("jsQR decoded successfully:", decoded.data);
+              // Actively trigger QR verification
+              handleVerifyCode(decoded.data);
+              return; // stop scanning once decoded
+            }
+          } catch (e) {
+            console.error("QR decoding exception:", e);
+          }
+        }
+      }
+      animationFrameId = requestAnimationFrame(scanFrame);
+    };
 
     const startCamera = async () => {
       try {
@@ -184,7 +406,10 @@ const VetScheduleVisitDetails: React.FC = () => {
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.play().catch((e) => console.error("Video play failed", e));
+          videoRef.current.play().then(() => {
+            // Start scanning frame loop
+            scanFrame();
+          }).catch((e) => console.error("Video play failed", e));
         }
 
         // Apply torch state if camera supports it and flash is on
@@ -199,12 +424,12 @@ const VetScheduleVisitDetails: React.FC = () => {
           }
         }
 
-        // Simulated QR Auto scan completion after 3.2 seconds
+        // Simulated QR Auto scan completion after 5 seconds to help developers test easily without physical camera
         autoScanTimeout = setTimeout(() => {
           if (active) {
             executeMockScan();
           }
-        }, 3200);
+        }, 5000);
 
       } catch (err) {
         console.error("Camera access failed:", err);
@@ -224,6 +449,7 @@ const VetScheduleVisitDetails: React.FC = () => {
     return () => {
       active = false;
       if (autoScanTimeout) clearTimeout(autoScanTimeout);
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
@@ -746,15 +972,25 @@ const VetScheduleVisitDetails: React.FC = () => {
         </button>
 
         {/* Dynamic Footer Action Container */}
-        <div className="absolute bottom-0 left-0 w-full px-5 pb-6 pt-10 bg-gradient-to-t from-[#f6f7fb] via-[#f6f7fb] to-transparent z-10 sm:rounded-b-3xl">
+        <div className="absolute bottom-0 left-0 w-full px-5 pb-6 pt-10 bg-gradient-to-t from-[#f6f7fb] via-[#f6f7fb] to-transparent z-10 sm:rounded-b-3xl font-sans">
             
           {/* Phase 1: Initial Action Buttons */}
           {!isSwipeMode && (
             <div id="initialActions" className="flex flex-col gap-2.5">
-              {!isVerified && (
+              {!isVerified ? (
                 <div className="flex items-center justify-center gap-1.5 text-[12.5px] text-[#8b5cf6] font-bold py-1.5 bg-purple-50 rounded-xl border border-purple-100/60 animate-pulse">
                   <i className="fas fa-lock text-[11px]"></i>
                   <span>Scan QR to unlock consultation</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-100 text-emerald-800 text-xs mb-1">
+                  <span className="font-bold flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                    Consultation Unlocked (Active)
+                  </span>
+                  <span className="font-mono bg-emerald-100 text-emerald-950 font-black px-2 py-0.5 rounded text-sm">
+                    {formatTimer(elapsedSeconds)}
+                  </span>
                 </div>
               )}
               <button 
@@ -786,11 +1022,20 @@ const VetScheduleVisitDetails: React.FC = () => {
 
           {/* Phase 2: Upgraded Premium Swipe Slider */}
           {isSwipeMode && (
-            <div 
-              ref={containerRef}
-              id="swipeContainer" 
-              className={`relative w-full h-[64px] bg-white bg-opacity-80 backdrop-blur-md rounded-full border border-purple-100 p-1.5 flex items-center overflow-hidden shadow-[0_10px_30px_-6px_rgba(157,78,221,0.25)] transition-all duration-300 ${isCompleted ? 'opacity-0 translate-y-[15px]' : ''}`}
-            >
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between px-4 py-1.5 bg-purple-50 rounded-xl border border-purple-100 text-[#9d4edd] text-xs">
+                <span className="font-bold flex items-center gap-1">
+                  <i className="fas fa-clock"></i> Live Session duration
+                </span>
+                <span className="font-mono bg-purple-150 text-purple-950 font-black px-2 py-0.5 rounded text-sm">
+                  {formatTimer(elapsedSeconds)}
+                </span>
+              </div>
+              <div 
+                ref={containerRef}
+                id="swipeContainer" 
+                className={`relative w-full h-[64px] bg-white bg-opacity-80 backdrop-blur-md rounded-full border border-purple-100 p-1.5 flex items-center overflow-hidden shadow-[0_10px_30px_-6px_rgba(157,78,221,0.25)] transition-all duration-300 ${isCompleted ? 'opacity-0 translate-y-[15px]' : ''}`}
+              >
               {/* Dynamic Shimmer Track Glow */}
               <div className="absolute inset-0 bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 shimmer-track opacity-20 pointer-events-none"></div>
 
@@ -827,6 +1072,7 @@ const VetScheduleVisitDetails: React.FC = () => {
                 <i className="fas fa-angles-right"></i>
               </div>
             </div>
+          </div>
           )}
 
         </div>
@@ -836,9 +1082,7 @@ const VetScheduleVisitDetails: React.FC = () => {
       {/* [REFINED] High-Fidelity Google Pay Immersive Scanner (Theme Matched) */}
       {showImmersiveScanner && (
         <div 
-          onClick={executeMockScan}
-          className={`fixed inset-0 bg-black z-50 flex flex-col justify-between transition-all duration-300 ease-out cursor-pointer sm:border sm:border-gray-805 sm:rounded-3xl max-w-[400px] mx-auto h-screen ${isScannerAnimating ? 'opacity-100' : 'opacity-0'}`}
-          title="Tap screen to simulate successful QR detection"
+          className={`fixed inset-0 bg-black z-50 flex flex-col justify-between transition-all duration-300 ease-out sm:border sm:border-gray-805 sm:rounded-3xl max-w-[400px] mx-auto h-screen ${isScannerAnimating ? 'opacity-100' : 'opacity-0'}`}
         >
           {/* Live Simulated Camera Viewport */}
           <div className="absolute inset-0 w-full h-full bg-[#121016] overflow-hidden sm:rounded-3xl">
@@ -889,16 +1133,18 @@ const VetScheduleVisitDetails: React.FC = () => {
           <div className="px-6 pt-6 pb-4 flex justify-between items-center w-full z-10 bg-gradient-to-b from-black/60 to-transparent flex-row">
             <button 
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 closeImmersiveScanner();
               }} 
-              className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md text-white/90 flex items-center justify-center hover:bg-white/20 transition active:scale-95"
+              className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md text-white/90 flex items-center justify-center hover:bg-white/20 transition active:scale-95 text-xs text-white"
             >
               <i className="fas fa-arrow-left text-[15px]"></i>
             </button>
             <p className="text-white/90 text-[13px] font-semibold tracking-wider uppercase bg-black/20 px-3 py-1.5 rounded-full backdrop-blur-sm">Scan consultation QR</p>
             <button 
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 const newFlash = !flashOn;
                 setFlashOn(newFlash);
@@ -906,7 +1152,7 @@ const VetScheduleVisitDetails: React.FC = () => {
               }}
               className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center transition active:scale-95 duration-250 ${
                 flashOn 
-                  ? "bg-amber-400 text-amber-950 shadow-[0_0_15px_rgba(251,191,36,0.6)]" 
+                  ? "bg-amber-400 text-amber-950 shadow-[0_0_15px_rgba(251,191,36,0.6)] animate-pulse" 
                   : "bg-white/10 text-white/90 hover:bg-white/20"
               }`}
             >
@@ -914,11 +1160,35 @@ const VetScheduleVisitDetails: React.FC = () => {
             </button>
           </div>
 
-          {/* Clean Bottom Subtext Layer */}
-          <div className="p-12 flex flex-col items-center justify-center w-full z-10 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none">
-            <p className="text-white/40 text-[11px] font-medium tracking-wide text-center max-w-[210px] leading-relaxed">
-              Align QR code within the frame to instantly verify visit
+          {/* Clean Bottom Actions Layer with Sandbox Buttons */}
+          <div className="p-6 pb-12 flex flex-col gap-3 w-full z-10 bg-gradient-to-t from-black via-black/80 to-transparent">
+            <p className="text-white/40 text-[11px] font-medium tracking-wide text-center leading-relaxed mb-1">
+              Align QR code on the buyer's screen inside standard frame
             </p>
+            <div className="flex gap-2.5">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  executeMockScan();
+                }}
+                className="flex-1 bg-[#9d4edd] text-white text-[12px] font-bold py-3 px-1 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition"
+              >
+                <i className="fas fa-check-circle text-[13px]"></i>
+                Simulate Valid QR
+              </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  executeMockScanFailed();
+                }}
+                className="flex-1 bg-rose-600 text-white text-[12px] font-bold py-3 px-1 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition"
+              >
+                <i className="fas fa-times-circle text-[13px]"></i>
+                Simulate Invalid QR
+              </button>
+            </div>
           </div>
         </div>
       )}
