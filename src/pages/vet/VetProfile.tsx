@@ -139,19 +139,7 @@ const VetProfile = () => {
         </section>
 
         {/* Visibility Status Card */}
-        {vetData?.isAdminApproved ? (
-          <section className="mt-8 relative overflow-hidden rounded-[2.5rem] p-6 flex flex-col items-start gap-2 border bg-emerald-50 border-emerald-200">
-             <div className="flex items-center gap-2">
-                 <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-                 <h3 className="text-lg font-bold text-emerald-800">
-                   Profile is Live
-                 </h3>
-             </div>
-             <p className="text-sm font-medium text-emerald-700/80">
-               Your profile is fully synchronized and visible to pet owners searching for vets in your area.
-             </p>
-          </section>
-        ) : (
+        {!vetData?.isAdminApproved && (
           <section className="mt-8 relative overflow-hidden rounded-[2.5rem] p-6 flex flex-col items-start gap-2 border bg-blue-50 border-blue-200">
              <div className="flex items-center gap-2">
                  <div className="w-3 h-3 rounded-full bg-blue-500" />
@@ -164,41 +152,6 @@ const VetProfile = () => {
              </p>
           </section>
         )}
-
-        {/* Premium Profile Card */}
-        <section className="mt-8 relative overflow-hidden bg-[#F9F5FF] border border-[#E9D5FF] rounded-[2.5rem] p-6 flex items-center gap-5 shadow-[0_12px_40px_rgba(164,40,255,0.06)]" data-purpose="verified-qr-card">
-          {/* QR Code container */}
-          <div className="relative z-10 shrink-0 bg-white p-3.5 rounded-[2.2rem] shadow-[0_15px_35px_rgba(164,40,255,0.08)]">
-            <div className="w-20 h-20 relative flex items-center justify-center">
-              {/* Simplified QR Code SVG mapping the image */}
-              <svg viewBox="0 0 100 100" className="w-14 h-14 text-[#9A3EF8]">
-                {/* 4 Rounded Squares Grid */}
-                <rect x="5" y="5" width="38" height="38" rx="12" fill="none" stroke="currentColor" strokeWidth="8" />
-                <rect x="57" y="5" width="38" height="38" rx="12" fill="none" stroke="currentColor" strokeWidth="8" />
-                <rect x="5" y="57" width="38" height="38" rx="12" fill="none" stroke="currentColor" strokeWidth="8" />
-                <rect x="57" y="57" width="38" height="38" rx="12" fill="none" stroke="currentColor" strokeWidth="8" />
-                {/* Tiny inner squares/dots inside the bigger ones */}
-                <rect x="19" y="19" width="10" height="10" rx="3" fill="currentColor" />
-                <rect x="71" y="19" width="10" height="10" rx="3" fill="currentColor" />
-                <rect x="19" y="71" width="10" height="10" rx="3" fill="currentColor" />
-                <rect x="71" y="71" width="10" height="10" rx="3" fill="currentColor" />
-                {/* Center dot */}
-                <circle cx="50" cy="50" r="4" fill="currentColor" />
-              </svg>
-            </div>
-          </div>
-          
-          {/* Text content */}
-          <div className="relative z-10 flex-1">
-            <h3 className="text-[22px] font-bold text-[#131A2D] leading-tight">Premium Profile</h3>
-            <p className="text-[#5a5a6a] text-[15px] mt-1.5 leading-snug font-medium">Verified & Trusted Professional</p>
-          </div>
-
-          {/* Right Chevron */}
-          <div className="relative z-10 text-slate-400">
-            <CaretRight size={24} weight="bold" />
-          </div>
-        </section>
 
         {/* Menu List */}
         <section className="mt-8 space-y-4" data-purpose="profile-navigation-links">

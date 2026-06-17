@@ -101,6 +101,7 @@ const InfoTooltip = ({ message }: { message: string }) => {
 const VetOnboarding = () => {
   const navigate = useNavigate();
   const { profile, refreshProfile } = useAuth();
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -549,9 +550,13 @@ const VetOnboarding = () => {
               gender: prev.gender || p?.gender || "",
             }));
           }
+          setIsCheckingStatus(false);
+        } else {
+          setIsCheckingStatus(false);
         }
       } catch (err) {
         console.error("Status check failed:", err);
+        setIsCheckingStatus(false);
       }
     };
     checkStatus();
@@ -1550,6 +1555,15 @@ const VetOnboarding = () => {
       </div>
     );
   };
+
+  if (isCheckingStatus) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-soft select-none">
+        <Loader2 className="w-10 h-10 animate-spin text-[#9d4edd] mb-4" />
+        <p className="text-slate-600 font-medium text-sm animate-pulse">Syncing verification status...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-soft">

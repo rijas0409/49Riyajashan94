@@ -96,6 +96,18 @@ const VetSchedule = () => {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const isInitialMount = React.useRef(true);
 
+  // New Search and Notification States matching user design exactly
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [notifications, setNotifications] = useState([
+    { id: 1, text: "Sarah Jenkins requested a home visit for Bella.", time: "2 mins ago", isUnread: true },
+    { id: 2, text: "Bella's vaccination session was successfully completed.", time: "1 hour ago", isUnread: true },
+    { id: 3, text: "Michael Ross uploaded medical records for Gabru.", time: "Yesterday", isUnread: false },
+    { id: 4, text: "Wallet balance auto-withdrawn successfully.", time: "2 days ago", isUnread: false }
+  ]);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const showUnreadBadge = useMemo(() => notifications.some(n => n.isUnread), [notifications]);
+
   // Month and Year display for the selected date
   const monthYearHeader = useMemo(() => {
     const d = new Date(selectedDateId);
@@ -143,7 +155,7 @@ const VetSchedule = () => {
   const isFuture = new Date(selectedDateId) > new Date(formatDt(today, "yyyy-MM-dd"));
 
   // Utility to check if a specific time is reached today
-  const isTimeReached = (timeStr: string) => {
+  const isTimeReached = useCallback((timeStr: string) => {
     if (!isToday) return isPast;
     try {
       const [time, period] = timeStr.split(' ');
@@ -158,7 +170,7 @@ const VetSchedule = () => {
     } catch (e) {
       return false;
     }
-  };
+  }, [isToday, isPast, currentTime]);
 
   // Auto-scroll to selected date
   React.useEffect(() => {
@@ -212,7 +224,8 @@ const VetSchedule = () => {
         
         // Fetch users manually to avoid foreign key relation errors with PostgREST
         const userIds = [...new Set(data.map(apt => apt.user_id))];
-        let profilesMap: Record<string, any> = {};
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const profilesMap: Record<string, any> = {};
         
         if (userIds.length > 0) {
           const { data: profiles } = await supabase
@@ -228,6 +241,7 @@ const VetSchedule = () => {
         }
 
         // Show all appointments for the vet. Do not hide booked appointments based on current consultation_type settings.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mapped = data.map((apt: any) => {
           const userProfile = profilesMap[apt.user_id] || {};
           return {
@@ -314,6 +328,18 @@ const VetSchedule = () => {
       // Only show items for the selected date
       if (apt.date !== selectedDateId) return false;
       
+      // Filter by search query
+      if (searchQuery.trim() !== "") {
+        const query = searchQuery.toLowerCase();
+        const matchesPet = (apt.petName || "").toLowerCase().includes(query);
+        const matchesOwner = (apt.ownerName || "").toLowerCase().includes(query);
+        const matchesBreed = (apt.breed || "").toLowerCase().includes(query);
+        const matchesId = getShortBookingId(apt.id).toLowerCase().includes(query);
+        if (!matchesPet && !matchesOwner && !matchesBreed && !matchesId) {
+          return false;
+        }
+      }
+      
       // Logic for each tab
       if (activeTab === "Active") {
         if (!isToday) return false;
@@ -340,7 +366,7 @@ const VetSchedule = () => {
       
       return false;
     });
-  }, [activeTab, isToday, isPast, isFuture, currentTime, isTimeReached, selectedDateId, today, appointments]);
+  }, [activeTab, isToday, isPast, selectedDateId, appointments, searchQuery, isTimeReached]);
 
   const handleHomeVisitClick = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -399,18 +425,69 @@ const VetSchedule = () => {
     <div className="bg-[#f7f7fa] min-h-screen pb-24 font-['Nunito'] overflow-x-hidden">
       {/* Header */}
       <header className="flex items-center justify-between px-5 py-6">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-[#1f1f2e] shadow-sm active:scale-95 transition-all">
+        <button 
+          onClick={() => navigate(-1)} 
+          className="w-[42px] h-[42px] rounded-full bg-white flex items-center justify-center border-none shadow-[0_4px_15px_rgba(0,0,0,0.03)] cursor-pointer active:scale-95 transition-all"
+        >
           <CaretLeft size={20} weight="bold" />
         </button>
-        <h1 className="text-[22px] font-[800] text-[#1f1f2e] flex-grow ml-4">Schedule</h1>
-        <div className="flex gap-3">
-          <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-[#1f1f2e] shadow-sm active:scale-95 transition-all">
-            <MagnifyingGlass size={20} weight="bold" />
-          </button>
-          <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-[#1f1f2e] shadow-sm active:scale-95 transition-all">
-            <Bell size={20} weight="bold" />
-          </button>
-        </div>
+
+        {isSearchOpen ? (
+          <div className="flex-1 ml-4 h-[42px] bg-white rounded-[21px] px-4 shadow-[0_4px_15px_rgba(0,0,0,0.03)] border-none flex items-center gap-2 animate-[fadeIn_0.2s_ease-out_forwards]">
+            <MagnifyingGlass size={18} weight="bold" className="text-[#8d8d9c] flex-shrink-0" />
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by pet name, owner, breed, ID..."
+              className="w-full bg-transparent border-none outline-none text-[14px] font-[600] text-[#1E1E2F] placeholder-[#8d8d9c]"
+              autoFocus
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery("")}
+                className="text-gray-400 p-1 font-bold text-xs"
+              >
+                Clear
+              </button>
+            )}
+            <button 
+              onClick={() => {
+                setIsSearchOpen(false);
+                setSearchQuery("");
+              }} 
+              className="text-[#a428ff] font-bold text-[14px] px-1 active:scale-95 transition-all"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <>
+            <h1 className="text-[22px] font-[800] text-[#1f1f2e] flex-grow ml-4">Schedule</h1>
+            <div className="flex gap-2.5">
+              {/* Search Button matching the Home layout */}
+              <button 
+                onClick={() => setIsSearchOpen(true)}
+                className="w-[42px] h-[42px] rounded-full bg-white flex items-center justify-center border-none shadow-[0_4px_15px_rgba(0,0,0,0.03)] cursor-pointer active:scale-95 transition-all"
+                title="Search Schedule"
+              >
+                <MagnifyingGlass size={20} weight="bold" />
+              </button>
+
+              {/* Notification Button matching Home exactly but hollow */}
+              <button 
+                onClick={() => setIsNotificationsOpen(true)}
+                className="w-[42px] h-[42px] rounded-full bg-white flex items-center justify-center border-none shadow-[0_4px_15px_rgba(0,0,0,0.03)] cursor-pointer relative active:scale-95 transition-all"
+                title="Notifications"
+              >
+                <Bell size={20} weight="bold" />
+                {showUnreadBadge && (
+                  <span className="absolute top-[10px] right-[12px] w-2 h-2 bg-[#ff4264] rounded-full border-2 border-white"></span>
+                )}
+              </button>
+            </div>
+          </>
+        )}
       </header>
       
       {/* Month & Year Display */}
@@ -495,7 +572,9 @@ const VetSchedule = () => {
                     const notes = JSON.parse(apt.consultation_notes);
                     if (notes.bookingId) currentBookingId = notes.bookingId;
                     if (notes) parsedPaymentDetails = notes;
-                  } catch(e) {}
+                  } catch (e) {
+                    console.log("Could not parse consultation notes:", e);
+                  }
                 }
                 const shortId = getShortBookingId(apt.id);
                 navigate(`/vet/schedule/visit-details/${shortId}`, {
@@ -596,10 +675,10 @@ const VetSchedule = () => {
                 </div>
               )}
 
-              {apt.status !== "pending" && (
-                <div className="flex justify-between items-center mt-6 gap-3">
-                  <div className="bg-[#f7f6f9] px-5 py-3.5 rounded-[30px] text-[16px] font-[700] text-[#1e1e24] flex items-center gap-2.5 w-fit">
-                    <Clock size={18} className="text-[#a428f0]" weight="fill" /> {apt.time}
+               {apt.status !== "pending" && (
+                <div className="flex items-center justify-between mt-6 gap-2 sm:gap-3">
+                  <div className="bg-[#f7f6f9] px-3.5 sm:px-5 py-3.5 rounded-[30px] text-[13.5px] sm:text-[16px] font-[700] text-[#1e1e24] flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
+                    <Clock size={16} className="text-[#a428f0]" weight="fill" /> {apt.time}
                   </div>
                   <button 
                     onClick={(e) => {
@@ -626,7 +705,7 @@ const VetSchedule = () => {
                         }
                       });
                     }}
-                    className="flex-1 bg-[#a428f0] text-white py-3.5 px-5 text-center rounded-[30px] text-[15px] font-[600] shadow-[0_8px_25px_rgba(164,40,240,0.3)] active:scale-95 transition-all"
+                    className="flex-1 min-w-0 bg-[#a428f0] text-white py-3.5 px-3 sm:px-5 text-center rounded-[30px] text-[13px] sm:text-[15px] font-[600] shadow-[0_8px_25px_rgba(164,40,240,0.3)] active:scale-95 transition-all truncate"
                   >
                     {apt.type === 'home' ? 'View Route' : 'View Details'}
                   </button>
@@ -658,6 +737,67 @@ const VetSchedule = () => {
           </button>
         </div>
       </nav>
+
+      {/* Notifications Bottom Sheet Drawer */}
+      {isNotificationsOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end justify-center transition-all duration-300">
+          <div className="absolute inset-0" onClick={() => setIsNotificationsOpen(false)} />
+          <div className="bg-white rounded-t-[40px] w-full max-w-md p-6 relative z-10 shadow-[0_-15px_40px_rgba(0,0,0,0.1)] max-h-[85vh] flex flex-col overflow-hidden animate-[slideUp_0.3s_ease-out_forwards]">
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
+            
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-[20px] font-[800] text-[#1f1f2e]">Notifications</h3>
+              {showUnreadBadge && (
+                <button 
+                  onClick={() => {
+                    setNotifications(prev => prev.map(n => ({ ...n, isUnread: false })));
+                    toast.success("All notifications marked as read!");
+                  }}
+                  className="text-[13px] font-[700] text-[#a428ff] hover:underline"
+                >
+                  Mark all as read
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-4 overflow-y-auto flex-1 pb-6 pr-1">
+              {notifications.map((notif) => (
+                <div 
+                  key={notif.id}
+                  className={`p-4 rounded-[22px] border transition-all duration-200 flex gap-3 ${
+                    notif.isUnread 
+                      ? "bg-[#f8f2ff] border-[#e9d9ff]" 
+                      : "bg-[#fcfcfd] border-gray-100"
+                  }`}
+                >
+                  <div className="mt-1">
+                    {notif.isUnread ? (
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#ae41ff] animate-pulse" />
+                    ) : (
+                      <div className="w-2.5 h-2.5 rounded-full bg-gray-300" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className={`text-[14px] leading-snug ${notif.isUnread ? "text-[#1f1f2e] font-[700]" : "text-[#5a5a6a] font-[500]"}`}>
+                      {notif.text}
+                    </p>
+                    <span className="text-[11px] font-[600] text-gray-400 mt-1 block">
+                      {notif.time}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button 
+              onClick={() => setIsNotificationsOpen(false)}
+              className="w-full text-[#1f1f2e] font-[700] py-4 rounded-[24px] tracking-wide active:scale-95 transition-all text-[15px] mt-2 mb-2 bg-[#ececf3]"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

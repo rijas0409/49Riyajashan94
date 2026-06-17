@@ -43,11 +43,52 @@ interface DbAppointmentRaw {
   } | null;
 }
 
+const formatDateString = (date: Date) => {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const getMinutesDifference = (timeStr: string) => {
+  try {
+    const [time, period] = timeStr.split(' ');
+    let [rawHours, minutes] = time.split(':').map(Number);
+    let hours = rawHours;
+    if (period === 'PM' && hours < 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    
+    const appTime = new Date();
+    appTime.setHours(hours, minutes, 0, 0);
+    
+    const diffMs = appTime.getTime() - Date.now();
+    return Math.round(diffMs / 60000); // positive if in future, negative if in past
+  } catch (e) {
+    return 1000;
+  }
+};
+
+const getAppointmentDateObject = (dateStr: string, timeStr: string) => {
+  try {
+    const [time, period] = timeStr.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    if (period === 'PM' && hours < 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    
+    const d = new Date(dateStr);
+    d.setHours(hours, minutes, 0, 0);
+    return d;
+  } catch (e) {
+    return new Date(dateStr + "T12:00:00");
+  }
+};
+
 const VetDashboard = () => {
   const navigate = useNavigate();
   const { isLoading: guardLoading, showSpinner, user, profile, error: guardError } = useRoleGuard(["vet"], "/auth-vet", true);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
+  const [activeAppointment, setActiveAppointment] = useState<DashboardAppointment | null>(null);
   const [upcomingAppointments, setUpcomingAppointments] = useState<DashboardAppointment[]>([]);
 
   const fetchPendingCount = useCallback(async () => {
@@ -74,7 +115,7 @@ const VetDashboard = () => {
         .from('vet_appointments')
         .select('*')
         .eq('vet_id', user.id)
-        .in('status', ['pending', 'confirmed'])
+        .in('status', ['pending', 'confirmed', 'in_progress'])
         .order('appointment_date', { ascending: true })
         .limit(20);
 
@@ -111,7 +152,39 @@ const VetDashboard = () => {
             status: apt.status
           };
         });
-        setUpcomingAppointments(mapped.slice(0, 5));
+
+        // Sort mapped list chronologically
+        mapped.sort((a, b) => {
+          const dateA = getAppointmentDateObject(a.date, a.time);
+          const dateB = getAppointmentDateObject(b.date, b.time);
+          return dateA.getTime() - dateB.getTime();
+        });
+
+        const todayStr = formatDateString(new Date());
+        let active: DashboardAppointment | null = null;
+        const upcomingList: DashboardAppointment[] = [];
+
+        mapped.forEach((apt) => {
+          const isTodaySession = apt.date === todayStr;
+          if (apt.status === "in_progress" && isTodaySession) {
+            if (!active) {
+              active = apt;
+              return; // Exclude from upcoming, goes directly to Focus Mode!
+            }
+          } else if (apt.status === "confirmed" && isTodaySession) {
+            const diff = getMinutesDifference(apt.time);
+            if (diff <= 15 && diff >= -45) {
+              if (!active) {
+                active = apt;
+                return; // Exclude from upcoming, goes directly to Focus Mode!
+              }
+            }
+          }
+          upcomingList.push(apt);
+        });
+
+        setActiveAppointment(active);
+        setUpcomingAppointments(upcomingList.slice(0, 5));
       }
     } catch (err) {
       console.error("Error fetching upcoming appointments:", err);
@@ -131,6 +204,7 @@ const VetDashboard = () => {
   }, [user?.id, fetchPendingCount, fetchUpcoming]);
 
   useEffect(() => {
+    if (guardLoading) return;
     if (user && profile) {
       if (profile.is_onboarding_complete === false) {
         navigate("/vet/onboarding");
@@ -154,8 +228,13 @@ const VetDashboard = () => {
           )
           .subscribe();
 
+        const pollTimer = setInterval(() => {
+          fetchUpcoming();
+        }, 15000);
+
          return () => {
           supabase.removeChannel(channel);
+          clearInterval(pollTimer);
         };
       }
     }
@@ -201,7 +280,7 @@ const VetDashboard = () => {
               <MagnifyingGlass size={20} weight="bold" />
             </button>
             <button className="w-[42px] h-[42px] rounded-full bg-white flex items-center justify-center border-none shadow-[0_4px_15px_rgba(0,0,0,0.03)] cursor-pointer relative active:scale-95 transition-all">
-              <Bell size={20} weight="fill" />
+              <Bell size={20} weight="bold" />
               <span className="absolute top-[10px] right-[12px] w-2 h-2 bg-[#ff4264] rounded-full border-2 border-white"></span>
             </button>
           </div>
@@ -301,50 +380,129 @@ const VetDashboard = () => {
                 <h3 className="text-[#1a1a24] text-[17px] font-extrabold">Focus Mode</h3>
               </div>
 
-              <div className="bg-white rounded-[34px] p-[22px] shadow-[0_16px_40px_rgba(0,0,0,0.04)] relative">
-                <span className="absolute top-3 right-3 bg-[#fbedff] text-[#a428ff] text-[9px] font-extrabold px-2 py-1.5 rounded-lg tracking-[0.3px]">IN 15 MINS</span>
-                
-                <div className="flex items-center gap-3.5 mb-[22px]">
-                  <img 
-                    src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=150&q=80" 
-                    alt="Oliver" 
-                    className="w-[58px] h-[58px] rounded-full object-cover flex-shrink-0"
-                  />
-                  <div className="grow min-w-0">
-                    <h4 className="text-[17px] font-extrabold text-[#1a1a24] mb-[3px]">Oliver</h4>
-                    <p className="text-xs font-medium text-[#8f8f9d] mb-2 truncate">Domestic Shorthair • 3y</p>
-                    <div className="inline-flex items-center gap-1.5 bg-[#fbedff] text-[#a428ff] text-[8.5px] font-extrabold px-2 py-1 rounded-lg tracking-[0.3px] uppercase">
-                      <VideoCamera size={12} weight="fill" />
-                      VIDEO CONSULTATION
+              {activeAppointment ? (
+                <div className="bg-white rounded-[34px] p-[22px] shadow-[0_16px_40px_rgba(0,0,0,0.04)] relative">
+                  <span className="absolute top-3 right-3 bg-[#fbedff] text-[#a428ff] text-[9px] font-extrabold px-2 py-1.5 rounded-lg tracking-[0.3px]">
+                    {(() => {
+                      const diff = getMinutesDifference(activeAppointment.time);
+                      if (diff > 0) return `IN ${diff} MINS`;
+                      if (diff === 0) return `DUE NOW`;
+                      return 'LIVE NOW';
+                    })()}
+                  </span>
+                  
+                  <div 
+                    className="flex items-center gap-3.5 mb-[22px] cursor-pointer"
+                    onClick={() => navigate(`/vet/schedule/visit-details/${activeAppointment.id}`, { 
+                      state: { 
+                        visit: { 
+                          id: activeAppointment.id, 
+                          petName: activeAppointment.name, 
+                          petBreed: activeAppointment.breed, 
+                          image: activeAppointment.image, 
+                          ownerName: activeAppointment.ownerName, 
+                          ownerPhone: activeAppointment.ownerPhone, 
+                          time: activeAppointment.time, 
+                          type: activeAppointment.type, 
+                          status: activeAppointment.status 
+                        } 
+                      } 
+                    })}
+                  >
+                    <img 
+                      src={activeAppointment.image} 
+                      alt={activeAppointment.name} 
+                      className="w-[58px] h-[58px] rounded-full object-cover flex-shrink-0"
+                    />
+                    <div className="grow min-w-0">
+                      <h4 className="text-[17px] font-extrabold text-[#1a1a24] mb-[3px]">{activeAppointment.name}</h4>
+                      <p className="text-xs font-medium text-[#8f8f9d] mb-2 truncate">{activeAppointment.breed}</p>
+                      <div className="inline-flex items-center gap-1.5 bg-[#fbedff] text-[#a428ff] text-[8.5px] font-extrabold px-2 py-1 rounded-lg tracking-[0.3px] uppercase">
+                        {activeAppointment.type === 'video' ? <VideoCamera size={12} weight="fill" /> : activeAppointment.type === 'home' ? <House size={12} weight="fill" /> : <Buildings size={12} weight="fill" />}
+                        {activeAppointment.type === 'video' ? 'VIDEO CONSULTATION' : activeAppointment.type === 'home' ? 'HOME VISIT' : 'CLINIC VISIT'}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-3 mb-[22px]">
-                  <div className="bg-[#f7f7fb] p-3.5 rounded-[18px] min-w-0">
-                    <span className="block text-[9px] text-[#b5b5c3] font-extrabold tracking-[0.5px] uppercase mb-1.5">REASON</span>
-                    <strong className="block text-[13px] text-[#1a1a24] font-bold truncate">Post-op Checkup</strong>
+                  <div className="grid grid-cols-2 gap-3 mb-[22px]">
+                    <div className="bg-[#f7f7fb] p-3.5 rounded-[18px] min-w-0">
+                      <span className="block text-[9px] text-[#b5b5c3] font-extrabold tracking-[0.5px] uppercase mb-1.5">REASON</span>
+                      <strong className="block text-[13px] text-[#1a1a24] font-bold truncate">General Checkup</strong>
+                    </div>
+                    <div className="bg-[#f7f7fb] p-3.5 rounded-[18px] min-w-0">
+                      <span className="block text-[9px] text-[#b5b5c3] font-extrabold tracking-[0.5px] uppercase mb-1.5">OWNER</span>
+                      <strong className="block text-[13px] text-[#1a1a24] font-bold truncate">{activeAppointment.ownerName}</strong>
+                    </div>
                   </div>
-                  <div className="bg-[#f7f7fb] p-3.5 rounded-[18px] min-w-0">
-                    <span className="block text-[9px] text-[#b5b5c3] font-extrabold tracking-[0.5px] uppercase mb-1.5">OWNER</span>
-                    <strong className="block text-[13px] text-[#1a1a24] font-bold truncate">Mark Thompson</strong>
-                  </div>
-                </div>
 
-                <button className="w-full bg-[#a428ff] text-white p-4 rounded-[22px] border-none font-bold text-sm flex items-center justify-center gap-2 mb-3 shadow-[0_8px_20px_rgba(164,40,255,0.25)] active:scale-[0.98] transition-all">
-                  <VideoCamera size={18} weight="fill" />
-                  Join Video Call
-                </button>
-                
-                <div className="flex gap-3">
-                  <button className="grow bg-[#f3f4f8] text-[#4a4a5e] p-3.5 rounded-[20px] font-bold text-[18px] border-none flex items-center justify-center gap-1.5 active:scale-95 transition-all">
-                    <ClockCounterClockwise size={22} weight="bold" className="text-[#7b7b8f]" /> Records
+                  <button 
+                    onClick={() => navigate(`/vet/schedule/visit-details/${activeAppointment.id}`, { 
+                      state: { 
+                        visit: { 
+                          id: activeAppointment.id, 
+                          petName: activeAppointment.name, 
+                          petBreed: activeAppointment.breed, 
+                          image: activeAppointment.image, 
+                          ownerName: activeAppointment.ownerName, 
+                          ownerPhone: activeAppointment.ownerPhone, 
+                          time: activeAppointment.time, 
+                          type: activeAppointment.type, 
+                          status: activeAppointment.status 
+                        } 
+                      } 
+                    })}
+                    className="w-full bg-[#a428ff] text-white p-4 rounded-[22px] border-none font-bold text-sm flex items-center justify-center gap-2 mb-3 shadow-[0_8px_20px_rgba(164,40,255,0.25)] active:scale-[0.98] transition-all"
+                  >
+                    {activeAppointment.type === 'video' ? <VideoCamera size={18} weight="fill" /> : <Buildings size={18} weight="fill" />}
+                    {activeAppointment.type === 'video' ? 'Join Video Call' : 'Start Consultation'}
                   </button>
-                  <button className="grow bg-[#f3f4f8] text-[#4a4a5e] p-3.5 rounded-[20px] font-bold text-[18px] border-none flex items-center justify-center gap-1.5 active:scale-95 transition-all">
-                    <ChatTeardrop size={22} weight="fill" className="text-[#7b7b8f]" /> Chat
+                  
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => navigate(`/vet/schedule/visit-details/${activeAppointment.id}`, { 
+                        state: { 
+                          visit: { 
+                            id: activeAppointment.id, 
+                            petName: activeAppointment.name, 
+                            petBreed: activeAppointment.breed, 
+                            image: activeAppointment.image, 
+                            ownerName: activeAppointment.ownerName, 
+                            ownerPhone: activeAppointment.ownerPhone, 
+                            time: activeAppointment.time, 
+                            type: activeAppointment.type, 
+                            status: activeAppointment.status 
+                          } 
+                        } 
+                      })}
+                      className="grow bg-[#f3f4f8] text-[#4a4a5e] p-3.5 rounded-[20px] font-bold text-[18px] border-none flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                    >
+                      <ClockCounterClockwise size={22} weight="bold" className="text-[#7b7b8f]" /> Records
+                    </button>
+                    <button 
+                      onClick={() => navigate("/chats")}
+                      className="grow bg-[#f3f4f8] text-[#4a4a5e] p-3.5 rounded-[20px] font-bold text-[18px] border-none flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                    >
+                      <ChatTeardrop size={22} weight="fill" className="text-[#7b7b8f]" /> Chat
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-[34px] p-[26px] shadow-[0_16px_40px_rgba(0,0,0,0.04)] text-center flex flex-col items-center justify-center min-h-[300px]">
+                  <div className="w-[80px] h-[80px] bg-purple-50 text-[#a428ff] rounded-full flex items-center justify-center mb-5">
+                    <PawPrint size={36} weight="fill" />
+                  </div>
+                  <h4 className="text-[17px] font-extrabold text-[#1a1a24] mb-2">You are all caught up!</h4>
+                  <p className="text-[13px] text-[#8f8f9d] font-medium max-w-[280px] mb-6 leading-[1.4]">
+                    There are no active consultations right now. Click below to view your full schedule.
+                  </p>
+                  <button 
+                    onClick={() => navigate("/vet/schedule")}
+                    className="bg-[#a428ff] text-white py-3 px-6 rounded-[22px] font-semibold text-xs shadow-[0_8px_20px_rgba(164,40,255,0.15)] hover:bg-[#931eee] transition-all active:scale-[0.98]"
+                  >
+                    View Schedule
                   </button>
                 </div>
-              </div>
+              )}
             </section>
 
             {/* Upcoming Section */}
@@ -365,11 +523,27 @@ const VetDashboard = () => {
                     <p className="text-[14px] text-zinc-400 font-bold">No upcoming appointments.</p>
                   </div>
                 ) : (
-                  upcomingAppointments.map((apt) => (
+                  upcomingAppointments.map((apt, index) => (
                     <div 
                       key={apt.id} 
-                      className="bg-white rounded-[22px] p-3.5 flex items-center shadow-[0_12px_35px_rgba(0,0,0,0.035)] border-none transition-all active:scale-[0.99] cursor-pointer" 
-                      onClick={() => navigate("/vet/schedule")}
+                      className={`bg-white rounded-[22px] p-3.5 flex items-center shadow-[0_12px_35px_rgba(0,0,0,0.035)] border-none transition-all active:scale-[0.99] cursor-pointer ${
+                        index > 0 ? "opacity-60 hover:opacity-100 duration-300" : ""
+                      }`} 
+                      onClick={() => navigate(`/vet/schedule/visit-details/${apt.id}`, { 
+                        state: { 
+                          visit: { 
+                            id: apt.id, 
+                            petName: apt.name, 
+                            petBreed: apt.breed, 
+                            image: apt.image, 
+                            ownerName: apt.ownerName, 
+                            ownerPhone: apt.ownerPhone, 
+                            time: apt.time, 
+                            type: apt.type, 
+                            status: apt.status 
+                          } 
+                        } 
+                      })}
                     >
                       <div className="min-w-[55px] text-center pr-3.5 border-r-[1.5px] border-[#f0f0f5] flex-shrink-0">
                         <strong className="block text-[13px] text-[#8f8f9d] font-bold mb-0.5">{apt.time.split(" ")[0]}</strong>

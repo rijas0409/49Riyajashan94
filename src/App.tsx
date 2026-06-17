@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LocationProvider } from "./contexts/LocationContext";
 import { VetProtectionWrapper } from "./components/VetProtectionWrapper";
@@ -127,6 +127,33 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   }
 }
 
+const RouteTracker = () => {
+  const location = useLocation();
+
+  React.useEffect(() => {
+    const currentPath = location.pathname;
+    const isProfileRoute = [
+      "/buyer/profile",
+      "/buyer/profile-menu",
+      "/buyer/profile-settings",
+      "/buyer/pet-passport",
+      "/passport",
+      "/addresses",
+      "/wallet",
+      "/bookings",
+      "/product-orders",
+      "/notifications",
+      "/privacy"
+    ].some(path => currentPath.startsWith(path));
+
+    if (!isProfileRoute) {
+      sessionStorage.setItem("last_main_entry_path", currentPath);
+    }
+  }, [location]);
+
+  return null;
+};
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -138,6 +165,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <RouteTracker />
               <ErrorBoundary>
                 <Routes>
                 <Route path="/" element={<Index />} />

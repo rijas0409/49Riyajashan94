@@ -106,8 +106,8 @@ export const useRoleGuard = (allowedRoles: AllowedRole[], redirectPath?: string,
 
         // Check onboarding/approval status for vets specifically using vetStatus from AuthContext
         if (currentProfile?.role === "vet") {
-           if (currentProfile.vetStatus === null) {
-             console.log("useRoleGuard (Vet): vetStatus is null (loading), waiting...");
+           if (currentProfile.vetStatus === null || currentProfile.vetStatus === undefined || currentProfile.is_onboarding_complete === undefined) {
+             console.log("useRoleGuard (Vet): vetStatus/is_onboarding_complete is null or undefined (loading), waiting...");
              return;
            }
            const vetStatus = currentProfile.vetStatus || 'not_submitted';

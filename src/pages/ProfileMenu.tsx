@@ -82,7 +82,10 @@ const ProfileMenu = () => {
             variant="ghost"
             size="icon"
             className="rounded-full"
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              const lastMainPath = sessionStorage.getItem("last_main_entry_path") || "/buyer/home";
+              navigate(lastMainPath);
+            }}
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>

@@ -10,21 +10,40 @@ const VetScheduleVisitDetails: React.FC = () => {
   const location = useLocation();
   const { appointmentId } = useParams();
 
+  // Interactivity States (Declared first to avoid TDZ errors)
+  const [isSwipeMode, setIsSwipeMode] = useState(false);
+  const [swipeTranslation, setSwipeTranslation] = useState(0);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+  const [timerStartEpoch, setTimerStartEpoch] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+  const [dbAppointment, setDbAppointment] = useState<any>(null);
+  const [petMedicalInfo, setPetMedicalInfo] = useState<{
+    medicalHistory: string | null;
+    vaccinated: boolean | null;
+    vaccinations: any[];
+    microchip: string | null;
+  } | null>(null);
+
   // Dynamic state extracted from route, falling back gracefully to the provided gorgeous mockup specifications
   const { visit: stateVisit } = (location.state as any) || {};
 
-  const petName = stateVisit?.petName || "Bella";
-  const petBreed = stateVisit?.petBreed || "Golden Retriever";
+  const petName = stateVisit?.petName || dbAppointment?.pet_name || "Bella";
+  const petBreed = stateVisit?.petBreed || dbAppointment?.pet_breed || dbAppointment?.pet_type || "Golden Retriever";
   const petAge = stateVisit?.petAge || "3 Years";
-  const chiefComplaint = stateVisit?.reason || "Kiro is fainting I need emergency help.";
-  const petImage = stateVisit?.image || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&q=80&w=200&h=200";
-  const address = stateVisit?.address || "124 Maple Street, Apt 4B";
-  const scheduledTime = stateVisit?.time || "Today, 11:30 AM";
-  const ownerName = stateVisit?.ownerName || "Mark Thompson";
-  const ownerPhone = stateVisit?.ownerPhone || "+1 (555) 234-5678";
+  const chiefComplaint = stateVisit?.reason || dbAppointment?.diagnosis || "Kiro is fainting I need emergency help.";
+  const petImage = stateVisit?.image || dbAppointment?.pet_image_url || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&q=80&w=200&h=200";
+  const address = stateVisit?.address || dbAppointment?.address || "124 Maple Street, Apt 4B";
+  const scheduledTime = stateVisit?.time || (dbAppointment?.appointment_time ? `${dbAppointment.appointment_date}, ${dbAppointment.appointment_time}` : "Today, 11:30 AM");
+  const ownerName = stateVisit?.ownerName || dbAppointment?.owner_name || "Mark Thompson";
+  const ownerPhone = stateVisit?.ownerPhone || dbAppointment?.owner_phone || "+1 (555) 234-5678";
 
   // Determine if it is a Home Visit or a Clinic Visit
-  const isHomeVisit = stateVisit?.type === "clinic" || appointmentId?.startsWith("CV") ? false : true;
+  const isClinicType = (stateVisit?.type || dbAppointment?.appointment_type || "").toLowerCase() === "clinic" || appointmentId?.startsWith("CV");
+  const isHomeVisit = !isClinicType;
+
+  const currentStatus = dbAppointment?.status || stateVisit?.status || "";
+  const isCancelledOrRejected = currentStatus === "cancelled" || currentStatus === "rejected";
 
   // Load Font Awesome on Mount
   useEffect(() => {
@@ -40,15 +59,6 @@ const VetScheduleVisitDetails: React.FC = () => {
       }
     };
   }, []);
-
-  // Interactivity States
-  const [isSwipeMode, setIsSwipeMode] = useState(false);
-  const [swipeTranslation, setSwipeTranslation] = useState(0);
-  const [isCompleted, setIsCompleted] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
-  const [timerStartEpoch, setTimerStartEpoch] = useState<number | null>(null);
-  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
-  const [dbAppointment, setDbAppointment] = useState<any>(null);
 
   const handleVerifyCode = async (scannedCode: string, isFromSimulation = false) => {
     const currentApptId = appointmentId || stateVisit?.id;
@@ -134,50 +144,128 @@ const VetScheduleVisitDetails: React.FC = () => {
     }
 
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentApptId);
-    if (isUUID) {
-      const fetchInitial = async () => {
-        try {
+    let resolvedId = isUUID ? currentApptId : "";
+
+    const fetchInitial = async () => {
+      try {
+        let matchedData: any = null;
+        if (isUUID) {
           const { data, error } = await supabase
             .from("vet_appointments")
             .select("*")
             .eq("id", currentApptId)
             .single();
-
           if (!error && data) {
-            setDbAppointment(data);
-            if (data.status === "in_progress") {
-              setIsVerified(true);
-              if (data.call_duration) {
-                setTimerStartEpoch(data.call_duration);
-                localStorage.setItem(`gp_appt_start_${currentApptId}`, String(data.call_duration));
+            matchedData = data;
+          }
+        } else {
+          // Resolve shortId
+          const { data, error } = await supabase
+            .from("vet_appointments")
+            .select("*")
+            .limit(100);
+          if (!error && data) {
+            const getShortId = (idStr: string) => {
+              const clean = idStr.replace(/[-]/g, "");
+              if (clean.length >= 9) {
+                const slice = clean.slice(0, 9);
+                return `${slice.slice(0, 4)}-${slice.slice(4, 7)}-${slice.slice(7, 9)}`;
               }
-              localStorage.setItem(`gp_appt_status_${currentApptId}`, "in_progress");
-            } else if (data.status === "completed") {
-              setIsCompleted(true);
+              return idStr;
+            };
+            matchedData = data.find(apt => getShortId(apt.id) === currentApptId || apt.id === currentApptId);
+          }
+        }
+
+        if (matchedData) {
+          resolvedId = matchedData.id;
+          setDbAppointment(matchedData);
+          
+          // Also fetch owner profile details
+          if (matchedData.user_id) {
+            const { data: profileData } = await supabase
+              .from("profiles")
+              .select("name, full_name, phone, profile_photo")
+              .eq("id", matchedData.user_id)
+              .maybeSingle();
+              
+            if (profileData) {
+              setDbAppointment((prev: any) => ({
+                ...prev,
+                owner_name: profileData.full_name || profileData.name || "Mark Thompson",
+                owner_phone: profileData.phone || "+1 (555) 234-5678",
+                pet_image_url: profileData.profile_photo || prev?.pet_image_url
+              }));
             }
           }
-        } catch (e) {
-          console.error("Error fetching db appointment:", e);
+
+          // Also fetch pet medical history
+          if (matchedData.user_id && matchedData.pet_name) {
+            try {
+              const { data: userPets } = await supabase
+                .from("pets")
+                .select("id, name, medical_history, vaccinated, microchip, breed")
+                .eq("owner_id", matchedData.user_id);
+
+              if (userPets && userPets.length > 0) {
+                const targetName = matchedData.pet_name.trim().toLowerCase();
+                const matchedPet = userPets.find(
+                  (pObj: any) => pObj.name.trim().toLowerCase().includes(targetName) || targetName.includes(pObj.name.trim().toLowerCase())
+                ) || userPets[0];
+
+                if (matchedPet) {
+                  const { data: vaccs } = await supabase
+                    .from("pet_vaccinations")
+                    .select("vaccine_type, date_administered, next_due_date")
+                    .eq("pet_id", matchedPet.id);
+
+                  setPetMedicalInfo({
+                    medicalHistory: matchedPet.medical_history,
+                    vaccinated: matchedPet.vaccinated,
+                    vaccinations: vaccs || [],
+                    microchip: matchedPet.microchip
+                  });
+                }
+              }
+            } catch (err) {
+              console.error("Error fetching pet medical history:", err);
+            }
+          }
+
+          if (matchedData.status === "in_progress") {
+            setIsVerified(true);
+            if (matchedData.call_duration) {
+              setTimerStartEpoch(matchedData.call_duration);
+              localStorage.setItem(`gp_appt_start_${currentApptId}`, String(matchedData.call_duration));
+            }
+            localStorage.setItem(`gp_appt_status_${currentApptId}`, "in_progress");
+          } else if (matchedData.status === "completed") {
+            setIsCompleted(true);
+          }
         }
-      };
+      } catch (e) {
+        console.error("Error fetching db appointment:", e);
+      }
+    };
 
-      fetchInitial();
+    fetchInitial();
 
-      // Subscribe to live DB updates
-      const channel = supabase
-        .channel(`vet_appt_detail_${currentApptId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "vet_appointments",
-            filter: `id=eq.${currentApptId}`
-          },
-          (payload) => {
-            console.log("Realtime update received in Vet schedule details:", payload);
-            if (payload.new) {
-              const updated = payload.new as any;
+    // Subscribe to live DB updates
+    const channel = supabase
+      .channel(`vet_appt_detail_${currentApptId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "vet_appointments"
+        },
+        (payload) => {
+          console.log("Realtime update received in Vet schedule details:", payload);
+          if (payload.new) {
+            const updated = payload.new as any;
+            const isMatch = updated.id === currentApptId || updated.id === resolvedId;
+            if (isMatch) {
               setDbAppointment(updated);
               if (updated.status === "in_progress") {
                 setIsVerified(true);
@@ -191,13 +279,13 @@ const VetScheduleVisitDetails: React.FC = () => {
               }
             }
           }
-        )
-        .subscribe();
+        }
+      )
+      .subscribe();
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [appointmentId, stateVisit?.id]);
 
   // 2. Synchronize across local tabs instantly
@@ -955,26 +1043,65 @@ const VetScheduleVisitDetails: React.FC = () => {
           <div className="mx-5 mt-4 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
             <h3 className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-3">Medical Background</h3>
             
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4">
+              {/* Initial Complaint / Consultation note */}
               <div className="flex gap-2.5 items-start">
-                <div className="mt-0.5 w-[16px] h-[16px] rounded-full bg-[#22c55e] text-white flex items-center justify-center text-[9px] shrink-0">
-                  <i className="fas fa-check"></i>
+                <div className="mt-0.5 w-[16px] h-[16px] rounded-full bg-[#8b5cf6] text-white flex items-center justify-center text-[10px] shrink-0">
+                  <i className="fas fa-stethoscope"></i>
                 </div>
-                <p className="text-[13px] text-gray-700 font-medium leading-snug">Last Deworming: 2 months ago (Up to date)</p>
+                <div className="flex-1">
+                  <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-0.5">Reason for Visit</p>
+                  <p className="text-[13px] text-gray-700 font-bold leading-snug">{chiefComplaint || "Routine Health Assessment Checkup"}</p>
+                </div>
               </div>
-              
-              <div className="flex gap-2.5 items-start">
-                <div className="mt-0.5 w-[16px] h-[16px] rounded-full bg-[#22c55e] text-white flex items-center justify-center text-[9px] shrink-0">
-                  <i className="fas fa-check"></i>
+
+              {/* Patient Profile Medical History */}
+              <div className="flex gap-2.5 items-start border-t border-gray-100 pt-3">
+                <div className="mt-0.5 w-[16px] h-[16px] rounded-full bg-[#10b981] text-white flex items-center justify-center text-[10px] shrink-0">
+                  <i className="fas fa-notes-medical"></i>
                 </div>
-                <p className="text-[13px] text-gray-700 font-medium leading-snug">Vaccination Status: All current</p>
+                <div className="flex-1">
+                  <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-0.5">Medical & Deworming History</p>
+                  <p className="text-[13px] text-gray-700 font-semibold leading-snug">
+                    {petMedicalInfo?.medicalHistory ? petMedicalInfo.medicalHistory : "No chronic illnesses or deworming issues registered by owner."}
+                  </p>
+                </div>
               </div>
-              
-              <div className="flex gap-2.5 items-start">
-                <div className="text-orange-500 text-[16px] shrink-0">
-                  <i className="fas fa-triangle-exclamation"></i>
+
+              {/* Patient Vaccination status */}
+              <div className="flex gap-2.5 items-start border-t border-gray-100 pt-3">
+                <div className={`mt-0.5 w-[16px] h-[16px] rounded-full ${petMedicalInfo?.vaccinated ? "bg-emerald-500" : "bg-amber-500"} text-white flex items-center justify-center text-[9px] shrink-0`}>
+                  <i className="fas fa-shield"></i>
                 </div>
-                <p className="text-[13px] text-gray-700 font-medium leading-snug">Allergy: Penicillin-based antibiotics</p>
+                <div className="flex-1">
+                  <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-0.5">Vaccination Status</p>
+                  <p className="text-[13px] text-gray-700 font-semibold leading-snug">
+                    {petMedicalInfo?.vaccinated ? "Fully Vaccinated (Up-To-Date)" : "Partially Vaccinated / Schedule Pending"}
+                  </p>
+                  {petMedicalInfo && petMedicalInfo.vaccinations && petMedicalInfo.vaccinations.length > 0 && (
+                    <p className="text-[11px] text-gray-500 mt-1 font-mono">
+                      Vaccines: {petMedicalInfo.vaccinations.map((v: any) => v.vaccine_type).join(", ")}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Patient Breed Details */}
+              <div className="flex gap-2.5 items-start border-t border-gray-100 pt-3">
+                <div className="mt-0.5 w-[16px] h-[16px] rounded-full bg-blue-500 text-white flex items-center justify-center text-[9px] shrink-0">
+                  <i className="fas fa-info-circle"></i>
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-0.5">Microchip & Demographics</p>
+                  <p className="text-[13px] text-gray-700 font-semibold leading-snug">
+                    Breed: {petBreed} | Category: {stateVisit?.petCategory || dbAppointment?.pet_type || "Canine"}
+                  </p>
+                  {petMedicalInfo?.microchip && (
+                    <p className="text-[11px] text-[#8b5cf6] mt-0.5 font-bold">
+                      Microchip Serial ID: {petMedicalInfo.microchip}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -982,7 +1109,7 @@ const VetScheduleVisitDetails: React.FC = () => {
         </main>
 
         {/* Floating QR Squircle Button */}
-        {!isVerified && (
+        {!isVerified && !isCancelledOrRejected && (
           <button 
             onClick={openImmersiveScanner} 
             className="absolute bottom-[160px] right-6 w-[56px] h-[56px] bg-[#f3e8ff] text-[#9d4edd] rounded-[22px] shadow-[0_8px_20px_-4px_rgba(157,78,221,0.2)] flex items-center justify-center text-[22px] transition transform hover:scale-105 active:scale-95 z-20" 
@@ -998,40 +1125,46 @@ const VetScheduleVisitDetails: React.FC = () => {
           {/* Phase 1: Initial Action Buttons */}
           {!isSwipeMode && (
             <div id="initialActions" className="flex flex-col gap-2.5">
-              {!isVerified ? (
-                <div className="flex items-center justify-center gap-1.5 text-[12.5px] text-[#8b5cf6] font-bold py-1.5 bg-purple-50 rounded-xl border border-purple-100/60 animate-pulse">
-                  <i className="fas fa-lock text-[11px]"></i>
-                  <span>Scan QR to unlock consultation</span>
-                </div>
+              {isCancelledOrRejected ? (
+                null
               ) : (
-                <div className="flex items-center justify-between px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-100 text-emerald-800 text-xs mb-1">
-                  <span className="font-bold flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                    Consultation Unlocked (Active)
-                  </span>
-                  <span className="font-mono bg-emerald-100 text-emerald-950 font-black px-2 py-0.5 rounded text-sm">
-                    {formatTimer(elapsedSeconds)}
-                  </span>
-                </div>
+                <>
+                  {!isVerified ? (
+                    <div className="flex items-center justify-center gap-1.5 text-[12.5px] text-[#8b5cf6] font-bold py-1.5 bg-purple-50 rounded-xl border border-purple-100/60 animate-pulse">
+                      <i className="fas fa-lock text-[11px]"></i>
+                      <span>Scan QR to unlock consultation</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-100 text-emerald-800 text-xs mb-1">
+                      <span className="font-bold flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                        Consultation Unlocked (Active)
+                      </span>
+                      <span className="font-mono bg-emerald-100 text-emerald-950 font-black px-2 py-0.5 rounded text-sm">
+                        {formatTimer(elapsedSeconds)}
+                      </span>
+                    </div>
+                  )}
+                  <button 
+                    onClick={() => {
+                      if (isVerified) {
+                        setIsSwipeMode(true);
+                      }
+                    }} 
+                    disabled={!isVerified}
+                    className={`w-full py-[16px] rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2.5 transition transform shadow-md ${
+                      isVerified 
+                        ? "bg-gradient-to-r from-[#a855f7] to-[#8b5cf6] text-white active:scale-95 shadow-[0_15px_35px_-5px_rgba(157,78,221,0.3)] cursor-pointer" 
+                        : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
+                    }`}
+                  >
+                    <div className={`rounded-full w-4 h-4 flex items-center justify-center ${isVerified ? "bg-white" : "bg-gray-400"}`}>
+                      <i className={`fas fa-play text-[8px] ml-[2px] ${isVerified ? "text-[#8b5cf6]" : "text-gray-200"}`}></i>
+                    </div>
+                    Start Consultation
+                  </button>
+                </>
               )}
-              <button 
-                onClick={() => {
-                  if (isVerified) {
-                    setIsSwipeMode(true);
-                  }
-                }} 
-                disabled={!isVerified}
-                className={`w-full py-[16px] rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2.5 transition transform shadow-md ${
-                  isVerified 
-                    ? "bg-gradient-to-r from-[#a855f7] to-[#8b5cf6] text-white active:scale-95 shadow-[0_15px_35px_-5px_rgba(157,78,221,0.3)] cursor-pointer" 
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
-                }`}
-              >
-                <div className={`rounded-full w-4 h-4 flex items-center justify-center ${isVerified ? "bg-white" : "bg-gray-400"}`}>
-                  <i className={`fas fa-play text-[8px] ml-[2px] ${isVerified ? "text-[#8b5cf6]" : "text-gray-200"}`}></i>
-                </div>
-                Start Consultation
-              </button>
               <button 
                 onClick={() => toast.info("Medical history view loaded successfully.")}
                 className="w-full bg-white text-gray-600 py-[16px] rounded-2xl font-bold text-[15px] border border-gray-200 hover:bg-gray-50 transition transform active:scale-95 cursor-pointer shadow-sm"
