@@ -44,6 +44,7 @@ const VetScheduleVisitDetails: React.FC = () => {
   const [isSwipeMode, setIsSwipeMode] = useState(false);
   const [swipeTranslation, setSwipeTranslation] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
   
   // Modals
   const [showQrModal, setShowQrModal] = useState(false);
@@ -159,6 +160,7 @@ const VetScheduleVisitDetails: React.FC = () => {
 
   const executeMockScan = () => {
     closeImmersiveScanner();
+    setIsVerified(true);
     setTimeout(() => {
       toast.success("✨ QR Code Detected: Kiro's Passport synchronized successfully!");
     }, 400);
@@ -749,12 +751,27 @@ const VetScheduleVisitDetails: React.FC = () => {
           {/* Phase 1: Initial Action Buttons */}
           {!isSwipeMode && (
             <div id="initialActions" className="flex flex-col gap-2.5">
+              {!isVerified && (
+                <div className="flex items-center justify-center gap-1.5 text-[12.5px] text-[#8b5cf6] font-bold py-1.5 bg-purple-50 rounded-xl border border-purple-100/60 animate-pulse">
+                  <i className="fas fa-lock text-[11px]"></i>
+                  <span>Scan QR to unlock consultation</span>
+                </div>
+              )}
               <button 
-                onClick={() => setIsSwipeMode(true)} 
-                className="w-full bg-gradient-to-r from-[#a855f7] to-[#8b5cf6] text-white py-[16px] rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2.5 shadow-[0_15px_35px_-5px_rgba(157,78,221,0.3)] transition transform active:scale-95 cursor-pointer"
+                onClick={() => {
+                  if (isVerified) {
+                    setIsSwipeMode(true);
+                  }
+                }} 
+                disabled={!isVerified}
+                className={`w-full py-[16px] rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2.5 transition transform shadow-md ${
+                  isVerified 
+                    ? "bg-gradient-to-r from-[#a855f7] to-[#8b5cf6] text-white active:scale-95 shadow-[0_15px_35px_-5px_rgba(157,78,221,0.3)] cursor-pointer" 
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
+                }`}
               >
-                <div className="bg-white rounded-full w-4 h-4 flex items-center justify-center">
-                  <i className="fas fa-play text-[#8b5cf6] text-[8px] ml-[2px]"></i>
+                <div className={`rounded-full w-4 h-4 flex items-center justify-center ${isVerified ? "bg-white" : "bg-gray-400"}`}>
+                  <i className={`fas fa-play text-[8px] ml-[2px] ${isVerified ? "text-[#8b5cf6]" : "text-gray-200"}`}></i>
                 </div>
                 Start Consultation
               </button>
