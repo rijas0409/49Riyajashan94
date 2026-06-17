@@ -69,17 +69,50 @@ const VetScheduleVisitDetails: React.FC = () => {
 
     let isValid = false;
     
+    // Helper for ID normalization to prevent mismatches due to casing or whitespace
+    const normalize = (id: string) => (id || "").trim().toLowerCase();
+    
+    // Helper to generate the short display ID from a UUID or raw ID
+    const getShort = (id: string) => {
+      const clean = id.replace(/[-]/g, "");
+      if (clean.length >= 9) {
+        const slice = clean.slice(0, 9);
+        return `${slice.slice(0, 4)}-${slice.slice(4, 7)}-${slice.slice(7, 9)}`.toLowerCase();
+      }
+      return id.toLowerCase();
+    };
+
     try {
-      // First try to parse as JSON (New Secure Format)
+      // First try to parse as JSON (Secure Format)
       const scannedPayload = JSON.parse(scannedCode);
-      if (scannedPayload.consultationId && scannedPayload.consultationId === currentApptId) {
-        isValid = true;
+      const scannedId = scannedPayload.consultationId || scannedPayload.appointmentId || scannedPayload.id;
+      
+      if (scannedId) {
+        const normScanned = normalize(scannedId);
+        const normCurrent = normalize(currentApptId);
+        const normDb = normalize(dbAppointment?.id || "");
+        
+        if (
+          normScanned === normCurrent || 
+          normScanned === normDb ||
+          getShort(normScanned) === getShort(normCurrent) ||
+          getShort(normScanned) === getShort(normDb)
+        ) {
+          isValid = true;
+        }
       }
     } catch (e) {
-      // Fallback for simple ID matching
-      const cleanScanned = scannedCode.trim().toLowerCase();
-      const cleanCurrent = currentApptId.trim().toLowerCase();
-      if (cleanScanned === cleanCurrent) {
+      // Fallback for simple ID matching (Raw UUID or Short ID string)
+      const normScanned = normalize(scannedCode);
+      const normCurrent = normalize(currentApptId);
+      const normDb = normalize(dbAppointment?.id || "");
+
+      if (
+        normScanned === normCurrent || 
+        normScanned === normDb ||
+        getShort(normScanned) === getShort(normCurrent) ||
+        getShort(normScanned) === getShort(normDb)
+      ) {
         isValid = true;
       }
     }

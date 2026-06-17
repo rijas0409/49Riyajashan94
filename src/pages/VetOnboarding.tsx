@@ -1639,7 +1639,7 @@ const VetOnboarding = () => {
                       Step 1 of 6
                     </div>
                   </div>
-                                    <div className="flex flex-row w-full gap-[9px] items-center mb-6">
+                                    <div className="flex flex-row w-full gap-[9px] items-center mb-1">
                     {/* Full Name */}
                     <div className="w-[64%] md:w-[80%] space-y-1.5 mt-[57px]">
                       <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
