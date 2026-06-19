@@ -87,6 +87,7 @@ import ConsultationAnalysisSummary from "./pages/vet/ConsultationAnalysisSummary
 import BuyerVisitDetails from "./pages/vet/BuyerVisitDetails";
 import VetScheduleVisitDetails from "./pages/vet/VetScheduleVisitDetails";
 import AppointmentConfirmation from "./pages/vet/AppointmentConfirmation";
+import CreatePrescription from "./pages/vet/CreatePrescription";
 import VideoCall from "./pages/vet/VideoCall";
 
 import VetSchedule from "./pages/vet/VetSchedule";
@@ -263,15 +264,15 @@ const App = () => (
                 <Route path="/vet/consultation-confirmation" element={<ConsultationConfirmation />} />
                 <Route path="/vet/clinic-booking-confirmation" element={<ClinicBookingConfirmation />} />
                 <Route path="/vet/analysis-summary" element={<ConsultationAnalysisSummary />} />
-                <Route path="/vet/digital-prescription" element={<DigitalPrescription />} />
-                <Route path="/vet/prescription" element={<DigitalPrescription />} />
+                <Route path="/buyer/vet/prescription" element={<DigitalPrescription />} />
+                <Route path="/vet/create-prescription" element={<CreatePrescription />} />
                 <Route path="/vet/finding-vet" element={<FindingVet />} />
                 <Route path="/vet/instant-analyzing" element={<InstantAnalyzing />} />
                 <Route path="/vet/instant-assessment" element={<InstantAssessment />} />
                 <Route path="/vet/instant-video-call" element={<InstantVideoCall />} />
                 <Route path="/vet/payment-failed" element={<PaymentFailed />} />
                 <Route path="/vet/payment-summary" element={<PaymentSummary />} />
-                <Route path="/vet/preparing-prescription" element={<PreparingPrescription />} />
+                <Route path="/buyer/vet/prescription/preparing" element={<PreparingPrescription />} />
                 <Route path="/vet/doctor/:id" element={<VetDoctorProfile />} />
                 <Route path="/vet/near-you" element={<VetsNearYou />} />
                 <Route path="/vet/clinics-nearby" element={<ClinicsNearby />} />

@@ -224,7 +224,7 @@ const InstantVideoCall = () => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
     }
-    navigate("/vet/preparing-prescription", { state: { ...location.state, callDuration } });
+    navigate("/buyer/vet/prescription/preparing", { state: { ...location.state, callDuration } });
   };
 
   const formatTime = (seconds: number) => {

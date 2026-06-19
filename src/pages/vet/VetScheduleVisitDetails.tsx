@@ -445,7 +445,7 @@ const VetScheduleVisitDetails: React.FC = () => {
       }
 
       setTimeout(() => {
-        navigate("/vet/digital-prescription", { 
+        navigate("/vet/create-prescription", { 
           state: { 
             appointmentId: appointmentId || stateVisit?.id,
             petName: dbAppointment?.pet_name || "Pet"
@@ -492,7 +492,7 @@ const VetScheduleVisitDetails: React.FC = () => {
       window.removeEventListener("touchmove", handleMove);
       window.removeEventListener("touchend", handleEnd);
     };
-  }, [swipeTranslation, maxTrack, isCompleted, appointmentId, navigate]);
+  }, [swipeTranslation, maxTrack, isCompleted, appointmentId, navigate, dbAppointment?.pet_name, stateVisit?.id]);
 
   const handleStartNavigation = () => {
     toast.info("Starting navigation to owner's address...");
@@ -647,7 +647,7 @@ const VetScheduleVisitDetails: React.FC = () => {
   }, [flashOn]);
 
   return (
-    <div className="bg-gray-200 flex justify-center antialiased select-none min-h-screen">
+    <div className="bg-gray-200 md:bg-[#f6f7fb] flex justify-center md:block antialiased select-none min-h-screen">
       {/* Dynamic styles injector */}
       <style>{`
         .map-bg {
@@ -672,10 +672,10 @@ const VetScheduleVisitDetails: React.FC = () => {
         }
       `}</style>
 
-      <div className="relative w-full max-w-[400px] bg-[#f6f7fb] h-screen overflow-hidden shadow-2xl sm:border sm:border-gray-300 sm:rounded-3xl flex flex-col">
+      <div className="relative w-full max-w-[400px] md:max-w-none bg-[#f6f7fb] h-screen overflow-hidden shadow-2xl md:shadow-none sm:border sm:border-gray-300 md:border-none sm:rounded-3xl md:rounded-none flex flex-col">
         
         {/* Header */}
-        <header className="flex justify-between items-center px-6 py-4 bg-white sm:rounded-t-3xl z-20 relative shrink-0">
+        <header className="flex justify-between items-center px-6 py-4 bg-white sm:rounded-t-3xl md:rounded-none z-20 relative shrink-0">
           <button 
             onClick={() => navigate("/vet/schedule")}
             className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-50 border border-gray-100 text-gray-700 hover:bg-gray-100 transition"
@@ -1301,10 +1301,10 @@ const VetScheduleVisitDetails: React.FC = () => {
       {/* [REFINED] High-Fidelity Google Pay Immersive Scanner (Theme Matched) */}
       {showImmersiveScanner && (
         <div 
-          className={`fixed inset-0 bg-black z-50 flex flex-col justify-between transition-all duration-300 ease-out sm:border sm:border-gray-805 sm:rounded-3xl max-w-[400px] mx-auto h-screen ${isScannerAnimating ? 'opacity-100' : 'opacity-0'}`}
+          className={`fixed inset-0 bg-black z-50 flex flex-col justify-between transition-all duration-300 ease-out sm:border sm:border-gray-805 sm:rounded-3xl md:border-none md:rounded-none max-w-[400px] md:max-w-none mx-auto h-screen ${isScannerAnimating ? 'opacity-100' : 'opacity-0'}`}
         >
           {/* Live Simulated Camera Viewport */}
-          <div className="absolute inset-0 w-full h-full bg-[#121016] overflow-hidden sm:rounded-3xl">
+          <div className="absolute inset-0 w-full h-full bg-[#121016] overflow-hidden sm:rounded-3xl md:rounded-none">
             <video 
               ref={videoRef}
               playsInline

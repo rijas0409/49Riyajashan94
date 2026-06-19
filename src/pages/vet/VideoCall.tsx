@@ -313,7 +313,7 @@ const VideoCall = () => {
         });
       }
       if (isVet) {
-        navigate("/vet/digital-prescription", { state: { ...location.state, callDuration } });
+        navigate("/buyer/vet/prescription", { state: { ...location.state, callDuration } });
       } else {
         navigate("/vet/home");
       }
