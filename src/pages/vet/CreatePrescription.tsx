@@ -274,8 +274,8 @@ const CreatePrescription = () => {
         heart_rate_bpm: vitals.hr ? parseFloat(vitals.hr) : null,
         diagnosis_tags: diagnosis, // JSONB directly handled
         clinical_summary: clinicalFindings,
-        next_appointment_date: nextApptDate,
-        next_appointment_time: nextApptTime,
+        next_appointment_date: nextApptDate || null,
+        next_appointment_time: nextApptTime || null,
         consultation_outcome: outcome,
         prescription_status: 'completed'
       }).select().single();

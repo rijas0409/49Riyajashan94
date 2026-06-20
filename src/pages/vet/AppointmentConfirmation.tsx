@@ -18,6 +18,16 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+const getShortBookingId = (id: string | undefined): string => {
+  if (!id) return "...";
+  const clean = id.replace(/[-]/g, "");
+  if (clean.length >= 9) {
+    const slice = clean.slice(0, 9);
+    return `${slice.slice(0, 4)}-${slice.slice(4, 7)}-${slice.slice(7, 9)}`;
+  }
+  return id;
+};
+
 export default function AppointmentConfirmation() {
   const { appointmentId } = useParams();
   const navigate = useNavigate();
@@ -42,50 +52,64 @@ export default function AppointmentConfirmation() {
     const fetchAppointment = async () => {
       try {
         setIsLoading(true);
-        const { data, error } = await supabase
-          .from("vet_appointments")
-          .select("*")
-          .eq("id", appointmentId)
-          .maybeSingle();
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appointmentId);
+        let foundData: any = null;
 
-        if (error) throw error;
+        if (isUUID) {
+          const { data, error } = await supabase
+            .from("vet_appointments")
+            .select("*")
+            .eq("id", appointmentId)
+            .maybeSingle();
+          if (!error && data) foundData = data;
+        } else {
+          // Resolve short ID by fetching last 100 and matching
+          const { data, error } = await supabase
+            .from("vet_appointments")
+            .select("*")
+            .limit(100);
+          
+          if (!error && data) {
+            foundData = data.find(apt => getShortBookingId(apt.id) === appointmentId || apt.id === appointmentId);
+          }
+        }
         
-        if (data) {
+        if (foundData) {
           // Fetch vet profile separately to avoid complex join issues if FKs aren't naming-compliant
           const { data: vp } = await supabase
             .from("vet_profiles")
             .select("*")
-            .eq("user_id", data.vet_id)
+            .eq("user_id", foundData.vet_id)
             .maybeSingle();
 
           const { data: rawProfile } = await supabase
             .from("profiles")
             .select("*")
-            .eq("id", data.vet_id)
+            .eq("id", foundData.vet_id)
             .maybeSingle();
             
-          const localPayStr = localStorage.getItem(`payment_details_${appointmentId}`);
+          const localPayStr = localStorage.getItem(`payment_details_${foundData.id}`);
           const localPay = localPayStr ? JSON.parse(localPayStr) : null;
           
           let dbPay = null;
-          if (data.consultation_notes) {
+          if (foundData.consultation_notes) {
             try {
-              dbPay = JSON.parse(data.consultation_notes);
+              dbPay = JSON.parse(foundData.consultation_notes);
             } catch (e) {
               console.error("Error parsing consultation notes:", e);
             }
           }
             
           setAppointment({ 
-            ...data, 
+            ...foundData, 
             vet_profile: vp, 
-            vet: rawProfile || data.vet,
+            vet: rawProfile || foundData.vet,
             payment_details: localPay || dbPay 
           });
           
-          if (data.status === "confirmed" || data.status === "approved") {
-            triggerSuccess();
-          } else if (data.status === "cancelled" || data.status === "failed") {
+          if (foundData.status === "confirmed" || foundData.status === "approved") {
+            triggerSuccess(foundData.id);
+          } else if (foundData.status === "cancelled" || foundData.status === "failed") {
             setShowRejectSheet(true);
           }
         } else if (location.state?.visit) {
@@ -109,22 +133,35 @@ export default function AppointmentConfirmation() {
 
     fetchAppointment();
 
-    // REAL-TIME SUBSCRIPTION
+    const pollInterval = setInterval(() => {
+      fetchAppointment();
+    }, 20000);
+
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, [appointmentId]);
+
+  // REAL-TIME SUBSCRIPTION Effect
+  useEffect(() => {
+    const targetRealId = appointment?.id || (appointmentId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appointmentId) ? appointmentId : null);
+    if (!targetRealId) return;
+
     const channel = supabase
-      .channel(`appointment_${appointmentId}`)
+      .channel(`appointment_conf_${targetRealId}`)
       .on(
         "postgres_changes",
         {
           event: "UPDATE",
           schema: "public",
           table: "vet_appointments",
-          filter: `id=eq.${appointmentId}`,
+          filter: `id=eq.${targetRealId}`,
         },
         (payload) => {
           const newStatus = payload.new.status;
           console.log("Appointment status updated:", newStatus);
           if (newStatus === "confirmed" || newStatus === "approved") {
-            triggerSuccess();
+            triggerSuccess(payload.new.id || targetRealId);
           } else if (newStatus === "cancelled" || newStatus === "failed") {
             setShowRejectSheet(true);
           }
@@ -132,22 +169,17 @@ export default function AppointmentConfirmation() {
       )
       .subscribe();
 
-    const pollInterval = setInterval(() => {
-      fetchAppointment();
-    }, 20000);
-
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(pollInterval);
     };
-  }, [appointmentId]);
+  }, [appointment?.id, appointmentId]);
 
-  const triggerSuccess = () => {
+  const triggerSuccess = (realId?: string) => {
     setIsRevealed(true);
     setShowSuccessOverlay(true);
     setTimeout(() => setProgressWidth(100), 100);
     setTimeout(() => {
-      navigate(`/buyer/vet/visit-details/${appointmentId}`, { 
+      navigate(`/buyer/vet/visit-details/${realId || appointment?.id || appointmentId}`, { 
         replace: true,
         state: { fromBookingFlow: true }
       });
@@ -210,7 +242,7 @@ export default function AppointmentConfirmation() {
     return `Dr. ${rawName}`;
   };
 
-  const vetImgUrl = getPublicUrl(vet?.profile_photo || vet?.image || vet?.avatar_url);
+  const vetImgUrl = getPublicUrl(vet?.profile_photo || vet_profile?.profile_photo || vet?.image || vet?.avatar_url || appointment?.vet_profile?.profile_photo || appointment?.vet?.profile_photo);
 
   // Dynamic values without fallbacks
   const displaySpecialization = vetProfile?.specialization || 
