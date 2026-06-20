@@ -102,7 +102,7 @@ const PreparingPrescription = () => {
   }, [navigate]);
 
   return (
-    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: '#FAFAFC' }}>
+    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: '#F8F9FC' }}>
       <iframe 
         src="/preparingprescription.html" 
         style={{ width: '100%', height: '100%', border: 'none', display: 'block', transform: 'translateZ(0)' }} 

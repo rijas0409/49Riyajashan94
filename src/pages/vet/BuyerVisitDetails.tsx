@@ -519,10 +519,44 @@ const BuyerVisitDetails: React.FC = () => {
       )
       .subscribe();
 
+    const pollInterval = setInterval(async () => {
+      try {
+        const { data, error } = await supabase
+          .from("vet_appointments")
+          .select("status, call_duration")
+          .eq("id", currentVisitId)
+          .maybeSingle();
+
+        if (data && !error) {
+          if (data.status === "completed") {
+             navigate("/buyer/vet/prescription/preparing", { 
+               state: { 
+                 appointmentId: currentVisitId,
+                 petName: initialVisit.petName
+               } 
+             });
+             clearInterval(pollInterval);
+             return;
+          }
+          
+          if (data.status === "in_progress" && !timerStartEpoch) {
+             setShowUserQr(false);
+             const startVal = data.call_duration || Math.floor(Date.now() / 1000);
+             setTimerStartEpoch(startVal);
+             localStorage.setItem(`gp_appt_start_${currentVisitId}`, String(startVal));
+             localStorage.setItem(`gp_appt_status_${currentVisitId}`, "in_progress");
+          }
+        }
+      } catch (err) {
+        console.error("Polling error: ", err);
+      }
+    }, 2500);
+
     return () => {
+      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
-  }, [currentVisitId, dbVisit?.status, dbVisit?.call_duration, timerStartEpoch]);
+  }, [currentVisitId, dbVisit?.status, dbVisit?.call_duration, timerStartEpoch, navigate, initialVisit.petName]);
 
   // Synchronize with storage events across multiple buyer/vet browser tabs
   useEffect(() => {
