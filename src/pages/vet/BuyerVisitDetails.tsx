@@ -482,6 +482,17 @@ const BuyerVisitDetails: React.FC = () => {
             const updated = payload.new as any;
             setDbVisit(updated);
             
+            // If completed: Guide user to prescription preparation page
+            if (updated.status === "completed") {
+               navigate("/buyer/vet/prescription/preparing", { 
+                 state: { 
+                   appointmentId: currentVisitId,
+                   petName: initialVisit.petName
+                 } 
+               });
+               return;
+            }
+
             // If consultation starts: Close QR popup and start the ticking active timer!
             if (updated.status === "in_progress") {
                setShowUserQr(false);
@@ -519,6 +530,15 @@ const BuyerVisitDetails: React.FC = () => {
 
     const syncStorage = (e: StorageEvent) => {
       if (e.key === `gp_appt_status_${currentVisitId}`) {
+        if (e.newValue === "completed") {
+           navigate("/buyer/vet/prescription/preparing", { 
+             state: { 
+               appointmentId: currentVisitId,
+               petName: initialVisit.petName
+             } 
+           });
+           return;
+        }
         if (e.newValue === "in_progress") {
           setShowUserQr(false);
           const start = localStorage.getItem(`gp_appt_start_${currentVisitId}`);

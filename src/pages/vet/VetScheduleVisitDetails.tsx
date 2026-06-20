@@ -443,12 +443,18 @@ const VetScheduleVisitDetails: React.FC = () => {
           console.error(err);
         }
       }
+      
+      const targetId = appointmentId || stateVisit?.id;
+      if (targetId) {
+        localStorage.setItem(`gp_appt_status_${targetId}`, "completed");
+      }
 
       setTimeout(() => {
         navigate("/vet/create-prescription", { 
           state: { 
             appointmentId: appointmentId || stateVisit?.id,
-            petName: dbAppointment?.pet_name || "Pet"
+            petName: dbAppointment?.pet_name || "Pet",
+            consultationType: isHomeVisit ? "Home Visit" : "Clinic Visit"
           }
         });
       }, 1500);

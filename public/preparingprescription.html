@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Prescription</title>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Original Variables */
+            --primary-gradient: linear-gradient(135deg, #DE54A4 0%, #8A4BFA 100%);
+            --text-dark: #1E1E24;
+            --text-muted: #6B7280;
+            --bg-color: #FAFAFC;
+            --card-bg: #FFFFFF;
+            
+            /* New Variables for Cards */
+            --primary: #DE468B; 
+            --primary-light: #FCE7F3; 
+            --white: #FFFFFF;
+            --text-gray: #6B7280;
+            --text-light-gray: #9CA3AF;
+            --border-color: #EFEFF5;
+            --success-green: #10B981;
+            --card-shadow: 0 4px 20px rgba(0,0,0,0.02);
+            --border-radius: 24px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: #E5E7EB; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Mobile App Container */
+        .app-container {
+            width: 100%;
+            max-width: 100%;
+            height: 100vh;
+            max-height: 100vh;
+            background-color: var(--bg-color);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (min-width: 768px) {
+            .app-container {
+                border-radius: 0;
+                max-height: none;
+                margin: auto;
+            }
+            .cards-wrapper {
+                flex-direction: row;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            .doctor-card, .patient-card {
+                flex: 1 1 45%;
+                max-width: 500px;
+            }
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 24px 20px;
+            position: relative;
+        }
+
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid #E5E7EB;
+            background: var(--card-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .back-btn:active {
+            background: #F3F4F6;
+        }
+
+        .header-title {
+            flex-grow: 1;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-right: 40px;
+        }
+
+        /* Main Content */
+        .content {
+            flex-grow: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Animated Hero Icon */
+        .hero-icon-container {
+            position: relative;
+            margin: 30px 0;
+            animation: float 4s ease-in-out infinite;
+            transform: translateZ(0); /* Hardware acceleration */
+            will-change: transform;
+        }
+
+        .main-icon {
+            width: 120px;
+            height: 120px;
+            background: var(--primary-gradient);
+            border-radius: 32px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 56px;
+            box-shadow: 0 16px 32px rgba(138, 75, 250, 0.2);
+            transform: translateZ(0); /* Hardware acceleration */
+            will-change: transform;
+        }
+
+        .sync-badge {
+            position: absolute;
+            bottom: -10px;
+            right: -10px;
+            width: 48px;
+            height: 48px;
+            background: var(--card-bg);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            color: #8A4BFA;
+            font-size: 24px;
+            transform: translateZ(0); /* Hardware acceleration */
+            will-change: transform;
+        }
+
+        .sync-icon {
+            display: inline-block;
+            animation: spin 2s linear infinite;
+            will-change: transform;
+        }
+
+        /* Typography */
+        .title-group {
+            margin-bottom: 16px;
+        }
+
+        .title-light {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 4px;
+        }
+
+        .title-gradient {
+            font-size: 24px;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 10px;
+            padding: 0 10px;
+        }
+
+        /* NEW CARDS STYLING */
+        .cards-wrapper {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .doctor-card {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        .doctor-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary-light);
+        }
+
+        .doctor-info h2 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: var(--text-dark);
+        }
+
+        .doctor-info p {
+            color: var(--text-gray);
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .doctor-info .reg-id {
+            color: var(--text-light-gray);
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .patient-card {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        .avatar-container {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .avatar {
+            width: 74px;
+            height: 74px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary);
+            padding: 2px;
+        }
+
+        .status-dot {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 14px;
+            height: 14px;
+            background-color: var(--success-green);
+            border: 2.5px solid var(--white);
+            border-radius: 50%;
+        }
+
+        .patient-info {
+            flex: 1;
+            min-width: 0; 
+        }
+
+        .patient-info h2 {
+            color: var(--text-dark);
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pet-breed {
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .patient-info p {
+            color: var(--text-gray);
+            font-size: 12px;
+            margin-bottom: 2px;
+            font-weight: 500;
+        }
+        
+        .tags {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            flex-wrap: nowrap; 
+            overflow-x: auto;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .tags::-webkit-scrollbar { display: none; }
+
+        .tag {
+            padding: 6px 10px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .tag-primary {
+            background-color: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .tag-secondary {
+            background-color: #F0F0F5;
+            color: var(--text-gray);
+        }
+
+        /* Bottom Fixed Button */
+        .footer {
+            padding: 20px;
+            background: linear-gradient(to top, var(--bg-color) 80%, transparent);
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: 16px;
+            background: var(--primary-gradient);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 8px 24px rgba(138, 75, 250, 0.25);
+        }
+
+        .action-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Animations */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="header">
+            <div class="back-btn">
+                <i class="ph ph-arrow-left"></i>
+            </div>
+            <div class="header-title">Digital Prescription</div>
+        </div>
+
+        <div class="content">
+            
+            <div class="hero-icon-container">
+                <div class="main-icon">
+                    <i class="ph-fill ph-file-text"></i>
+                </div>
+                <div class="sync-badge">
+                    <i class="ph ph-arrows-clockwise sync-icon"></i>
+                </div>
+            </div>
+
+            <div class="title-group">
+                <div class="title-light">Preparing Your</div>
+                <div class="title-gradient">Digital Prescription</div>
+            </div>
+
+            <p class="subtitle">
+                Your vet is finalizing the prescription. Feel free to stay here or leave — we'll notify you as soon as it's ready.
+            </p>
+
+            <div class="cards-wrapper">
+                <div class="doctor-card">
+                    <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=150&q=80" alt="Dr. Vikram" class="doctor-avatar">
+                    <div class="doctor-info">
+                        <h2>Dr. Vikram Malhotra</h2>
+                        <p>Senior Veterinarian</p>
+                        <div class="reg-id">
+                            <span class="material-symbols-outlined" style="font-size: 14px;">verified</span>
+                            REG ID: VET-88291
+                        </div>
+                    </div>
+                </div>
+
+                <div class="patient-card">
+                    <div class="avatar-container">
+                        <img src="https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80" alt="Luna" class="avatar">
+                        <div class="status-dot"></div>
+                    </div>
+                    <div class="patient-info">
+                        <h2>Prescription for Luna</h2>
+                        <div class="pet-breed">Dog • Golden Retriever</div>
+                        <p>3 Years Old • ID: #SRV-9921</p>
+                        <div class="tags">
+                            <span class="tag tag-primary">CONSULTATION: VIDEO CALL</span>
+                            <span class="tag tag-secondary">WEIGHT: 24KG</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+
+        <div class="footer">
+            <button class="action-btn" id="notifyBtn">Notify Me When Ready</button>
+        </div>
+    </div>
+
+    <script>
+        // Simple Interaction for the Notification Button
+        document.getElementById('notifyBtn').addEventListener('click', function() {
+            const btn = this;
+            
+            btn.innerHTML = '<i class="ph ph-check-circle" style="margin-right: 8px; vertical-align: middle; font-size: 20px;"></i> Alert Set';
+            btn.style.background = '#10B981'; 
+            btn.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.25)';
+            
+            setTimeout(() => {
+                btn.innerHTML = 'Notify Me When Ready';
+                btn.style.background = 'var(--primary-gradient)';
+                btn.style.boxShadow = '0 8px 24px rgba(138, 75, 250, 0.25)';
+            }, 3000);
+        });
+
+        document.querySelector('.back-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            if(window.parent && window.parent !== window) {
+                // Post message to parent to go back
+                window.parent.postMessage({ type: 'GO_BACK' }, '*');
+            } else {
+                history.back();
+            }
+        });
+    </script>
+</body>
+</html>

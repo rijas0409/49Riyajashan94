@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Digital Prescription - User Side</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+    
+    <style>
+        :root {
+            --bg-color: #F8F9FC; 
+            --white: #FFFFFF;
+            --primary: #DE468B; /* Vibrant brand pink/magenta */
+            --primary-light: #FCE7F3; /* Soft pink tint */
+            --primary-border: #FBCFE8; /* Soft pink border */
+            --text-dark: #1E1E2D;
+            --text-gray: #6B7280;
+            --text-light-gray: #9CA3AF;
+            --border-color: #EFEFF5;
+            
+            --success-green: #10B981;
+            --success-bg: #E6F7ED;
+            
+            --warning-yellow: #F59E0B;
+            --danger-red: #EF4444;
+            --font-family: 'Inter', sans-serif;
+            --card-shadow: 0 4px 20px rgba(0,0,0,0.02);
+            --border-radius: 24px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: var(--font-family);
+            min-height: 100vh;
+            color: var(--text-dark);
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            background-color: var(--bg-color);
+            min-height: 100vh;
+            position: relative;
+            padding-bottom: 50px;
+        }
+        
+        .desktop-flex-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        @media (min-width: 768px) {
+            .app-container {
+                padding-bottom: 80px;
+            }
+            .desktop-flex-row {
+                flex-direction: row;
+                flex-wrap: wrap;
+                padding: 0 4px;
+            }
+            .desktop-flex-row > * {
+                flex: 1 1 45%;
+            }
+            .doctor-card, .patient-card {
+                margin: 10px 16px 20px 16px;
+            }
+            .vitals-row {
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            }
+            .med-list, .user-attachments-row, .lab-list {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
+            }
+            .section-container {
+                margin: 0 32px 24px 32px;
+            }
+            .prescription-meta-strip {
+                margin: 0 32px 24px 32px;
+            }
+            .header {
+                padding: 16px 32px;
+            }
+            .feedback-trigger-zone {
+                margin: 28px 32px 10px 32px;
+            }
+            .modal-card {
+                max-width: 600px;
+            }
+        }
+
+        /* --- Header --- */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background-color: var(--bg-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--white);
+            border-radius: 50%;
+            color: var(--text-dark);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        /* --- Doctor Card --- */
+        .doctor-card {
+            background: var(--white);
+            margin: 10px 20px 20px;
+            border-radius: var(--border-radius);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .doctor-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary-light);
+        }
+
+        .doctor-info h2 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .doctor-info p {
+            color: var(--text-gray);
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .doctor-info .reg-id {
+            color: var(--text-light-gray);
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* --- Patient Card --- */
+        .patient-card {
+            background: var(--white);
+            margin: 0 16px 20px 16px;
+            border-radius: 24px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+        }
+
+        .avatar-container {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .avatar {
+            width: 74px;
+            height: 74px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary);
+            padding: 2px;
+        }
+
+        .status-dot {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 14px;
+            height: 14px;
+            background-color: var(--success-green);
+            border: 2.5px solid var(--white);
+            border-radius: 50%;
+        }
+
+        .patient-info {
+            flex: 1;
+            min-width: 0; 
+        }
+
+        .patient-info h2 {
+            color: var(--text-dark);
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pet-breed {
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .patient-info p {
+            color: var(--text-gray);
+            font-size: 12px;
+            margin-bottom: 2px;
+            font-weight: 500;
+        }
+        
+        .tags {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            flex-wrap: nowrap; 
+            overflow-x: auto;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .tags::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tag {
+            padding: 6px 10px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .tag-primary {
+            background-color: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .tag-secondary {
+            background-color: #F0F0F5;
+            color: var(--text-gray);
+        }
+
+        /* --- UPDATED: Prescription Meta Strip --- */
+        .prescription-meta-strip {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 0 20px 24px 20px;
+        }
+
+        .issue-date {
+            font-size: 12px;
+            color: var(--text-gray);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Made Button Secondary */
+        .passport-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-gray);
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+        
+        .passport-btn:hover {
+            background: #F0F0F5;
+            color: var(--text-dark);
+            border-color: #E5E7EB;
+        }
+
+
+        /* --- Structural Standard Component --- */
+        .section-container {
+            margin: 0 20px 24px 20px;
+        }
+
+        .section-header-title {
+            display: flex;
+            align-items: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-light-gray);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            gap: 8px;
+        }
+
+        .section-header-title .material-symbols-outlined {
+            font-size: 18px;
+            color: var(--primary);
+        }
+
+        /* --- Vitals UI Grid --- */
+        .vitals-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .vital-metric-card {
+            background: var(--white);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .metric-label {
+            font-size: 10px;
+            color: var(--text-gray);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        /* --- Diagnosis Chips Layout --- */
+        .chips-inline-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .user-prescription-chip {
+            background-color: var(--primary-light);
+            color: var(--primary);
+            padding: 10px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        /* --- Prescribed Medicines Area --- */
+        .med-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .med-card {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            padding: 16px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .med-details {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 14px;
+        }
+
+        .med-img {
+            width: 60px;
+            height: 60px;
+            border-radius: 14px;
+            object-fit: cover;
+            background-color: #F0F0F5;
+        }
+
+        .med-info {
+            flex: 1;
+        }
+
+        .med-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 4px;
+        }
+
+        .med-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .med-price {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .med-desc {
+            font-size: 12px;
+            color: var(--text-gray);
+            margin-bottom: 6px;
+        }
+
+        .stock-status {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--success-green);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .stock-status span {
+            color: var(--text-light-gray);
+            font-weight: 500;
+        }
+
+        .btn-action {
+            width: 100%;
+            background: var(--primary);
+            color: var(--white);
+            border: none;
+            padding: 12px;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            font-family: var(--font-family);
+        }
+
+        .btn-action:hover {
+            opacity: 0.9;
+        }
+
+         /* --- FIXED MOBILE-FRIENDLY: Recommended Lab Tests --- */
+        .lab-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border-color);
+            gap: 12px;
+        }
+
+        .lab-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .lab-icon {
+            width: 42px;
+            height: 42px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .lab-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .lab-info h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 2px;
+            color: var(--text-dark);
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .lab-info p {
+            font-size: 11px;
+            color: var(--text-gray);
+        }
+
+        .btn-book {
+            background: var(--primary);
+            color: var(--white);
+            border: none;
+            padding: 0 16px;
+            height: 40px; 
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: var(--font-family);
+            flex-shrink: 0; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.2s;
+        }
+
+        .btn-book:hover {
+            opacity: 0.9;
+        }
+
+        /* --- Administration Notes Card Style --- */
+        .notes-card {
+            background: var(--primary-light);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            border: 1px solid var(--primary-border);
+        }
+
+        .notes-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .note-item {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            align-items: flex-start;
+        }
+
+        .note-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .note-num {
+            width: 22px;
+            height: 22px;
+            background: var(--primary);
+            color: var(--white);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .note-text {
+            font-size: 13px;
+            color: var(--text-dark);
+            line-height: 1.5;
+        }
+
+        /* --- Clinical Findings Box --- */
+        .findings-summary-box {
+            background: var(--white);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 16px;
+            font-size: 13px;
+            color: var(--text-dark);
+            line-height: 1.6;
+            box-shadow: var(--card-shadow);
+        }
+
+        /* --- Reports & Attachments UI --- */
+        .user-attachments-row {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .attachment-view-card {
+            background: var(--white);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--card-shadow);
+            cursor: pointer;
+        }
+
+        .attachment-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .attachment-meta .file-icon {
+            font-size: 24px;
+        }
+
+        .file-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .file-size {
+            font-size: 11px;
+            color: var(--text-gray);
+        }
+
+        .view-action-btn {
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        /* --- Consultation Outcome Badge --- */
+        .outcome-card-display {
+            background: var(--success-bg);
+            padding: 10px 16px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--success-green);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .outcome-indicator-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--success-green);
+        }
+
+        /* --- Next Appointment Card --- */
+        .appointment-card {
+            background: linear-gradient(135deg, #DE468B, #A21CAF);
+            border-radius: var(--border-radius);
+            padding: 24px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--white);
+            box-shadow: 0 10px 20px rgba(222, 70, 139, 0.2);
+        }
+
+        .appt-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+            opacity: 0.8;
+        }
+
+        .appt-date {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .appt-desc {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .appt-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        
+        .shop-link {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        /* --- Premium Feedback Button --- */
+        .feedback-trigger-zone {
+            margin: 28px 20px 10px 20px;
+        }
+
+        .btn-trigger-feedback {
+            width: 100%;
+            background: #1E1E2D;
+            color: var(--white);
+            border: none;
+            padding: 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(30, 30, 45, 0.15);
+            font-family: var(--font-family);
+        }
+
+        /* --- Action Sliding Bottom Sheet Modal --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(30, 30, 45, 0.5);
+            backdrop-filter: blur(6px);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: var(--white);
+            width: 100%;
+            max-width: 480px;
+            border-radius: 32px 32px 0 0;
+            padding: 24px 20px;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.08);
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .modal-overlay.show .modal-card {
+            transform: translateY(0);
+        }
+
+        .modal-title {
+            color: var(--text-dark);
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .modal-subtitle {
+            color: var(--text-gray);
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .modal-divider {
+            border: 0;
+            height: 1px;
+            background-color: var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .stars {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stars .material-symbols-outlined {
+            font-size: 36px;
+            color: #EFEFF5;
+            cursor: pointer;
+            font-variation-settings: 'FILL' 1;
+            transition: color 0.2s ease;
+        }
+
+        .stars .material-symbols-outlined.active {
+            color: var(--warning-yellow);
+        }
+
+        .review-input {
+            width: 100%;
+            background: #F8F8FC;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 16px;
+            font-size: 13px;
+            font-family: var(--font-family);
+            resize: none;
+            height: 90px;
+            margin-bottom: 20px;
+            outline: none;
+            color: var(--text-dark);
+        }
+
+        .btn-submit-close {
+            width: 100%;
+            background: linear-gradient(135deg, #DE468B, #A21CAF);
+            color: var(--white);
+            border: none;
+            border-radius: 20px;
+            padding: 16px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: var(--font-family);
+            box-shadow: 0 4px 15px rgba(222, 70, 139, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    
+    <div class="header">
+        <div class="icon-btn"><span class="material-symbols-outlined">arrow_back</span></div>
+        <h1 class="header-title">Prescription</h1>
+        <div class="icon-btn"><span class="material-symbols-outlined">share</span></div>
+    </div>
+
+    <div class="desktop-flex-row">
+        <div class="doctor-card">
+            <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=150&q=80" alt="Dr. Vikram" class="doctor-avatar">
+            <div class="doctor-info">
+                <h2>Dr. Vikram Malhotra</h2>
+                <p>Senior Veterinarian</p>
+                <div class="reg-id">
+                    <span class="material-symbols-outlined" style="font-size: 14px;">verified</span>
+                    REG ID: VET-88291
+                </div>
+            </div>
+        </div>
+
+        <div class="patient-card">
+            <div class="avatar-container">
+                <img src="https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80" alt="Luna" class="avatar">
+                <div class="status-dot"></div>
+            </div>
+            <div class="patient-info">
+                <h2>Prescription for Luna</h2>
+                <div class="pet-breed">Dog • Golden Retriever</div>
+                <p>3 Years Old • ID: #SRV-9921</p>
+                <div class="tags">
+                    <span class="tag tag-primary">CONSULTATION: VIDEO CALL</span>
+                    <span class="tag tag-secondary">WEIGHT: 24KG</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="prescription-meta-strip">
+        <div class="issue-date">
+            <span class="material-symbols-outlined" style="font-size: 16px;">calendar_today</span>
+            Issued on: June 18, 2026
+        </div>
+        <a href="#" class="passport-btn">
+            <span class="material-symbols-outlined" style="font-size: 16px;">badge</span>
+            View Pet Passport
+        </a>
+    </div>
+
+    <div class="section-container">
+        <div class="section-header-title">
+            <span class="material-symbols-outlined">monitor_heart</span> Vital Parameters
+        </div>
+        <div class="vitals-row">
+            <div class="vital-metric-card">
+                <span class="metric-label">Temperature</span>
+                <span class="metric-value">101.5 °F</span>
+            </div>
+            <div class="vital-metric-card">
+                <span class="metric-label">Heart Rate</span>
+                <span class="metric-value">80 bpm</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-container">
+        <div class="section-header-title">
+            <span class="material-symbols-outlined">stethoscope</span> Diagnosis / Complaints
+        </div>
+        <div class="chips-inline-wrap">
+            <div class="user-prescription-chip">Mild Dehydration</div>
+            <div class="user-prescription-chip">Loss of Appetite</div>
+        </div>
+    </div>
+
+    <div class="section-container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div class="section-header-title" style="margin-bottom: 0;">
+                <span class="material-symbols-outlined">medication</span> Prescribed Medicines
+            </div>
+            <a href="#" class="shop-link"><span class="material-symbols-outlined" style="font-size: 16px;">shopping_cart</span> SHOP ALL</a>
+        </div>
+
+        <div class="med-list">
+            <div class="med-card">
+                <div class="med-details">
+                    <img src="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=100&q=80" alt="Medicine" class="med-img">
+                    <div class="med-info">
+                        <div class="med-header-row">
+                            <h3 class="med-name">Pet-O-Boost</h3>
+                            <span class="med-price">₹540</span>
+                        </div>
+                        <p class="med-desc">Multivitamin Supplement</p>
+                        <div class="stock-status">IN STOCK <span>• 1 Pack (30 Tablets)</span></div>
+                    </div>
+                </div>
+                <button class="btn-action">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">shopping_cart</span> Order Now
+                </button>
+            </div>
+
+            <div class="med-card">
+                <div class="med-details">
+                    <img src="https://images.unsplash.com/photo-1550572017-edb3f5451e06?auto=format&fit=crop&w=100&q=80" alt="Medicine" class="med-img">
+                    <div class="med-info">
+                        <div class="med-header-row">
+                            <h3 class="med-name">K-9 Calmer</h3>
+                            <span class="med-price">₹320</span>
+                        </div>
+                        <p class="med-desc">Anti-anxiety Oral Drops</p>
+                        <div class="stock-status">IN STOCK <span>• 30ml Bottle</span></div>
+                    </div>
+                </div>
+                <button class="btn-action">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">shopping_cart</span> Order Now
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-container">
+        <div class="section-header-title">
+            <span class="material-symbols-outlined">biotech</span> Recommended Lab Tests
+        </div>
+        
+        <div class="lab-list">
+            <div class="lab-card">
+                <div class="lab-left">
+                    <div class="lab-icon"><span class="material-symbols-outlined">description</span></div>
+                    <div class="lab-info">
+                        <h4>Complete Blood Count (CBC)</h4>
+                        <p>8-hour fasting required</p>
+                    </div>
+                </div>
+                <button class="btn-book">Book Home</button>
+            </div>
+
+            <div class="lab-card">
+                <div class="lab-left">
+                    <div class="lab-icon"><span class="material-symbols-outlined">description</span></div>
+                    <div class="lab-info">
+                        <h4>Urinalysis Panel</h4>
+                        <p>Next-day results available</p>
+                    </div>
+                </div>
+                <button class="btn-book">Book Home</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-container">
+        <div class="notes-card">
+            <div class="notes-title">
+                <span class="material-symbols-outlined">assignment</span> Administration Notes
+            </div>
+            <div class="note-item">
+                <div class="note-num">1</div>
+                <div class="note-text">Administer 1 tablet of <strong>Pet-O-Boost</strong> once daily mixed with morning meal.</div>
+            </div>
+            <div class="note-item">
+                <div class="note-num">2</div>
+                <div class="note-text">Give 0.5ml of <strong>K-9 Calmer</strong> drops directly in the mouth during high stress periods or before travel.</div>
+            </div>
+            <div class="note-item">
+                <div class="note-num">3</div>
+                <div class="note-text">Observe for any unusual behavior or gastrointestinal sensitivity during the first 3 days.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-container">
+        <div class="section-header-title">
+            <span class="material-symbols-outlined">subject</span> Clinical Findings & Summary
+        </div>
+        <div class="findings-summary-box">
+            Patient shows signs of fatigue and mild dehydration due to recent climate changes. Vital vitals are stable but require structural multivitamin support over the week.
+        </div>
+    </div>
+
+    <div class="section-container">
+        <div class="section-header-title">
+            <span class="material-symbols-outlined">attach_file</span> Reports & Attachments
+        </div>
+        <div class="user-attachments-row">
+            <div class="attachment-view-card">
+                <div class="attachment-meta">
+                    <span class="material-symbols-outlined file-icon" style="color: #EF4444;">picture_as_pdf</span>
+                    <div>
+                        <div class="file-title">Blood_Report_Luna.pdf</div>
+                        <div class="file-size">1.4 MB</div>
+                    </div>
+                </div>
+                <span class="view-action-btn">VIEW</span>
+            </div>
+            <div class="attachment-view-card">
+                <div class="attachment-meta">
+                    <span class="material-symbols-outlined file-icon" style="color: var(--primary);">image</span>
+                    <div>
+                        <div class="file-title">Thoracic_XRay_Luna.jpg</div>
+                        <div class="file-size">3.1 MB</div>
+                    </div>
+                </div>
+                <span class="view-action-btn">VIEW</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-container">
+        <div class="section-header-title">
+            <span class="material-symbols-outlined">assignment_turned_in</span> Consultation Outcome
+        </div>
+        <div class="outcome-card-display">
+            <div class="outcome-indicator-dot"></div>
+            <span>Consultation Confirmed</span>
+        </div>
+    </div>
+
+    <div class="section-container">
+        <div class="appointment-card">
+            <div>
+                <div class="appt-label">Next Appointment</div>
+                <div class="appt-date">November 15, 2026</div>
+                <div class="appt-desc">Follow-up Checkup</div>
+            </div>
+            <div class="appt-icon">
+                <span class="material-symbols-outlined">calendar_month</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="feedback-trigger-zone">
+        <button class="btn-trigger-feedback" onclick="openFeedbackSheet()">
+            <span class="material-symbols-outlined">rate_review</span> Rate Consultation Experience
+        </button>
+    </div>
+
+</div>
+
+<div class="modal-overlay" id="feedback-sheet" onclick="if(event.target === this) closeFeedbackSheet();">
+    <div class="modal-card">
+        <h3 class="modal-title">
+            How was your experience?
+            <span class="material-symbols-outlined" style="color: var(--primary);">pets</span>
+        </h3>
+        <p class="modal-subtitle">Your reviews help Dr. Vikram provide top tier care.</p>
+        <hr class="modal-divider">
+        
+        <div class="stars">
+            <span class="material-symbols-outlined star" onclick="rateUserSide(1)">star</span>
+            <span class="material-symbols-outlined star" onclick="rateUserSide(2)">star</span>
+            <span class="material-symbols-outlined star" onclick="rateUserSide(3)">star</span>
+            <span class="material-symbols-outlined star" onclick="rateUserSide(4)">star</span>
+            <span class="material-symbols-outlined star" onclick="rateUserSide(5)">star</span>
+        </div>
+        
+        <textarea class="review-input" placeholder="Write an optional review about the consultation..."></textarea>
+        <button class="btn-submit-close" onclick="submitAndCloseFeedback()">Submit Feedback</button>
+    </div>
+</div>
+
+<script>
+    function openFeedbackSheet() {
+        document.getElementById('feedback-sheet').classList.add('show');
+    }
+
+    function closeFeedbackSheet() {
+        document.getElementById('feedback-sheet').classList.remove('show');
+        document.querySelectorAll('.star').forEach(star => star.classList.remove('active'));
+    }
+
+    function rateUserSide(num) {
+        const stars = document.querySelectorAll('.star');
+        stars.forEach((star, index) => {
+            if (index < num) {
+                star.classList.add('active');
+            } else {
+                star.classList.remove('active');
+            }
+        });
+    }
+
+    function submitAndCloseFeedback() {
+        closeFeedbackSheet();
+        // Optional: show a toast or alert that feedback was submitted
+    }
+    
+    document.querySelector('.icon-btn').addEventListener('click', function(e) {
+        e.preventDefault();
+        if(window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'GO_BACK' }, '*');
+        } else {
+            history.back();
+        }
+    });
+</script>
+</body>
+</html>

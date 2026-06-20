@@ -90,6 +90,11 @@ const VetDashboard = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const [activeAppointment, setActiveAppointment] = useState<DashboardAppointment | null>(null);
   const [upcomingAppointments, setUpcomingAppointments] = useState<DashboardAppointment[]>([]);
+  const [todayRevenue, setTodayRevenue] = useState(0);
+  const [activePatients, setActivePatients] = useState(0);
+  const [revenueBars, setRevenueBars] = useState<number[]>([14, 24, 20, 30, 34, 48, 34]);
+
+  const [realProfilePhoto, setRealProfilePhoto] = useState<string | null>(null);
 
   const fetchPendingCount = useCallback(async () => {
     if (!user) return;
@@ -115,9 +120,8 @@ const VetDashboard = () => {
         .from('vet_appointments')
         .select('*')
         .eq('vet_id', user.id)
-        .in('status', ['pending', 'confirmed', 'in_progress'])
         .order('appointment_date', { ascending: true })
-        .limit(20);
+        .limit(100);
 
       if (!error && data) {
         // Fetch users manually to avoid foreign key relation errors with PostgREST
@@ -139,17 +143,22 @@ const VetDashboard = () => {
 
         const mapped = data.map((apt: any) => {
           const userProfile = profilesMap[apt.user_id] || {};
+          let userPhoto = userProfile.profile_photo || "";
+          if (userPhoto && !userPhoto.startsWith("http")) {
+            userPhoto = supabase.storage.from("seller-documents").getPublicUrl(userPhoto).data.publicUrl;
+          }
           return {
             id: apt.id,
             time: apt.appointment_time || "11:30 AM",
             name: apt.pet_name || "Luna",
             breed: apt.pet_breed || (apt.pet_type ? `${apt.pet_type}` : "Dog"),
             type: apt.appointment_type || "clinic",
-            image: userProfile.profile_photo || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80",
+            image: userPhoto || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80",
             ownerName: userProfile.full_name || userProfile.name || "Sarah Jenkins",
             ownerPhone: userProfile.phone || "+91 98765 43210",
             date: apt.appointment_date,
-            status: apt.status
+            status: apt.status,
+            amount: apt.amount
           };
         });
 
@@ -160,12 +169,31 @@ const VetDashboard = () => {
           return dateA.getTime() - dateB.getTime();
         });
 
-        const todayStr = formatDateString(new Date());
+        const now = new Date();
+        const todayStr = formatDateString(now);
         let active: DashboardAppointment | null = null;
         const upcomingList: DashboardAppointment[] = [];
 
+        // Compute metrics dynamically from real database data
+        let todayRevenueSum = 0;
+        const uniquePatients = new Set<string>();
+
         mapped.forEach((apt) => {
+          if (apt.status !== "cancelled") {
+            uniquePatients.add(apt.name || apt.id);
+          }
+          if (apt.date === todayStr && apt.status !== "cancelled") {
+            todayRevenueSum += (Number(apt.amount) || 650);
+          }
+
+          // Continue filtering only active/upcoming statuses for layout arrays
+          if (!['pending', 'confirmed', 'in_progress'].includes(apt.status)) {
+            return;
+          }
+
           const isTodaySession = apt.date === todayStr;
+          
+          // Check if this appointment should be the active one in Focus Mode
           if (apt.status === "in_progress" && isTodaySession) {
             if (!active) {
               active = apt;
@@ -180,11 +208,34 @@ const VetDashboard = () => {
               }
             }
           }
+
+          // If not Focus Mode/Active, filter out past appointments (expired)
+          const aptDate = getAppointmentDateObject(apt.date, apt.time);
+          if (aptDate < now) {
+            return; // skip expired/passed appointment
+          }
+
           upcomingList.push(apt);
         });
 
+        // Compute 7 days of dynamic daily revenue for the bar chart
+        const dailyRevenue = Array(7).fill(0);
+        for (let i = 0; i < 7; i++) {
+          const d = new Date();
+          d.setDate(d.getDate() - (6 - i)); // 6 days ago to today
+          const dStr = formatDateString(d);
+          const dayAppts = mapped.filter(apt => apt.date === dStr && apt.status !== "cancelled");
+          dailyRevenue[i] = dayAppts.reduce((sum, apt) => sum + (Number(apt.amount) || 650), 0);
+        }
+        const maxDaily = Math.max(...dailyRevenue, 1);
+        const barHeights = dailyRevenue.map(rev => Math.max(8, Math.round((rev / maxDaily) * 48)));
+
+        // Set state values
         setActiveAppointment(active);
         setUpcomingAppointments(upcomingList.slice(0, 5));
+        setTodayRevenue(todayRevenueSum);
+        setActivePatients(uniquePatients.size);
+        setRevenueBars(barHeights);
       }
     } catch (err) {
       console.error("Error fetching upcoming appointments:", err);
@@ -193,7 +244,17 @@ const VetDashboard = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      await supabase.from("vet_profiles").select("*").eq("user_id", user?.id).maybeSingle();
+      const { data: vetProfile } = await supabase.from("vet_profiles").select("*").eq("user_id", user?.id).maybeSingle();
+      
+      const photo = vetProfile?.profile_photo || profile?.profile_photo || profile?.avatar_url;
+      let photoUrl = photo;
+      if (photo && !photo.startsWith("http")) {
+        photoUrl = supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
+      }
+      if (photoUrl) {
+        setRealProfilePhoto(photoUrl);
+      }
+
       await fetchPendingCount();
       await fetchUpcoming();
       setIsLoading(false);
@@ -201,7 +262,7 @@ const VetDashboard = () => {
       console.error("Error fetching vet data:", err);
       setIsLoading(false);
     }
-  }, [user?.id, fetchPendingCount, fetchUpcoming]);
+  }, [user?.id, profile, fetchPendingCount, fetchUpcoming]);
 
   useEffect(() => {
     if (guardLoading) return;
@@ -265,7 +326,7 @@ const VetDashboard = () => {
             <div className="flex-shrink-0 w-12 h-12 rounded-full p-[2.5px] bg-gradient-to-br from-[#d340ff] to-[#8728ff] flex items-center justify-center">
               <div className="w-full h-full p-0.5 bg-white rounded-full flex items-center justify-center">
                 <Avatar className="w-full h-full border-none">
-                  <AvatarImage src={profile?.avatar_url || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80"} className="object-cover rounded-full" />
+                  <AvatarImage src={realProfilePhoto || profile?.profile_photo || profile?.avatar_url || ""} className="object-cover rounded-full" />
                   <AvatarFallback className="bg-purple-100 text-[#a428ff] font-extrabold">{doctorFirstName[0]}</AvatarFallback>
                 </Avatar>
               </div>
@@ -321,7 +382,7 @@ const VetDashboard = () => {
                   <div className="flex justify-between items-start mb-[22px]">
                     <div className="space-y-1.5">
                       <p className="text-[#8f8f9d] text-xs font-semibold">Today's Revenue</p>
-                      <h3 className="text-[#1a1a24] text-[26px] font-extrabold tracking-[-0.5px]">₹1,284.50</h3>
+                      <h3 className="text-[#1a1a24] text-[26px] font-extrabold tracking-[-0.5px]">₹{todayRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h3>
                     </div>
                     <div className="w-10 h-10 bg-[#fae8ff] text-[#a428ff] rounded-[12px] flex items-center justify-center text-xl">
                       <Wallet size={20} weight="fill" />
@@ -329,10 +390,10 @@ const VetDashboard = () => {
                   </div>
                 </div>
                 <div className="flex items-end justify-between h-12 gap-[7px]">
-                  {[14, 24, 20, 30, 34, 48, 34].map((h, i) => (
+                  {revenueBars.map((h, i) => (
                     <div 
                       key={i} 
-                      className={`grow rounded-[4px] w-full transition-all duration-700 ${i === 5 ? 'bg-[#a428ff]' : 'bg-[#e6c6ff]'}`}
+                      className={`grow rounded-[4px] w-full transition-all duration-700 ${i === 6 ? 'bg-[#a428ff]' : 'bg-[#e6c6ff]'}`}
                       style={{ height: `${h}px` }} 
                     />
                   ))}
@@ -346,9 +407,9 @@ const VetDashboard = () => {
                     <PawPrint size={24} weight="fill" />
                   </div>
                   <p className="text-[#8f8f9d] text-[9.5px] font-extrabold tracking-[0.8px] uppercase mb-1.5 truncate">ACTIVE PATIENTS</p>
-                  <h3 className="text-[#1a1a24] text-[22px] font-extrabold mb-2">42</h3>
+                  <h3 className="text-[#1a1a24] text-[22px] font-extrabold mb-2">{activePatients}</h3>
                   <div className="text-[#10b981] font-bold text-xs flex items-center gap-1">
-                    <span className="font-extrabold">↗</span> +12%
+                    <span className="font-extrabold">●</span> Live
                   </div>
                 </article>
                 <article className="bg-white rounded-[26px] p-5 shadow-[0_12px_35px_rgba(0,0,0,0.035)] flex flex-col">
@@ -356,8 +417,8 @@ const VetDashboard = () => {
                     <ClipboardText size={24} weight="fill" />
                   </div>
                   <p className="text-[#8f8f9d] text-[9.5px] font-extrabold tracking-[0.8px] uppercase mb-1.5 truncate">PENDING TASKS</p>
-                  <h3 className="text-[#1a1a24] text-[22px] font-extrabold mb-2">8</h3>
-                  <div className="text-[#f59e0b] font-bold text-xs flex items-center gap-1 text-[11px] font-bold">
+                  <h3 className="text-[#1a1a24] text-[22px] font-extrabold mb-2">{pendingCount}</h3>
+                  <div className="text-[#f59e0b] font-bold text-xs flex items-center gap-1 text-[11px]">
                     <Clock size={14} weight="fill" />
                     Action req.
                   </div>
@@ -427,7 +488,9 @@ const VetDashboard = () => {
                   <div className="grid grid-cols-2 gap-3 mb-[22px]">
                     <div className="bg-[#f7f7fb] p-3.5 rounded-[18px] min-w-0">
                       <span className="block text-[9px] text-[#b5b5c3] font-extrabold tracking-[0.5px] uppercase mb-1.5">REASON</span>
-                      <strong className="block text-[13px] text-[#1a1a24] font-bold truncate">General Checkup</strong>
+                      <strong className="block text-[13px] text-[#1a1a24] font-bold truncate">
+                        {activeAppointment.type === 'video' ? 'Video Consult' : activeAppointment.type === 'home' ? 'Home Visit' : 'Clinic Visit'}
+                      </strong>
                     </div>
                     <div className="bg-[#f7f7fb] p-3.5 rounded-[18px] min-w-0">
                       <span className="block text-[9px] text-[#b5b5c3] font-extrabold tracking-[0.5px] uppercase mb-1.5">OWNER</span>
