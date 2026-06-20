@@ -435,6 +435,8 @@ const VetScheduleVisitDetails: React.FC = () => {
       // Attempt status update on supabase if valid UUID is present
       if (appointmentId && appointmentId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
         try {
+          console.log("CONSULTATION_COMPLETED");
+          console.log("PRESCRIPTION_STATUS_CHANGED_TO_PREPARING");
           const { error: apptErr } = await supabase
             .from("vet_appointments")
             .update({ status: "completed" })

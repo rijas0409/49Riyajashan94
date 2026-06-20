@@ -44,7 +44,7 @@ export default function AppointmentConfirmation() {
         setIsLoading(true);
         const { data, error } = await supabase
           .from("vet_appointments")
-          .select("*, vet:profiles!vet_appointments_vet_id_fkey(*)")
+          .select("*")
           .eq("id", appointmentId)
           .maybeSingle();
 

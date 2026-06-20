@@ -146,7 +146,7 @@ const BuyerVisitDetails: React.FC = () => {
         if (isUUID) {
           const { data, error } = await supabase
             .from("vet_appointments")
-            .select("*, user:profiles!vet_appointments_user_id_fkey(*)")
+            .select("*")
             .eq("id", realDbId)
             .single();
           if (!error && data) foundData = data;
@@ -154,7 +154,7 @@ const BuyerVisitDetails: React.FC = () => {
           // Resolve short ID by fetching last 100 and matching
           const { data, error } = await supabase
             .from("vet_appointments")
-            .select("*, user:profiles!vet_appointments_user_id_fkey(*)")
+            .select("*")
             .limit(100);
           
           if (!error && data) {
@@ -452,18 +452,11 @@ const BuyerVisitDetails: React.FC = () => {
     if (!currentVisitId || currentVisitId === "SRV-84721") return;
 
     // Handle initial state if database already says in_progress
-    if (dbVisit?.status === "in_progress" && !timerStartEpoch) {
-      const startVal = dbVisit.call_duration || Math.floor(Date.now() / 1000);
-      setTimerStartEpoch(startVal);
-      localStorage.setItem(`gp_appt_start_${currentVisitId}`, String(startVal));
-      localStorage.setItem(`gp_appt_status_${currentVisitId}`, "in_progress");
-    }
-
-    // Read local cache first for low-latency sync
+    // using local cache helps
     const offlineStatus = localStorage.getItem(`gp_appt_status_${currentVisitId}`);
     const offlineStart = localStorage.getItem(`gp_appt_start_${currentVisitId}`);
-    if (offlineStatus === "in_progress" && offlineStart && !timerStartEpoch) {
-      setTimerStartEpoch(Number(offlineStart));
+    if (offlineStatus === "in_progress" && offlineStart) {
+      setTimerStartEpoch((prev) => prev ? prev : Number(offlineStart));
     }
 
     const channel = supabase
@@ -484,6 +477,8 @@ const BuyerVisitDetails: React.FC = () => {
             
             // If completed: Guide user to prescription preparation page
             if (updated.status === "completed") {
+               console.log("BUYER_RECEIVED_PREPARING_EVENT");
+               console.log("BUYER_NAVIGATED_TO_PREPARING");
                navigate("/buyer/vet/prescription/preparing", { 
                  state: { 
                    appointmentId: currentVisitId,
@@ -497,7 +492,7 @@ const BuyerVisitDetails: React.FC = () => {
             if (updated.status === "in_progress") {
                setShowUserQr(false);
                const startVal = updated.call_duration || Math.floor(Date.now() / 1000);
-               setTimerStartEpoch(startVal);
+               setTimerStartEpoch(prev => prev ? prev : startVal);
                localStorage.setItem(`gp_appt_start_${currentVisitId}`, String(startVal));
                localStorage.setItem(`gp_appt_status_${currentVisitId}`, "in_progress");
                toast.success("✨ Vet has verified your QR Code: Consultation is now Active!");
@@ -529,6 +524,8 @@ const BuyerVisitDetails: React.FC = () => {
 
         if (data && !error) {
           if (data.status === "completed") {
+             console.log("BUYER_RECEIVED_PREPARING_EVENT");
+             console.log("BUYER_NAVIGATED_TO_PREPARING");
              navigate("/buyer/vet/prescription/preparing", { 
                state: { 
                  appointmentId: currentVisitId,
@@ -539,10 +536,10 @@ const BuyerVisitDetails: React.FC = () => {
              return;
           }
           
-          if (data.status === "in_progress" && !timerStartEpoch) {
+          if (data.status === "in_progress") {
              setShowUserQr(false);
              const startVal = data.call_duration || Math.floor(Date.now() / 1000);
-             setTimerStartEpoch(startVal);
+             setTimerStartEpoch(prev => prev ? prev : startVal);
              localStorage.setItem(`gp_appt_start_${currentVisitId}`, String(startVal));
              localStorage.setItem(`gp_appt_status_${currentVisitId}`, "in_progress");
           }
@@ -556,7 +553,7 @@ const BuyerVisitDetails: React.FC = () => {
       clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
-  }, [currentVisitId, dbVisit?.status, dbVisit?.call_duration, timerStartEpoch, navigate, initialVisit.petName]);
+  }, [currentVisitId, navigate, initialVisit.petName]);
 
   // Synchronize with storage events across multiple buyer/vet browser tabs
   useEffect(() => {

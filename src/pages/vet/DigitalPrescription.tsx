@@ -64,7 +64,7 @@ const DigitalPrescription = () => {
         try {
           const { data: appt } = await supabase
             .from("vet_appointments")
-            .select("*, user:profiles!vet_appointments_user_id_fkey(*)")
+            .select("*")
             .eq("id", appointmentId)
             .maybeSingle();
             

@@ -349,6 +349,7 @@ const CreatePrescription = () => {
 
       // Step 5: Update Appointment status
       if (appointmentId && appointmentId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+         console.log("PRESCRIPTION_GENERATED");
          const { error: apptErr } = await supabase.from('vet_appointments').update({
            status: 'generated',
            medicines: JSON.stringify(medicines),

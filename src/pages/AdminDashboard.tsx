@@ -111,7 +111,7 @@ const AdminDashboard = () => {
         supabase.from("orders").select("*, pet:pets(name), buyer:profiles!orders_buyer_id_fkey(name), seller:profiles!orders_seller_id_fkey(name)").order("created_at", { ascending: false }),
         supabase.from("seller_earnings").select("*").order("created_at", { ascending: false }),
         supabase.from("vet_earnings").select("*").order("created_at", { ascending: false }),
-        supabase.from("vet_appointments").select("*, vet:profiles!vet_appointments_vet_id_fkey(name, email, phone), user:profiles!vet_appointments_user_id_fkey(name, email, phone)").order("created_at", { ascending: false }),
+        supabase.from("vet_appointments").select("*").order("created_at", { ascending: false }),
       ]);
       const allUsersData = allUsersRes.data || [];
       

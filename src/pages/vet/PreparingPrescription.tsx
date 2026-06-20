@@ -7,12 +7,17 @@ const PreparingPrescription = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const appointmentId = location.state?.appointmentId;
+  const stateRef = React.useRef(location.state);
+
+  useEffect(() => {
+    stateRef.current = location.state;
+  }, [location.state]);
 
   useEffect(() => {
     // 1. Storage event sync for offline / fast fallback
     const handleStorage = (e: StorageEvent) => {
       if (appointmentId && e.key === `gp_prescription_${appointmentId}`) {
-        navigate("/buyer/vet/prescription", { state: { ...location.state, prescriptionData: JSON.parse(e.newValue || "{}") } });
+        navigate("/buyer/vet/prescription", { state: { ...stateRef.current, prescriptionData: JSON.parse(e.newValue || "{}") } });
       }
     };
     window.addEventListener("storage", handleStorage);
@@ -21,7 +26,7 @@ const PreparingPrescription = () => {
     if (appointmentId) {
        const existing = localStorage.getItem(`gp_prescription_${appointmentId}`);
        if (existing) {
-          navigate("/buyer/vet/prescription", { state: { ...location.state, prescriptionData: JSON.parse(existing) } });
+          navigate("/buyer/vet/prescription", { state: { ...stateRef.current, prescriptionData: JSON.parse(existing) } });
           return;
        }
     }
@@ -35,7 +40,7 @@ const PreparingPrescription = () => {
           .eq("id", appointmentId)
           .maybeSingle();
         if (data && (data.status === "generated" || data.medicines || data.consultation_notes?.includes("prescription"))) {
-          navigate("/buyer/vet/prescription", { state: { ...location.state, dbUpdate: true } });
+          navigate("/buyer/vet/prescription", { state: { ...stateRef.current, dbUpdate: true } });
         }
       };
       checkImmediately();
@@ -50,8 +55,10 @@ const PreparingPrescription = () => {
         .eq("id", appointmentId)
         .maybeSingle();
       if (data && (data.status === "generated" || data.medicines || data.consultation_notes?.includes("prescription"))) {
+        console.log("BUYER_RECEIVED_GENERATED_EVENT");
         clearInterval(pollInterval);
-        navigate("/buyer/vet/prescription", { state: { ...location.state, dbUpdate: true } });
+        console.log("BUYER_NAVIGATED_TO_PRESCRIPTION");
+        navigate("/buyer/vet/prescription", { state: { ...stateRef.current, dbUpdate: true } });
       }
     }, 2000);
 
@@ -71,8 +78,10 @@ const PreparingPrescription = () => {
           (payload: any) => {
             const up = payload.new;
             if (up.status === 'generated' || up.medicines || up.consultation_notes?.includes('prescription')) {
+                console.log("BUYER_RECEIVED_GENERATED_EVENT");
                 clearInterval(pollInterval);
-                navigate("/buyer/vet/prescription", { state: { ...location.state, dbUpdate: true } });
+                console.log("BUYER_NAVIGATED_TO_PRESCRIPTION");
+                navigate("/buyer/vet/prescription", { state: { ...stateRef.current, dbUpdate: true } });
             }
           }
         )
@@ -86,7 +95,7 @@ const PreparingPrescription = () => {
       }
       window.removeEventListener("storage", handleStorage);
     };
-  }, [appointmentId, navigate, location.state]);
+  }, [appointmentId, navigate]);
 
   // legacy handle message for backwards compat with whatever was in html
   useEffect(() => {
