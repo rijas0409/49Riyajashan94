@@ -349,11 +349,12 @@ const CreatePrescription = () => {
 
       // Step 5: Update Appointment status
       if (appointmentId && appointmentId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-         await supabase.from('vet_appointments').update({
+         const { error: apptErr } = await supabase.from('vet_appointments').update({
            status: 'generated',
            medicines: JSON.stringify(medicines),
-           diagnosis: diagnosis
+           diagnosis: diagnosis.join(', ')
          }).eq('id', appointmentId);
+         if (apptErr) throw new Error("Failed to update appointment status: " + apptErr.message);
       }
 
       setCreatedPrescriptionId(prescriptionId);
