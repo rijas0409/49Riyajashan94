@@ -432,22 +432,23 @@ const VetScheduleVisitDetails: React.FC = () => {
     const handleCompleteConsultation = async () => {
       toast.success("Consultation Completed Successfully!");
       
+      const targetId = dbAppointment?.id || stateVisit?.id || appointmentId;
+
       // Attempt status update on supabase if valid UUID is present
-      if (appointmentId && appointmentId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      if (targetId && targetId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
         try {
           console.log("CONSULTATION_COMPLETED");
           console.log("PRESCRIPTION_STATUS_CHANGED_TO_PREPARING");
           const { error: apptErr } = await supabase
             .from("vet_appointments")
             .update({ status: "completed" })
-            .eq("id", appointmentId);
+            .eq("id", targetId);
           if (apptErr) throw new Error("Failed to update status to completed: " + apptErr.message);
         } catch (err) {
           console.error(err);
         }
       }
       
-      const targetId = appointmentId || stateVisit?.id;
       if (targetId) {
         localStorage.setItem(`gp_appt_status_${targetId}`, "completed");
       }
@@ -455,7 +456,7 @@ const VetScheduleVisitDetails: React.FC = () => {
       setTimeout(() => {
         navigate("/vet/create-prescription", { 
           state: { 
-            appointmentId: appointmentId || stateVisit?.id,
+            appointmentId: targetId,
             petName: dbAppointment?.pet_name || "Pet",
             consultationType: isHomeVisit ? "Home Visit" : "Clinic Visit"
           }
