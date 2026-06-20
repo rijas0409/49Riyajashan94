@@ -130,18 +130,42 @@ const extractRawSlots = (dayData: unknown) => {
 const getAvailabilityStatus = (weeklyAvailability: unknown) => {
   const now = new Date();
   const currentMins = now.getHours() * 60 + now.getMinutes();
-  const availability = weeklyAvailability as Record<string, unknown> | null;
+  const availability = weeklyAvailability as Record<string, any> | null;
 
   // Try checking up to 7 days ahead
   for (let i = 0; i < 7; i++) {
     const targetDate = addDays(now, i);
     const dayName = format(targetDate, "EEE"); // "Mon", "Tue", etc.
-    
+    const prevDate = addDays(targetDate, -1);
+    const prevDayName = format(prevDate, "EEE");
+
     let slots: string[] = [];
-    if (availability && availability[dayName]) {
-      const raw = extractRawSlots(availability[dayName]);
-      slots = raw.map(r => r.timeVal);
-    } else if (!availability) {
+    if (availability) {
+      const currDayData = availability[dayName];
+      const prevDayData = availability[prevDayName];
+
+      const currentRaw = extractRawSlots(currDayData);
+      const prevRaw = extractRawSlots(prevDayData);
+
+      const combined: string[] = [];
+
+      currentRaw.forEach(item => {
+        const mins = parseTimeToMins(item.timeVal);
+        if (mins >= 360) {
+          combined.push(item.timeVal);
+        }
+      });
+
+      prevRaw.forEach(item => {
+        const mins = parseTimeToMins(item.timeVal);
+        if (mins < 360) {
+          combined.push(item.timeVal);
+        }
+      });
+
+      // Deduplicate slots
+      slots = Array.from(new Set(combined));
+    } else {
       // Fallback default slots for every day
       slots = [
         "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM",

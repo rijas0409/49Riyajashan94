@@ -45,58 +45,12 @@
 
         .app-container {
             width: 100%;
-            max-width: 100%;
+            max-width: 480px;
             margin: 0 auto;
             background-color: var(--bg-color);
             min-height: 100vh;
             position: relative;
-            padding-bottom: 50px;
-        }
-        
-        .desktop-flex-row {
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-        }
-
-        @media (min-width: 768px) {
-            .app-container {
-                padding-bottom: 80px;
-            }
-            .desktop-flex-row {
-                flex-direction: row;
-                flex-wrap: wrap;
-                padding: 0 4px;
-            }
-            .desktop-flex-row > * {
-                flex: 1 1 45%;
-            }
-            .doctor-card, .patient-card {
-                margin: 10px 16px 20px 16px;
-            }
-            .vitals-row {
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            }
-            .med-list, .user-attachments-row, .lab-list {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 16px;
-            }
-            .section-container {
-                margin: 0 32px 24px 32px;
-            }
-            .prescription-meta-strip {
-                margin: 0 32px 24px 32px;
-            }
-            .header {
-                padding: 16px 32px;
-            }
-            .feedback-trigger-zone {
-                margin: 28px 32px 10px 32px;
-            }
-            .modal-card {
-                max-width: 600px;
-            }
+            padding-bottom: 50px; 
         }
 
         /* --- Header --- */
@@ -882,32 +836,30 @@
         <div class="icon-btn"><span class="material-symbols-outlined">share</span></div>
     </div>
 
-    <div class="desktop-flex-row">
-        <div class="doctor-card">
-            <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=150&q=80" alt="Dr. Vikram" class="doctor-avatar">
-            <div class="doctor-info">
-                <h2>Dr. Vikram Malhotra</h2>
-                <p>Senior Veterinarian</p>
-                <div class="reg-id">
-                    <span class="material-symbols-outlined" style="font-size: 14px;">verified</span>
-                    REG ID: VET-88291
-                </div>
+    <div class="doctor-card">
+        <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=150&q=80" alt="Dr. Vikram" class="doctor-avatar">
+        <div class="doctor-info">
+            <h2>Dr. Vikram Malhotra</h2>
+            <p>Senior Veterinarian</p>
+            <div class="reg-id">
+                <span class="material-symbols-outlined" style="font-size: 14px;">verified</span>
+                REG ID: VET-88291
             </div>
         </div>
+    </div>
 
-        <div class="patient-card">
-            <div class="avatar-container">
-                <img src="https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80" alt="Luna" class="avatar">
-                <div class="status-dot"></div>
-            </div>
-            <div class="patient-info">
-                <h2>Prescription for Luna</h2>
-                <div class="pet-breed">Dog • Golden Retriever</div>
-                <p>3 Years Old • ID: #SRV-9921</p>
-                <div class="tags">
-                    <span class="tag tag-primary">CONSULTATION: VIDEO CALL</span>
-                    <span class="tag tag-secondary">WEIGHT: 24KG</span>
-                </div>
+    <div class="patient-card">
+        <div class="avatar-container">
+            <img src="https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80" alt="Luna" class="avatar">
+            <div class="status-dot"></div>
+        </div>
+        <div class="patient-info">
+            <h2>Prescription for Luna</h2>
+            <div class="pet-breed">Dog • Golden Retriever</div>
+            <p>3 Years Old • ID: #SRV-9921</p>
+            <div class="tags">
+                <span class="tag tag-primary">CONSULTATION: VIDEO CALL</span>
+                <span class="tag tag-secondary">WEIGHT: 24KG</span>
             </div>
         </div>
     </div>
@@ -999,28 +951,26 @@
             <span class="material-symbols-outlined">biotech</span> Recommended Lab Tests
         </div>
         
-        <div class="lab-list">
-            <div class="lab-card">
-                <div class="lab-left">
-                    <div class="lab-icon"><span class="material-symbols-outlined">description</span></div>
-                    <div class="lab-info">
-                        <h4>Complete Blood Count (CBC)</h4>
-                        <p>8-hour fasting required</p>
-                    </div>
+        <div class="lab-card">
+            <div class="lab-left">
+                <div class="lab-icon"><span class="material-symbols-outlined">description</span></div>
+                <div class="lab-info">
+                    <h4>Complete Blood Count (CBC)</h4>
+                    <p>8-hour fasting required</p>
                 </div>
-                <button class="btn-book">Book Home</button>
             </div>
+            <button class="btn-book">Book Home</button>
+        </div>
 
-            <div class="lab-card">
-                <div class="lab-left">
-                    <div class="lab-icon"><span class="material-symbols-outlined">description</span></div>
-                    <div class="lab-info">
-                        <h4>Urinalysis Panel</h4>
-                        <p>Next-day results available</p>
-                    </div>
+        <div class="lab-card">
+            <div class="lab-left">
+                <div class="lab-icon"><span class="material-symbols-outlined">description</span></div>
+                <div class="lab-info">
+                    <h4>Urinalysis Panel</h4>
+                    <p>Next-day results available</p>
                 </div>
-                <button class="btn-book">Book Home</button>
             </div>
+            <button class="btn-book">Book Home</button>
         </div>
     </div>
 
@@ -1149,6 +1099,8 @@
         stars.forEach((star, index) => {
             if (index < num) {
                 star.classList.add('active');
+                star.style.transform = 'scale(1.15)';
+                setTimeout(() => star.style.transform = 'scale(1)', 120);
             } else {
                 star.classList.remove('active');
             }
@@ -1156,18 +1108,10 @@
     }
 
     function submitAndCloseFeedback() {
+        alert("Thank you! Your verified consultation feedback has been submitted successfully.");
         closeFeedbackSheet();
-        // Optional: show a toast or alert that feedback was submitted
     }
-    
-    document.querySelector('.icon-btn').addEventListener('click', function(e) {
-        e.preventDefault();
-        if(window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: 'GO_BACK' }, '*');
-        } else {
-            history.back();
-        }
-    });
 </script>
+
 </body>
 </html>
