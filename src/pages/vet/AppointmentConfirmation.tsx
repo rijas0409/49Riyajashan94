@@ -52,7 +52,7 @@ export default function AppointmentConfirmation() {
     const fetchAppointment = async () => {
       try {
         setIsLoading(true);
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appointmentId);
+        const isUUID = appointmentId ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appointmentId) : false;
         let foundData: any = null;
 
         if (isUUID) {
@@ -88,8 +88,13 @@ export default function AppointmentConfirmation() {
             .eq("id", foundData.vet_id)
             .maybeSingle();
             
-          const localPayStr = localStorage.getItem(`payment_details_${foundData.id}`);
-          const localPay = localPayStr ? JSON.parse(localPayStr) : null;
+          let localPay = null;
+          try {
+            const localPayStr = localStorage.getItem(`payment_details_${foundData.id}`);
+            localPay = localPayStr ? JSON.parse(localPayStr) : null;
+          } catch (e) {
+            console.error("Error parsing localStorage payment details:", e);
+          }
           
           let dbPay = null;
           if (foundData.consultation_notes) {
@@ -113,8 +118,13 @@ export default function AppointmentConfirmation() {
             setShowRejectSheet(true);
           }
         } else if (location.state?.visit) {
-          const localPayStr = localStorage.getItem(`payment_details_${appointmentId}`);
-          const localPay = localPayStr ? JSON.parse(localPayStr) : null;
+          let localPay = null;
+          try {
+            const localPayStr = localStorage.getItem(`payment_details_${appointmentId}`);
+            localPay = localPayStr ? JSON.parse(localPayStr) : null;
+          } catch (e) {
+            console.error("Error parsing localStorage state payment details:", e);
+          }
 
           // If not found in DB yet (maybe delay), use state visit
           setAppointment({
@@ -242,7 +252,7 @@ export default function AppointmentConfirmation() {
     return `Dr. ${rawName}`;
   };
 
-  const vetImgUrl = getPublicUrl(vet?.profile_photo || vet_profile?.profile_photo || vet?.image || vet?.avatar_url || appointment?.vet_profile?.profile_photo || appointment?.vet?.profile_photo);
+  const vetImgUrl = getPublicUrl(vet?.profile_photo || vetProfile?.profile_photo || vet?.image || vet?.avatar_url || appointment?.vet_profile?.profile_photo || appointment?.vet?.profile_photo);
 
   // Dynamic values without fallbacks
   const displaySpecialization = vetProfile?.specialization || 
@@ -264,17 +274,19 @@ export default function AppointmentConfirmation() {
       <div className="fixed inset-0 bg-[radial-gradient(ellipse_85%_42%_at_50%_0%,rgba(232,51,109,0.07)_0%,transparent_65%)] pointer-events-none z-0" />
 
       {/* Navigation */}
-      <div className="fixed top-0 left-0 right-0 flex items-center justify-between px-4 py-4 z-[100] bg-[#F7F7FB]/80 backdrop-blur-md">
-        <button 
-          onClick={() => navigate('/vet/booking-details')}
-          className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center cursor-pointer active:scale-95 transition-all z-10"
-        >
-          <ArrowLeft className="w-5 h-5 text-foreground" />
-        </button>
-        <h1 className="text-lg font-bold text-foreground">Appointment Status</h1>
-        <button className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center cursor-pointer active:scale-95 transition-all">
-          <MoreHorizontal className="w-5 h-5 text-foreground" />
-        </button>
+      <div className="fixed top-0 left-0 right-0 z-[100] bg-[#F7F7FB]/80 backdrop-blur-md border-b border-black/[0.03]">
+        <div className="max-w-md mx-auto w-full flex items-center justify-between px-4 py-4">
+          <button 
+            onClick={() => navigate('/vet/booking-details')}
+            className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center cursor-pointer active:scale-95 transition-all z-10"
+          >
+            <ArrowLeft className="w-5 h-5 text-foreground" />
+          </button>
+          <h1 className="text-lg font-bold text-foreground">Appointment Status</h1>
+          <button className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center cursor-pointer active:scale-95 transition-all">
+            <MoreHorizontal className="w-5 h-5 text-foreground" />
+          </button>
+        </div>
       </div>
 
       <div className="px-4 space-y-4 pb-32 pt-24 max-w-md mx-auto relative z-10">
@@ -294,19 +306,23 @@ export default function AppointmentConfirmation() {
               {!isRevealed ? (
                 <div className="flex flex-col items-center w-full">
                   <motion.div
-                    drag="y"
-                    dragConstraints={{ top: 0, bottom: 120 }}
-                    style={{ y, scale: bubbleScale, opacity: bubbleOpacity }}
-                    onDragEnd={handleDragEnd}
-                    className="w-20 h-20 rounded-full bg-white border-[3px] border-white shadow-[0_0_0_5px_rgba(232,51,109,0.12),0_8px_24px_rgba(0,0,0,0.12)] flex items-center justify-center cursor-grab active:cursor-grabbing z-30 overflow-hidden shrink-0"
                     animate={{ y: [0, -6, 0] }}
                     transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                    className="z-30 shrink-0"
                   >
-                    {vetImgUrl ? (
-                      <img src={vetImgUrl} alt={getVetDisplayName()} className="w-full h-full object-cover rounded-full" />
-                    ) : (
-                      <User className="w-8 h-8 text-[#E8336D]" />
-                    )}
+                    <motion.div
+                      drag="y"
+                      dragConstraints={{ top: 0, bottom: 120 }}
+                      style={{ y, scale: bubbleScale, opacity: bubbleOpacity }}
+                      onDragEnd={handleDragEnd}
+                      className="w-20 h-20 rounded-full bg-white border-[3px] border-white shadow-[0_0_0_5px_rgba(232,51,109,0.12),0_8px_24px_rgba(0,0,0,0.12)] flex items-center justify-center cursor-grab active:cursor-grabbing overflow-hidden shrink-0"
+                    >
+                      {vetImgUrl ? (
+                        <img src={vetImgUrl} alt={getVetDisplayName()} className="w-full h-full object-cover rounded-full" />
+                      ) : (
+                        <User className="w-8 h-8 text-[#E8336D]" />
+                      )}
+                    </motion.div>
                   </motion.div>
                   
                   <motion.div style={{ opacity: pullHintOpacity }} className="mt-2.5 flex flex-col items-center gap-1">
@@ -462,77 +478,81 @@ export default function AppointmentConfirmation() {
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-[#F7F7FB] flex flex-col items-center justify-center p-6 text-center"
+            className="fixed inset-0 z-[200] bg-[#F7F7FB] overflow-y-auto"
           >
-            {/* Top Navigation Row */}
-            <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between z-10">
-              <button 
-                onClick={() => navigate(-1)}
-                className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center cursor-pointer active:scale-95 transition-all"
-              >
-                <ArrowLeft className="w-5 h-5 text-slate-800" />
-              </button>
-              <span className="font-bold text-base text-slate-800">Status</span>
-              <div className="w-10"></div>
-            </div>
-
-            {/* Centered Content */}
-            <div className="w-full max-w-sm space-y-6 flex flex-col items-center justify-center">
-              {/* Alert Badge */}
-              <div className="inline-flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-2">
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-xs font-black text-red-600 uppercase tracking-widest leading-none">Veterinarian Unavailable</span>
+            <div className="min-h-full w-full max-w-md mx-auto flex flex-col items-center justify-center p-6 text-center relative py-20">
+              {/* Top Navigation Row */}
+              <div className="absolute top-0 left-0 right-0 p-4">
+                <div className="max-w-md mx-auto w-full flex items-center justify-between">
+                  <button 
+                    onClick={() => navigate(-1)}
+                    className="w-10 h-10 rounded-full bg-slate-200/60 flex items-center justify-center cursor-pointer active:scale-95 transition-all"
+                  >
+                    <ArrowLeft className="w-5 h-5 text-slate-800" />
+                  </button>
+                  <span className="font-bold text-base text-slate-800">Status</span>
+                  <div className="w-10"></div>
+                </div>
               </div>
 
-              {/* Title & Description */}
-              <div className="text-center">
-                <h3 className="text-[24px] font-black text-[#18181B] leading-tight tracking-tight">
-                  Veterinarian Unavailable
-                </h3>
-                <p className="text-sm text-[#52525B] font-medium leading-relaxed mt-3 max-w-[320px] mx-auto">
-                  {getVetDisplayName()} is currently unavailable. No worries! Here's what you can do right now to get your pet seen quickly.
-                </p>
-              </div>
+              {/* Centered Content */}
+              <div className="w-full space-y-6 flex flex-col items-center justify-center mt-6">
+                {/* Alert Badge */}
+                <div className="inline-flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-2">
+                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-xs font-black text-red-600 uppercase tracking-widest leading-none">Veterinarian Unavailable</span>
+                </div>
 
-              {/* Refund Info */}
-              <div className="bg-[#12B76A]/10 border border-[#12B76A]/20 rounded-2xl p-4 flex items-center gap-3 w-full text-left">
-                <CheckCircle2 className="w-5 h-5 text-[#12B76A] shrink-0" strokeWidth={3} />
-                <p className="text-[13px] text-[#0A6640] font-bold">Your full refund of <span className="font-black">₹{payAmount}</span> will be processed within 24 hours</p>
-              </div>
+                {/* Title & Description */}
+                <div className="text-center">
+                  <h3 className="text-[24px] font-black text-[#18181B] leading-tight tracking-tight">
+                    Veterinarian Unavailable
+                  </h3>
+                  <p className="text-sm text-[#52525B] font-medium leading-relaxed mt-3 max-w-[320px] mx-auto">
+                    {getVetDisplayName()} is currently unavailable. No worries! Here's what you can do right now to get your pet seen quickly.
+                  </p>
+                </div>
 
-              {/* Action Cards */}
-              <div className="grid grid-cols-2 gap-4 w-full">
-                <button 
-                  onClick={() => navigate("/vet/all-specialists")}
-                  className="bg-[linear-gradient(135deg,#E8336D,#7C3AED)] text-white p-5 rounded-2xl text-left flex flex-col gap-3 shadow-lg shadow-[#E8336D]/20 active:scale-95 transition-transform cursor-pointer"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                    <Search className="w-5 h-5 text-white" strokeWidth={2.5} />
-                  </div>
-                  <div>
-                    <div className="text-[14px] font-black tracking-tight leading-snug">Find Another Vet</div>
-                    <div className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-1">Available Now</div>
-                  </div>
+                {/* Refund Info */}
+                <div className="bg-[#12B76A]/10 border border-[#12B76A]/20 rounded-2xl p-4 flex items-center gap-3 w-full text-left">
+                  <CheckCircle2 className="w-5 h-5 text-[#12B76A] shrink-0" strokeWidth={3} />
+                  <p className="text-[13px] text-[#0A6640] font-bold">Your full refund of <span className="font-black">₹{payAmount}</span> will be processed within 24 hours</p>
+                </div>
+
+                {/* Action Cards */}
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full">
+                  <button 
+                    onClick={() => navigate("/vet/all-specialists")}
+                    className="bg-[linear-gradient(135deg,#E8336D,#7C3AED)] text-white p-4 sm:p-5 rounded-2xl text-left flex flex-col gap-3 shadow-lg shadow-[#E8336D]/20 active:scale-95 transition-transform cursor-pointer"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                      <Search className="w-5 h-5 text-white" strokeWidth={2.5} />
+                    </div>
+                    <div>
+                      <div className="text-[13px] sm:text-[14px] font-black tracking-tight leading-snug">Find Another Vet</div>
+                      <div className="text-[9px] sm:text-[10px] font-bold opacity-80 uppercase tracking-widest mt-1">Available Now</div>
+                    </div>
+                  </button>
+                  <button 
+                    onClick={() => navigate("/vet/consultation-plan")}
+                    className="bg-white border border-[#E8336D]/15 text-[#E8336D] p-4 sm:p-5 rounded-2xl text-left flex flex-col gap-3 shadow-[0_4px_12px_rgba(0,0,0,0.02)] active:scale-95 transition-transform cursor-pointer"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-[#FFF0F5] flex items-center justify-center">
+                      <Video className="w-5 h-5 text-[#E8336D]" strokeWidth={2.5} />
+                    </div>
+                    <div>
+                      <div className="text-[13px] sm:text-[14px] font-black tracking-tight leading-snug">Instant Video</div>
+                      <div className="text-[9px] sm:text-[10px] font-bold text-[#52525B]/70 uppercase tracking-widest mt-1">Ready in {"< 2min"}</div>
+                    </div>
+                  </button>
+                </div>
+                
+                <button className="w-full h-14 bg-white border border-slate-100 rounded-xl flex items-center px-4 gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
+                  <MessageSquare className="w-4 h-4 text-[#A1A1AA]" />
+                  <span className="flex-1 text-[14px] font-bold text-[#52525B] text-left">Need help? Contact Support</span>
+                  <ChevronRight className="w-4 h-4 text-[#D4D4D8]" />
                 </button>
-                <button 
-                  onClick={() => navigate("/vet/consultation-plan")}
-                  className="bg-white border border-[#E8336D]/15 text-[#E8336D] p-5 rounded-2xl text-left flex flex-col gap-3 shadow-[0_4px_12px_rgba(0,0,0,0.02)] active:scale-95 transition-transform cursor-pointer"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-[#FFF0F5] flex items-center justify-center">
-                    <Video className="w-5 h-5 text-[#E8336D]" strokeWidth={2.5} />
-                  </div>
-                  <div>
-                    <div className="text-[14px] font-black tracking-tight leading-snug">Instant Video</div>
-                    <div className="text-[10px] font-bold text-[#52525B]/70 uppercase tracking-widest mt-1">Ready in {"< 2min"}</div>
-                  </div>
-                </button>
               </div>
-              
-              <button className="w-full h-14 bg-white border border-slate-100 rounded-xl flex items-center px-4 gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-                <MessageSquare className="w-4 h-4 text-[#A1A1AA]" />
-                <span className="flex-1 text-[14px] font-bold text-[#52525B] text-left">Need help? Contact Support</span>
-                <ChevronRight className="w-4 h-4 text-[#D4D4D8]" />
-              </button>
             </div>
           </motion.div>
         )}

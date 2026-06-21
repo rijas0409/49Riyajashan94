@@ -149,12 +149,19 @@ const VetScheduleVisitDetails: React.FC = () => {
 
     const startTimestamp = Math.floor(Date.now() / 1000);
     setTimerStartEpoch(startTimestamp);
+    
+    // Write key local storage
     localStorage.setItem(`gp_appt_start_${currentApptId}`, String(startTimestamp));
     localStorage.setItem(`gp_appt_status_${currentApptId}`, "in_progress");
 
     // Resolve the actual database UUID for the update if currentApptId is a short ID
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentApptId);
     const targetId = isUUID ? currentApptId : (dbAppointment?.id || "");
+
+    if (targetId && targetId !== currentApptId) {
+      localStorage.setItem(`gp_appt_start_${targetId}`, String(startTimestamp));
+      localStorage.setItem(`gp_appt_status_${targetId}`, "in_progress");
+    }
 
     if (targetId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId)) {
       try {
@@ -296,8 +303,14 @@ const VetScheduleVisitDetails: React.FC = () => {
             if (matchedData.call_duration) {
               setTimerStartEpoch(matchedData.call_duration);
               localStorage.setItem(`gp_appt_start_${currentApptId}`, String(matchedData.call_duration));
+              if (resolvedId && resolvedId !== currentApptId) {
+                localStorage.setItem(`gp_appt_start_${resolvedId}`, String(matchedData.call_duration));
+              }
             }
             localStorage.setItem(`gp_appt_status_${currentApptId}`, "in_progress");
+            if (resolvedId && resolvedId !== currentApptId) {
+              localStorage.setItem(`gp_appt_status_${resolvedId}`, "in_progress");
+            }
           } else if (matchedData.status === "completed") {
             setIsCompleted(true);
           }
@@ -332,8 +345,14 @@ const VetScheduleVisitDetails: React.FC = () => {
                 if (updated.call_duration) {
                   setTimerStartEpoch(updated.call_duration);
                   localStorage.setItem(`gp_appt_start_${currentApptId}`, String(updated.call_duration));
+                  if (resolvedId && resolvedId !== currentApptId) {
+                    localStorage.setItem(`gp_appt_start_${resolvedId}`, String(updated.call_duration));
+                  }
                 }
                 localStorage.setItem(`gp_appt_status_${currentApptId}`, "in_progress");
+                if (resolvedId && resolvedId !== currentApptId) {
+                  localStorage.setItem(`gp_appt_status_${resolvedId}`, "in_progress");
+                }
               } else if (updated.status === "completed") {
                 setIsCompleted(true);
               }
@@ -353,17 +372,22 @@ const VetScheduleVisitDetails: React.FC = () => {
     const currentApptId = appointmentId || stateVisit?.id;
     if (!currentApptId) return;
 
+    const targetId = dbAppointment?.id;
+
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === `gp_appt_status_${currentApptId}`) {
+      const isStatusKey = e.key === `gp_appt_status_${currentApptId}` || (targetId && e.key === `gp_appt_status_${targetId}`);
+      const isStartKey = e.key === `gp_appt_start_${currentApptId}` || (targetId && e.key === `gp_appt_start_${targetId}`);
+
+      if (isStatusKey) {
         if (e.newValue === "in_progress") {
           setIsVerified(true);
-          const start = localStorage.getItem(`gp_appt_start_${currentApptId}`);
+          const start = localStorage.getItem(`gp_appt_start_${currentApptId}`) || (targetId ? localStorage.getItem(`gp_appt_start_${targetId}`) : null);
           if (start) {
             setTimerStartEpoch(Number(start));
           }
         }
       }
-      if (e.key === `gp_appt_start_${currentApptId}`) {
+      if (isStartKey) {
         if (e.newValue) {
           setTimerStartEpoch(Number(e.newValue));
         }
@@ -374,7 +398,7 @@ const VetScheduleVisitDetails: React.FC = () => {
     return () => {
       window.removeEventListener("storage", handleStorageChange);
     };
-  }, [appointmentId, stateVisit?.id]);
+  }, [appointmentId, stateVisit?.id, dbAppointment?.id]);
 
   // 3. Perfect Clock Tick Timer
   useEffect(() => {
@@ -387,7 +411,7 @@ const VetScheduleVisitDetails: React.FC = () => {
     };
 
     tick();
-    const interval = setInterval(tick, 1000);
+    const interval = setInterval(tick, 100);
     return () => clearInterval(interval);
   }, [isVerified, timerStartEpoch]);
 
@@ -451,6 +475,9 @@ const VetScheduleVisitDetails: React.FC = () => {
       
       if (targetId) {
         localStorage.setItem(`gp_appt_status_${targetId}`, "completed");
+      }
+      if (appointmentId && appointmentId !== targetId) {
+        localStorage.setItem(`gp_appt_status_${appointmentId}`, "completed");
       }
 
       setTimeout(() => {

@@ -347,17 +347,6 @@ const CreatePrescription = () => {
         if (attErr) throw new Error(`Failed to save attachment metadata for ${fileObj.file.name}: ` + attErr.message);
       }
 
-      // Step 5: Update Appointment status
-      if (appointmentId && appointmentId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-         console.log("PRESCRIPTION_GENERATED");
-         const { error: apptErr } = await supabase.from('vet_appointments').update({
-           status: 'generated',
-           medicines: JSON.stringify(medicines),
-           diagnosis: diagnosis.join(', ')
-         }).eq('id', appointmentId);
-         if (apptErr) throw new Error("Failed to update appointment status: " + apptErr.message);
-      }
-
       setCreatedPrescriptionId(prescriptionId);
       setIsSuccessModalOpen(true);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -385,6 +374,27 @@ const CreatePrescription = () => {
         rating: rating,
       });
     }
+
+    // Step 5: Update Appointment status to trigger Buyer redirect
+    if (appointmentId && appointmentId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+       console.log("PRESCRIPTION_GENERATED");
+       const { error: apptErr } = await supabase.from('vet_appointments').update({
+         status: 'generated',
+         medicines: JSON.stringify(medicines),
+         diagnosis: diagnosis.join(', ')
+       }).eq('id', appointmentId);
+       if (apptErr) console.error("Failed to update appointment status: " + apptErr.message);
+    }
+    
+    // Trigger real-time fallback for the buyer side
+    if (appointmentId) {
+      localStorage.setItem(`gp_prescription_${appointmentId}`, JSON.stringify({
+        id: createdPrescriptionId,
+        medicines: medicines,
+        diagnosis: diagnosis.join(', ')
+      }));
+    }
+
     toast.success("Prescription finalized!");
     navigate("/vet/schedule");
   };

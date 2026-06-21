@@ -453,21 +453,23 @@ const BuyerVisitDetails: React.FC = () => {
 
     // Handle initial state if database already says in_progress
     // using local cache helps
-    const offlineStatus = localStorage.getItem(`gp_appt_status_${currentVisitId}`);
-    const offlineStart = localStorage.getItem(`gp_appt_start_${currentVisitId}`);
+    const offlineStatus = localStorage.getItem(`gp_appt_status_${currentVisitId}`) || (realDbId ? localStorage.getItem(`gp_appt_status_${realDbId}`) : null);
+    const offlineStart = localStorage.getItem(`gp_appt_start_${currentVisitId}`) || (realDbId ? localStorage.getItem(`gp_appt_start_${realDbId}`) : null);
     if (offlineStatus === "in_progress" && offlineStart) {
-      setTimerStartEpoch((prev) => prev ? prev : Number(offlineStart));
+      setTimerStartEpoch(Number(offlineStart));
     }
 
+    const filterId = (realDbId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(realDbId)) ? realDbId : currentVisitId;
+
     const channel = supabase
-      .channel(`clinic_visit_details_${currentVisitId}`)
+      .channel(`clinic_visit_details_${filterId}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "vet_appointments",
-          filter: `id=eq.${currentVisitId}`,
+          filter: `id=eq.${filterId}`,
         },
         async (payload) => {
           console.log("Realtime appointment update received:", payload);
@@ -479,12 +481,14 @@ const BuyerVisitDetails: React.FC = () => {
             if (updated.status === "completed") {
                console.log("BUYER_RECEIVED_PREPARING_EVENT");
                console.log("BUYER_NAVIGATED_TO_PREPARING");
-               navigate("/buyer/vet/prescription/preparing", { 
-                 state: { 
-                   appointmentId: currentVisitId,
-                   petName: initialVisit.petName
-                 } 
-               });
+               setTimeout(() => {
+                 navigate("/buyer/vet/prescription/preparing", { 
+                   state: { 
+                     appointmentId: realDbId || currentVisitId,
+                     petName: initialVisit.petName
+                   } 
+                 });
+               }, 1500);
                return;
             }
 
@@ -492,9 +496,13 @@ const BuyerVisitDetails: React.FC = () => {
             if (updated.status === "in_progress") {
                setShowUserQr(false);
                const startVal = updated.call_duration || Math.floor(Date.now() / 1000);
-               setTimerStartEpoch(prev => prev ? prev : startVal);
+               setTimerStartEpoch(startVal);
                localStorage.setItem(`gp_appt_start_${currentVisitId}`, String(startVal));
                localStorage.setItem(`gp_appt_status_${currentVisitId}`, "in_progress");
+               if (realDbId && realDbId !== currentVisitId) {
+                 localStorage.setItem(`gp_appt_start_${realDbId}`, String(startVal));
+                 localStorage.setItem(`gp_appt_status_${realDbId}`, "in_progress");
+               }
                toast.success("✨ Vet has verified your QR Code: Consultation is now Active!");
             }
 
@@ -526,12 +534,14 @@ const BuyerVisitDetails: React.FC = () => {
           if (data.status === "completed") {
              console.log("BUYER_RECEIVED_PREPARING_EVENT");
              console.log("BUYER_NAVIGATED_TO_PREPARING");
-             navigate("/buyer/vet/prescription/preparing", { 
-               state: { 
-                 appointmentId: currentVisitId,
-                 petName: initialVisit.petName
-               } 
-             });
+             setTimeout(() => {
+               navigate("/buyer/vet/prescription/preparing", { 
+                 state: { 
+                   appointmentId: realDbId || currentVisitId,
+                   petName: initialVisit.petName
+                 } 
+               });
+             }, 1500);
              clearInterval(pollInterval);
              return;
           }
@@ -539,9 +549,13 @@ const BuyerVisitDetails: React.FC = () => {
           if (data.status === "in_progress") {
              setShowUserQr(false);
              const startVal = data.call_duration || Math.floor(Date.now() / 1000);
-             setTimerStartEpoch(prev => prev ? prev : startVal);
+             setTimerStartEpoch(startVal);
              localStorage.setItem(`gp_appt_start_${currentVisitId}`, String(startVal));
              localStorage.setItem(`gp_appt_status_${currentVisitId}`, "in_progress");
+             if (realDbId && realDbId !== currentVisitId) {
+               localStorage.setItem(`gp_appt_start_${realDbId}`, String(startVal));
+               localStorage.setItem(`gp_appt_status_${realDbId}`, "in_progress");
+             }
           }
         }
       } catch (err) {
@@ -553,32 +567,37 @@ const BuyerVisitDetails: React.FC = () => {
       clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
-  }, [currentVisitId, navigate, initialVisit.petName]);
+  }, [currentVisitId, navigate, initialVisit.petName, realDbId]);
 
   // Synchronize with storage events across multiple buyer/vet browser tabs
   useEffect(() => {
     if (!currentVisitId) return;
 
     const syncStorage = (e: StorageEvent) => {
-      if (e.key === `gp_appt_status_${currentVisitId}`) {
+      const isStatusKey = e.key === `gp_appt_status_${currentVisitId}` || (realDbId && e.key === `gp_appt_status_${realDbId}`);
+      const isStartKey = e.key === `gp_appt_start_${currentVisitId}` || (realDbId && e.key === `gp_appt_start_${realDbId}`);
+
+      if (isStatusKey) {
         if (e.newValue === "completed") {
-           navigate("/buyer/vet/prescription/preparing", { 
-             state: { 
-               appointmentId: currentVisitId,
-               petName: initialVisit.petName
-             } 
-           });
+           setTimeout(() => {
+             navigate("/buyer/vet/prescription/preparing", { 
+               state: { 
+                 appointmentId: realDbId || currentVisitId,
+                 petName: initialVisit.petName
+               } 
+             });
+           }, 1500);
            return;
         }
         if (e.newValue === "in_progress") {
           setShowUserQr(false);
-          const start = localStorage.getItem(`gp_appt_start_${currentVisitId}`);
+          const start = localStorage.getItem(`gp_appt_start_${currentVisitId}`) || (realDbId ? localStorage.getItem(`gp_appt_start_${realDbId}`) : null);
           if (start) {
             setTimerStartEpoch(Number(start));
           }
         }
       }
-      if (e.key === `gp_appt_start_${currentVisitId}`) {
+      if (isStartKey) {
         if (e.newValue) {
           setTimerStartEpoch(Number(e.newValue));
         }
@@ -589,7 +608,7 @@ const BuyerVisitDetails: React.FC = () => {
     return () => {
       window.removeEventListener("storage", syncStorage);
     };
-  }, [currentVisitId]);
+  }, [currentVisitId, realDbId]);
 
   // Handle active countdown / tick up timer
   useEffect(() => {
@@ -602,7 +621,7 @@ const BuyerVisitDetails: React.FC = () => {
     };
 
     tick();
-    const interval = setInterval(tick, 1000);
+    const interval = setInterval(tick, 100);
     return () => clearInterval(interval);
   }, [timerStartEpoch]);
 
