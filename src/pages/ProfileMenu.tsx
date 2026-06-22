@@ -38,7 +38,7 @@ const MENU_ITEMS = [
     icon: Calendar,
     title: "Bookings",
     description: "View your booking history",
-    path: "/bookings",
+    path: "/buyer/bookings",
   },
   {
     id: "orders",

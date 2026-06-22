@@ -141,6 +141,7 @@ const RouteTracker = () => {
       "/passport",
       "/addresses",
       "/wallet",
+      "/buyer/bookings",
       "/bookings",
       "/product-orders",
       "/notifications",
@@ -181,7 +182,9 @@ const App = () => (
                 <Route path="/auth-delivery" element={<AuthDelivery />} />
                 <Route path="/auth-products" element={<AuthProducts />} />
                 <Route path="/auth-vet" element={<AuthVet />} />
-                <Route path="/bookings" element={<Bookings />} />
+                <Route path="/buyer/bookings" element={<Bookings />} />
+                <Route path="/bookings" element={<Navigate to="/buyer/bookings" replace />} />
+                <Route path="/profile/bookings" element={<Navigate to="/buyer/bookings" replace />} />
                 <Route path="/brand/:brandName" element={<Navigate to="/buyer/shop/brand/:brandName" replace />} />
                 <Route path="/buyer/shop/brand/:brandName" element={<BrandProfile />} />
                 <Route path="/buyer-dashboard" element={<Navigate to="/buyer/home" replace />} />
@@ -227,7 +230,8 @@ const App = () => (
                 <Route path="/buyer/vet/visit-details/:appointmentId" element={<BuyerVisitDetails />} />
                 <Route path="/vet/schedule/visit-details" element={<VetScheduleVisitDetails />} />
                 <Route path="/vet/schedule/visit-details/:appointmentId" element={<VetScheduleVisitDetails />} />
-                <Route path="/vet/appointment-confirmation/:appointmentId" element={<AppointmentConfirmation />} />
+                <Route path="/buyer/vet/appointment/pending" element={<AppointmentConfirmation />} />
+                <Route path="/buyer/vet/appointment/pending/:appointmentId" element={<AppointmentConfirmation />} />
                  <Route path="/vet-earnings" element={<Navigate to="/vet/earnings" replace />} />
                 <Route path="/vet-schedule" element={<Navigate to="/vet/schedule" replace />} />
                 <Route path="/vet/onboarding" element={

@@ -60,9 +60,14 @@ const petStatusConfig: Record<string, { label: string; color: string; icon: any;
 const vetStatusConfig: Record<string, { label: string; color: string; icon: any; bg: string }> = {
   pending: { label: "Pending", color: "text-amber-700", icon: Clock, bg: "bg-amber-50" },
   confirmed: { label: "Confirmed", color: "text-blue-700", icon: CheckCircle2, bg: "bg-blue-50" },
+  accepted: { label: "Confirmed", color: "text-blue-700", icon: CheckCircle2, bg: "bg-blue-50" },
+  approved: { label: "Confirmed", color: "text-blue-700", icon: CheckCircle2, bg: "bg-blue-50" },
   in_progress: { label: "In Progress", color: "text-purple-700", icon: Video, bg: "bg-purple-50" },
   completed: { label: "Completed", color: "text-green-700", icon: CheckCircle2, bg: "bg-green-50" },
+  generated: { label: "Completed", color: "text-green-700", icon: CheckCircle2, bg: "bg-green-50" },
   cancelled: { label: "Cancelled", color: "text-red-600", icon: XCircle, bg: "bg-red-50" },
+  rejected: { label: "Cancelled", color: "text-red-600", icon: XCircle, bg: "bg-red-50" },
+  failed: { label: "Cancelled", color: "text-red-600", icon: XCircle, bg: "bg-red-50" },
 };
 
 const petStatusSteps = ["pending", "accepted", "preparing", "ready", "picked", "delivered"];
@@ -79,11 +84,82 @@ const Bookings = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<OrderWithPet[]>([]);
   const [appointments, setAppointments] = useState<VetAppointment[]>([]);
+  const [prescIdMap, setPrescIdMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>("all");
 
   useEffect(() => {
     fetchAll();
+
+    // Setup real-time listeners for instant synchronization
+    let sessionUserId = "";
+    let apptChannel: any = null;
+    let orderChannel: any = null;
+    let prescChannel: any = null;
+
+    const setupRealtime = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      sessionUserId = session.user.id;
+
+      apptChannel = supabase
+        .channel(`rt-appointments-${sessionUserId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "vet_appointments",
+            filter: `user_id=eq.${sessionUserId}`
+          },
+          () => {
+            console.log("Realtime update on appointments");
+            fetchAll();
+          }
+        )
+        .subscribe();
+
+      orderChannel = supabase
+        .channel(`rt-orders-${sessionUserId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "orders",
+            filter: `buyer_id=eq.${sessionUserId}`
+          },
+          () => {
+            console.log("Realtime update on orders");
+            fetchAll();
+          }
+        )
+        .subscribe();
+
+      prescChannel = supabase
+        .channel(`rt-prescriptions-${sessionUserId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "prescriptions"
+          },
+          () => {
+            console.log("Realtime update on prescriptions");
+            fetchAll();
+          }
+        )
+        .subscribe();
+    };
+
+    setupRealtime();
+
+    return () => {
+      if (apptChannel) supabase.removeChannel(apptChannel);
+      if (orderChannel) supabase.removeChannel(orderChannel);
+      if (prescChannel) supabase.removeChannel(prescChannel);
+    };
   }, []);
 
   const fetchAll = async () => {
@@ -105,7 +181,27 @@ const Bookings = () => {
       ]);
 
       if (ordersRes.data) setOrders(ordersRes.data as unknown as OrderWithPet[]);
-      if (appointmentsRes.data) setAppointments(appointmentsRes.data as unknown as VetAppointment[]);
+      if (appointmentsRes.data) {
+        const appts = appointmentsRes.data as unknown as VetAppointment[];
+        setAppointments(appts);
+        
+        if (appts.length > 0) {
+          const apptIds = appts.map(a => a.id);
+          const { data: presData } = await supabase
+            .from("prescriptions")
+            .select("id, appointment_id")
+            .in("appointment_id", apptIds);
+          if (presData) {
+            const prescMap: Record<string, string> = {};
+            presData.forEach(p => {
+              if (p.appointment_id) {
+                prescMap[p.appointment_id] = p.id;
+              }
+            });
+            setPrescIdMap(prescMap);
+          }
+        }
+      }
     } catch {
       console.error("Failed to fetch bookings");
     } finally {
@@ -195,7 +291,7 @@ const Bookings = () => {
             booking.type === "pet_order" ? (
               <PetOrderCard key={`pet-${booking.data.id}`} order={booking.data} formatDate={formatDate} getStepIndex={getStepIndex} navigate={navigate} />
             ) : (
-              <VetAppointmentCard key={`vet-${booking.data.id}`} appointment={booking.data} formatDate={formatDate} navigate={navigate} />
+              <VetAppointmentCard key={`vet-${booking.data.id}`} appointment={booking.data} formatDate={formatDate} navigate={navigate} prescId={prescIdMap[booking.data.id] || ""} />
             )
           )
         )}
@@ -286,13 +382,14 @@ const PetOrderCard = ({
 
 /* ─── Vet Appointment Card ─── */
 const VetAppointmentCard = ({
-  appointment, formatDate, navigate,
+  appointment, formatDate, navigate, prescId,
 }: {
   appointment: VetAppointment;
   formatDate: (d: string) => string;
   navigate: (path: string) => void;
+  prescId?: string;
 }) => {
-  const config = vetStatusConfig[appointment.status] || vetStatusConfig.pending;
+  const config = vetStatusConfig[(appointment.status || "pending").toLowerCase()] || vetStatusConfig.pending;
   const StatusIcon = config.icon;
   const TypeIcon = appointmentTypeIcons[appointment.appointment_type] || Video;
 
@@ -303,10 +400,56 @@ const VetAppointmentCard = ({
       ? "Clinic Visit"
       : "Home Visit";
 
+  const handleCardClick = () => {
+    const status = (appointment.status || "").toLowerCase();
+    if (status === "pending" || status === "rejected" || status === "cancelled" || status === "failed") {
+      navigate(`/buyer/vet/appointment/pending/${appointment.id}`, {
+        state: {
+          visit: appointment,
+          realAppointmentId: appointment.id,
+          appointmentId: appointment.id,
+          bookingId: appointment.id,
+          consultationId: appointment.id,
+          vetId: appointment.vet_id,
+          userId: appointment.user_id,
+          fromBookings: true,
+        }
+      });
+    } else if (status === "confirmed" || status === "in_progress" || status === "accepted" || status === "approved") {
+      navigate(`/buyer/vet/visit-details/${appointment.id}`, {
+        state: {
+          visit: appointment,
+          realAppointmentId: appointment.id,
+          appointmentId: appointment.id,
+          bookingId: appointment.id,
+          consultationId: appointment.id,
+          vetId: appointment.vet_id,
+          userId: appointment.user_id,
+          fromBookings: true,
+        }
+      });
+    } else if (status === "completed" || status === "generated") {
+      navigate(`/buyer/vet/prescription`, {
+        state: {
+          appointmentId: appointment.id,
+          id: appointment.id,
+          bookingId: appointment.id,
+          consultationId: appointment.id,
+          vetId: appointment.vet_id,
+          userId: appointment.user_id,
+          prescriptionId: prescId || "",
+          fromBookings: true,
+        }
+      });
+    } else {
+      navigate(`/vet/booking-details?id=${appointment.id}`);
+    }
+  };
+
   return (
     <Card
       className="rounded-2xl border-0 shadow-sm overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
-      onClick={() => navigate(`/vet/booking-details?id=${appointment.id}`)}
+      onClick={handleCardClick}
     >
       {/* Type badge */}
       <div className="px-4 pt-3 flex items-center gap-1.5">

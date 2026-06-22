@@ -1212,7 +1212,13 @@ const BuyerVisitDetails: React.FC = () => {
         {/* Header bar */}
         <header className="fixed top-0 left-0 right-0 w-full z-40 bg-white/95 backdrop-blur-md px-4 md:px-6 py-4 flex items-center justify-between border-b border-gray-150 shadow-sm animate-fade-in">
           <button 
-            onClick={() => navigate("/buyer/vet")}
+            onClick={() => {
+              if (location.state?.fromBookings) {
+                navigate("/buyer/bookings");
+              } else {
+                navigate("/buyer/vet");
+              }
+            }}
             className="p-2 hover:bg-gray-100 rounded-full text-gray-800 transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-800" strokeWidth={2.5} />

@@ -88,6 +88,93 @@ const CreatePrescription = () => {
   const vetUser = userStr ? JSON.parse(userStr) : null;
   const vetId = vetUser?.id || "";
 
+  // Real-time resolved data
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [dbAppointment, setDbAppointment] = useState<any>(null);
+  const [resolvedPetId, setResolvedPetId] = useState<string | null>(null);
+  const [resolvedVetId, setResolvedVetId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadRealtimeData = async () => {
+      try {
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appointmentId);
+        let matchedAppt = null;
+
+        if (isUUID) {
+          const { data, error } = await supabase
+            .from("vet_appointments")
+            .select("*")
+            .eq("id", appointmentId)
+            .maybeSingle();
+          if (!error && data) {
+            matchedAppt = data;
+          }
+        } else {
+          // Fallback search
+          const { data, error } = await supabase
+            .from("vet_appointments")
+            .select("*")
+            .limit(100);
+          if (!error && data) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            matchedAppt = data.find((apt: any) => {
+              if (apt.id === appointmentId) return true;
+              const clean = apt.id.replace(/[-]/g, "");
+              if (clean.length >= 9) {
+                const slice = clean.slice(0, 9);
+                const shortForm = `${slice.slice(0, 4)}-${slice.slice(4, 7)}-${slice.slice(7, 9)}`;
+                return shortForm === appointmentId;
+              }
+              return false;
+            });
+          }
+        }
+
+        if (matchedAppt) {
+          setDbAppointment(matchedAppt);
+          
+          // Collect vet_id
+          const finalVetId = matchedAppt.vet_id || vetId;
+          setResolvedVetId(finalVetId);
+
+          // Real-time lookup for pet_id in pet_passports
+          if (matchedAppt.user_id && matchedAppt.pet_name) {
+            const { data: petPassRow } = await supabase
+              .from("pet_passports")
+              .select("id")
+              .eq("user_id", matchedAppt.user_id)
+              .eq("pet_name", matchedAppt.pet_name)
+              .maybeSingle();
+
+            if (petPassRow) {
+              setResolvedPetId(petPassRow.id);
+            } else {
+              // Fallback to fetch any pet of this user
+              const { data: userPets } = await supabase
+                .from("pet_passports")
+                .select("id")
+                .eq("user_id", matchedAppt.user_id)
+                .limit(1);
+              if (userPets && userPets.length > 0) {
+                setResolvedPetId(userPets[0].id);
+              }
+            }
+          }
+        } else {
+          setResolvedVetId(vetId || null);
+        }
+      } catch (err) {
+        console.error("Error collecting real-time appointment and pet details:", err);
+      }
+    };
+
+    if (appointmentId && appointmentId !== "SRV-9921") {
+      loadRealtimeData();
+    } else {
+      setResolvedVetId(vetId || null);
+    }
+  }, [appointmentId, vetId]);
+
   // --- Realtime and Initial Fetch ---
   useEffect(() => {
     const fetchMasters = async () => {
@@ -268,8 +355,9 @@ const CreatePrescription = () => {
     try {
       // Step 1: Save Prescription
       const { data: pData, error: pErr } = await supabase.from('prescriptions').insert({
-        appointment_id: appointmentId,
-        vet_id: vetId || null,
+        appointment_id: dbAppointment?.id || appointmentId,
+        pet_id: resolvedPetId || null,
+        vet_id: resolvedVetId || vetId || null,
         temperature_f: vitals.temp ? parseFloat(vitals.temp) : null,
         heart_rate_bpm: vitals.hr ? parseFloat(vitals.hr) : null,
         diagnosis_tags: diagnosis, // JSONB directly handled
@@ -305,7 +393,7 @@ const CreatePrescription = () => {
             medicine_name: m.name,
             form_type: m.type,
             unit_price: m.price ? parseFloat(m.price.replace(/[^0-9.]/g, '')) : null,
-            created_by_vet: vetId || null
+            created_by_vet: resolvedVetId || vetId || null
           });
         }
       }
@@ -326,7 +414,7 @@ const CreatePrescription = () => {
       for (const fileObj of uploadedFiles) {
         const fileExt = fileObj.file.name.split('.').pop();
         const fileName = `${prescriptionId}-${Math.random()}.${fileExt}`;
-        const filePath = `${vetId}/${fileName}`;
+        const filePath = `${resolvedVetId || vetId}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('prescription-files')
@@ -342,7 +430,7 @@ const CreatePrescription = () => {
           file_type: fileObj.file.type,
           file_size: fileObj.size,
           file_url: urlData.publicUrl,
-          uploaded_by: vetId || null
+          uploaded_by: resolvedVetId || vetId || null
         });
         if (attErr) throw new Error(`Failed to save attachment metadata for ${fileObj.file.name}: ` + attErr.message);
       }
@@ -366,29 +454,37 @@ const CreatePrescription = () => {
   };
 
   const handleFinalSubmit = async () => {
+    const finalApptId = dbAppointment?.id || appointmentId;
     if (rating > 0 && createdPrescriptionId) {
       await supabase.from('consultation_ratings').insert({
-        appointment_id: appointmentId,
+        appointment_id: finalApptId,
         prescription_id: createdPrescriptionId,
-        vet_id: vetId || null,
+        vet_id: resolvedVetId || vetId || null,
         rating: rating,
       });
     }
 
     // Step 5: Update Appointment status to trigger Buyer redirect
-    if (appointmentId && appointmentId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+    if (finalApptId && finalApptId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
        console.log("PRESCRIPTION_GENERATED");
        const { error: apptErr } = await supabase.from('vet_appointments').update({
          status: 'generated',
          medicines: JSON.stringify(medicines),
          diagnosis: diagnosis.join(', ')
-       }).eq('id', appointmentId);
+       }).eq('id', finalApptId);
        if (apptErr) console.error("Failed to update appointment status: " + apptErr.message);
     }
     
     // Trigger real-time fallback for the buyer side
     if (appointmentId) {
       localStorage.setItem(`gp_prescription_${appointmentId}`, JSON.stringify({
+        id: createdPrescriptionId,
+        medicines: medicines,
+        diagnosis: diagnosis.join(', ')
+      }));
+    }
+    if (finalApptId && finalApptId !== appointmentId) {
+      localStorage.setItem(`gp_prescription_${finalApptId}`, JSON.stringify({
         id: createdPrescriptionId,
         medicines: medicines,
         diagnosis: diagnosis.join(', ')
@@ -419,17 +515,19 @@ const CreatePrescription = () => {
           <div className="relative shrink-0">
             <img 
               src="https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80" 
-              alt={petName} 
+              alt={dbAppointment?.pet_name || petName} 
               className="w-[74px] h-[74px] rounded-full object-cover border-2 border-[#9C42F5] p-0.5" 
             />
             <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-[#22C55E] border-[2.5px] border-white rounded-full"></div>
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-[17px] font-bold truncate">Prescription for {petName}</h2>
-            <div className="text-[#9C42F5] text-[12px] font-semibold mb-1">Dog • Golden Retriever</div>
+            <h2 className="text-[17px] font-bold truncate">Prescription for {dbAppointment?.pet_name || petName}</h2>
+            <div className="text-[#9C42F5] text-[12px] font-semibold mb-1">
+              {(dbAppointment?.pet_type || "Dog").toUpperCase()} • {(dbAppointment?.pet_breed || "Golden Retriever").toUpperCase()}
+            </div>
             <p className="text-[#8A8A9E] text-[12px] font-medium">3 Years Old • ID: #{appointmentId}</p>
             <div className="flex gap-1.5 mt-2 overflow-x-auto no-scrollbar">
-              <span className="bg-[#F4E8FF] text-[#9C42F5] px-2.5 py-1.5 rounded-[12px] text-[9px] font-bold whitespace-nowrap">CONSULTATION: {consultationType}</span>
+              <span className="bg-[#F4E8FF] text-[#9C42F5] px-2.5 py-1.5 rounded-[12px] text-[9px] font-bold whitespace-nowrap">CONSULTATION: {dbAppointment?.appointment_type?.toUpperCase() || consultationType}</span>
               <span className="bg-[#F0F0F5] text-[#8A8A9E] px-2.5 py-1.5 rounded-[12px] text-[9px] font-bold whitespace-nowrap">WEIGHT: 24KG</span>
             </div>
           </div>

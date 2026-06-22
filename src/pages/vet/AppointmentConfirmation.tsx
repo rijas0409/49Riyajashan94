@@ -30,6 +30,7 @@ const getShortBookingId = (id: string | undefined): string => {
 
 export default function AppointmentConfirmation() {
   const { appointmentId } = useParams();
+  const [resolvedAppointmentId, setResolvedAppointmentId] = useState<string | null>(appointmentId || null);
   const navigate = useNavigate();
   const location = useLocation();
   const [appointment, setAppointment] = useState<any>(location.state?.appointment || location.state?.visit || null);
@@ -47,19 +48,50 @@ export default function AppointmentConfirmation() {
   const pullHintOpacity = useTransform(y, [0, COMMIT_THRESHOLD / 2], [1, 0]);
 
   useEffect(() => {
-    if (!appointmentId) return;
+    if (!resolvedAppointmentId) {
+      const fetchLatestActive = async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            const { data, error } = await supabase
+              .from("vet_appointments")
+              .select("id")
+              .eq("user_id", session.user.id)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (!error && data?.id) {
+              setResolvedAppointmentId(data.id);
+            } else {
+              setIsLoading(false);
+            }
+          } else {
+            setIsLoading(false);
+          }
+        } catch (e) {
+          console.error("Error fetching latest active appt:", e);
+          setIsLoading(false);
+        }
+      };
+      fetchLatestActive();
+    }
+  }, [resolvedAppointmentId]);
+
+  useEffect(() => {
+    if (!resolvedAppointmentId) return;
 
     const fetchAppointment = async () => {
       try {
         setIsLoading(true);
-        const isUUID = appointmentId ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appointmentId) : false;
+        const isUUID = resolvedAppointmentId ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedAppointmentId) : false;
         let foundData: any = null;
 
         if (isUUID) {
           const { data, error } = await supabase
             .from("vet_appointments")
             .select("*")
-            .eq("id", appointmentId)
+            .eq("id", resolvedAppointmentId)
             .maybeSingle();
           if (!error && data) foundData = data;
         } else {
@@ -70,7 +102,7 @@ export default function AppointmentConfirmation() {
             .limit(100);
           
           if (!error && data) {
-            foundData = data.find(apt => getShortBookingId(apt.id) === appointmentId || apt.id === appointmentId);
+            foundData = data.find(apt => getShortBookingId(apt.id) === resolvedAppointmentId || apt.id === resolvedAppointmentId);
           }
         }
         
@@ -112,15 +144,15 @@ export default function AppointmentConfirmation() {
             payment_details: localPay || dbPay 
           });
           
-          if (foundData.status === "confirmed" || foundData.status === "approved") {
+          if (foundData.status === "confirmed" || foundData.status === "approved" || foundData.status === "accepted") {
             triggerSuccess(foundData.id);
-          } else if (foundData.status === "cancelled" || foundData.status === "failed") {
+          } else if (foundData.status === "cancelled" || foundData.status === "failed" || foundData.status === "rejected") {
             setShowRejectSheet(true);
           }
         } else if (location.state?.visit) {
           let localPay = null;
           try {
-            const localPayStr = localStorage.getItem(`payment_details_${appointmentId}`);
+            const localPayStr = localStorage.getItem(`payment_details_${resolvedAppointmentId}`);
             localPay = localPayStr ? JSON.parse(localPayStr) : null;
           } catch (e) {
             console.error("Error parsing localStorage state payment details:", e);
@@ -150,11 +182,11 @@ export default function AppointmentConfirmation() {
     return () => {
       clearInterval(pollInterval);
     };
-  }, [appointmentId]);
+  }, [resolvedAppointmentId]);
 
   // REAL-TIME SUBSCRIPTION Effect
   useEffect(() => {
-    const targetRealId = appointment?.id || (appointmentId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appointmentId) ? appointmentId : null);
+    const targetRealId = appointment?.id || (resolvedAppointmentId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedAppointmentId) ? resolvedAppointmentId : null);
     if (!targetRealId) return;
 
     const channel = supabase
@@ -170,9 +202,9 @@ export default function AppointmentConfirmation() {
         (payload) => {
           const newStatus = payload.new.status;
           console.log("Appointment status updated:", newStatus);
-          if (newStatus === "confirmed" || newStatus === "approved") {
+          if (newStatus === "confirmed" || newStatus === "approved" || newStatus === "accepted") {
             triggerSuccess(payload.new.id || targetRealId);
-          } else if (newStatus === "cancelled" || newStatus === "failed") {
+          } else if (newStatus === "cancelled" || newStatus === "failed" || newStatus === "rejected") {
             setShowRejectSheet(true);
           }
         }
@@ -182,14 +214,14 @@ export default function AppointmentConfirmation() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [appointment?.id, appointmentId]);
+  }, [appointment?.id, resolvedAppointmentId]);
 
   const triggerSuccess = (realId?: string) => {
     setIsRevealed(true);
     setShowSuccessOverlay(true);
     setTimeout(() => setProgressWidth(100), 100);
     setTimeout(() => {
-      navigate(`/buyer/vet/visit-details/${realId || appointment?.id || appointmentId}`, { 
+      navigate(`/buyer/vet/visit-details/${realId || appointment?.id || resolvedAppointmentId}`, { 
         replace: true,
         state: { fromBookingFlow: true }
       });
@@ -277,7 +309,13 @@ export default function AppointmentConfirmation() {
       <div className="fixed top-0 left-0 right-0 z-[100] bg-[#F7F7FB]/80 backdrop-blur-md border-b border-black/[0.03]">
         <div className="max-w-md mx-auto w-full flex items-center justify-between px-4 py-4">
           <button 
-            onClick={() => navigate('/vet/booking-details')}
+            onClick={() => {
+              if (location.state?.fromBookings) {
+                navigate('/buyer/bookings');
+                return;
+              }
+              navigate('/buyer/vet');
+            }}
             className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center cursor-pointer active:scale-95 transition-all z-10"
           >
             <ArrowLeft className="w-5 h-5 text-foreground" />
@@ -485,7 +523,13 @@ export default function AppointmentConfirmation() {
               <div className="absolute top-0 left-0 right-0 p-4">
                 <div className="max-w-md mx-auto w-full flex items-center justify-between">
                   <button 
-                    onClick={() => navigate(-1)}
+                    onClick={() => {
+                      if (location.state?.fromBookings) {
+                        navigate('/buyer/bookings');
+                      } else {
+                        navigate('/buyer/vet');
+                      }
+                    }}
                     className="w-10 h-10 rounded-full bg-slate-200/60 flex items-center justify-center cursor-pointer active:scale-95 transition-all"
                   >
                     <ArrowLeft className="w-5 h-5 text-slate-800" />

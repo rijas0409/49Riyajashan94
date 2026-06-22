@@ -21,6 +21,16 @@ import {
 } from "lucide-react";
 import { supabase } from "../../integrations/supabase/client";
 
+const getShortBookingId = (id: string | undefined): string => {
+  if (!id) return "...";
+  const clean = id.replace(/[-]/g, "");
+  if (clean.length >= 9) {
+    const slice = clean.slice(0, 9);
+    return `${slice.slice(0, 4)}-${slice.slice(4, 7)}-${slice.slice(7, 9)}`;
+  }
+  return id;
+};
+
 const DigitalPrescription = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -38,6 +48,15 @@ const DigitalPrescription = () => {
   const [attachments, setAttachments] = useState<any[]>([]);
   const [vetUser, setVetUser] = useState<any>(null);
   const [vetProfile, setVetProfile] = useState<any>(null);
+  const [petPassport, setPetPassport] = useState<any>(null);
+  const [isPetPhotoError, setIsPetPhotoError] = useState(false);
+  const [isVetPhotoError, setIsVetPhotoError] = useState(false);
+
+  // Reset photo error flags when key IDs change
+  useEffect(() => {
+    setIsPetPhotoError(false);
+    setIsVetPhotoError(false);
+  }, [appointmentId, petPassport?.id, vetProfile?.id]);
 
   // Feedback states
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
@@ -45,6 +64,20 @@ const DigitalPrescription = () => {
   const [feedbackText, setFeedbackText] = useState("");
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+
+  // Hardware/device back button interceptor to navigate to /buyer/vet
+  useEffect(() => {
+    const handleBack = () => {
+      navigate("/buyer/vet", { replace: true });
+    };
+
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", handleBack);
+
+    return () => {
+      window.removeEventListener("popstate", handleBack);
+    };
+  }, [navigate]);
 
   useEffect(() => {
     // If not passed via state, try loading from local storage
@@ -59,76 +92,187 @@ const DigitalPrescription = () => {
        }
     }
 
-    if (appointmentId) {
-      const fetchAllData = async () => {
-        try {
-          const { data: appt } = await supabase
-            .from("vet_appointments")
-            .select("*")
-            .eq("id", appointmentId)
-            .maybeSingle();
-            
-          if (appt) {
-            setAppointment(appt);
-            
-            // Try loading hardcoded column-based fallback
-            if (!prescriptionData || dbUpdate) {
-              try {
-                if (appt.consultation_notes) {
-                  setPrescriptionData(JSON.parse(appt.consultation_notes));
-                } else if (appt.medicines) {
-                  setPrescriptionData((prev: any) => ({
-                     ...prev,
-                     medicines: JSON.parse(appt.medicines),
-                     diagnosis: appt.diagnosis
-                  }));
-                }
-              } catch (e) {
-                console.warn("Soft notes parse warning:", e);
+    let appointmentChannel: any = null;
+    let prescriptionChannel: any = null;
+    let passportChannel: any = null;
+
+    const fetchAllData = async () => {
+      try {
+        const { data: appt } = await supabase
+          .from("vet_appointments")
+          .select("*")
+          .eq("id", appointmentId)
+          .maybeSingle();
+          
+        if (appt) {
+          setAppointment(appt);
+          
+          // Try loading hardcoded column-based fallback
+          if (!prescriptionData || dbUpdate) {
+            try {
+              if (appt.consultation_notes) {
+                setPrescriptionData(JSON.parse(appt.consultation_notes));
+              } else if (appt.medicines) {
+                setPrescriptionData((prev: any) => ({
+                   ...prev,
+                   medicines: JSON.parse(appt.medicines),
+                   diagnosis: appt.diagnosis
+                }));
+              }
+            } catch (e) {
+              console.warn("Soft notes parse warning:", e);
+            }
+          }
+
+          // Fetch Pet Passport info by matching owner / user_id & pet_name
+          if (appt.user_id && appt.pet_name) {
+            const { data: petPass } = await supabase
+              .from("pet_passports")
+              .select("*")
+              .eq("user_id", appt.user_id)
+              .eq("pet_name", appt.pet_name)
+              .maybeSingle();
+            if (petPass) {
+              setPetPassport(petPass);
+            } else {
+              // Try any fallback passport for the user
+              const { data: fallbackPasses } = await supabase
+                .from("pet_passports")
+                .select("*")
+                .eq("user_id", appt.user_id)
+                .limit(1);
+              if (fallbackPasses && fallbackPasses.length > 0) {
+                setPetPassport(fallbackPasses[0]);
+              }
+            }
+          }
+
+          // Fetch Vet Profile & User info
+          if (appt.vet_id) {
+            let vProf = null;
+            let uProf = null;
+
+            // 1. Try to fetch as user_id in vet_profiles
+            const { data: vProfByUser } = await supabase
+              .from("vet_profiles")
+              .select("*")
+              .eq("user_id", appt.vet_id)
+              .maybeSingle();
+
+            if (vProfByUser) {
+              vProf = vProfByUser;
+              const { data: uProfByUser } = await supabase
+                .from("profiles")
+                .select("*")
+                .eq("id", appt.vet_id)
+                .maybeSingle();
+              uProf = uProfByUser;
+            } else {
+              // 2. Try to fetch as direct id in vet_profiles
+              const { data: vProfById } = await supabase
+                .from("vet_profiles")
+                .select("*")
+                .eq("id", appt.vet_id)
+                .maybeSingle();
+
+              if (vProfById) {
+                vProf = vProfById;
+                const { data: uProfById } = await supabase
+                  .from("profiles")
+                  .select("*")
+                  .eq("id", vProfById.user_id)
+                  .maybeSingle();
+                uProf = uProfById;
               }
             }
 
-            // Fetch Vet Profile & User info
-            if (appt.vet_id) {
-              const [userRes, profRes] = await Promise.all([
-                supabase.from("profiles").select("*").eq("id", appt.vet_id).maybeSingle(),
-                supabase.from("vet_profiles").select("*").eq("user_id", appt.vet_id).maybeSingle(),
-              ]);
-              if (userRes.data) setVetUser(userRes.data);
-              if (profRes.data) setVetProfile(profRes.data);
-            }
-            
-            // Fetch prescription from dedicated prescriptions table
-            const { data: pres } = await supabase
-              .from("prescriptions")
-              .select("*")
-              .eq("appointment_id", appointmentId)
-              .maybeSingle();
-              
-            if (pres) {
-              setPrescription(pres);
-              
-              // Fetch medicines, lab tests, and attachments
-              const [medsRes, labsRes, attsRes] = await Promise.all([
-                supabase.from("prescription_medicines").select("*").eq("prescription_id", pres.id),
-                supabase.from("prescription_lab_tests").select("*").eq("prescription_id", pres.id),
-                supabase.from("prescription_attachments").select("*").eq("prescription_id", pres.id),
-              ]);
-              if (medsRes.data) setMeds(medsRes.data);
-              if (labsRes.data) setLabs(labsRes.data);
-              if (attsRes.data) setAttachments(attsRes.data);
-            }
+            if (uProf) setVetUser(uProf);
+            if (vProf) setVetProfile(vProf);
           }
-        } catch (e) {
-          console.error("Error fetching prescription details:", e);
+          
+          // Fetch prescription from dedicated prescriptions table
+          const { data: pres } = await supabase
+            .from("prescriptions")
+            .select("*")
+            .eq("appointment_id", appointmentId)
+            .maybeSingle();
+            
+          if (pres) {
+            setPrescription(pres);
+            
+            // Fetch medicines, lab tests, and attachments
+            const [medsRes, labsRes, attsRes] = await Promise.all([
+              supabase.from("prescription_medicines").select("*").eq("prescription_id", pres.id),
+              supabase.from("prescription_lab_tests").select("*").eq("prescription_id", pres.id),
+              supabase.from("prescription_attachments").select("*").eq("prescription_id", pres.id),
+            ]);
+            if (medsRes.data) setMeds(medsRes.data);
+            if (labsRes.data) setLabs(labsRes.data);
+            if (attsRes.data) setAttachments(attsRes.data);
+          }
         }
-      };
-      
+      } catch (e) {
+        console.error("Error fetching prescription details:", e);
+      }
+    };
+
+    if (appointmentId) {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appointmentId);
       if (isUUID) {
          fetchAllData();
+
+         // Real-time Subscriptions
+         appointmentChannel = supabase.channel(`prescription-appt-realtime-${appointmentId}`)
+           .on(
+             "postgres_changes",
+             {
+               event: "*",
+               schema: "public",
+               table: "vet_appointments",
+               filter: `id=eq.${appointmentId}`
+             },
+             () => {
+               fetchAllData();
+             }
+           )
+           .subscribe();
+
+         prescriptionChannel = supabase.channel(`prescription-pres-realtime-${appointmentId}`)
+           .on(
+             "postgres_changes",
+             {
+               event: "*",
+               schema: "public",
+               table: "prescriptions",
+               filter: `appointment_id=eq.${appointmentId}`
+             },
+             () => {
+               fetchAllData();
+             }
+           )
+           .subscribe();
+
+         passportChannel = supabase.channel(`prescription-passport-realtime-${appointmentId}`)
+           .on(
+             "postgres_changes",
+             {
+               event: "*",
+               schema: "public",
+               table: "pet_passports",
+             },
+             () => {
+               fetchAllData();
+             }
+           )
+           .subscribe();
       }
     }
+
+    return () => {
+      if (appointmentChannel) supabase.removeChannel(appointmentChannel);
+      if (prescriptionChannel) supabase.removeChannel(prescriptionChannel);
+      if (passportChannel) supabase.removeChannel(passportChannel);
+    };
   }, [appointmentId, prescriptionData, dbUpdate]);
 
   // Map values dynamically
@@ -138,17 +282,17 @@ const DigitalPrescription = () => {
         const parsed = typeof prescription.diagnosis_tags === 'string' 
           ? JSON.parse(prescription.diagnosis_tags) 
           : prescription.diagnosis_tags;
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed.filter(Boolean);
       } catch (e) {
         console.warn("Telemetry parsing tags exception: ", e);
       }
     }
     if (appointment?.diagnosis) {
-      return [appointment.diagnosis];
+      return [appointment.diagnosis].filter(Boolean);
     }
     const pData = prescriptionData || {};
-    if (pData.diagnosis) return [pData.diagnosis];
-    return ["General Checkup"];
+    if (pData.diagnosis) return [pData.diagnosis].filter(Boolean);
+    return [];
   }, [prescription, appointment, prescriptionData]);
 
   const medicinesList = useMemo(() => {
@@ -185,7 +329,7 @@ const DigitalPrescription = () => {
     if (labs.length > 0) {
       return labs.map(l => ({
         name: l.test_name,
-        note: l.test_instructions || "Home Sample Collection"
+        note: l.test_instructions || ""
       }));
     }
     const pData = prescriptionData || {};
@@ -196,13 +340,13 @@ const DigitalPrescription = () => {
   const vitals = useMemo(() => {
     const pData = prescriptionData || {};
     return {
-      temp: prescription?.temperature_f ? `${prescription.temperature_f} °F` : (pData.vitals?.temp || "101.5 °F"),
-      hr: prescription?.heart_rate_bpm ? `${prescription.heart_rate_bpm} bpm` : (pData.vitals?.hr || "80 bpm")
+      temp: prescription?.temperature_f ? `${prescription.temperature_f} °F` : (pData.vitals?.temp || ""),
+      hr: prescription?.heart_rate_bpm ? `${prescription.heart_rate_bpm} bpm` : (pData.vitals?.hr || "")
     };
   }, [prescription, prescriptionData]);
 
-  const findings = prescription?.clinical_summary || (prescriptionData || {}).findings || "Patient shows signs of fatigue and mild dehydration. Vital parameters are stable but require structural multivitamin support over the week.";
-  const outcome = prescription?.consultation_outcome || "Consultation Confirmed";
+  const findings = prescription?.clinical_summary || (prescriptionData || {}).findings || "";
+  const outcome = prescription?.consultation_outcome || (prescriptionData || {}).consultation_outcome || "";
   
   const followUp = useMemo(() => {
     if (prescription?.next_appointment_date) {
@@ -226,17 +370,87 @@ const DigitalPrescription = () => {
         url: a.file_url || "#"
       }));
     }
-    return [
-      { name: "Blood_Report_Luna.pdf", size: "1.4 MB", url: "#" },
-      { name: "Thoracic_XRay_Luna.jpg", size: "3.1 MB", url: "#" }
-    ];
+    return [];
   }, [attachments]);
 
   const vetName = vetUser?.full_name || vetUser?.name || vetProfile?.name || "Dr. Vikram Malhotra";
-  const vetSpecialization = vetProfile?.specializations?.[0] || "Senior Veterinarian";
-  const vetRegId = "REG ID: " + (vetProfile?.id ? `VET-${vetProfile.id.slice(-5).toUpperCase()}` : "VET-88291");
-  const petName = appointment?.pet_name || "Luna";
-  const petBreedAndType = appointment?.pet_breed ? `Dog • ${appointment.pet_breed}` : "Dog • Golden Retriever";
+  const vetSpecialization = (vetProfile?.specializations && vetProfile.specializations.length > 0)
+    ? vetProfile.specializations.join(", ")
+    : "Senior Veterinarian";
+  const vetRegId = "REG ID: " + (vetProfile?.registration_number || (vetProfile?.id ? `VET-${vetProfile.id.slice(-5).toUpperCase()}` : "VET-88291"));
+
+  const petName = petPassport?.pet_name || appointment?.pet_name || "Luna";
+  const petSpecies = petPassport?.species || appointment?.pet_type || "Dog";
+  const petBreed = petPassport?.breed || appointment?.pet_breed || "Golden Retriever";
+  const petBreedAndType = `${petSpecies} • ${petBreed}`;
+  const petGender = petPassport?.gender || "Male";
+
+  const petAge = useMemo(() => {
+    if (petPassport) {
+      const years = petPassport.approx_years;
+      const months = petPassport.approx_months;
+      if (years !== null && years !== undefined) {
+        if (years === 0) {
+          return `${months || 0} Months Old`;
+        }
+        return `${years} Year${years > 1 ? 's' : ''} Old`;
+      }
+    }
+    return appointment?.pet_age ? `${appointment.pet_age}` : "3 Years Old";
+  }, [petPassport, appointment]);
+
+  const petWeight = useMemo(() => {
+    const w = petPassport?.weight || appointment?.pet_weight || "24";
+    const str = String(w).toLowerCase().trim();
+    if (str.endsWith("kg") || str.endsWith("kgs")) {
+      return str.toUpperCase();
+    }
+    return `${w}KG`;
+  }, [petPassport, appointment]);
+
+  const DEFAULT_PET_PLACEHOLDER = "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80";
+  const DEFAULT_VET_PLACEHOLDER = "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=150&q=80";
+
+  const petPhoto = useMemo(() => {
+    if (isPetPhotoError) {
+      return DEFAULT_PET_PLACEHOLDER;
+    }
+    const rawPath = petPassport?.photo_url || appointment?.pet_image_url;
+    if (rawPath) {
+      if (rawPath.startsWith("http")) return rawPath;
+      try {
+        return supabase.storage.from("avatars").getPublicUrl(rawPath).data.publicUrl;
+      } catch (e) {
+        return rawPath;
+      }
+    }
+    return DEFAULT_PET_PLACEHOLDER;
+  }, [petPassport, appointment, isPetPhotoError]);
+
+  const doctorPhoto = useMemo(() => {
+    if (isVetPhotoError) {
+      return DEFAULT_VET_PLACEHOLDER;
+    }
+    const rawPath = vetUser?.profile_photo || 
+                    vetProfile?.profile_photo || 
+                    appointment?.vet_image || 
+                    appointment?.image || 
+                    location.state?.visit?.image || 
+                    location.state?.vet?.image || 
+                    location.state?.vet?.profile_photo || 
+                    location.state?.vetPhoto || 
+                    location.state?.doctorPhoto;
+
+    if (rawPath) {
+      if (rawPath.startsWith("http")) return rawPath;
+      try {
+        return supabase.storage.from("avatars").getPublicUrl(rawPath).data.publicUrl;
+      } catch (e) {
+        return rawPath;
+      }
+    }
+    return DEFAULT_VET_PLACEHOLDER;
+  }, [vetUser, vetProfile, appointment, location.state, isVetPhotoError]);
 
   const handleShare = () => {
     if (navigator.share) {
@@ -292,7 +506,13 @@ const DigitalPrescription = () => {
       {/* 1. Header */}
       <div className="sticky top-0 z-20 bg-[#F8F9FC]/95 backdrop-blur-md px-5 py-4 flex items-center justify-between border-b border-[#EFEFF5]/60">
         <button 
-          onClick={() => navigate(-1)} 
+          onClick={() => {
+            if (location.state?.fromBookings) {
+              navigate("/buyer/bookings");
+            } else {
+              navigate("/buyer/vet", { replace: true });
+            }
+          }} 
           className="w-[40px] h-[40px] rounded-full bg-white flex items-center justify-center border border-[#EFEFF5] shadow-[0_2px_10px_rgba(30,30,45,0.02)] active:scale-95 transition-transform"
         >
           <ArrowLeft className="w-5 h-5 text-[#1E1E2D]" />
@@ -310,8 +530,9 @@ const DigitalPrescription = () => {
         {/* 2. Doctor Card */}
         <div className="bg-white mx-5 mt-4 mb-5 p-4 rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#EFEFF5] flex items-center gap-4 transition-all hover:shadow-md">
           <img 
-            src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=150&q=80" 
+            src={doctorPhoto} 
             alt="Doctor" 
+            onError={() => setIsVetPhotoError(true)}
             className="w-[60px] h-[60px] rounded-full object-cover border-2 border-[#FCE7F3]" 
           />
           <div className="flex-1">
@@ -327,8 +548,9 @@ const DigitalPrescription = () => {
         <div className="bg-white mx-5 mb-5 p-4 rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#EFEFF5] flex items-center gap-3.5 relative transition-all hover:shadow-md">
            <div className="relative shrink-0">
              <img 
-               src="https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80" 
+               src={petPhoto} 
                alt={petName} 
+               onError={() => setIsPetPhotoError(true)}
                className="w-[74px] h-[74px] rounded-full object-cover border-2 border-[#DE468B] p-0.5" 
              />
              <div className="absolute right-1 bottom-1 w-3.5 h-3.5 bg-[#10B981] border-2 border-white rounded-full"></div>
@@ -337,14 +559,14 @@ const DigitalPrescription = () => {
              <h2 className="text-[17px] font-bold text-[#1E1E2D] truncate">Prescription for {petName}</h2>
              <div className="text-xs font-semibold text-[#DE468B] mb-1">{petBreedAndType}</div>
              <p className="text-[#6B7280] text-[12px] font-medium leading-normal mb-2">
-               {appointment?.pet_age || "3 Years"} Old • ID: #{(appointmentId || "SRV-9921").slice(-8).toUpperCase()}
+               {petGender} • {petAge} • ID: #{getShortBookingId(appointment?.id || appointmentId).toUpperCase()}
              </p>
              <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
                 <span className="shrink-0 bg-[#FCE7F3] text-[#DE468B] px-2.5 py-1.5 rounded-[12px] text-[9px] font-bold tracking-wide">
                   CONSULTATION: {(location.state?.consultationType?.toUpperCase() || appointment?.appointment_type?.toUpperCase() || "VIDEO CALL")}
                 </span>
                 <span className="shrink-0 bg-[#F0F0F5] text-[#6B7280] px-2.5 py-1.5 rounded-[12px] text-[9px] font-bold tracking-wide">
-                  WEIGHT: {appointment?.pet_weight || "24"}KG
+                  WEIGHT: {petWeight}
                 </span>
              </div>
            </div>
@@ -705,35 +927,43 @@ const DigitalPrescription = () => {
         `}</style>
 
         {/* 5. Vitals Row */}
-        <div className="mx-5 mb-6">
-          <h3 className="flex items-center gap-2 text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-3">
-            <HeartPulse className="w-5 h-5 text-[#DE468B]" /> Vital Parameters
-          </h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white border border-[#EFEFF5] rounded-[16px] px-4 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col gap-1">
-               <span className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide">Temperature</span>
-               <span className="text-[15px] font-bold text-[#1E1E2D]">{vitals.temp}</span>
-            </div>
-            <div className="bg-white border border-[#EFEFF5] rounded-[16px] px-4 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col gap-1">
-               <span className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide">Heart Rate</span>
-               <span className="text-[15px] font-bold text-[#1E1E2D]">{vitals.hr}</span>
+        {((vitals.temp && vitals.temp.trim() !== "") || (vitals.hr && vitals.hr.trim() !== "")) && (
+          <div className="mx-5 mb-6">
+            <h3 className="flex items-center gap-2 text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-3">
+              <HeartPulse className="w-5 h-5 text-[#DE468B]" /> Vital Parameters
+            </h3>
+            <div className={`grid gap-3 ${vitals.temp && vitals.hr ? "grid-cols-2" : "grid-cols-1"}`}>
+              {vitals.temp && vitals.temp.trim() !== "" && (
+                <div className="bg-white border border-[#EFEFF5] rounded-[16px] px-4 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col gap-1">
+                   <span className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide">Temperature</span>
+                   <span className="text-[15px] font-bold text-[#1E1E2D]">{vitals.temp}</span>
+                </div>
+              )}
+              {vitals.hr && vitals.hr.trim() !== "" && (
+                <div className="bg-white border border-[#EFEFF5] rounded-[16px] px-4 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col gap-1">
+                   <span className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide">Heart Rate</span>
+                   <span className="text-[15px] font-bold text-[#1E1E2D]">{vitals.hr}</span>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        )}
 
         {/* 6. Diagnosis Chips */}
-        <div className="mx-5 mb-6">
-          <h3 className="flex items-center gap-2 text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-3">
-            <Stethoscope className="w-5 h-5 text-[#DE468B]" /> Diagnosis / Complaints
-          </h3>
-          <div className="flex flex-wrap gap-2.5">
-            {diagnosisList.map((d: string, i: number) => (
-              <div key={i} className="bg-[#FCE7F3] text-[#DE468B] px-4 py-2 rounded-full text-[13px] font-semibold inline-flex items-center">
-                {d}
-              </div>
-            ))}
+        {diagnosisList && diagnosisList.length > 0 && (
+          <div className="mx-5 mb-6">
+            <h3 className="flex items-center gap-2 text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-3">
+              <Stethoscope className="w-5 h-5 text-[#DE468B]" /> Diagnosis / Complaints
+            </h3>
+            <div className="flex flex-wrap gap-2.5">
+              {diagnosisList.map((d: string, i: number) => (
+                <div key={i} className="bg-[#FCE7F3] text-[#DE468B] px-4 py-2 rounded-full text-[13px] font-semibold inline-flex items-center">
+                  {d}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* 7. Prescribed Medicines */}
         <div className="mx-5 mb-6">
@@ -788,146 +1018,129 @@ const DigitalPrescription = () => {
         </div>
 
         {/* 8. Recommended Tests */}
-        <div className="section-container">
-          <div className="section-header-title">
-            <span className="material-symbols-outlined">biotech</span> Recommended Lab Tests
-          </div>
-          
-          {(testsList.length > 0 ? testsList : [
-            { name: "Complete Blood Count (CBC)", note: "8-hour fasting required" },
-            { name: "Urinalysis Panel", note: "Next-day results available" }
-          ]).map((test: any, i: number) => (
-            <div className="lab-card" key={i}>
-              <div className="lab-left">
-                <div className="lab-icon">
-                  <span className="material-symbols-outlined">description</span>
-                </div>
-                <div className="lab-info">
-                  <h4>{test.name}</h4>
-                  <p>{test.note || "Home Sample Collection"}</p>
-                </div>
-              </div>
-              <button 
-                type="button" 
-                className="btn-book" 
-                onClick={() => navigate("/book-lab")}
-              >
-                Book Home
-              </button>
+        {testsList && testsList.length > 0 && (
+          <div className="section-container">
+            <div className="section-header-title">
+              <span className="material-symbols-outlined">biotech</span> Recommended Lab Tests
             </div>
-          ))}
-        </div>
-
-        {/* 9. Administration Notes */}
-        <div className="section-container">
-          <div className="notes-card">
-            <div className="notes-title">
-              <span className="material-symbols-outlined">assignment</span> Administration Notes
-            </div>
-            {medicinesList.length > 0 ? (
-              <>
-                {medicinesList.map((med: any, i: number) => (
-                  <div key={i} className="note-item">
-                    <div className="note-num">{i + 1}</div>
-                    <div className="note-text">
-                      Administer 1 tablet of <strong>{med.name}</strong> • {med.instructions}
-                    </div>
+            {testsList.map((test: any, i: number) => (
+              <div className="lab-card" key={i}>
+                <div className="lab-left">
+                  <div className="lab-icon">
+                    <span className="material-symbols-outlined">description</span>
                   </div>
-                ))}
-                <div className="note-item">
-                  <div className="note-num">{medicinesList.length + 1}</div>
-                  <div className="note-text">
-                    Observe for any unusual behavior or gastrointestinal sensitivity during the first 3 days.
+                  <div className="lab-info">
+                    <h4>{test.name}</h4>
+                    <p>{test.note || "Home Sample Collection"}</p>
                   </div>
                 </div>
-              </>
-            ) : (
-              <>
-                <div className="note-item">
-                  <div className="note-num">1</div>
-                  <div className="note-text">
-                    Administer 1 tablet of <strong>Pet-O-Boost</strong> once daily mixed with morning meal.
-                  </div>
-                </div>
-                <div className="note-item">
-                  <div className="note-num">2</div>
-                  <div className="note-text">
-                    Give 0.5ml of <strong>K-9 Calmer</strong> drops directly in the mouth during high stress periods or before travel.
-                  </div>
-                </div>
-                <div className="note-item">
-                  <div className="note-num">3</div>
-                  <div className="note-text">
-                    Observe for any unusual behavior or gastrointestinal sensitivity during the first 3 days.
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* 10. Clinical Findings */}
-        <div className="mx-5 mb-6">
-          <h3 className="flex items-center gap-2 text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-3">
-            <FileText className="w-5 h-5 text-[#DE468B]" /> Clinical Findings & Summary
-          </h3>
-          <div className="bg-white border border-[#EFEFF5] rounded-[20px] p-4 text-[13px] text-[#1E1E2D] leading-[1.6] shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-            {findings}
-          </div>
-        </div>
-
-        {/* 11. Reports & Attachments */}
-        <div className="mx-5 mb-6">
-          <h3 className="flex items-center gap-2 text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-3">
-            <Paperclip className="w-5 h-5 text-[#DE468B]" /> Reports & Attachments
-          </h3>
-          <div className="flex flex-col gap-2.5">
-            {attachmentsList.map((att: any, i: number) => (
-              <div 
-                key={i} 
-                onClick={() => att.url !== "#" && window.open(att.url, "_blank")}
-                className="bg-white border border-[#EFEFF5] rounded-[16px] p-3.5 flex items-center justify-between shadow-[0_4px_20px_rgba(0,0,0,0.02)] cursor-pointer hover:shadow-md transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <FileText className={`w-6 h-6 ${i % 2 === 0 ? "text-[#EF4444]" : "text-[#DE468B]"}`} />
-                  <div>
-                    <div className="text-[13px] font-semibold text-[#1E1E2D] truncate max-w-[200px]">{att.name}</div>
-                    <div className="text-[11px] text-[#6B7280]">{att.size}</div>
-                  </div>
-                </div>
-                <span className="text-[#DE468B] text-xs font-bold hover:opacity-80">VIEW</span>
+                <button 
+                  type="button" 
+                  className="btn-book" 
+                  onClick={() => navigate("/book-lab")}
+                >
+                  Book Home
+                </button>
               </div>
             ))}
           </div>
-        </div>
+        )}
+
+        {/* 9. Administration Notes */}
+        {medicinesList && medicinesList.length > 0 && (
+          <div className="section-container">
+            <div className="notes-card">
+              <div className="notes-title">
+                <span className="material-symbols-outlined">assignment</span> Administration Notes
+              </div>
+              {medicinesList.map((med: any, i: number) => (
+                <div key={i} className="note-item">
+                  <div className="note-num">{i + 1}</div>
+                  <div className="note-text">
+                    Administer 1 tablet of <strong>{med.name}</strong> • {med.instructions}
+                  </div>
+                </div>
+              ))}
+              <div className="note-item">
+                <div className="note-num">{medicinesList.length + 1}</div>
+                <div className="note-text">
+                  Observe for any unusual behavior or gastrointestinal sensitivity during the first 3 days.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 10. Clinical Findings */}
+        {findings && findings.trim() !== "" && (
+          <div className="mx-5 mb-6">
+            <h3 className="flex items-center gap-2 text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-3">
+              <FileText className="w-5 h-5 text-[#DE468B]" /> Clinical Findings & Summary
+            </h3>
+            <div className="bg-white border border-[#EFEFF5] rounded-[20px] p-4 text-[13px] text-[#1E1E2D] leading-[1.6] shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+              {findings}
+            </div>
+          </div>
+        )}
+
+        {/* 11. Reports & Attachments */}
+        {attachmentsList && attachmentsList.length > 0 && (
+          <div className="mx-5 mb-6">
+            <h3 className="flex items-center gap-2 text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-3">
+              <Paperclip className="w-5 h-5 text-[#DE468B]" /> Reports & Attachments
+            </h3>
+            <div className="flex flex-col gap-2.5">
+              {attachmentsList.map((att: any, i: number) => (
+                <div 
+                  key={i} 
+                  onClick={() => att.url !== "#" && window.open(att.url, "_blank")}
+                  className="bg-white border border-[#EFEFF5] rounded-[16px] p-3.5 flex items-center justify-between shadow-[0_4px_20px_rgba(0,0,0,0.02)] cursor-pointer hover:shadow-md transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <FileText className={`w-6 h-6 ${i % 2 === 0 ? "text-[#EF4444]" : "text-[#DE468B]"}`} />
+                    <div>
+                      <div className="text-[13px] font-semibold text-[#1E1E2D] truncate max-w-[200px]">{att.name}</div>
+                      <div className="text-[11px] text-[#6B7280]">{att.size}</div>
+                    </div>
+                  </div>
+                  <span className="text-[#DE468B] text-xs font-bold hover:opacity-80">VIEW</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 12. Consultation Outcome */}
-        <div className="mx-5 mb-6">
-          <h3 className="flex items-center gap-2 text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-3">
-             <ShieldCheck className="w-5 h-5 text-[#DE468B]" /> Consultation Outcome
-          </h3>
-          <div className="bg-[#E6F7ED] px-4 py-2.5 rounded-full inline-flex items-center gap-2.5 text-xs font-bold text-[#10B981] uppercase tracking-wider">
-             <div className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse"></div>
-             <span>{outcome}</span>
+        {outcome && outcome.trim() !== "" && (
+          <div className="mx-5 mb-6">
+            <h3 className="flex items-center gap-2 text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-3">
+               <ShieldCheck className="w-5 h-5 text-[#DE468B]" /> Consultation Outcome
+            </h3>
+            <div className="bg-[#E6F7ED] px-4 py-2.5 rounded-full inline-flex items-center gap-2.5 text-xs font-bold text-[#10B981] uppercase tracking-wider">
+               <div className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse"></div>
+               <span>{outcome}</span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* 13. Next Appointment Card */}
-        <div className="mx-5 mb-6">
-          <div className="bg-gradient-to-br from-[#DE468B] to-[#A21CAF] rounded-[24px] p-6 flex justify-between items-center text-white shadow-[0_10px_20px_rgba(222,70,139,0.15)] relative overflow-hidden group">
-             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-8 -mt-8 pointer-events-none group-hover:scale-110 transition-transform"></div>
-             <div>
-                 <div className="text-[10px] font-bold uppercase tracking-wider mb-1 opacity-80">Next Appointment</div>
-                 <div className="text-lg font-bold mb-0.5">
-                   {followUp?.date ? new Date(followUp.date).toLocaleDateString(undefined, {month: 'long', day: 'numeric', year: 'numeric'}) : "November 15, 2026"}
-                 </div>
-                 <div className="text-[13px] opacity-90">{followUp?.time ? `@ ${followUp.time}` : "Follow-up Checkup"}</div>
-             </div>
-             <div className="w-12 h-12 bg-white/20 rounded-[16px] backdrop-blur-sm flex items-center justify-center transition-transform group-hover:rotate-12">
-                 <CalendarCheck2 className="w-6 h-6 text-white" />
-             </div>
+        {followUp && followUp.date && (
+          <div className="mx-5 mb-6">
+            <div className="bg-gradient-to-br from-[#DE468B] to-[#A21CAF] rounded-[24px] p-6 flex justify-between items-center text-white shadow-[0_10px_20px_rgba(222,70,139,0.15)] relative overflow-hidden group">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-8 -mt-8 pointer-events-none group-hover:scale-110 transition-transform"></div>
+               <div>
+                   <div className="text-[10px] font-bold uppercase tracking-wider mb-1 opacity-80">Next Appointment</div>
+                   <div className="text-lg font-bold mb-0.5">
+                     {new Date(followUp.date).toLocaleDateString(undefined, {month: "long", day: "numeric", year: "numeric"})}
+                   </div>
+                   <div className="text-[13px] opacity-90">{followUp.time ? `@ ${followUp.time}` : "Follow-up Checkup"}</div>
+               </div>
+               <div className="w-12 h-12 bg-white/20 rounded-[16px] backdrop-blur-sm flex items-center justify-center transition-transform group-hover:rotate-12">
+                   <CalendarCheck2 className="w-6 h-6 text-white" />
+               </div>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* 14. Premium Feedback Button */}
         <div className="feedback-trigger-zone">

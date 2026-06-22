@@ -99,9 +99,7 @@ const BookingDetails = () => {
     try {
       const cachedSelected = localStorage.getItem("cached_selected_pet_passport");
       if (cachedSelected) return JSON.parse(cachedSelected);
-      const cached = localStorage.getItem("cached_pet_passports");
-      const list = cached ? JSON.parse(cached) : [];
-      return list.length > 0 ? list[0] : null;
+      return null;
     } catch {
       return null;
     }
@@ -133,9 +131,23 @@ const BookingDetails = () => {
             if (data.length > 0) {
               const preselectedPetName = location.state?.petName || location.state?.selectedPet?.name;
               const match = data.find((p: any) => p.pet_name === preselectedPetName || p.petName === preselectedPetName);
-              const finalMatch = match || selectedPetPassport || data[0];
+              const cachedSelectedStr = localStorage.getItem("cached_selected_pet_passport");
+              let cachedMatch = null;
+              if (cachedSelectedStr) {
+                try {
+                  const parsed = JSON.parse(cachedSelectedStr);
+                  cachedMatch = data.find((p: any) => p.id === parsed.id);
+                } catch (e) {
+                  console.warn("Failed to parse cached pet passport:", e);
+                }
+              }
+              const finalMatch = match || cachedMatch || null;
               setSelectedPetPassport(finalMatch);
-              localStorage.setItem("cached_selected_pet_passport", JSON.stringify(finalMatch));
+              if (finalMatch) {
+                localStorage.setItem("cached_selected_pet_passport", JSON.stringify(finalMatch));
+              } else {
+                localStorage.removeItem("cached_selected_pet_passport");
+              }
             }
           }
         }
@@ -714,7 +726,16 @@ const BookingDetails = () => {
 
         {/* Who is this for? Section */}
         <div className="space-y-3">
-          <h3 className="text-base font-bold text-foreground">Who is this for?</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold text-foreground">
+              Who is this for? <span className="text-pink-500 font-extrabold ml-0.5">*</span>
+            </h3>
+            {!selectedPetPassport && (
+              <span className="text-[11px] font-bold text-pink-500 animate-pulse bg-pink-50 px-2.5 py-0.5 rounded-full border border-pink-100">
+                Required Selection
+              </span>
+            )}
+          </div>
           
           <div className="flex overflow-x-auto gap-3 py-1 no-scrollbar snap-x snap-mandatory">
             {loadingPassports ? (
@@ -1198,6 +1219,10 @@ const BookingDetails = () => {
           </button>
           <button
             onClick={() => {
+              if (!selectedPetPassport) {
+                toast.error("Please select a pet under 'Who is this for?' section.");
+                return;
+              }
               if (!selectedSlot) {
                 toast.error("Please select a time slot to continue booking.");
                 return;
@@ -1659,7 +1684,7 @@ const BookingDetails = () => {
                               localStorage.setItem(`payment_details_${realBookingId}`, JSON.stringify(paymentDetails));
 
                               toast.success("Payment successful! Requesting vet confirmation...");
-                              navigate(`/vet/appointment-confirmation/${realBookingId}`, { 
+                              navigate(`/buyer/vet/appointment/pending/${realBookingId}`, { 
                                 replace: true,
                                 state: { 
                                   visit: {

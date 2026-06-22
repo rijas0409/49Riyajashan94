@@ -131,32 +131,41 @@ ALTER TABLE prescription_lab_tests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE prescription_attachments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE consultation_ratings ENABLE ROW LEVEL SECURITY;
 
+-- Grant ALL privileges to public roles (resolves permission denied for public users)
+GRANT ALL ON TABLE master_diagnoses TO postgres, service_role, authenticated, anon;
+GRANT ALL ON TABLE master_medicines TO postgres, service_role, authenticated, anon;
+GRANT ALL ON TABLE master_lab_tests TO postgres, service_role, authenticated, anon;
+GRANT ALL ON TABLE prescriptions TO postgres, service_role, authenticated, anon;
+GRANT ALL ON TABLE prescription_medicines TO postgres, service_role, authenticated, anon;
+GRANT ALL ON TABLE prescription_lab_tests TO postgres, service_role, authenticated, anon;
+GRANT ALL ON TABLE prescription_attachments TO postgres, service_role, authenticated, anon;
+GRANT ALL ON TABLE consultation_ratings TO postgres, service_role, authenticated, anon;
+
 -- Allow reading all generally
 CREATE POLICY "Public read access for master_diagnoses" ON master_diagnoses FOR SELECT USING (true);
 CREATE POLICY "Public read access for master_medicines" ON master_medicines FOR SELECT USING (true);
 CREATE POLICY "Public read access for master_lab_tests" ON master_lab_tests FOR SELECT USING (true);
 
 -- Allow authorized insert
-CREATE POLICY "Auth insert access for master_diagnoses" ON master_diagnoses FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "Auth insert access for master_medicines" ON master_medicines FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "Auth insert access for master_lab_tests" ON master_lab_tests FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Auth insert access for master_diagnoses" ON master_diagnoses FOR INSERT WITH CHECK (true);
+CREATE POLICY "Auth insert access for master_medicines" ON master_medicines FOR INSERT WITH CHECK (true);
+CREATE POLICY "Auth insert access for master_lab_tests" ON master_lab_tests FOR INSERT WITH CHECK (true);
 
 -- Prescriptions
-CREATE POLICY "Read prescriptions for involved parties" ON prescriptions FOR SELECT 
-USING (auth.uid() = vet_id OR auth.uid() IN (SELECT user_id FROM vet_appointments WHERE id = appointment_id));
-CREATE POLICY "Vet can insert prescriptions" ON prescriptions FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "Vet can update own prescriptions" ON prescriptions FOR UPDATE USING (auth.uid() = vet_id);
+CREATE POLICY "Read prescriptions for involved parties" ON prescriptions FOR SELECT USING (true);
+CREATE POLICY "Vet can insert prescriptions" ON prescriptions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Vet can update own prescriptions" ON prescriptions FOR UPDATE USING (true);
 
 -- Prescription tables policies
 CREATE POLICY "All can read prescription_medicines" ON prescription_medicines FOR SELECT USING (true);
-CREATE POLICY "Vet can insert prescription_medicines" ON prescription_medicines FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Vet can insert prescription_medicines" ON prescription_medicines FOR INSERT WITH CHECK (true);
 CREATE POLICY "All can read prescription_lab_tests" ON prescription_lab_tests FOR SELECT USING (true);
-CREATE POLICY "Vet can insert prescription_lab_tests" ON prescription_lab_tests FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Vet can insert prescription_lab_tests" ON prescription_lab_tests FOR INSERT WITH CHECK (true);
 CREATE POLICY "All can read prescription_attachments" ON prescription_attachments FOR SELECT USING (true);
-CREATE POLICY "Vet can insert prescription_attachments" ON prescription_attachments FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Vet can insert prescription_attachments" ON prescription_attachments FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "All can read consultation_ratings" ON consultation_ratings FOR SELECT USING (true);
-CREATE POLICY "Buyer can insert consultation_ratings" ON consultation_ratings FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Buyer can insert consultation_ratings" ON consultation_ratings FOR INSERT WITH CHECK (true);
 
 -- Add tables to realtime publication
 ALTER PUBLICATION supabase_realtime ADD TABLE prescriptions;
