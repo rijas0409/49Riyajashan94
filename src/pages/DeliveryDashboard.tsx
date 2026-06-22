@@ -71,7 +71,7 @@ const DeliveryDashboard = () => {
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      navigate("/auth-delivery");
+      navigate("/auth/delivery");
       return;
     }
 
@@ -161,7 +161,7 @@ const DeliveryDashboard = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/auth-delivery");
+    navigate("/auth/delivery");
   };
 
   const getStatusBadge = (status: string) => {

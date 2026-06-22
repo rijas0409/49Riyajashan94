@@ -657,7 +657,7 @@ const CreatePrescription = () => {
           <div className="flex flex-col gap-4">
             {medicines.length === 0 ? (
               <div className="text-center py-6 bg-white border border-dashed border-gray-200 rounded-[20px] text-xs text-[#8A8A9E] font-medium italic">
-                No medicines attached yet. Click 'Pharmacy Inventory' above to add recommendations
+                No medications added yet. Select medicines from Pharmacy Inventory to include them in this prescription.
               </div>
             ) : (
               medicines.map((med) => (

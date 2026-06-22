@@ -86,7 +86,7 @@ interface DbAppointmentRaw {
 
 const VetSchedule = () => {
   const navigate = useNavigate();
-  const { isLoading: guardLoading, showSpinner, user, profile } = useRoleGuard(["vet"], "/auth-vet", true);
+  const { isLoading: guardLoading, showSpinner, user, profile } = useRoleGuard(["vet"], "/auth/vet", true);
   const today = useMemo(() => new Date(), []);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDateId, setSelectedDateId] = useState(formatDt(today, "yyyy-MM-dd"));

@@ -19,7 +19,7 @@ import {
 
 const ProductsDashboard = () => {
   const navigate = useNavigate();
-  const { isLoading: guardLoading, user, profile, error: guardError } = useRoleGuard(["product_seller"], "/auth-products");
+  const { isLoading: guardLoading, user, profile, error: guardError } = useRoleGuard(["product_seller"], "/auth/products");
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -219,7 +219,7 @@ const ProductsDashboard = () => {
     totalSold: products.reduce((sum, p) => sum + (p.total_sold || 0), 0),
   };
 
-  const handleLogout = async () => { await supabase.auth.signOut(); navigate("/auth-products"); };
+  const handleLogout = async () => { await supabase.auth.signOut(); navigate("/auth/products"); };
 
   if (guardError) return (
     <div className="min-h-screen bg-gradient-soft flex items-center justify-center p-4">
@@ -230,7 +230,7 @@ const ProductsDashboard = () => {
           <p className="text-sm text-muted-foreground">{guardError}</p>
           <div className="flex gap-2 justify-center">
             <Button onClick={() => window.location.reload()} className="rounded-xl">Try Again</Button>
-            <Button variant="outline" onClick={() => navigate("/auth-products")} className="rounded-xl">Go to Login</Button>
+            <Button variant="outline" onClick={() => navigate("/auth/products")} className="rounded-xl">Go to Login</Button>
           </div>
         </CardContent>
       </Card>

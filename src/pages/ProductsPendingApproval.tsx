@@ -18,7 +18,7 @@ const ProductsPendingApproval = () => {
   useEffect(() => {
     const checkStatus = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { navigate("/auth-products"); return; }
+      if (!session) { navigate("/auth/products"); return; }
 
       const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: session.user.id });
       if (roleData !== "product_seller") { navigate("/"); return; }
@@ -51,7 +51,7 @@ const ProductsPendingApproval = () => {
     checkStatus();
   }, [navigate]);
 
-  const handleLogout = async () => { await supabase.auth.signOut(); navigate("/auth-products"); };
+  const handleLogout = async () => { await supabase.auth.signOut(); navigate("/auth/products"); };
 
   const handlePriorityPayment = async () => {
     setIsProcessingPayment(true);

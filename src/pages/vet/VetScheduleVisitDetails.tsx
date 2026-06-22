@@ -5,6 +5,40 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import jsQR from "jsqr";
 
+const getFormattedPetAge = (approxYears: any, approxMonths: any, dob: any) => {
+  let yrs = 0;
+  let mos = 0;
+  let hasData = false;
+
+  if (approxYears !== null && approxYears !== undefined && !isNaN(parseInt(approxYears, 10))) {
+    yrs = parseInt(approxYears, 10);
+    mos = parseInt(approxMonths, 10) || 0;
+    hasData = true;
+  } else if (dob) {
+    const dobDate = new Date(dob);
+    if (!isNaN(dobDate.getTime())) {
+      const today = new Date();
+      yrs = today.getFullYear() - dobDate.getFullYear();
+      mos = today.getMonth() - dobDate.getMonth();
+      if (mos < 0) {
+        yrs--;
+        mos += 12;
+      }
+      hasData = true;
+    }
+  }
+
+  if (!hasData) {
+    return "1 yr";
+  }
+
+  if (yrs <= 0) {
+    return `${mos || 1} mos`;
+  } else {
+    return `${yrs} yr${mos > 0 ? ` ${mos} mos` : ""}`;
+  }
+};
+
 const VetScheduleVisitDetails: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,14 +59,137 @@ const VetScheduleVisitDetails: React.FC = () => {
     microchip: string | null;
   } | null>(null);
 
+  const [connectedPassport, setConnectedPassport] = useState<any | null>(null);
+  const [connectedMedicalLog, setConnectedMedicalLog] = useState<any | null>(null);
+  const [connectedConditions, setConnectedConditions] = useState<any[]>([]);
+  const [connectedRecords, setConnectedRecords] = useState<any[]>([]);
+
+  // Fetch owner's connected or matching pet passport
+  useEffect(() => {
+    if (!dbAppointment?.user_id) return;
+
+    const fetchOwnerPassport = async () => {
+      try {
+        const { data: passports, error: passErr } = await supabase
+          .from("pet_passports")
+          .select("*")
+          .eq("user_id", dbAppointment.user_id)
+          .order("created_at", { ascending: false });
+
+        if (passErr) {
+          console.error("Error fetching pet passports for owner:", passErr);
+          return;
+        }
+
+        if (passports && passports.length > 0) {
+          const cachedId = localStorage.getItem(`selected_passport_id_${dbAppointment.id}`);
+          let matchedPassport = null;
+          if (cachedId) {
+            matchedPassport = passports.find(p => p.id === cachedId);
+          }
+          if (!matchedPassport && dbAppointment.pet_name) {
+            matchedPassport = passports.find(
+              p => (p.pet_name || "").toLowerCase().trim() === dbAppointment.pet_name.toLowerCase().trim()
+            );
+          }
+
+          if (matchedPassport) {
+            const [medicalRes, conditionsRes, recordsRes] = await Promise.all([
+              supabase
+                .from("pet_medical_logs")
+                .select("*")
+                .eq("pet_passport_id", matchedPassport.id)
+                .maybeSingle(),
+              supabase
+                .from("pet_health_conditions")
+                .select("*")
+                .eq("pet_passport_id", matchedPassport.id),
+              supabase
+                .from("pet_health_records_documents")
+                .select("*")
+                .eq("pet_passport_id", matchedPassport.id)
+            ]);
+
+            setConnectedMedicalLog(medicalRes.data || null);
+            setConnectedConditions(conditionsRes.data || []);
+            setConnectedRecords(recordsRes.data || []);
+
+            const pId = matchedPassport.passport_id || `#PP-${matchedPassport.id?.slice(0, 7).toUpperCase()}`;
+            const ageTextVal = getFormattedPetAge(matchedPassport.approx_years, matchedPassport.approx_months, matchedPassport.dob);
+            const ageVal = ageTextVal;
+
+            const weightVal = matchedPassport.weight ? `${matchedPassport.weight} lbs` : "N/A";
+            const dobVal = matchedPassport.dob ? new Date(matchedPassport.dob).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A";
+            const issueDateVal = matchedPassport.created_at ? new Date(matchedPassport.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A";
+
+            const mappedPassport = {
+              id: pId,
+              rawId: matchedPassport.id,
+              name: matchedPassport.pet_name || "Unnamed Pet",
+              species: matchedPassport.species || "N/A",
+              gender: matchedPassport.gender || "N/A",
+              breed: `${matchedPassport.breed || "Breed"} · ${matchedPassport.gender || ""}`,
+              appearance: matchedPassport.appearance || "N/A",
+              age: ageVal,
+              ageText: ageTextVal,
+              weight: weightVal,
+              dob: dobVal,
+              issueDate: issueDateVal,
+              ownerName: matchedPassport.owner_name || "N/A",
+              primaryPhone: matchedPassport.primary_phone || "N/A",
+              emergencyContactName: matchedPassport.emergency_contact_name || "N/A",
+              emergencyPhone: matchedPassport.emergency_phone || "N/A",
+              emergencyRelationship: matchedPassport.emergency_relationship || "N/A",
+              photo_url: matchedPassport.photo_url || null,
+              avatar: matchedPassport.species?.toLowerCase() === "cat" ? "coco" : "luna"
+            };
+
+            setConnectedPassport(mappedPassport);
+          } else {
+            setConnectedPassport(null);
+          }
+        } else {
+          setConnectedPassport(null);
+        }
+      } catch (e) {
+        console.error("Error in fetchOwnerPassport:", e);
+      }
+    };
+
+    fetchOwnerPassport();
+  }, [dbAppointment?.user_id, dbAppointment?.pet_name, dbAppointment?.id]);
+
   // Dynamic state extracted from route, falling back gracefully to the provided gorgeous mockup specifications
   const { visit: stateVisit } = (location.state as any) || {};
 
-  const petName = stateVisit?.petName || dbAppointment?.pet_name || "Bella";
-  const petBreed = stateVisit?.petBreed || dbAppointment?.pet_breed || dbAppointment?.pet_type || "Golden Retriever";
-  const petAge = stateVisit?.petAge || "3 Years";
-  const chiefComplaint = stateVisit?.reason || dbAppointment?.diagnosis || "Kiro is fainting I need emergency help.";
-  const petImage = stateVisit?.image || dbAppointment?.pet_image_url || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&q=80&w=200&h=200";
+  const petName = connectedPassport?.name || stateVisit?.petName || dbAppointment?.pet_name || "Bella";
+  const petBreed = connectedPassport ? (connectedPassport.breed?.replace(/\s*·\s*(?:Male|Female|N\/A)?$/i, "") || "Breed") : (stateVisit?.petBreed || dbAppointment?.pet_breed || dbAppointment?.pet_type || "Golden Retriever");
+  const petAge = connectedPassport?.age || stateVisit?.petAge || "3 Years";
+
+  // Helper to get actual Reason for Visit text, excluding payment/booking objects
+  const getReasonForVisit = () => {
+    if (dbAppointment?.consultation_notes) {
+      // Check if it is a payment JSON object
+      try {
+        const parsed = typeof dbAppointment.consultation_notes === "string" 
+          ? JSON.parse(dbAppointment.consultation_notes) 
+          : dbAppointment.consultation_notes;
+        if (parsed && typeof parsed === "object" && (parsed.payment_id || parsed.bookingId || parsed.consultation_fee)) {
+          // Yes, it's a payment metadata string, so NOT a plain text reason!
+          // We will use the fallback: stateVisit?.reason || dbAppointment?.diagnosis
+          return stateVisit?.reason || dbAppointment?.diagnosis || "Kiro is fainting I need emergency help.";
+        }
+      } catch (e) {
+        // Not a JSON object, so it's a direct user entered text!
+        return dbAppointment.consultation_notes;
+      }
+      return dbAppointment.consultation_notes;
+    }
+    return stateVisit?.reason || dbAppointment?.diagnosis || "Kiro is fainting I need emergency help.";
+  };
+
+  const chiefComplaint = getReasonForVisit();
+  const petImage = connectedPassport?.photo_url || stateVisit?.image || dbAppointment?.pet_image_url || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&q=80&w=200&h=200";
   const address = stateVisit?.address || dbAppointment?.address || "124 Maple Street, Apt 4B";
   const scheduledTime = stateVisit?.time || (dbAppointment?.appointment_time ? `${dbAppointment.appointment_date}, ${dbAppointment.appointment_time}` : "Today, 11:30 AM");
   const ownerName = stateVisit?.ownerName || dbAppointment?.owner_name || "Mark Thompson";
@@ -781,12 +938,6 @@ const VetScheduleVisitDetails: React.FC = () => {
               <div className="mx-5 mt-4">
                 <div className="flex justify-between items-center mb-2 px-0.5">
                   <h2 className="text-[16px] font-bold text-[#1a1f36] tracking-tight">Reason for Visit</h2>
-                  <button 
-                    onClick={() => toast.info("Complaint modification not available currently.")}
-                    className="text-pink-500 font-semibold text-[11px] flex items-center gap-1"
-                  >
-                    <i className="fas fa-edit text-[10px]"></i> Edit
-                  </button>
                 </div>
                 <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-[10px] shrink-0 mt-0.5">
@@ -856,28 +1007,32 @@ const VetScheduleVisitDetails: React.FC = () => {
               </div>
 
               {/* Clinical Overview Card */}
-              <div className="mx-5 mt-4">
-                <h2 className="text-[16px] font-bold text-[#1a1f36] mb-2 px-0.5 tracking-tight">Clinical Overview</h2>
-                <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center gap-3.5">
-                  <img 
-                    src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=150&h=150" 
-                    alt="Kiro" 
-                    className="w-[54px] h-[54px] rounded-xl object-cover"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[15px] font-bold text-[#1a1f36]">Kiro</span>
-                      <span className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase scale-90 origin-left">Active</span>
-                    </div>
-                    <p className="text-[13px] text-gray-700 font-semibold mt-0.5">British Shorthair • Female</p>
-                    <div className="flex items-center gap-3 text-[#8b92a5] text-[11px] mt-1 font-medium">
-                      <span className="flex items-center gap-1"><i className="far fa-clock text-[10px]"></i> 2 yr</span>
-                      <span className="flex items-center gap-1"><i className="fas fa-weight-hanging text-[10px]"></i> 4.9 lbs</span>
-                      <span className="flex items-center gap-1"><i className="far fa-calendar text-[10px]"></i> Jun 29, 2024</span>
+              {connectedPassport && (
+                <div className="mx-5 mt-4">
+                  <h2 className="text-[16px] font-bold text-[#1a1f36] mb-2 px-0.5 tracking-tight">Clinical Overview</h2>
+                  <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center gap-3.5">
+                    <img 
+                      src={connectedPassport.photo_url || petImage} 
+                      alt={connectedPassport.name} 
+                      className="w-[54px] h-[54px] rounded-xl object-cover"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[15px] font-bold text-[#1a1f36]">{connectedPassport.name}</span>
+                        <span className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase scale-90 origin-left">Active</span>
+                      </div>
+                      <p className="text-[13px] text-gray-700 font-semibold mt-0.5">
+                        {connectedPassport.breed?.replace(/\s*·\s*(?:Male|Female|N\/A)?$/i, "") || "N/A"} · {connectedPassport.gender || "Female"}
+                      </p>
+                      <div className="flex items-center gap-3 text-[#8b92a5] text-[11px] mt-1 font-medium">
+                        <span className="flex items-center gap-1"><i className="far fa-clock text-[10px]"></i> {connectedPassport.age}</span>
+                        <span className="flex items-center gap-1"><i className="fas fa-weight-hanging text-[10px]"></i> {connectedPassport.weight}</span>
+                        <span className="flex items-center gap-1"><i className="far fa-calendar text-[10px]"></i> {connectedPassport.dob}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </>
           ) : (
             /* ==================== CLINIC VISIT LAYOUT (clinio.html) ==================== */
@@ -942,12 +1097,6 @@ const VetScheduleVisitDetails: React.FC = () => {
               <div className="mx-5 mt-4">
                 <div className="flex justify-between items-center mb-2 px-0.5">
                   <h2 className="text-[16px] font-bold text-[#1a1f36] tracking-tight">Reason for Visit</h2>
-                  <button 
-                    onClick={() => toast.info("Complaint modification not available currently.")}
-                    className="text-pink-500 font-semibold text-[11px] flex items-center gap-1"
-                  >
-                    <i className="fas fa-edit text-[10px]"></i> Edit
-                  </button>
                 </div>
                 <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-[10px] shrink-0 mt-0.5">
@@ -961,160 +1110,172 @@ const VetScheduleVisitDetails: React.FC = () => {
               </div>
 
               {/* [3] Clinical Overview Card */}
-              <div className="mx-5 mt-4">
-                <h2 className="text-[16px] font-bold text-[#1a1f36] mb-2 px-0.5 tracking-tight">Clinical Overview</h2>
-                <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center gap-3.5">
-                  <img 
-                    src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=150&h=150" 
-                    alt="Kiro" 
-                    className="w-[54px] h-[54px] rounded-xl object-cover"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[15px] font-bold text-[#1a1f36]">Kiro</span>
-                      <span className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase scale-90 origin-left">Active</span>
-                    </div>
-                    <p className="text-[13px] text-gray-700 font-semibold mt-0.5">British Shorthair • Female</p>
-                    <div className="flex items-center gap-3 text-[#8b92a5] text-[11px] mt-1 font-medium">
-                      <span className="flex items-center gap-1"><i className="far fa-clock text-[10px]"></i> 2 yr</span>
-                      <span className="flex items-center gap-1"><i className="fas fa-weight-hanging text-[10px]"></i> 4.9 lbs</span>
-                      <span className="flex items-center gap-1"><i className="far fa-calendar text-[10px]"></i> Jun 29, 2024</span>
+              {connectedPassport && (
+                <div className="mx-5 mt-4">
+                  <h2 className="text-[16px] font-bold text-[#1a1f36] mb-2 px-0.5 tracking-tight">Clinical Overview</h2>
+                  <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center gap-3.5">
+                    <img 
+                      src={connectedPassport.photo_url || petImage} 
+                      alt={connectedPassport.name} 
+                      className="w-[54px] h-[54px] rounded-xl object-cover"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[15px] font-bold text-[#1a1f36]">{connectedPassport.name}</span>
+                        <span className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase scale-90 origin-left">Active</span>
+                      </div>
+                      <p className="text-[13px] text-gray-700 font-semibold mt-0.5">
+                        {connectedPassport.breed?.replace(/\s*·\s*(?:Male|Female|N\/A)?$/i, "") || "N/A"} · {connectedPassport.gender || "Female"}
+                      </p>
+                      <div className="flex items-center gap-3 text-[#8b92a5] text-[11px] mt-1 font-medium">
+                        <span className="flex items-center gap-1"><i className="far fa-clock text-[10px]"></i> {connectedPassport.age}</span>
+                        <span className="flex items-center gap-1"><i className="fas fa-weight-hanging text-[10px]"></i> {connectedPassport.weight}</span>
+                        <span className="flex items-center gap-1"><i className="far fa-calendar text-[10px]"></i> {connectedPassport.dob}</span>
+                      </div>
                     </div>
                   </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Pet Passport Components Heading & Cards - only shown if passport is connected on human side */}
+          {connectedPassport && (
+            <>
+              <div className="mx-5 mt-5">
+                <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase px-0.5">Pet Passport Details</p>
+              </div>
+
+              {/* Identification Card */}
+              <div className="mx-5 mt-2 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
+                <div className="flex items-center gap-1.5 mb-3.5">
+                  <div className="w-1 h-3.5 bg-pink-500 rounded-full"></div>
+                  <h4 className="text-[11px] font-bold text-[#1a1f36] tracking-wider uppercase">I. Identification</h4>
+                </div>
+                <div className="grid grid-cols-2 gap-y-3.5 gap-x-2">
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Pet Name</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{connectedPassport.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Passport ID</p>
+                    <p className="text-[13px] text-pink-500 font-bold mt-0.5">{connectedPassport.id}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Species / Gender</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{connectedPassport.species} • {connectedPassport.gender}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Breed</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{petBreed}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Appearance / Marks</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{connectedPassport.appearance}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Date of Birth</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{connectedPassport.dob}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Age / Weight</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{connectedPassport.age} • {connectedPassport.weight}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Issue Date</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{connectedPassport.issueDate}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ownership & Legal Guardian Card */}
+              <div className="mx-5 mt-3.5 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
+                <div className="flex items-center gap-1.5 mb-3.5">
+                  <div className="w-1 h-3.5 bg-pink-500 rounded-full"></div>
+                  <h4 className="text-[11px] font-bold text-[#1a1f36] tracking-wider uppercase">II. Ownership & Legal Guardian</h4>
+                </div>
+                <div className="grid grid-cols-2 gap-y-3.5 gap-x-2">
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Owner Name</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{connectedPassport.ownerName}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Primary Phone</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{connectedPassport.primaryPhone}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Emergency Contact</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{connectedPassport.emergencyContactName}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Emergency Phone</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">{connectedPassport.emergencyPhone}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Clinical Notes & Allergies Card */}
+              <div className="mx-5 mt-3.5 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
+                <div className="flex items-center gap-1.5 mb-3.5">
+                  <div className="w-1 h-3.5 bg-pink-500 rounded-full"></div>
+                  <h4 className="text-[11px] font-bold text-[#1a1f36] tracking-wider uppercase">III. Clinical Notes & Allergies</h4>
+                </div>
+                <div className="grid grid-cols-2 gap-y-3.5 gap-x-2">
+                  <div className="col-span-2">
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Known Allergies</p>
+                    <p className="text-[13px] text-red-500 font-bold mt-0.5">{connectedMedicalLog?.allergies || "No known allergies"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Last Veterinary Visit</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
+                      {connectedMedicalLog?.last_visit ? new Date(connectedMedicalLog.last_visit).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Registered Conditions</p>
+                    <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">
+                      {connectedConditions.length > 0 ? connectedConditions.map(c => c.condition_name).join(', ') : "none"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Health Records Section */}
+              <div className="mx-5 mt-4">
+                <div className="flex justify-between items-center mb-2 px-0.5">
+                  <h3 className="text-[11px] font-bold text-gray-400 tracking-widest uppercase">Health Records</h3>
+                  <button 
+                    onClick={() => toast.info("Viewing all records...")}
+                    className="text-pink-500 font-bold text-[11px] hover:underline"
+                  >
+                    View All
+                  </button>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {connectedRecords.length > 0 ? (
+                    connectedRecords.map((rec) => (
+                      <div key={rec.id} className="bg-white rounded-[16px] p-3.5 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-1 h-8 bg-emerald-500 rounded-full"></div>
+                          <div>
+                            <span className="text-[13px] text-[#1a1f36] font-bold block">{rec.document_name || "Medical Record"}</span>
+                            <span className="text-[11px] text-[#8b92a5] font-medium block">{rec.description || "Uploaded medical document"}</span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-[#8b92a5] uppercase">
+                          {rec.created_at ? new Date(rec.created_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : "N/A"}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="bg-white rounded-[16px] p-3.5 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center justify-center text-[#8b92a5] text-xs font-semibold py-4">
+                      No clinical logs attached to this passport.
+                    </div>
+                  )}
                 </div>
               </div>
             </>
           )}
-
-          {/* Pet Passport Components Heading */}
-          <div className="mx-5 mt-5">
-            <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase px-0.5">Pet Passport Details</p>
-          </div>
-
-          {/* Identification Card */}
-          <div className="mx-5 mt-2 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
-            <div className="flex items-center gap-1.5 mb-3.5">
-              <div className="w-1 h-3.5 bg-pink-500 rounded-full"></div>
-              <h4 className="text-[11px] font-bold text-[#1a1f36] tracking-wider uppercase">I. Identification</h4>
-            </div>
-            <div className="grid grid-cols-2 gap-y-3.5 gap-x-2">
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Pet Name</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">Kiro</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Passport ID</p>
-                <p className="text-[13px] text-pink-500 font-bold mt-0.5">SRV-K25-AG8</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Species / Gender</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">Cat • Female</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Breed</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">British Shorthair</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Appearance / Marks</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">Grey whitish</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Date of Birth</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">Jun 29, 2024</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Age / Weight</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">2 yr • 4.9 lbs</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Issue Date</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">Jun 13, 2026</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Ownership & Legal Guardian Card */}
-          <div className="mx-5 mt-3.5 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
-            <div className="flex items-center gap-1.5 mb-3.5">
-              <div className="w-1 h-3.5 bg-pink-500 rounded-full"></div>
-              <h4 className="text-[11px] font-bold text-[#1a1f36] tracking-wider uppercase">II. Ownership & Legal Guardian</h4>
-            </div>
-            <div className="grid grid-cols-2 gap-y-3.5 gap-x-2">
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Owner Name</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">Jari Pabla</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Primary Phone</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">8349153416</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Emergency Contact</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">Riya (Wife)</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Emergency Phone</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">8349153416</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Clinical Notes & Allergies Card */}
-          <div className="mx-5 mt-3.5 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
-            <div className="flex items-center gap-1.5 mb-3.5">
-              <div className="w-1 h-3.5 bg-pink-500 rounded-full"></div>
-              <h4 className="text-[11px] font-bold text-[#1a1f36] tracking-wider uppercase">III. Clinical Notes & Allergies</h4>
-            </div>
-            <div className="grid grid-cols-2 gap-y-3.5 gap-x-2">
-              <div className="col-span-2">
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Known Allergies</p>
-                <p className="text-[13px] text-red-500 font-bold mt-0.5">Pollen</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Last Veterinary Visit</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">Jun 13, 2026</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#8b92a5] font-bold uppercase tracking-wide">Registered Conditions</p>
-                <p className="text-[13px] text-[#1a1f36] font-bold mt-0.5">none</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Health Records Section */}
-          <div className="mx-5 mt-4">
-            <div className="flex justify-between items-center mb-2 px-0.5">
-              <h3 className="text-[11px] font-bold text-gray-400 tracking-widest uppercase">Health Records</h3>
-              <button 
-                onClick={() => toast.info("Viewing all records...")}
-                className="text-pink-500 font-bold text-[11px] hover:underline"
-              >
-                View All
-              </button>
-            </div>
-            <div className="flex flex-col gap-2">
-              <div className="bg-white rounded-[16px] p-3.5 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-1 h-8 bg-emerald-500 rounded-full"></div>
-                  <div>
-                    <span className="text-[13px] text-[#1a1f36] font-bold block">Vaccination</span>
-                    <span className="text-[11px] text-[#8b92a5] font-medium block">Clinical document record</span>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-[#8b92a5] uppercase">13 Jun 2026</span>
-              </div>
-              <div className="bg-white rounded-[16px] p-3.5 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-1 h-8 bg-emerald-500 rounded-full"></div>
-                  <div>
-                    <span className="text-[13px] text-[#1a1f36] font-bold block">Vaccination</span>
-                    <span className="text-[11px] text-[#8b92a5] font-medium block">Clinical document record</span>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-[#8b92a5] uppercase">13 Jun 2026</span>
-              </div>
-            </div>
-          </div>
 
           {/* Owner Information Card */}
           <div className="mx-5 mt-4 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">

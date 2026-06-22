@@ -85,7 +85,7 @@ const getAppointmentDateObject = (dateStr: string, timeStr: string) => {
 
 const VetDashboard = () => {
   const navigate = useNavigate();
-  const { isLoading: guardLoading, showSpinner, user, profile, error: guardError } = useRoleGuard(["vet"], "/auth-vet", true);
+  const { isLoading: guardLoading, showSpinner, user, profile, error: guardError } = useRoleGuard(["vet"], "/auth/vet", true);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
   const [activeAppointment, setActiveAppointment] = useState<DashboardAppointment | null>(null);

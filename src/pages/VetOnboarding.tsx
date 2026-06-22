@@ -1011,7 +1011,7 @@ const VetOnboarding = () => {
     setIsLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { navigate("/auth-vet"); return; }
+      if (!session) { navigate("/auth/vet"); return; }
       const uid = session.user.id;
       const { data: existingVp } = await supabase.from('vet_profiles').select('*').eq('user_id', uid).maybeSingle();
 
@@ -1572,10 +1572,10 @@ const VetOnboarding = () => {
             <Button variant="ghost" size="icon" onClick={async () => {
                  try {
                    await supabase.auth.signOut();
-                   navigate("/auth-vet");
+                   navigate("/auth/vet");
                  } catch (err) {
                    console.error("Logout error:", err);
-                   navigate("/auth-vet"); // Still navigate or handle as needed
+                   navigate("/auth/vet"); // Still navigate or handle as needed
                  }
                }}>
               <LogOut className="w-5 h-5" />

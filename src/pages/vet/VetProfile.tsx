@@ -18,7 +18,7 @@ import { VerifiedBadge } from "@/components/VerifiedBadge";
 const VetProfile = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { user, profile: roleGuardProfile, isLoading: guardLoading, showSpinner } = useRoleGuard(["vet"], "/auth-vet", true);
+  const { user, profile: roleGuardProfile, isLoading: guardLoading, showSpinner } = useRoleGuard(["vet"], "/auth/vet", true);
   const [vetData, setVetData] = useState<any>(null);
 
   useEffect(() => {
@@ -50,7 +50,7 @@ const VetProfile = () => {
     try {
       await signOut();
       toast.success("Logged out successfully");
-      navigate("/auth-vet");
+      navigate("/auth/vet");
     } catch (error) {
       toast.error("Failed to logout");
     }

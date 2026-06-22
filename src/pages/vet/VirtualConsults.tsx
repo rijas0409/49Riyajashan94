@@ -39,7 +39,7 @@ interface Consultation {
 const VirtualConsults = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isLoading: guardLoading, showSpinner } = useRoleGuard(["vet"], "/auth-vet", true);
+  const { isLoading: guardLoading, showSpinner } = useRoleGuard(["vet"], "/auth/vet", true);
   const [activeTab, setActiveTab] = useState("Active");
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(true);

@@ -1682,6 +1682,9 @@ const BookingDetails = () => {
                                 address: visitType === "home" ? "123 Premium Residency, Indiranagar" : (dbVetData?.hospital_address || dbVetData?.clinic_address || dbVetData?.hospital_name || dbVetData?.clinic_name || "HSR Paws Clinic, Sector 2"),
                               };
                               localStorage.setItem(`payment_details_${realBookingId}`, JSON.stringify(paymentDetails));
+                              if (selectedPetPassport?.id) {
+                                localStorage.setItem(`selected_passport_id_${realBookingId}`, selectedPetPassport.id);
+                              }
 
                               toast.success("Payment successful! Requesting vet confirmation...");
                               navigate(`/buyer/vet/appointment/pending/${realBookingId}`, { 

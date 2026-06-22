@@ -273,12 +273,18 @@ const BuyerVisitDetails: React.FC = () => {
 
   // Functional interactive states
   const [selectedPassportId, setSelectedPassportId] = useState<string | null>(null);
+  const [hasInteractedWithPassport, setHasInteractedWithPassport] = useState(false);
   const [connectedPassport, setConnectedPassport] = useState<any | null>(null);
   const [connectedMedicalLog, setConnectedMedicalLog] = useState<any | null>(null);
   const [connectedConditions, setConnectedConditions] = useState<any[]>([]);
   const [connectedRecords, setConnectedRecords] = useState<any[]>([]);
   const [userPassports, setUserPassports] = useState<any[]>([]);
   const [loadingUserPassports, setLoadingUserPassports] = useState(false);
+
+  // Fetch user passports on mount to enable auto-connection
+  useEffect(() => {
+    fetchUserPassports();
+  }, []);
 
   // Drag to dismiss pet passport bottom sheet state
   const [sheetDragY, setSheetDragY] = useState(0);
@@ -365,8 +371,23 @@ const BuyerVisitDetails: React.FC = () => {
   // Synchronize database values to local state when available
   useEffect(() => {
     if (dbVisit?.consultation_notes) {
-      setChiefComplaint(dbVisit.consultation_notes);
-      setReasonInput(dbVisit.consultation_notes);
+      // Check if it is a JSON representing payment details
+      let isPaymentObj = false;
+      try {
+        const parsed = typeof dbVisit.consultation_notes === "string" 
+          ? JSON.parse(dbVisit.consultation_notes) 
+          : dbVisit.consultation_notes;
+        if (parsed && typeof parsed === "object" && (parsed.payment_id || parsed.bookingId || parsed.consultation_fee)) {
+          isPaymentObj = true;
+        }
+      } catch (e) {
+        // Not a JSON object or invalid JSON
+      }
+
+      if (!isPaymentObj) {
+        setChiefComplaint(dbVisit.consultation_notes);
+        setReasonInput(dbVisit.consultation_notes);
+      }
     }
   }, [dbVisit?.consultation_notes]);
 
@@ -856,6 +877,62 @@ const BuyerVisitDetails: React.FC = () => {
     setIsEditingReason(false);
   };
 
+  // Shared backend & local passport connectivity function
+  const connectPassportData = async (row: any) => {
+    if (!row) return;
+    const [medicalRes, conditionsRes, recordsRes] = await Promise.all([
+      supabase
+        .from("pet_medical_logs")
+        .select("*")
+        .eq("pet_passport_id", row.id)
+        .maybeSingle(),
+      supabase
+        .from("pet_health_conditions")
+        .select("*")
+        .eq("pet_passport_id", row.id),
+      supabase
+        .from("pet_health_records_documents")
+        .select("*")
+        .eq("pet_passport_id", row.id)
+    ]);
+
+    setConnectedMedicalLog(medicalRes.data || null);
+    setConnectedConditions(conditionsRes.data || []);
+    setConnectedRecords(recordsRes.data || []);
+
+    const pId = row.passport_id || `#PP-${row.id?.slice(0, 7).toUpperCase()}`;
+    const ageTextVal = getFormattedPetAge(row.approx_years, row.approx_months, row.dob);
+    const ageVal = ageTextVal;
+
+    const weightVal = row.weight ? `${row.weight} lbs` : "N/A";
+    const dobVal = row.dob ? new Date(row.dob).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A";
+    const issueDateVal = row.created_at ? new Date(row.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A";
+
+    const mappedPassport = {
+      id: pId,
+      rawId: row.id,
+      name: row.pet_name || "Unnamed Pet",
+      species: row.species || "N/A",
+      gender: row.gender || "N/A",
+      breed: `${row.breed || "Breed"} · ${row.gender || ""}`,
+      appearance: row.appearance || "N/A",
+      age: ageVal,
+      ageText: ageTextVal,
+      weight: weightVal,
+      dob: dobVal,
+      issueDate: issueDateVal,
+      ownerName: row.owner_name || "N/A",
+      primaryPhone: row.primary_phone || "N/A",
+      emergencyContactName: row.emergency_contact_name || "N/A",
+      emergencyPhone: row.emergency_phone || "N/A",
+      emergencyRelationship: row.emergency_relationship || "N/A",
+      photo_url: row.photo_url || null,
+      avatar: row.species?.toLowerCase() === "cat" ? "coco" : "luna"
+    };
+
+    setConnectedPassport(mappedPassport);
+  };
+
   // Confirming Pet Passport connection
   const handleConfirmConnect = async () => {
     if (!selectedPassportId) return;
@@ -863,67 +940,53 @@ const BuyerVisitDetails: React.FC = () => {
     if (!row) return;
 
     try {
-      // Fetch details using direct tables
-      const [medicalRes, conditionsRes, recordsRes] = await Promise.all([
-        supabase
-          .from("pet_medical_logs")
-          .select("*")
-          .eq("pet_passport_id", row.id)
-          .maybeSingle(),
-        supabase
-          .from("pet_health_conditions")
-          .select("*")
-          .eq("pet_passport_id", row.id),
-        supabase
-          .from("pet_health_records_documents")
-          .select("*")
-          .eq("pet_passport_id", row.id)
-      ]);
-
-      setConnectedMedicalLog(medicalRes.data || null);
-      setConnectedConditions(conditionsRes.data || []);
-      setConnectedRecords(recordsRes.data || []);
-
-      // Format EXACTLY in the layout schema so all downstream elements work perfect
-      const pId = row.passport_id || `#PP-${row.id?.slice(0, 7).toUpperCase()}`;
-      
-      const ageTextVal = getFormattedPetAge(row.approx_years, row.approx_months, row.dob);
-      const ageVal = ageTextVal;
-
-      const weightVal = row.weight ? `${row.weight} lbs` : "N/A";
-      const dobVal = row.dob ? new Date(row.dob).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A";
-      const issueDateVal = row.created_at ? new Date(row.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A";
-
-      const mappedPassport = {
-        id: pId,
-        rawId: row.id,
-        name: row.pet_name || "Unnamed Pet",
-        species: row.species || "N/A",
-        gender: row.gender || "N/A",
-        breed: `${row.breed || "Breed"} · ${row.gender || ""}`,
-        appearance: row.appearance || "N/A",
-        age: ageVal,
-        ageText: ageTextVal,
-        weight: weightVal,
-        dob: dobVal,
-        issueDate: issueDateVal,
-        ownerName: row.owner_name || "N/A",
-        primaryPhone: row.primary_phone || "N/A",
-        emergencyContactName: row.emergency_contact_name || "N/A",
-        emergencyPhone: row.emergency_phone || "N/A",
-        emergencyRelationship: row.emergency_relationship || "N/A",
-        photo_url: row.photo_url || null,
-        avatar: row.species?.toLowerCase() === "cat" ? "coco" : "luna"
-      };
-
-      setConnectedPassport(mappedPassport);
+      setHasInteractedWithPassport(true);
+      await connectPassportData(row);
       setPassportOverlayOpen(false);
-      toast.success(`${mappedPassport.name}'s Passport synced successfully!`);
+      toast.success(`${row.pet_name || "Pet"}'s Passport synced successfully!`);
     } catch (err) {
       console.error("Error setting up connected passport:", err);
       toast.error("Failed to connect passport completely.");
     }
   };
+
+  // Automatic passport connection based on selected pet in booking details
+  useEffect(() => {
+    if (userPassports.length === 0 || connectedPassport || hasInteractedWithPassport) return;
+
+    const performAutoConnect = async () => {
+      const targetVisitId = currentVisitId || realDbId;
+      const cachedId = targetVisitId ? localStorage.getItem(`selected_passport_id_${targetVisitId}`) : null;
+      let matchedPassport = null;
+
+      // 1. Primary behavior: connect by cached passport id from booking
+      if (cachedId) {
+        matchedPassport = userPassports.find(p => p.id === cachedId);
+      }
+
+      // 2. Fallback behavior: connect by pet name match in case cache is missing
+      if (!matchedPassport) {
+        const petNameFromBooking = dbVisit?.pet_name || initialVisit?.petName;
+        if (petNameFromBooking) {
+          matchedPassport = userPassports.find(
+            p => (p.pet_name || "").toLowerCase().trim() === petNameFromBooking.toLowerCase().trim()
+          );
+        }
+      }
+
+      if (matchedPassport) {
+        console.log("Automatically connecting matching Pet Passport:", matchedPassport.pet_name);
+        try {
+          await connectPassportData(matchedPassport);
+          setSelectedPassportId(matchedPassport.id);
+        } catch (err) {
+          console.error("Auto connection failed:", err);
+        }
+      }
+    };
+
+    performAutoConnect();
+  }, [userPassports, dbVisit, initialVisit, currentVisitId, realDbId, connectedPassport, hasInteractedWithPassport]);
 
   // Check if they came from the correct flow
   const isDirectAccess = (!location.state || !location.state.fromBookingFlow) && !isOwnerOrVet;

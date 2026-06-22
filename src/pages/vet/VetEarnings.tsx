@@ -11,7 +11,7 @@ import SplashScreen from "@/components/SplashScreen";
 
 const VetEarnings = () => {
   const navigate = useNavigate();
-  const { isLoading: guardLoading, showSpinner } = useRoleGuard(["vet"], "/auth-vet", true);
+  const { isLoading: guardLoading, showSpinner } = useRoleGuard(["vet"], "/auth/vet", true);
   const [activeTab, setActiveTab] = useState("This Week");
 
   const transactions = [

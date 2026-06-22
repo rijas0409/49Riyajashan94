@@ -109,7 +109,7 @@ const AddProduct = () => {
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { navigate("/auth-products"); return; }
+      if (!session) { navigate("/auth/products"); return; }
       setUser(session.user);
     };
     init();

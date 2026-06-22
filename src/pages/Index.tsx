@@ -103,7 +103,7 @@ const Index = () => {
 
           <Button 
             className="bg-gradient-to-r from-[#FF6A88] to-[#A76DFF] text-white rounded-full px-6 py-2.5 font-semibold hover:scale-105 transition-all duration-300 shadow-lg shadow-purple-500/20"
-            onClick={() => navigate("/auth-buyer")}
+            onClick={() => navigate("/auth/buyer")}
           >
             Get Help
           </Button>
@@ -129,7 +129,7 @@ const Index = () => {
               <Button 
                 size="xl"
                 className="bg-gradient-to-r from-[#FF6A88] to-[#A76DFF] text-white px-8 py-7 rounded-full font-bold text-lg hover:scale-105 transition-all duration-300 shadow-xl shadow-purple-500/25 min-w-[200px]"
-                onClick={() => navigate("/auth-buyer")}
+                onClick={() => navigate("/auth/buyer")}
               >
                 Get Started
                 <Sparkles className="ml-2 w-5 h-5" />
@@ -137,14 +137,14 @@ const Index = () => {
               <Button 
                 variant="outline"
                 className="bg-white border-2 border-slate-100 text-[#2d2e34] px-8 py-7 rounded-full font-bold text-lg hover:bg-slate-50 transition-all duration-300 min-w-[200px]"
-                onClick={() => navigate("/auth-breeder")}
+                onClick={() => navigate("/auth/breeder")}
               >
                 Become a Seller?
               </Button>
               <Button 
                 variant="ghost"
                 className="text-[#7436c9] font-bold hover:bg-[#b789ff]/10 rounded-full px-6"
-                onClick={() => navigate("/auth-delivery")}
+                onClick={() => navigate("/auth/delivery")}
               >
                 Delivery Partner?
               </Button>
@@ -233,7 +233,7 @@ const Index = () => {
             <h2 className="text-4xl font-extrabold tracking-tight mb-4">The Sruvo Family</h2>
             <p className="text-slate-500">Meet some of the beautiful souls currently on our platform.</p>
           </div>
-          <Button variant="ghost" className="text-[#7436c9] font-bold group" onClick={() => navigate("/auth-buyer")}>
+          <Button variant="ghost" className="text-[#7436c9] font-bold group" onClick={() => navigate("/auth/buyer")}>
             View All Listings <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-2 transition-transform" />
           </Button>
         </div>
@@ -346,7 +346,7 @@ const FeatureCard = ({ icon, title, description, color }: { icon: React.ReactNod
 const PetListingCard = ({ name, breed, age, image, tags }: { name: string, breed: string, age: string, image: string, tags: string[] }) => {
   const navigate = useNavigate();
   return (
-    <div className="bg-white rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-500 group cursor-pointer" onClick={() => navigate("/auth-buyer")}>
+    <div className="bg-white rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-500 group cursor-pointer" onClick={() => navigate("/auth/buyer")}>
       <div className="relative overflow-hidden h-80">
         <img className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" src={image} alt={name} />
         <div className="absolute top-4 left-4">

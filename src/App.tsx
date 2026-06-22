@@ -176,12 +176,12 @@ const App = () => (
                 <Route path="/addresses" element={<Addresses />} />
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/auth" element={<Auth />} />
-                <Route path="/auth-admin" element={<AuthAdmin />} />
-                <Route path="/auth-breeder" element={<AuthBreeder />} />
-                <Route path="/auth-buyer" element={<AuthBuyer />} />
-                <Route path="/auth-delivery" element={<AuthDelivery />} />
-                <Route path="/auth-products" element={<AuthProducts />} />
-                <Route path="/auth-vet" element={<AuthVet />} />
+                <Route path="/auth/admin" element={<AuthAdmin />} />
+                <Route path="/auth/breeder" element={<AuthBreeder />} />
+                <Route path="/auth/buyer" element={<AuthBuyer />} />
+                <Route path="/auth/delivery" element={<AuthDelivery />} />
+                <Route path="/auth/products" element={<AuthProducts />} />
+                <Route path="/auth/vet" element={<AuthVet />} />
                 <Route path="/buyer/bookings" element={<Bookings />} />
                 <Route path="/bookings" element={<Navigate to="/buyer/bookings" replace />} />
                 <Route path="/profile/bookings" element={<Navigate to="/buyer/bookings" replace />} />

@@ -28,7 +28,7 @@ const VetPendingApproval = () => {
     const check = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { navigate("/auth-vet"); return; }
+        if (!session) { navigate("/auth/vet"); return; }
  
         const { data: vetProfile } = await supabase
           .from("vet_profiles")
@@ -118,7 +118,7 @@ const VetPendingApproval = () => {
     };
   }, [navigate, refreshProfile]);
 
-  const handleLogout = async () => { await supabase.auth.signOut(); navigate("/auth-vet"); };
+  const handleLogout = async () => { await supabase.auth.signOut(); navigate("/auth/vet"); };
 
   const handleManualCheck = async () => {
     setIsChecking(true);

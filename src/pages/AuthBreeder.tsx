@@ -279,7 +279,7 @@ const AuthBreeder = () => {
                 Looking to buy pets?{" "}
                 <button
                   type="button"
-                  onClick={() => navigate("/auth-buyer")}
+                  onClick={() => navigate("/auth/buyer")}
                   className="text-primary hover:underline"
                 >
                   Buyer Login

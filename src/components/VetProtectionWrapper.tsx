@@ -10,7 +10,7 @@ export const VetProtectionWrapper = ({ children, requiredStatus }: { children: R
   useEffect(() => {
     if (authReady) {
       if (!user || profile?.role !== 'vet') {
-        navigate("/auth-vet", { replace: true });
+        navigate("/auth/vet", { replace: true });
         return;
       }
 

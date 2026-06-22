@@ -30,7 +30,7 @@ const AuthVet = () => {
 
   useEffect(() => {
     // Only perform auto-redirect if we are explicitly on the auth page
-    if (window.location.pathname !== "/auth-vet") return;
+    if (window.location.pathname !== "/auth/vet") return;
 
     if (authReady && user && profile?.role === "vet") {
       if (profile.is_onboarding_complete === false) {
@@ -205,7 +205,7 @@ const AuthVet = () => {
             <div className="mt-4 text-center">
               <p className="text-sm text-muted-foreground">
                 Looking to buy pets?{" "}
-                <button type="button" onClick={() => navigate("/auth-buyer")} className="text-primary hover:underline">Buyer Login</button>
+                <button type="button" onClick={() => navigate("/auth/buyer")} className="text-primary hover:underline">Buyer Login</button>
               </p>
             </div>
           </CardContent>

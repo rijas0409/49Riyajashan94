@@ -237,7 +237,7 @@ const AuthDelivery = () => {
                 Looking for buyer/seller login?{" "}
                 <button
                   type="button"
-                  onClick={() => navigate("/auth-buyer")}
+                  onClick={() => navigate("/auth/buyer")}
                   className="text-primary hover:underline"
                 >
                   Click here

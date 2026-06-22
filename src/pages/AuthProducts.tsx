@@ -258,7 +258,7 @@ const AuthProducts = () => {
             <div className="mt-4 text-center">
               <p className="text-sm text-muted-foreground">
                 Looking to buy pets?{" "}
-                <button type="button" onClick={() => navigate("/auth-buyer")} className="text-primary hover:underline">
+                <button type="button" onClick={() => navigate("/auth/buyer")} className="text-primary hover:underline">
                   Buyer Login
                 </button>
               </p>

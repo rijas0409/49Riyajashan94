@@ -61,7 +61,7 @@ const ProductsOnboarding = () => {
     setIsLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { navigate("/auth-products"); return; }
+      if (!session) { navigate("/auth/products"); return; }
 
       const userId = session.user.id;
       const aadhaarFrontUrl = await uploadFile(formData.aadhaarFrontFile, userId, 'aadhaar_front');

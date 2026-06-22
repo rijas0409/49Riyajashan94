@@ -269,7 +269,7 @@ const AuthBuyer = () => {
                 Are you a breeder?{" "}
                 <button
                   type="button"
-                  onClick={() => navigate("/auth-breeder")}
+                  onClick={() => navigate("/auth/breeder")}
                   className="text-primary hover:underline"
                 >
                   Seller Login

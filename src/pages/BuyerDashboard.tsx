@@ -226,7 +226,7 @@ const BuyerDashboard = () => {
     if (!authReady) return;
 
     if (!session) {
-      navigate("/auth");
+      navigate("/auth/buyer");
       return;
     }
 

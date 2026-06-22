@@ -64,7 +64,7 @@ const AdminDashboard = () => {
   const checkUser = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { navigate("/auth-admin"); return; }
+      if (!session) { navigate("/auth/admin"); return; }
       
       const { data: userRole } = await supabase.rpc('get_user_role', { _user_id: session.user.id });
       const metaRole = session.user.user_metadata?.role;
@@ -76,7 +76,7 @@ const AdminDashboard = () => {
       setUser(session.user);
     } catch (err: any) {
       console.error("checkUser error:", err);
-      navigate("/auth-admin");
+      navigate("/auth/admin");
     }
   }, [navigate, toast]);
 
@@ -424,7 +424,7 @@ const AdminDashboard = () => {
 
   const handleLogout = useCallback(async () => {
     await supabase.auth.signOut();
-    navigate("/auth-admin");
+    navigate("/auth/admin");
   }, [navigate]);
 
   const handleSectionChange = (s: string) => {
