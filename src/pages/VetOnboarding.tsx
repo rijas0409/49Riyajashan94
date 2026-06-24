@@ -148,7 +148,7 @@ const VetOnboarding = () => {
     // Step 2 – Identity
     govtIdFile: null as File | null, panCardFile: null as File | null, passportPhotoFile: null as File | null,
     // Step 3 – Professional
-    qualification: "BVSc", registrationNumber: "", vetDegreeFile: null as File | null,
+    qualification: "BVSc", otherQualification: "", registrationNumber: "", vetDegreeFile: null as File | null,
     educationRows: [{ ...EMPTY_EDU }] as EducationRow[],
     // Step 4 – Clinic
     clinicRegistrationFile: null as File | null, clinicShopLicenseFile: null as File | null,
@@ -469,7 +469,8 @@ const VetOnboarding = () => {
               fullName: prev.fullName || p?.name || vp.fullName || defaultName,
               email: prev.email || defaultEmail,
               phone: prev.phone || p?.phone || "",
-              qualification: prev.qualification || vp.qualification || "BVSc",
+              qualification: prev.qualification || (vp.qualification ? (["BVSc", "MVSc", "PhD"].includes(vp.qualification) ? vp.qualification : "Other") : "BVSc"),
+              otherQualification: prev.otherQualification || (vp.qualification && !["BVSc", "MVSc", "PhD"].includes(vp.qualification) ? vp.qualification : ""),
               registrationNumber: prev.registrationNumber || vp.registration_number || "",
               isIndependentPractice: prev.isIndependentPractice || vp.self_practice || false,
               yearsOfExperience: prev.yearsOfExperience || vp.years_of_experience?.toString() || "",
@@ -584,14 +585,15 @@ const VetOnboarding = () => {
     setFormData(prev => {
       if (prev.educationRows.length > 0) {
         const firstRow = prev.educationRows[0];
+        const targetQual = prev.qualification === "Other" ? prev.otherQualification : prev.qualification;
         if (
-          firstRow.qualification !== prev.qualification ||
+          firstRow.qualification !== targetQual ||
           firstRow.certificateFile !== prev.vetDegreeFile
         ) {
           const updatedRows = [...prev.educationRows];
           updatedRows[0] = {
             ...updatedRows[0],
-            qualification: prev.qualification,
+            qualification: targetQual,
             certificateFile: prev.vetDegreeFile
           };
           return { ...prev, educationRows: updatedRows };
@@ -599,7 +601,7 @@ const VetOnboarding = () => {
       }
       return prev;
     });
-  }, [formData.qualification, formData.vetDegreeFile]);
+  }, [formData.qualification, formData.otherQualification, formData.vetDegreeFile]);
 
   useEffect(() => {
     if (filePreviews.vetDegreeFile) {
@@ -1114,7 +1116,8 @@ const VetOnboarding = () => {
         } else if (oldEdu[i]?.certificate_url) {
           certUrl = oldEdu[i].certificate_url;
         }
-        eduDetails.push({ qualification: row.qualification || formData.qualification, institution: row.institution, year: row.year, certificate_url: certUrl });
+        const actualQual = formData.qualification === "Other" ? formData.otherQualification : formData.qualification;
+        eduDetails.push({ qualification: row.qualification || actualQual, institution: row.institution, year: row.year, certificate_url: certUrl });
       }
 
       // Upload clinic photos
@@ -1150,7 +1153,7 @@ const VetOnboarding = () => {
           },
           body: JSON.stringify({
             name: `Dr. ${formData.fullName}`,
-            qualification: formData.qualification,
+            qualification: formData.qualification === "Other" ? formData.otherQualification : formData.qualification,
             yearsExp: formData.yearsOfExperience || "0",
             specializations: formData.specializations,
           }),
@@ -1173,7 +1176,7 @@ const VetOnboarding = () => {
 
       const upsertData = {
         user_id: uid,
-        qualification: formData.qualification,
+        qualification: formData.qualification === "Other" ? formData.otherQualification : formData.qualification,
         years_of_experience: parseInt(formData.yearsOfExperience) || 0,
         specializations: formData.specializations,
         clinical_expertise: formData.clinicalExpertise,
@@ -1539,7 +1542,8 @@ const VetOnboarding = () => {
           if (idx === 0) return row.institution && row.year;
           return row.qualification && row.institution && row.year;
         });
-        return hasVetDegree && formData.registrationNumber && allEduValid;
+        const isOtherQualificationFilled = formData.qualification !== "Other" || !!formData.otherQualification.trim();
+        return hasVetDegree && formData.registrationNumber && allEduValid && isOtherQualificationFilled;
       }
       case 4: {
         const hasHospital = formData.practiceType.includes("Hospital / Organization");
@@ -1609,7 +1613,7 @@ const VetOnboarding = () => {
   };
 
   /* ─── file upload UI helper ─── */
-  const FileUploadBox = ({ field, label, accept = "image/*,application/pdf", icon: Icon = Upload }: { field: string; label: string; accept?: string; icon?: any }) => {
+  const FileUploadBox = ({ field, label, accept = "image/*,application/pdf,.pdf", icon: Icon = Upload }: { field: string; label: string; accept?: string; icon?: any }) => {
     const hasExistingFile = (formData as any)[field] === null && filePreviews[field];
     const isFileUploaded = (formData as any)[field] !== null || filePreviews[field];
 
@@ -2285,6 +2289,23 @@ const VetOnboarding = () => {
                     </div>
                   </div>
 
+                  {/* Dedicated input if they select "Other" qualification */}
+                  {formData.qualification === "Other" && (
+                    <div className="space-y-1.5 animate-fade-in">
+                      <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
+                        <GraduationCap className="w-4 h-4 text-primary shrink-0" />
+                        Specify Highest Qualification <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        value={formData.otherQualification || ""}
+                        onChange={e => setFormData({ ...formData, otherQualification: e.target.value })}
+                        className="rounded-xl border-[#E2E8F0] h-11 text-xs sm:text-sm font-medium text-[#1E293B] bg-white shadow-none focus:ring-2 focus:ring-primary/20"
+                        placeholder="e.g. DVM, DVSc, BVS"
+                        required
+                      />
+                    </div>
+                  )}
+
                   {/* Below it: Veterinary Council Registration Number */}
                   <div className="space-y-1.5">
                     <Label className="flex items-center gap-2 text-[#334155] font-semibold text-xs sm:text-sm">
@@ -2300,7 +2321,7 @@ const VetOnboarding = () => {
                   </div>
 
                   {/* Below it: Veterinary Degree Certificate dynamically named BVSc/MVSc based on Highest Qualification selected */}
-                  <FileUploadBox field="vetDegreeFile" label={`Veterinary Degree Certificate (${formData.qualification})`} icon={GraduationCap} />
+                  <FileUploadBox field="vetDegreeFile" label={`Veterinary Degree Certificate (${formData.qualification === "Other" && formData.otherQualification ? formData.otherQualification : formData.qualification})`} icon={GraduationCap} />
 
                   {/* Education details list */}
                   <div className="space-y-4 pt-2">
@@ -2348,7 +2369,7 @@ const VetOnboarding = () => {
                               <Label className="text-xs font-bold text-slate-500">Qualification</Label>
                               {idx === 0 ? (
                                 <Input 
-                                  value={row.qualification || formData.qualification} 
+                                  value={row.qualification || (formData.qualification === "Other" ? formData.otherQualification : formData.qualification)} 
                                   disabled 
                                   className="h-11 rounded-xl text-xs sm:text-sm bg-[#F8FAFC] text-slate-400 cursor-not-allowed border-slate-200 shadow-none font-bold select-none" 
                                 />
@@ -2407,7 +2428,7 @@ const VetOnboarding = () => {
                                 )
                               ) : (
                                 <div>
-                                  <input type="file" accept="image/*,application/pdf" onChange={handleEduFileChange(idx)} className="hidden" id={`edu-file-${idx}`} />
+                                  <input type="file" accept="image/*,application/pdf,.pdf" onChange={handleEduFileChange(idx)} className="hidden" id={`edu-file-${idx}`} />
                                   <label htmlFor={`edu-file-${idx}`} className={`cursor-pointer flex items-center justify-between w-full h-11 rounded-xl border px-3.5 text-xs font-bold transition-all ${filePreviews[`edu_${idx}`] ? 'border-primary/20 text-[#8a1550] bg-[#8a1550]/5' : 'border-[#E2E8F0] border-dashed text-slate-400 bg-white hover:border-primary/40'}`}>
                                     <div className="flex items-center gap-2 overflow-hidden mr-1">
                                       {filePreviews[`edu_${idx}`] ? (
@@ -3942,7 +3963,7 @@ const VetOnboarding = () => {
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 text-xs sm:text-sm">
                             <div className="space-y-0.5">
                               <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Highest Qualification</span>
-                              <p className="font-bold text-[#1E293B]">{formData.qualification || "N/A"}</p>
+                              <p className="font-bold text-[#1E293B]">{formData.qualification === "Other" ? formData.otherQualification : (formData.qualification || "N/A")}</p>
                             </div>
                             <div className="space-y-0.5 bg-rose-50/10 px-1 rounded-lg">
                               <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Vet License Number</span>
@@ -3960,7 +3981,7 @@ const VetOnboarding = () => {
                               {/* Veterinary Degree Certificate */}
                               <div className="space-y-1.5">
                                 <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight block">Veterinary Degree Certificate</span>
-                                {renderReviewFilePreview("vetDegreeFile", `Degree Certificate (${formData.qualification})`)}
+                                {renderReviewFilePreview("vetDegreeFile", `Degree Certificate (${formData.qualification === "Other" ? formData.otherQualification : formData.qualification})`)}
                               </div>
 
                               {/* Primary Qualification Section */}
@@ -3969,7 +3990,7 @@ const VetOnboarding = () => {
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                   <div className="space-y-0.5">
                                     <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Qualification</span>
-                                    <p className="font-bold text-[#1E293B]">{formData.educationRows[0]?.qualification || formData.qualification || "N/A"}</p>
+                                    <p className="font-bold text-[#1E293B]">{formData.educationRows[0]?.qualification || (formData.qualification === "Other" ? formData.otherQualification : formData.qualification) || "N/A"}</p>
                                   </div>
                                   <div className="space-y-0.5">
                                     <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Passing Year</span>
