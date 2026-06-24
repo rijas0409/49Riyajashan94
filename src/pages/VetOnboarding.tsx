@@ -2897,7 +2897,7 @@ const VetOnboarding = () => {
                         </div>
                       </div>
                       
-                      <FileUploadBox field="hospitalJoiningProofFile" label="Joining Proof / ID" icon={FileText} />
+                      <FileUploadBox field="hospitalJoiningProofFile" label="Joining Proof / ID" accept="image/*,application/pdf,.pdf" icon={FileText} />
                       </div>
                       )}
                     </div>
