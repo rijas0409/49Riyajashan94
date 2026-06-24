@@ -1056,7 +1056,10 @@ const VetOnboarding = () => {
   const uploadFile = async (file: File, userId: string, type: string) => {
     const ext = file.name.split('.').pop();
     const path = `${userId}/${type}_${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from('vet-documents').upload(path, file);
+    const { error } = await supabase.storage.from('vet-documents').upload(path, file, {
+      contentType: file.type || undefined,
+      upsert: true
+    });
     if (error) throw error;
     return path;
   };
@@ -1428,10 +1431,20 @@ const VetOnboarding = () => {
       );
     }
     
+    const isPdf = 
+      (file && file.type === "application/pdf") || 
+      (file && file.name.toLowerCase().endsWith(".pdf")) ||
+      (preview && (preview.startsWith("data:application/pdf") || preview.toLowerCase().split('?')[0].endsWith(".pdf")));
+    
     return (
       <div className="bg-slate-50/80 border border-slate-200/60 rounded-xl p-3 flex items-center justify-between gap-3 shadow-xs font-sans">
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          {preview ? (
+          {isPdf ? (
+            <div className="w-12 h-12 rounded-lg bg-rose-50 border border-rose-200 flex flex-col items-center justify-center shrink-0 text-rose-500 font-sans shadow-2xs">
+              <FileText className="w-5 h-5 text-rose-500" />
+              <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">PDF</span>
+            </div>
+          ) : preview ? (
             <div className="w-12 h-12 rounded-lg border border-slate-200 overflow-hidden bg-white shrink-0">
               <img src={preview} alt={label} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             </div>
@@ -1462,11 +1475,21 @@ const VetOnboarding = () => {
         </div>
       );
     }
+
+    const isPdf = 
+      (file && file.type === "application/pdf") || 
+      (file && file.name.toLowerCase().endsWith(".pdf")) ||
+      (preview && (preview.startsWith("data:application/pdf") || preview.toLowerCase().split('?')[0].endsWith(".pdf")));
     
     return (
       <div className="bg-slate-50/80 border border-slate-200/60 rounded-xl p-3 flex items-center justify-between gap-3 shadow-xs font-sans">
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          {preview ? (
+          {isPdf ? (
+            <div className="w-12 h-12 rounded-lg bg-rose-50 border border-rose-200 flex flex-col items-center justify-center shrink-0 text-rose-500 font-sans shadow-2xs">
+              <FileText className="w-5 h-5 text-rose-500" />
+              <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">PDF</span>
+            </div>
+          ) : preview ? (
             <div className="w-12 h-12 rounded-lg border border-slate-200 overflow-hidden bg-white shrink-0">
               <img src={preview} alt={label} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             </div>
@@ -1586,7 +1609,7 @@ const VetOnboarding = () => {
   };
 
   /* ─── file upload UI helper ─── */
-  const FileUploadBox = ({ field, label, accept = "image/*,.pdf", icon: Icon = Upload }: { field: string; label: string; accept?: string; icon?: any }) => {
+  const FileUploadBox = ({ field, label, accept = "image/*,application/pdf", icon: Icon = Upload }: { field: string; label: string; accept?: string; icon?: any }) => {
     const hasExistingFile = (formData as any)[field] === null && filePreviews[field];
     const isFileUploaded = (formData as any)[field] !== null || filePreviews[field];
 
@@ -2384,7 +2407,7 @@ const VetOnboarding = () => {
                                 )
                               ) : (
                                 <div>
-                                  <input type="file" accept="image/*,.pdf" onChange={handleEduFileChange(idx)} className="hidden" id={`edu-file-${idx}`} />
+                                  <input type="file" accept="image/*,application/pdf" onChange={handleEduFileChange(idx)} className="hidden" id={`edu-file-${idx}`} />
                                   <label htmlFor={`edu-file-${idx}`} className={`cursor-pointer flex items-center justify-between w-full h-11 rounded-xl border px-3.5 text-xs font-bold transition-all ${filePreviews[`edu_${idx}`] ? 'border-primary/20 text-[#8a1550] bg-[#8a1550]/5' : 'border-[#E2E8F0] border-dashed text-slate-400 bg-white hover:border-primary/40'}`}>
                                     <div className="flex items-center gap-2 overflow-hidden mr-1">
                                       {filePreviews[`edu_${idx}`] ? (
