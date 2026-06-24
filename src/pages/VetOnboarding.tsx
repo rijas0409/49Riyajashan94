@@ -114,6 +114,68 @@ const InfoTooltip = ({ message }: { message: string }) => {
   );
 };
 
+/* ─── Global File Upload UI Helper (Declared at file-scope for DOM stability & zero-latency renders) ─── */
+const FileUploadBox = ({
+  field,
+  label,
+  accept = "image/*,application/pdf,.pdf",
+  icon: Icon = Upload,
+  formData,
+  filePreviews,
+  handleFileChange
+}: {
+  field: string;
+  label: string;
+  accept?: string;
+  icon?: any;
+  formData: any;
+  filePreviews: Record<string, string>;
+  handleFileChange: (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) => {
+  const hasExistingFile = (formData as any)[field] === null && filePreviews[field];
+  const isFileUploaded = (formData as any)[field] !== null || filePreviews[field];
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="flex items-center gap-1 sm:gap-2 text-[10px] xs:text-xs sm:text-sm font-semibold text-[#334155]">
+        <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0" />
+        {label}
+      </Label>
+      <div className="border-2 border-dashed border-border rounded-xl sm:rounded-2xl p-2.5 sm:p-4 text-center hover:border-primary/50 transition-colors">
+        <input
+          type="file"
+          accept={accept}
+          onChange={handleFileChange(field)}
+          className="hidden"
+          id={`file-${field}`}
+        />
+        <label htmlFor={`file-${field}`} className="cursor-pointer select-none">
+          {isFileUploaded ? (
+            <div className="flex flex-col items-center gap-1 sm:gap-2">
+              <div className="flex items-center justify-center gap-1.5 text-primary">
+                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="text-[11px] sm:text-sm font-semibold">
+                  {hasExistingFile ? "Existing ✓" : "Uploaded ✓"}
+                </span>
+              </div>
+              {filePreviews[field] && filePreviews[field].startsWith("http") && (
+                <span className="text-[9px] sm:text-[10px] text-muted-foreground underline truncate max-w-full">
+                  View Current
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-1">
+              <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground">Upload (max 5MB)</span>
+            </div>
+          )}
+        </label>
+      </div>
+    </div>
+  );
+};
+
 const VetOnboarding = () => {
   const navigate = useNavigate();
   const { profile, refreshProfile } = useAuth();
@@ -685,9 +747,30 @@ const VetOnboarding = () => {
     }
 
     if (file.size > 5 * 1024 * 1024) { toast.error("File must be < 5 MB"); return; }
-    setFormData(prev => ({ ...prev, [field]: file }));
+    
     const reader = new FileReader();
-    reader.onload = (ev) => setFilePreviews(prev => ({ ...prev, [field]: ev.target?.result as string }));
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      setFormData(prev => {
+        const next = { ...prev, [field]: file };
+        if (field === "vetDegreeFile" && next.educationRows.length > 0) {
+          const updatedRows = [...next.educationRows];
+          updatedRows[0] = {
+            ...updatedRows[0],
+            certificateFile: file
+          };
+          next.educationRows = updatedRows;
+        }
+        return next;
+      });
+      setFilePreviews(prev => {
+        const nextPreviews = { ...prev, [field]: result };
+        if (field === "vetDegreeFile") {
+          nextPreviews.edu_0 = result;
+        }
+        return nextPreviews;
+      });
+    };
     reader.readAsDataURL(file);
   };
 
@@ -695,13 +778,17 @@ const VetOnboarding = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) { toast.error("File must be < 5 MB"); return; }
-    setFormData(prev => {
-      const rows = [...prev.educationRows];
-      rows[idx] = { ...rows[idx], certificateFile: file };
-      return { ...prev, educationRows: rows };
-    });
+    
     const reader = new FileReader();
-    reader.onload = (ev) => setFilePreviews(prev => ({ ...prev, [`edu_${idx}`]: ev.target?.result as string }));
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      setFormData(prev => {
+        const rows = [...prev.educationRows];
+        rows[idx] = { ...rows[idx], certificateFile: file };
+        return { ...prev, educationRows: rows };
+      });
+      setFilePreviews(prev => ({ ...prev, [`edu_${idx}`]: result }));
+    };
     reader.readAsDataURL(file);
   };
 
@@ -1612,39 +1699,6 @@ const VetOnboarding = () => {
     }
   };
 
-  /* ─── file upload UI helper ─── */
-  const FileUploadBox = ({ field, label, accept = "image/*,application/pdf,.pdf", icon: Icon = Upload }: { field: string; label: string; accept?: string; icon?: any }) => {
-    const hasExistingFile = (formData as any)[field] === null && filePreviews[field];
-    const isFileUploaded = (formData as any)[field] !== null || filePreviews[field];
-
-    return (
-      <div className="space-y-1.5">
-        <Label className="flex items-center gap-1 sm:gap-2 text-[10px] xs:text-xs sm:text-sm font-semibold text-[#334155]"><Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0" />{label}</Label>
-        <div className="border-2 border-dashed border-border rounded-xl sm:rounded-2xl p-2.5 sm:p-4 text-center hover:border-primary/50 transition-colors">
-          <input type="file" accept={accept} onChange={handleFileChange(field)} className="hidden" id={`file-${field}`} />
-          <label htmlFor={`file-${field}`} className="cursor-pointer select-none">
-            {isFileUploaded ? (
-              <div className="flex flex-col items-center gap-1 sm:gap-2">
-                <div className="flex items-center justify-center gap-1.5 text-primary">
-                  <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="text-[11px] sm:text-sm font-semibold">{hasExistingFile ? "Existing ✓" : "Uploaded ✓"}</span>
-                </div>
-                {filePreviews[field] && filePreviews[field].startsWith("http") && (
-                   <span className="text-[9px] sm:text-[10px] text-muted-foreground underline truncate max-w-full">View Current</span>
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-1">
-                <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
-                <span className="text-[10px] sm:text-xs text-muted-foreground">Upload (max 5MB)</span>
-              </div>
-            )}
-          </label>
-        </div>
-      </div>
-    );
-  };
-
 
   return (
     <div className="min-h-screen bg-gradient-soft">
@@ -2194,8 +2248,8 @@ const VetOnboarding = () => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <FileUploadBox field="govtIdFile" label="Aadhaar Card (Front)" icon={Shield} accept="image/png, image/jpeg, image/jpg" />
-                    <FileUploadBox field="panCardFile" label="Aadhaar Card (Back)" icon={Shield} accept="image/png, image/jpeg, image/jpg" />
+                    <FileUploadBox field="govtIdFile" label="Aadhaar Card (Front)" icon={Shield} accept="image/png, image/jpeg, image/jpg" formData={formData} filePreviews={filePreviews} handleFileChange={handleFileChange} />
+                    <FileUploadBox field="panCardFile" label="Aadhaar Card (Back)" icon={Shield} accept="image/png, image/jpeg, image/jpg" formData={formData} filePreviews={filePreviews} handleFileChange={handleFileChange} />
                   </div>
 
                   <div className="space-y-2">
@@ -2321,7 +2375,7 @@ const VetOnboarding = () => {
                   </div>
 
                   {/* Below it: Veterinary Degree Certificate dynamically named BVSc/MVSc based on Highest Qualification selected */}
-                  <FileUploadBox field="vetDegreeFile" label={`Veterinary Degree Certificate (${formData.qualification === "Other" && formData.otherQualification ? formData.otherQualification : formData.qualification})`} icon={GraduationCap} />
+                  <FileUploadBox field="vetDegreeFile" label={`Veterinary Degree Certificate (${formData.qualification === "Other" && formData.otherQualification ? formData.otherQualification : formData.qualification})`} icon={GraduationCap} formData={formData} filePreviews={filePreviews} handleFileChange={handleFileChange} />
 
                   {/* Education details list */}
                   <div className="space-y-4 pt-2">
@@ -2741,7 +2795,7 @@ const VetOnboarding = () => {
                       </div>
                       
                       {/* File uploads */}
-                      <FileUploadBox field="clinicShopLicenseFile" label="Shop & Establishment License (Optional)" icon={FileText} />
+                      <FileUploadBox field="clinicShopLicenseFile" label="Shop & Establishment License (Optional)" accept="image/*,application/pdf,.pdf" icon={FileText} formData={formData} filePreviews={filePreviews} handleFileChange={handleFileChange} />
                       </div>
                       )}
                     </div>
@@ -2897,7 +2951,7 @@ const VetOnboarding = () => {
                         </div>
                       </div>
                       
-                      <FileUploadBox field="hospitalJoiningProofFile" label="Joining Proof / ID" accept="image/*,application/pdf,.pdf" icon={FileText} />
+                      <FileUploadBox field="hospitalJoiningProofFile" label="Joining Proof / ID" accept="image/*,application/pdf,.pdf" icon={FileText} formData={formData} filePreviews={filePreviews} handleFileChange={handleFileChange} />
                       </div>
                       )}
                     </div>
