@@ -2975,12 +2975,12 @@ const VetOnboarding = () => {
 
                       {/* Search / Selected Tags Area */}
                       {formData.clinicalExpertise.length > 0 && (
-                        <div className="flex flex-wrap gap-2 pt-2 pb-1 border-b border-slate-50">
+                        <div className="flex flex-wrap gap-1.5 sm:gap-2 pt-2 pb-1 border-b border-slate-50">
                           {formData.clinicalExpertise.map(tag => (
-                            <div key={tag} className="flex items-center gap-1 bg-[#FFF5F7] border border-[#EC4899] text-[#EC4899] px-3 py-1.5 rounded-full text-xs sm:text-sm font-bold shadow-sm">
-                              <span>{tag}</span>
-                              <button onClick={() => toggleClinicalExpertise(tag)} className="p-0.5 hover:bg-pink-100 rounded-full transition-colors ml-1">
-                                <X className="w-3.5 h-3.5" />
+                            <div key={tag} className="flex items-center gap-1 bg-[#FFF5F7] border border-[#EC4899] text-[#EC4899] px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold shadow-sm whitespace-nowrap shrink-0">
+                              <span className="truncate">{tag}</span>
+                              <button onClick={() => toggleClinicalExpertise(tag)} className="p-0.5 hover:bg-pink-100 rounded-full transition-colors ml-1 shrink-0">
+                                <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                               </button>
                             </div>
                           ))}
@@ -2991,19 +2991,21 @@ const VetOnboarding = () => {
                       {availableExpertiseTags.filter(tag => !formData.clinicalExpertise.includes(tag)).length > 0 && (
                         <div className="pt-1">
                           <p className="text-xs text-slate-500 font-semibold mb-2">Suggested Expertise</p>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-1.5 sm:gap-2">
                             {availableExpertiseTags
                               .filter(tag => !formData.clinicalExpertise.includes(tag))
                               .slice(0, 9) // Show max 9 suggestions at a time
-                              .map(tag => (
+                              .map((tag, index) => (
                                 <button
                                   key={tag}
                                   type="button"
                                   onClick={() => toggleClinicalExpertise(tag)}
-                                  className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 hover:bg-slate-100 px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-colors"
+                                  className={`items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 hover:bg-slate-100 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold transition-colors whitespace-nowrap shrink-0 min-w-0 ${
+                                    index >= 4 ? "hidden sm:flex" : "flex"
+                                  }`}
                                 >
-                                  <Plus className="w-3.5 h-3.5" />
-                                  <span>{tag}</span>
+                                  <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                                  <span className="truncate">{tag}</span>
                                 </button>
                               ))}
                           </div>
