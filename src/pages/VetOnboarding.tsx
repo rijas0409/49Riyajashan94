@@ -1537,8 +1537,7 @@ const VetOnboarding = () => {
         // Check ALL education rows: primary is mandatory, additional rows must be fully filled if they exist
         const allEduValid = formData.educationRows.every((row, idx) => {
           if (idx === 0) return row.institution && row.year;
-          const hasCertificate = row.certificateFile !== null || !!filePreviews[`edu_${idx}`];
-          return row.qualification && row.institution && row.year && hasCertificate;
+          return row.qualification && row.institution && row.year;
         });
         return hasVetDegree && formData.registrationNumber && allEduValid;
       }
@@ -2346,9 +2345,7 @@ const VetOnboarding = () => {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Qualification input */}
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-bold text-slate-500">
-                                Qualification {idx > 0 && <span className="text-red-500">*</span>}
-                              </Label>
+                              <Label className="text-xs font-bold text-slate-500">Qualification</Label>
                               {idx === 0 ? (
                                 <Input 
                                   value={row.qualification || formData.qualification} 
@@ -2367,9 +2364,7 @@ const VetOnboarding = () => {
 
                             {/* Passing Year select */}
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-bold text-slate-500">
-                                Passing Year <span className="text-red-500">*</span>
-                              </Label>
+                              <Label className="text-xs font-bold text-slate-500">Passing Year</Label>
                               <Select value={row.year} onValueChange={v => updateEduRow(idx, 'year', v)}>
                                 <SelectTrigger className="rounded-xl h-11 text-xs sm:text-sm shadow-none font-medium text-[#1E293B] border-[#E2E8F0] bg-white focus:ring-2 focus:ring-primary/20">
                                   <SelectValue placeholder="Select Year" />
@@ -2384,9 +2379,7 @@ const VetOnboarding = () => {
 
                             {/* Institution / University input */}
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-bold text-slate-500">
-                                Institution / University <span className="text-red-500">*</span>
-                              </Label>
+                              <Label className="text-xs font-bold text-slate-500">Institution / University</Label>
                               <Input 
                                 value={row.institution} 
                                 onChange={e => updateEduRow(idx, 'institution', e.target.value)} 
@@ -2397,9 +2390,7 @@ const VetOnboarding = () => {
 
                             {/* Certificate File upload component inside Card */}
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-bold text-slate-500">
-                                Certificate File {idx > 0 && <span className="text-red-500">*</span>}
-                              </Label>
+                              <Label className="text-xs font-bold text-slate-500">Certificate File</Label>
                               {idx === 0 ? (
                                 filePreviews.edu_0 ? (
                                   <div className="flex items-center gap-2 h-11 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 text-[11px] font-bold text-emerald-600">
