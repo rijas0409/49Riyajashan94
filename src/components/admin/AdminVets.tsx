@@ -690,23 +690,17 @@ const AdminVets = ({ data, actions }: Props) => {
                           { name: "In-clinic Visit", icon: Briefcase },
                           { name: "Home Visit", icon: Home },
                           { name: "Video Consultation", icon: Video }
-                        ].map(({ name, icon: Icon }) => {
-                          const isSelected = isConsultTypeSelected(name);
-                          return (
+                        ].filter(({ name }) => isConsultTypeSelected(name))
+                        .map(({ name, icon: Icon }) => (
                             <div
                               key={name}
-                              className={`flex items-center gap-2 px-3 py-2.5 rounded-2xl border text-xs font-bold transition-all shadow-3xs ${
-                                isSelected 
-                                  ? "border-blue-200 bg-blue-50/45 text-blue-950 font-extrabold" 
-                                  : "border-slate-100 bg-slate-50/40 text-slate-400 opacity-60"
-                              }`}
+                              className="flex items-center gap-2 px-3 py-2.5 rounded-2xl border text-xs font-bold transition-all shadow-3xs border-blue-200 bg-blue-50/45 text-blue-950 font-extrabold"
                             >
-                              <Icon className={`w-4 h-4 ${isSelected ? "text-blue-500" : "text-slate-300"}`} />
+                              <Icon className="w-4 h-4 text-blue-500" />
                               <span>{name}</span>
-                              {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 ml-auto stroke-[2.5]" />}
+                              <Check className="w-3.5 h-3.5 text-blue-600 ml-auto stroke-[2.5]" />
                             </div>
-                          );
-                        })}
+                        ))}
                       </div>
                     </div>
 
@@ -893,68 +887,7 @@ const AdminVets = ({ data, actions }: Props) => {
                         </div>
                       </div>
 
-                      {/* Night Surcharge Rate indicator */}
-                      {surchargeParams.isNightSlotEnabled && (
-                        <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col space-y-3.5 animate-fade-in text-slate-700 font-sans">
-                          <div className="space-y-0.5">
-                            <h4 className="text-xs sm:text-sm font-extrabold text-[#8A1550] flex items-center gap-1.5 font-sans">
-                              <Moon className="w-4 h-4 text-pink-500" strokeWidth={2.5} />
-                              <span>Night Surcharge (Late-Hour Active)</span>
-                            </h4>
-                            <p className="text-[10px] text-slate-400 font-medium leading-relaxed">Additional charges automatically applied during late-hour slots (Night shift active)</p>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1 bg-[#F5F3FF]/30 p-2.5 rounded-2xl border border-[#E4E0FF]/60 shadow-3xs">
-                              <span className="text-[9px] text-[#4F46E5] font-extrabold uppercase tracking-wider block">In-clinic Surcharge</span>
-                              <span className="font-extrabold text-sm sm:text-base text-[#1E293B]">₹{surchargeParams.calculatedClinicSurchargeAmt}</span>
-                            </div>
-
-                            <div className="space-y-1 bg-[#FFF3F7]/30 p-2.5 rounded-2xl border border-[#FFE0ED]/60 shadow-3xs">
-                              <span className="text-[9px] text-[#EC4899] font-extrabold uppercase tracking-wider block">Home Surcharge</span>
-                              <span className="font-extrabold text-sm sm:text-base text-[#1E293B]">₹{surchargeParams.calculatedHomeSurchargeAmt}</span>
-                            </div>
-                          </div>
-
-                          {/* Payment Summary Late-Hour */}
-                          <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-100 space-y-3 shadow-3xs">
-                            <span className="text-[9px] font-extrabold text-[#8A1550] uppercase tracking-wider block border-b border-slate-200 pb-1">Payment Summary (Late-Hour)</span>
-                            <div className="flex flex-col sm:flex-row gap-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
-                              <div className="space-y-1 sm:flex-1">
-                                <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">In-Clinic Consultation</span>
-                                <div className="flex justify-between text-[11px]">
-                                  <span className="text-slate-500 font-semibold">Base Fee</span>
-                                  <span className="font-bold text-slate-700">₹{surchargeParams.parsedClinicFee}</span>
-                                </div>
-                                <div className="flex justify-between text-[11px]">
-                                  <span className="text-slate-500 font-semibold">Night Surcharge</span>
-                                  <span className="font-bold text-slate-700">+ ₹{surchargeParams.calculatedClinicSurchargeAmt}</span>
-                                </div>
-                                <div className="flex justify-between text-[11px] pt-1 border-t border-dashed border-slate-200 font-black text-[#4F46E5]">
-                                  <span>Total Price</span>
-                                  <span>₹{surchargeParams.calculatedClinicTotal}</span>
-                                </div>
-                              </div>
-
-                              <div className="space-y-1 pt-3 sm:pt-0 sm:pl-4 sm:flex-1">
-                                <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Home Visit Consultation</span>
-                                <div className="flex justify-between text-[11px]">
-                                  <span className="text-slate-500 font-semibold">Base Fee</span>
-                                  <span className="font-bold text-slate-700">₹{surchargeParams.parsedHomeFee}</span>
-                                </div>
-                                <div className="flex justify-between text-[11px]">
-                                  <span className="text-slate-500 font-semibold">Night Surcharge</span>
-                                  <span className="font-bold text-slate-700">+ ₹{surchargeParams.calculatedHomeSurchargeAmt}</span>
-                                </div>
-                                <div className="flex justify-between text-[11px] pt-1 border-t border-dashed border-slate-200 font-black text-[#EC4899]">
-                                  <span>Total Price</span>
-                                  <span>₹{surchargeParams.calculatedHomeTotal}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      {/* Night Surcharge Rate indicator removed per requirement */}
                     </div>
 
                     {/* F) Emergency & Support Services */}

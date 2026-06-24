@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { SRUVO_LOGO_URL } from "@/constants/branding";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -717,28 +717,51 @@ const VetOnboarding = () => {
     setFormData(prev => ({ ...prev, educationRows: prev.educationRows.filter((_, i) => i !== idx) }));
   };
 
+  const shuffledExpertiseRef = useRef<{tag: string, spec: string}[] | null>(null);
+  if (!shuffledExpertiseRef.current) {
+    const allTags = [
+      ...EXPERTISE_DOG.map(t => ({ tag: t, spec: "Dog" })),
+      ...EXPERTISE_CAT.map(t => ({ tag: t, spec: "Cat" })),
+      ...EXPERTISE_BIRD.map(t => ({ tag: t, spec: "Bird" })),
+      ...EXPERTISE_HAMSTER.map(t => ({ tag: t, spec: "Hamster" }))
+    ];
+    for (let i = allTags.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allTags[i], allTags[j]] = [allTags[j], allTags[i]];
+    }
+    shuffledExpertiseRef.current = allTags;
+  }
+
   const toggleSpec = (s: string) => setFormData(prev => {
     const newSpecs = prev.specializations.includes(s) ? prev.specializations.filter(x => x !== s) : [...prev.specializations, s];
     // Clear clinical expertise tags for pet types that are no longer selected
-    const availableTags = getAvailableExpertiseTagsForSpecs(newSpecs);
+    const availableTags = shuffledExpertiseRef.current!.filter(t => newSpecs.includes(t.spec)).map(t => t.tag);
     const newExpertise = prev.clinicalExpertise.filter(tag => availableTags.includes(tag));
     return { ...prev, specializations: newSpecs, clinicalExpertise: newExpertise };
   });
 
-  const getAvailableExpertiseTagsForSpecs = (specs: string[]) => {
-    let tags: string[] = [];
-    if (specs.includes("Dog")) tags = [...tags, ...EXPERTISE_DOG];
-    if (specs.includes("Cat")) tags = [...tags, ...EXPERTISE_CAT];
-    if (specs.includes("Bird")) tags = [...tags, ...EXPERTISE_BIRD];
-    if (specs.includes("Hamster")) tags = [...tags, ...EXPERTISE_HAMSTER];
-    return tags;
+  const availableExpertiseTags = shuffledExpertiseRef.current!
+    .filter(t => formData.specializations.includes(t.spec))
+    .map(t => t.tag);
+
+  const toggleClinicalExpertise = (tag: string) => {
+    setFormData(prev => {
+      const isSelected = prev.clinicalExpertise.includes(tag);
+      if (isSelected) {
+        return { ...prev, clinicalExpertise: prev.clinicalExpertise.filter(x => x !== tag) };
+      } else {
+        const spec = shuffledExpertiseRef.current!.find(t => t.tag === tag)?.spec;
+        if (spec) {
+          const count = prev.clinicalExpertise.filter(x => shuffledExpertiseRef.current!.find(t => t.tag === x)?.spec === spec).length;
+          if (count >= 4) {
+            toast.error(`You can select a maximum of 4 expertise tags for ${spec}.`);
+            return prev;
+          }
+        }
+        return { ...prev, clinicalExpertise: [...prev.clinicalExpertise, tag] };
+      }
+    });
   };
-
-  const availableExpertiseTags = getAvailableExpertiseTagsForSpecs(formData.specializations);
-
-  const toggleClinicalExpertise = (tag: string) => setFormData(prev => ({
-    ...prev, clinicalExpertise: prev.clinicalExpertise.includes(tag) ? prev.clinicalExpertise.filter(x => x !== tag) : [...prev.clinicalExpertise, tag],
-  }));
 
   const toggleConsultation = (t: string) => setFormData(prev => ({
     ...prev, consultationTypes: prev.consultationTypes.includes(t) ? prev.consultationTypes.filter(x => x !== t) : [...prev.consultationTypes, t],
@@ -1526,6 +1549,7 @@ const VetOnboarding = () => {
         const standardFieldsValid = (
           formData.availableDays.length > 0 && 
           formData.specializations.length > 0 && 
+          formData.clinicalExpertise.length > 0 &&
           formData.consultationTypes.length > 0 && 
           formData.yearsOfExperience !== "" && 
           formData.onlineFee !== "" && 
@@ -2947,7 +2971,7 @@ const VetOnboarding = () => {
                           <div className="flex flex-wrap gap-2">
                             {availableExpertiseTags
                               .filter(tag => !formData.clinicalExpertise.includes(tag))
-                              .slice(0, 12) // Show max 12 suggestions at a time
+                              .slice(0, 9) // Show max 9 suggestions at a time
                               .map(tag => (
                                 <button
                                   key={tag}
@@ -4288,23 +4312,17 @@ const VetOnboarding = () => {
                                     { name: "In-clinic Visit", icon: Briefcase },
                                     { name: "Home Visit", icon: Home },
                                     { name: "Video Consultation", icon: Video }
-                                  ].map(({ name, icon: Icon }) => {
-                                    const isSelected = formData.consultationTypes.includes(name);
-                                    return (
+                                  ].filter(({ name }) => formData.consultationTypes.includes(name))
+                                  .map(({ name, icon: Icon }) => (
                                       <div
                                         key={name}
-                                        className={`flex items-center gap-2 px-3 py-2.5 rounded-2xl border text-xs font-bold transition-all shadow-2xs font-sans ${
-                                          isSelected 
-                                            ? "border-blue-200 bg-blue-50/45 text-blue-950" 
-                                            : "border-slate-100 bg-slate-50/40 text-slate-800/40 opacity-60"
-                                        }`}
+                                        className="flex items-center gap-2 px-3 py-2.5 rounded-2xl border text-xs font-bold transition-all shadow-2xs font-sans border-blue-200 bg-blue-50/45 text-blue-950"
                                       >
-                                        <Icon className={`w-4 h-4 ${isSelected ? "text-blue-500" : "text-slate-350"}`} />
+                                        <Icon className="w-4 h-4 text-blue-500" />
                                         <span className="truncate">{name}</span>
-                                        {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 ml-auto stroke-[2.5]" />}
+                                        <Check className="w-3.5 h-3.5 text-blue-600 ml-auto stroke-[2.5]" />
                                       </div>
-                                    );
-                                  })}
+                                  ))}
                                 </div>
                               </div>
 
