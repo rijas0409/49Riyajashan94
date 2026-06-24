@@ -132,7 +132,7 @@ const BuyerVisitDetails: React.FC = () => {
     ownerPhone: stateVisit?.ownerPhone || "+91 98765 43210",
     address: stateVisit?.address || "123 Pet Lane, Springfield",
     time: stateVisit?.time || "Today, 2:30 PM – 3:00 PM",
-    reason: stateVisit?.reason || "Luna has reduced appetite for last 2 days.",
+    reason: stateVisit?.reason || "",
     image: stateVisit?.image || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
     distance: "12 mins (4.2 miles)"
   });
@@ -174,7 +174,7 @@ const BuyerVisitDetails: React.FC = () => {
             ownerPhone: foundData.user?.phone || "+91 98765 43210",
             address: foundData.appointment_type === "home" ? "123 Premium Residency, Indiranagar" : "HSR Paws Clinic, Sector 2",
             time: `${foundData.appointment_date}, ${foundData.appointment_time}`,
-            reason: "General Consultation & Checkup",
+            reason: "",
             image: foundData.user?.profile_photo || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
             distance: foundData.appointment_type === "home" ? "1.2 miles away" : "12 mins (4.2 miles)"
           };
@@ -387,7 +387,13 @@ const BuyerVisitDetails: React.FC = () => {
       if (!isPaymentObj) {
         setChiefComplaint(dbVisit.consultation_notes);
         setReasonInput(dbVisit.consultation_notes);
+      } else {
+        setChiefComplaint("");
+        setReasonInput("");
       }
+    } else {
+      setChiefComplaint("");
+      setReasonInput("");
     }
   }, [dbVisit?.consultation_notes]);
 
@@ -524,7 +530,42 @@ const BuyerVisitDetails: React.FC = () => {
                  localStorage.setItem(`gp_appt_start_${realDbId}`, String(startVal));
                  localStorage.setItem(`gp_appt_status_${realDbId}`, "in_progress");
                }
-               toast.success("✨ Vet has verified your QR Code: Consultation is now Active!");
+               
+               let vetName = "Vet";
+               if (updated.vet_id) {
+                 const { data: uProf } = await supabase
+                   .from("profiles")
+                   .select("name, full_name")
+                   .eq("id", updated.vet_id)
+                   .maybeSingle();
+                 if (uProf) {
+                   vetName = uProf.full_name || uProf.name || "Vet";
+                 }
+               } else if (doctorProfile?.profiles?.full_name || doctorProfile?.profiles?.name) {
+                 vetName = doctorProfile.profiles.full_name || doctorProfile.profiles.name;
+               } else {
+                 const { data: appt } = await supabase
+                   .from("vet_appointments")
+                   .select("vet_id")
+                   .eq("id", realDbId || currentVisitId)
+                   .maybeSingle();
+                 if (appt?.vet_id) {
+                   const { data: uProf } = await supabase
+                     .from("profiles")
+                     .select("name, full_name")
+                     .eq("id", appt.vet_id)
+                     .maybeSingle();
+                   if (uProf) {
+                     vetName = uProf.full_name || uProf.name || "Vet";
+                   }
+                 }
+               }
+               
+               let displayName = vetName;
+               if (!displayName.toLowerCase().startsWith("dr.")) {
+                 displayName = `Dr. ${displayName}`;
+               }
+               toast.success(`${displayName} has started the consultation.`);
             }
 
             if (updated.vet_id) {

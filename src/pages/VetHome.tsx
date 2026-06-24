@@ -93,6 +93,8 @@ const VetDashboard = () => {
   const [todayRevenue, setTodayRevenue] = useState(0);
   const [activePatients, setActivePatients] = useState(0);
   const [revenueBars, setRevenueBars] = useState<number[]>([14, 24, 20, 30, 34, 48, 34]);
+  const [rawRevenues, setRawRevenues] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
+  const [selectedBarIndex, setSelectedBarIndex] = useState<number | null>(6);
 
   const [realProfilePhoto, setRealProfilePhoto] = useState<string | null>(null);
 
@@ -182,7 +184,7 @@ const VetDashboard = () => {
           if (apt.status !== "cancelled") {
             uniquePatients.add(apt.name || apt.id);
           }
-          if (apt.date === todayStr && apt.status !== "cancelled") {
+          if (apt.date === todayStr && apt.status !== "cancelled" && apt.status !== "pending") {
             todayRevenueSum += (Number(apt.amount) || 650);
           }
 
@@ -224,7 +226,7 @@ const VetDashboard = () => {
           const d = new Date();
           d.setDate(d.getDate() - (6 - i)); // 6 days ago to today
           const dStr = formatDateString(d);
-          const dayAppts = mapped.filter(apt => apt.date === dStr && apt.status !== "cancelled");
+          const dayAppts = mapped.filter(apt => apt.date === dStr && apt.status !== "cancelled" && apt.status !== "pending");
           dailyRevenue[i] = dayAppts.reduce((sum, apt) => sum + (Number(apt.amount) || 650), 0);
         }
         const maxDaily = Math.max(...dailyRevenue, 1);
@@ -236,6 +238,7 @@ const VetDashboard = () => {
         setTodayRevenue(todayRevenueSum);
         setActivePatients(uniquePatients.size);
         setRevenueBars(barHeights);
+        setRawRevenues(dailyRevenue);
       }
     } catch (err) {
       console.error("Error fetching upcoming appointments:", err);
@@ -381,8 +384,24 @@ const VetDashboard = () => {
                 <div>
                   <div className="flex justify-between items-start mb-[22px]">
                     <div className="space-y-1.5">
-                      <p className="text-[#8f8f9d] text-xs font-semibold">Today's Revenue</p>
-                      <h3 className="text-[#1a1a24] text-[26px] font-extrabold tracking-[-0.5px]">₹{todayRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h3>
+                      <p className="text-[#8f8f9d] text-xs font-semibold">
+                        {selectedBarIndex !== null 
+                          ? (() => {
+                              const d = new Date();
+                              d.setDate(d.getDate() - (6 - selectedBarIndex));
+                              const isToday = selectedBarIndex === 6;
+                              const isYesterday = selectedBarIndex === 5;
+                              if (isToday) return "Today's Revenue";
+                              if (isYesterday) return "Yesterday's Revenue";
+                              return `${d.toLocaleDateString("en-US", { weekday: "short" })}'s Revenue`;
+                            })()
+                          : "Today's Revenue"}
+                      </p>
+                      <h3 className="text-[#1a1a24] text-[26px] font-extrabold tracking-[-0.5px]">
+                        ₹{selectedBarIndex !== null 
+                          ? (rawRevenues[selectedBarIndex] || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) 
+                          : todayRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </h3>
                     </div>
                     <div className="w-10 h-10 bg-[#fae8ff] text-[#a428ff] rounded-[12px] flex items-center justify-center text-xl">
                       <Wallet size={20} weight="fill" />
@@ -393,8 +412,18 @@ const VetDashboard = () => {
                   {revenueBars.map((h, i) => (
                     <div 
                       key={i} 
-                      className={`grow rounded-[4px] w-full transition-all duration-700 ${i === 6 ? 'bg-[#a428ff]' : 'bg-[#e6c6ff]'}`}
+                      onClick={() => setSelectedBarIndex(i)}
+                      className={`grow rounded-[4px] w-full cursor-pointer transition-all duration-300 ${
+                        selectedBarIndex === i 
+                          ? 'bg-[#a428ff] ring-2 ring-[#a428ff]/30 ring-offset-2 scale-y-[1.05]' 
+                          : 'bg-[#e6c6ff] hover:bg-[#d8a8ff]'
+                      }`}
                       style={{ height: `${h}px` }} 
+                      title={`${(() => {
+                        const d = new Date();
+                        d.setDate(d.getDate() - (6 - i));
+                        return d.toLocaleDateString("en-US", { weekday: "short" });
+                      })()}: ₹${(rawRevenues[i] || 0)}`}
                     />
                   ))}
                 </div>

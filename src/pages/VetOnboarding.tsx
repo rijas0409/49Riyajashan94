@@ -56,6 +56,22 @@ interface DayAvailability {
 
 const EMPTY_EDU: EducationRow = { qualification: "", institution: "", year: "", certificateFile: null };
 
+const EXPERTISE_DOG = [
+  "Puppy Health & Growth", "Senior Dog Wellness", "Skin, Coat & Allergy Care", "Digestive & Stomach Problems", "Weight Management", "Joint & Mobility Issues", "Arthritis Care", "Ear Infections", "Eye Health", "Anxiety & Behavioral Training", "Vaccination & Preventive Care", "Chronic Disease Management", "Post-Surgical Recovery", "Emergency & Critical Care", "Nutrition Planning"
+];
+
+const EXPERTISE_CAT = [
+  "Kitten Health & Growth", "Senior Cat Wellness", "Urinary & Kidney Issues", "Skin & Coat Health", "Digestive Problems", "Weight Management", "Anxiety & Behavioral Issues", "Eye Health", "Ear Infections", "Diabetes Management", "Vaccination & Preventive Care", "Chronic Disease Management", "Post-Surgical Recovery", "Emergency & Critical Care", "Nutrition Planning"
+];
+
+const EXPERTISE_BIRD = [
+  "General Avian Care", "Feather Picking & Feather Loss", "Beak & Nail Disorders", "Respiratory Problems", "Nutritional Deficiencies", "Digestive Issues", "Behavioral Problems", "Eye Health", "Egg-Laying & Reproductive Issues", "Vaccination & Preventive Care", "Post-Surgical Recovery", "Emergency & Critical Care"
+];
+
+const EXPERTISE_HAMSTER = [
+  "General Small Animal Care", "Dental & Teeth Problems", "Digestive Issues", "Skin & Fur Conditions", "Nutritional Care", "Weight Management", "Respiratory Problems", "Behavioral Issues", "Senior Small Animal Care", "Preventive Care", "Emergency Care"
+];
+
 const HamsterIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     viewBox="0 0 24 24"
@@ -142,7 +158,7 @@ const VetOnboarding = () => {
     clinicName: "", clinicPincode: "", clinicGst: "",
     hospitalName: "", hospitalRole: "", hospitalAddress: "", hospitalPincode: "", hospitalEmployeeId: "", hospitalJoiningProofFile: null as File | null,
     // Step 5 – Availability
-    specializations: [] as string[], consultationTypes: [] as string[],
+    specializations: [] as string[], clinicalExpertise: [] as string[], consultationTypes: [] as string[],
     availableDays: [] as string[], morningSlots: false, eveningSlots: false,
     onlineFee: "", offlineFee: "", yearsOfExperience: "",
     emergencyAvailable: false,
@@ -458,6 +474,7 @@ const VetOnboarding = () => {
               isIndependentPractice: prev.isIndependentPractice || vp.self_practice || false,
               yearsOfExperience: prev.yearsOfExperience || vp.years_of_experience?.toString() || "",
               specializations: (prev.specializations && prev.specializations.length > 0) ? prev.specializations : (vp.specializations || []),
+              clinicalExpertise: (prev.clinicalExpertise && prev.clinicalExpertise.length > 0) ? prev.clinicalExpertise : (vp.clinical_expertise || []),
               consultationTypes: (prev.consultationTypes && prev.consultationTypes.length > 0) ? prev.consultationTypes : (vp.consultation_type ? vp.consultation_type.split(", ") : []),
               availableDays: (prev.availableDays && prev.availableDays.length > 0) ? prev.availableDays : (vp.available_days || []),
               morningSlots: prev.morningSlots !== false ? prev.morningSlots : (vp.morning_slots || false),
@@ -700,9 +717,29 @@ const VetOnboarding = () => {
     setFormData(prev => ({ ...prev, educationRows: prev.educationRows.filter((_, i) => i !== idx) }));
   };
 
-  const toggleSpec = (s: string) => setFormData(prev => ({
-    ...prev, specializations: prev.specializations.includes(s) ? prev.specializations.filter(x => x !== s) : [...prev.specializations, s],
+  const toggleSpec = (s: string) => setFormData(prev => {
+    const newSpecs = prev.specializations.includes(s) ? prev.specializations.filter(x => x !== s) : [...prev.specializations, s];
+    // Clear clinical expertise tags for pet types that are no longer selected
+    const availableTags = getAvailableExpertiseTagsForSpecs(newSpecs);
+    const newExpertise = prev.clinicalExpertise.filter(tag => availableTags.includes(tag));
+    return { ...prev, specializations: newSpecs, clinicalExpertise: newExpertise };
+  });
+
+  const getAvailableExpertiseTagsForSpecs = (specs: string[]) => {
+    let tags: string[] = [];
+    if (specs.includes("Dog")) tags = [...tags, ...EXPERTISE_DOG];
+    if (specs.includes("Cat")) tags = [...tags, ...EXPERTISE_CAT];
+    if (specs.includes("Bird")) tags = [...tags, ...EXPERTISE_BIRD];
+    if (specs.includes("Hamster")) tags = [...tags, ...EXPERTISE_HAMSTER];
+    return tags;
+  };
+
+  const availableExpertiseTags = getAvailableExpertiseTagsForSpecs(formData.specializations);
+
+  const toggleClinicalExpertise = (tag: string) => setFormData(prev => ({
+    ...prev, clinicalExpertise: prev.clinicalExpertise.includes(tag) ? prev.clinicalExpertise.filter(x => x !== tag) : [...prev.clinicalExpertise, tag],
   }));
+
   const toggleConsultation = (t: string) => setFormData(prev => ({
     ...prev, consultationTypes: prev.consultationTypes.includes(t) ? prev.consultationTypes.filter(x => x !== t) : [...prev.consultationTypes, t],
   }));
@@ -1113,6 +1150,7 @@ const VetOnboarding = () => {
         qualification: formData.qualification,
         years_of_experience: parseInt(formData.yearsOfExperience) || 0,
         specializations: formData.specializations,
+        clinical_expertise: formData.clinicalExpertise,
         consultation_type: formData.consultationTypes.join(", "),
         vet_degree_file: vetDegreeUrl,
         registration_number: formData.registrationNumber,
@@ -2875,6 +2913,58 @@ const VetOnboarding = () => {
                       })}
                     </div>
                   </div>
+
+                  {/* Clinical Expertise - dynamically shown based on specializations */}
+                  {formData.specializations.length > 0 && (
+                    <div className="space-y-4 bg-white border border-[#F1F5F9] p-5 rounded-3xl shadow-sm/50">
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2">
+                          <Stethoscope className="w-4 h-4 text-primary shrink-0" />
+                          <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Clinical Expertise</span>
+                          <InfoTooltip message="Select the conditions and cases you commonly handle based on your pet specializations." />
+                        </div>
+                        <p className="text-slate-400 text-xs sm:text-sm font-medium ml-1">Select the conditions and cases you commonly handle.</p>
+                      </div>
+
+                      {/* Search / Selected Tags Area */}
+                      {formData.clinicalExpertise.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pt-2 pb-1 border-b border-slate-50">
+                          {formData.clinicalExpertise.map(tag => (
+                            <div key={tag} className="flex items-center gap-1 bg-[#FFF5F7] border border-[#EC4899] text-[#EC4899] px-3 py-1.5 rounded-full text-xs sm:text-sm font-bold shadow-sm">
+                              <span>{tag}</span>
+                              <button onClick={() => toggleClinicalExpertise(tag)} className="p-0.5 hover:bg-pink-100 rounded-full transition-colors ml-1">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Suggested Tags (unselected) */}
+                      {availableExpertiseTags.filter(tag => !formData.clinicalExpertise.includes(tag)).length > 0 && (
+                        <div className="pt-1">
+                          <p className="text-xs text-slate-500 font-semibold mb-2">Suggested Expertise</p>
+                          <div className="flex flex-wrap gap-2">
+                            {availableExpertiseTags
+                              .filter(tag => !formData.clinicalExpertise.includes(tag))
+                              .slice(0, 12) // Show max 12 suggestions at a time
+                              .map(tag => (
+                                <button
+                                  key={tag}
+                                  type="button"
+                                  onClick={() => toggleClinicalExpertise(tag)}
+                                  className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 hover:bg-slate-100 px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-colors"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                  <span>{tag}</span>
+                                </button>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Two Column Grid for Consultation Types and Years of Practice */}
                   <div className="grid grid-cols-1 md:grid-cols-10 gap-4 sm:gap-6 pt-2">
                     {/* Left Panel: Consultation Types (60% on Desktop) */}
@@ -4172,6 +4262,23 @@ const VetOnboarding = () => {
                                   })}
                                 </div>
                               </div>
+
+                              {/* A.1) Clinical Expertise */}
+                              {formData.clinicalExpertise.length > 0 && (
+                                <div className="space-y-2 pt-1">
+                                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider font-sans block">A.1) Clinical Expertise</span>
+                                  <div className="flex flex-wrap gap-2">
+                                    {formData.clinicalExpertise.map(tag => (
+                                      <div
+                                        key={tag}
+                                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-pink-200 bg-pink-50/50 text-pink-900 text-xs font-bold transition-all shadow-2xs font-sans"
+                                      >
+                                        <span>{tag}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
 
                               {/* B) Consultation Types */}
                               <div className="space-y-2 pt-1">

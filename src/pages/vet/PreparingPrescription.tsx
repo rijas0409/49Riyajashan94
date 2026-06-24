@@ -231,7 +231,7 @@ const PreparingPrescription = () => {
     if (rawPath) {
       if (rawPath.startsWith("http")) return rawPath;
       try {
-        return supabase.storage.from("avatars").getPublicUrl(rawPath).data.publicUrl;
+        return supabase.storage.from("vet-documents").getPublicUrl(rawPath).data.publicUrl;
       } catch (e) {
         return rawPath;
       }

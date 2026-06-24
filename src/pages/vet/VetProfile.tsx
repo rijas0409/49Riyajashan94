@@ -57,13 +57,13 @@ const VetProfile = () => {
   };
 
   const menuItems = [
-    { icon: <SuitcaseSimple size={24} />, label: "My Services", path: "#" },
-    { icon: <IdentificationCard size={24} />, label: "Contact Details", path: "#" },
-    { icon: <Wallet size={24} />, label: "Wallet", path: "/vet/earnings" },
-    { icon: <FileText size={24} />, label: "Documents", path: "#" },
-    { icon: <Megaphone size={24} />, label: "Promote Profile", path: "#" },
-    { icon: <ChatTeardropText size={24} />, label: "Recent Reviews", path: "#" },
-    { icon: <Gear size={24} />, label: "Settings", path: "/profile-settings" },
+    { icon: <SuitcaseSimple size={24} />, label: "My Services", path: "/vet/services" },
+    { icon: <IdentificationCard size={24} />, label: "Contact Details", path: "/vet/contact-details" },
+    { icon: <Wallet size={24} />, label: "Wallet", path: "/vet/wallet" },
+    { icon: <FileText size={24} />, label: "Documents", path: "/vet/documents" },
+    { icon: <Megaphone size={24} />, label: "Promote Profile", path: "/vet/promote-profile" },
+    { icon: <ChatTeardropText size={24} />, label: "Recent Reviews", path: "/vet/recent-reviews" },
+    { icon: <Gear size={24} />, label: "Settings", path: "/vet/profile-settings" },
   ];
 
   if (showSpinner) {
@@ -122,14 +122,16 @@ const VetProfile = () => {
             </div>
           </div>
           <h2 className="text-2xl font-extrabold text-slate-900">{vetData?.name || "Loading..."}</h2>
-          <p className="text-purple-600 font-semibold mt-1">{vetData?.specialty || "Senior Veterinarian"}</p>
+          {vetData?.specialty && vetData.specialty.toLowerCase() !== "dog" && (
+            <p className="text-purple-600 font-semibold mt-1">{vetData.specialty}</p>
+          )}
           <div className="flex items-center justify-center gap-1 mt-2 text-slate-500">
             <Star size={18} weight="fill" className="text-yellow-400" />
             <span className="font-bold text-slate-900">{vetData?.rating?.toFixed(1) || "5.0"}</span>
             <span className="text-sm font-medium opacity-60">({vetData?.reviews || 0} reviews)</span>
           </div>
           <button 
-            onClick={() => navigate("/profile-settings")}
+            onClick={() => navigate("/vet/profile-settings")}
             className="w-full mt-8 py-4 rounded-3xl bg-gradient-to-br from-[#B26BFF] to-[#8E2DE2] text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-200 active:scale-95 transition-all"
             data-purpose="edit-profile-btn"
           >

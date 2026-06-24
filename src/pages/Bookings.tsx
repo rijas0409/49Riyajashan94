@@ -74,8 +74,11 @@ const petStatusSteps = ["pending", "accepted", "preparing", "ready", "picked", "
 
 const appointmentTypeIcons: Record<string, any> = {
   online: Video,
+  video: Video,
   offline: Building2,
+  clinic: Building2,
   home_visit: HomeIcon,
+  home: HomeIcon,
 };
 
 type TabType = "all" | "pets" | "vet";
@@ -394,11 +397,13 @@ const VetAppointmentCard = ({
   const TypeIcon = appointmentTypeIcons[appointment.appointment_type] || Video;
 
   const typeLabel =
-    appointment.appointment_type === "online"
-      ? "Video Call"
-      : appointment.appointment_type === "offline"
+    appointment.appointment_type === 'video' || appointment.appointment_type === 'online'
+      ? "Video Consultation"
+      : appointment.appointment_type === 'clinic' || appointment.appointment_type === 'offline'
       ? "Clinic Visit"
-      : "Home Visit";
+      : appointment.appointment_type === 'home' || appointment.appointment_type === 'home_visit'
+      ? "Home Visit"
+      : "Consultation";
 
   const handleCardClick = () => {
     const status = (appointment.status || "").toLowerCase();
@@ -429,18 +434,32 @@ const VetAppointmentCard = ({
         }
       });
     } else if (status === "completed" || status === "generated") {
-      navigate(`/buyer/vet/prescription`, {
-        state: {
-          appointmentId: appointment.id,
-          id: appointment.id,
-          bookingId: appointment.id,
-          consultationId: appointment.id,
-          vetId: appointment.vet_id,
-          userId: appointment.user_id,
-          prescriptionId: prescId || "",
-          fromBookings: true,
-        }
-      });
+      if (!prescId) {
+        navigate(`/buyer/vet/prescription/preparing`, {
+          state: {
+            visit: appointment,
+            realAppointmentId: appointment.id,
+            appointmentId: appointment.id,
+            bookingId: appointment.id,
+            consultationId: appointment.id,
+            vetId: appointment.vet_id,
+            userId: appointment.user_id,
+          }
+        });
+      } else {
+        navigate(`/buyer/vet/prescription`, {
+          state: {
+            appointmentId: appointment.id,
+            id: appointment.id,
+            bookingId: appointment.id,
+            consultationId: appointment.id,
+            vetId: appointment.vet_id,
+            userId: appointment.user_id,
+            prescriptionId: prescId || "",
+            fromBookings: true,
+          }
+        });
+      }
     } else {
       navigate(`/vet/booking-details?id=${appointment.id}`);
     }

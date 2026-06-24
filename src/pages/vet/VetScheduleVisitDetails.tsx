@@ -176,8 +176,7 @@ const VetScheduleVisitDetails: React.FC = () => {
           : dbAppointment.consultation_notes;
         if (parsed && typeof parsed === "object" && (parsed.payment_id || parsed.bookingId || parsed.consultation_fee)) {
           // Yes, it's a payment metadata string, so NOT a plain text reason!
-          // We will use the fallback: stateVisit?.reason || dbAppointment?.diagnosis
-          return stateVisit?.reason || dbAppointment?.diagnosis || "Kiro is fainting I need emergency help.";
+          return "";
         }
       } catch (e) {
         // Not a JSON object, so it's a direct user entered text!
@@ -185,7 +184,7 @@ const VetScheduleVisitDetails: React.FC = () => {
       }
       return dbAppointment.consultation_notes;
     }
-    return stateVisit?.reason || dbAppointment?.diagnosis || "Kiro is fainting I need emergency help.";
+    return "";
   };
 
   const chiefComplaint = getReasonForVisit();
@@ -286,8 +285,7 @@ const VetScheduleVisitDetails: React.FC = () => {
     // Unlocked phase - Only unlock, don't start timer yet
     setIsVerified(true);
     
-    toast.success("✨ QR Code Verified!", {
-      description: "Consultation is now unlocked. Please click 'Start Consultation' to begin the session.",
+    toast.success("Consultation verified successfully. You can now start the consultation.", {
       duration: 4000
     });
 
@@ -935,20 +933,22 @@ const VetScheduleVisitDetails: React.FC = () => {
               </div>
 
               {/* Reason For Visit Card */}
-              <div className="mx-5 mt-4">
-                <div className="flex justify-between items-center mb-2 px-0.5">
-                  <h2 className="text-[16px] font-bold text-[#1a1f36] tracking-tight">Reason for Visit</h2>
-                </div>
-                <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-[10px] shrink-0 mt-0.5">
-                    <i className="fas fa-exclamation-circle"></i>
+              {chiefComplaint && (
+                <div className="mx-5 mt-4">
+                  <div className="flex justify-between items-center mb-2 px-0.5">
+                    <h2 className="text-[16px] font-bold text-[#1a1f36] tracking-tight">Reason for Visit</h2>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">Chief Complaint</p>
-                    <p className="text-[13px] text-gray-700 font-medium leading-relaxed">{chiefComplaint}</p>
+                  <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-[10px] shrink-0 mt-0.5">
+                      <i className="fas fa-exclamation-circle"></i>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">Chief Complaint</p>
+                      <p className="text-[13px] text-gray-700 font-medium leading-relaxed">{chiefComplaint}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Visit Information Card */}
               <div className="mx-5 mt-4 bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)]">
@@ -972,15 +972,17 @@ const VetScheduleVisitDetails: React.FC = () => {
                   </div>
 
                   {/* Reason for Visit */}
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center text-md shrink-0">
-                      <i className="fas fa-syringe"></i>
+                  {chiefComplaint && (
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center text-md shrink-0">
+                        <i className="fas fa-syringe"></i>
+                      </div>
+                      <div>
+                        <p className="text-[11px] text-gray-400 font-medium">Reason for Visit</p>
+                        <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">{chiefComplaint}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[11px] text-gray-400 font-medium">Reason for Visit</p>
-                      <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">Home Vaccination</p>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Scheduled Time */}
                   <div className="flex items-center gap-3">
@@ -1059,15 +1061,17 @@ const VetScheduleVisitDetails: React.FC = () => {
                   </div>
 
                   {/* Reason for Visit */}
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-purple-50 text-[#9d4edd] flex items-center justify-center text-md shrink-0">
-                      <i className="fas fa-syringe"></i>
+                  {chiefComplaint && (
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-purple-50 text-[#9d4edd] flex items-center justify-center text-md shrink-0">
+                        <i className="fas fa-syringe"></i>
+                      </div>
+                      <div>
+                        <p className="text-[11px] text-gray-400 font-medium">Reason for Visit</p>
+                        <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">{chiefComplaint}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[11px] text-gray-400 font-medium">Reason for Visit</p>
-                      <p className="text-[14px] text-[#1a1f36] font-bold mt-0.5">Regular Vaccination</p>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Scheduled Time */}
                   <div className="flex items-center gap-3">
@@ -1094,20 +1098,22 @@ const VetScheduleVisitDetails: React.FC = () => {
               </div>
 
               {/* [2] Reason For Visit Card */}
-              <div className="mx-5 mt-4">
-                <div className="flex justify-between items-center mb-2 px-0.5">
-                  <h2 className="text-[16px] font-bold text-[#1a1f36] tracking-tight">Reason for Visit</h2>
-                </div>
-                <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-[10px] shrink-0 mt-0.5">
-                    <i className="fas fa-exclamation-circle"></i>
+              {chiefComplaint && (
+                <div className="mx-5 mt-4">
+                  <div className="flex justify-between items-center mb-2 px-0.5">
+                    <h2 className="text-[16px] font-bold text-[#1a1f36] tracking-tight">Reason for Visit</h2>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">Chief Complaint</p>
-                    <p className="text-[13px] text-gray-700 font-medium leading-relaxed">{chiefComplaint}</p>
+                  <div className="bg-white rounded-[20px] p-4 shadow-[0_8px_25px_-8px_rgba(0,0,0,0.06)] flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-[10px] shrink-0 mt-0.5">
+                      <i className="fas fa-exclamation-circle"></i>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">Chief Complaint</p>
+                      <p className="text-[13px] text-gray-700 font-medium leading-relaxed">{chiefComplaint}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* [3] Clinical Overview Card */}
               {connectedPassport && (
@@ -1308,15 +1314,17 @@ const VetScheduleVisitDetails: React.FC = () => {
             
             <div className="flex flex-col gap-4">
               {/* Initial Complaint / Consultation note */}
-              <div className="flex gap-2.5 items-start">
-                <div className="mt-0.5 w-[16px] h-[16px] rounded-full bg-[#8b5cf6] text-white flex items-center justify-center text-[10px] shrink-0">
-                  <i className="fas fa-stethoscope"></i>
+              {chiefComplaint && (
+                <div className="flex gap-2.5 items-start">
+                  <div className="mt-0.5 w-[16px] h-[16px] rounded-full bg-[#8b5cf6] text-white flex items-center justify-center text-[10px] shrink-0">
+                    <i className="fas fa-stethoscope"></i>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-0.5">Reason for Visit</p>
+                    <p className="text-[13px] text-gray-700 font-bold leading-snug">{chiefComplaint}</p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-0.5">Reason for Visit</p>
-                  <p className="text-[13px] text-gray-700 font-bold leading-snug">{chiefComplaint || "Routine Health Assessment Checkup"}</p>
-                </div>
-              </div>
+              )}
 
               {/* Patient Profile Medical History */}
               <div className="flex gap-2.5 items-start border-t border-gray-100 pt-3">
@@ -1612,7 +1620,7 @@ const VetScheduleVisitDetails: React.FC = () => {
             <button 
               onClick={() => {
                 setShowQrModal(false);
-                toast.success("QR Code verified successfully!");
+                toast.success("Consultation verified successfully. You can now start the consultation.");
               }}
               className="w-full bg-gradient-to-r from-[#a855f7] to-[#8b5cf6] text-white py-3.5 rounded-2xl font-bold hover:opacity-95 transition active:scale-95 shadow-lg shadow-purple-150"
             >

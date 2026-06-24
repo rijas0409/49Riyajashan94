@@ -511,7 +511,7 @@ const VirtualConsults = () => {
               >
                 VIEW SUMMARY
               </button>
-              <div className="text-xl font-extrabold text-[#9d34da]">₹{item.amount || '0'}</div>
+              <div className="text-xl font-extrabold text-[#9d34da]">{item.status === 'pending' ? '—' : `₹${item.amount || '0'}`}</div>
             </div>
 
             {item.status === 'pending' && (

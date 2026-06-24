@@ -665,6 +665,23 @@ const AdminVets = ({ data, actions }: Props) => {
                       </div>
                     </div>
 
+                    {/* A.1) Clinical Expertise */}
+                    {(selectedVet.clinical_expertise || []).length > 0 && (
+                      <div className="space-y-2 pt-1">
+                        <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider font-sans block">A.1) Clinical Expertise</span>
+                        <div className="flex flex-wrap gap-2">
+                          {(selectedVet.clinical_expertise || []).map((tag: string) => (
+                            <div
+                              key={tag}
+                              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-pink-200 bg-pink-50/50 text-pink-900 text-xs font-bold transition-all shadow-2xs font-sans"
+                            >
+                              <span>{tag}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* B) Consultation types */}
                     <div className="space-y-2 pt-1">
                       <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider font-sans block">B) Consultation Types</span>

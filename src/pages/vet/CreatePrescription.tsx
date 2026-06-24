@@ -43,6 +43,15 @@ interface LabTest {
   active: boolean;
 }
 
+const getShortBookingId = (id: string | undefined): string => {
+  if (!id) return "...";
+  const clean = id.replace(/[-]/g, "");
+  if (clean.length >= 9) {
+    return `rj${clean.substring(0,2)}-p${clean.substring(2,4)}-${clean.substring(4,6)}`;
+  }
+  return id;
+};
+
 const CreatePrescription = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -525,7 +534,7 @@ const CreatePrescription = () => {
             <div className="text-[#9C42F5] text-[12px] font-semibold mb-1">
               {(dbAppointment?.pet_type || "Dog").toUpperCase()} • {(dbAppointment?.pet_breed || "Golden Retriever").toUpperCase()}
             </div>
-            <p className="text-[#8A8A9E] text-[12px] font-medium">3 Years Old • ID: #{appointmentId}</p>
+            <p className="text-[#8A8A9E] text-[12px] font-medium tracking-wide">3 Years Old • ID: <span className="uppercase">{getShortBookingId(appointmentId)}</span></p>
             <div className="flex gap-1.5 mt-2 overflow-x-auto no-scrollbar">
               <span className="bg-[#F4E8FF] text-[#9C42F5] px-2.5 py-1.5 rounded-[12px] text-[9px] font-bold whitespace-nowrap">CONSULTATION: {dbAppointment?.appointment_type?.toUpperCase() || consultationType}</span>
               <span className="bg-[#F0F0F5] text-[#8A8A9E] px-2.5 py-1.5 rounded-[12px] text-[9px] font-bold whitespace-nowrap">WEIGHT: 24KG</span>

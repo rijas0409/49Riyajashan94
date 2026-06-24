@@ -128,7 +128,7 @@ const VetSchedule = () => {
     return () => clearInterval(timer);
   }, [today]);
 
-  // Generate 8 days before and 8 days after today
+  // Generate 3 days before and 8 days after today
   const yesterday = useMemo(() => {
     const d = new Date(today);
     d.setDate(d.getDate() - 1);
@@ -137,7 +137,7 @@ const VetSchedule = () => {
 
   const dates = useMemo(() => {
     const arr = [];
-    for (let i = -8; i <= 8; i++) {
+    for (let i = -3; i <= 8; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() + i);
       arr.push({
@@ -187,17 +187,41 @@ const VetSchedule = () => {
     }
   }, [selectedDateId]);
 
+  // Let's check if the currently selected date has any non-completed, non-cancelled appointments
+  const hasActiveOrPendingOnSelectedDate = useMemo(() => {
+    return appointments.some(apt => 
+      apt.date === selectedDateId && 
+      (apt.status === "pending" || apt.status === "confirmed" || apt.status === "active")
+    );
+  }, [appointments, selectedDateId]);
+
   const tabs = useMemo(() => {
-    if (isPast) return ["Cancelled", "Done"];
+    if (isPast) {
+      if (hasActiveOrPendingOnSelectedDate) {
+        return ["Active", "Cancelled", "Done"];
+      }
+      return ["Cancelled", "Done"];
+    }
+    if (isFuture) {
+      return ["Upcoming", "Cancelled"];
+    }
     return ["Active", "Upcoming", "Cancelled", "Done"];
-  }, [isPast]);
+  }, [isPast, isFuture, hasActiveOrPendingOnSelectedDate]);
 
   // Ensure activeTab is valid for the current selection
   React.useEffect(() => {
-    if (isPast && (activeTab === "Active" || activeTab === "Upcoming")) {
-      setActiveTab("Cancelled");
+    if (isPast) {
+      if (!hasActiveOrPendingOnSelectedDate && (activeTab === "Active" || activeTab === "Upcoming")) {
+        setActiveTab("Cancelled");
+      } else if (activeTab === "Upcoming") {
+        setActiveTab("Active");
+      }
+    } else if (isFuture) {
+      if (activeTab === "Active" || activeTab === "Done") {
+        setActiveTab("Upcoming");
+      }
     }
-  }, [isPast, activeTab]);
+  }, [isPast, isFuture, hasActiveOrPendingOnSelectedDate, activeTab]);
 
   const fetchAppointments = useCallback(async () => {
     if (!user?.id) return;
@@ -342,12 +366,15 @@ const VetSchedule = () => {
       
       // Logic for each tab
       if (activeTab === "Active") {
+        if (isPast) {
+          return apt.status === "confirmed" || apt.status === "pending" || apt.status === "active";
+        }
         if (!isToday) return false;
         return apt.status === "confirmed" && isTimeReached(apt.time);
       }
       
       if (activeTab === "Upcoming") {
-        if (isPast) return false; // User requested: "upcoming" should not show on previous dates
+        if (isPast) return false; // Upcoming is never shown on past dates
         if (isToday) {
           return (apt.status === "pending" || (apt.status === "confirmed" && !isTimeReached(apt.time)));
         }
@@ -359,7 +386,9 @@ const VetSchedule = () => {
       }
 
       if (activeTab === "Done") {
-        if (isPast) return apt.status === "completed" || apt.status === "confirmed" || apt.status === "pending"; // All past events are essentially done
+        if (isPast) {
+          return apt.status === "completed" || apt.status === "done";
+        }
         if (isToday) return apt.status === "completed";
         return false; // Future can't be done
       }
@@ -425,15 +454,8 @@ const VetSchedule = () => {
     <div className="bg-[#f7f7fa] min-h-screen pb-24 font-['Nunito'] overflow-x-hidden">
       {/* Header */}
       <header className="flex items-center justify-between px-5 py-6">
-        <button 
-          onClick={() => navigate(-1)} 
-          className="w-[42px] h-[42px] rounded-full bg-white flex items-center justify-center border-none shadow-[0_4px_15px_rgba(0,0,0,0.03)] cursor-pointer active:scale-95 transition-all"
-        >
-          <CaretLeft size={20} weight="bold" />
-        </button>
-
         {isSearchOpen ? (
-          <div className="flex-1 ml-4 h-[42px] bg-white rounded-[21px] px-4 shadow-[0_4px_15px_rgba(0,0,0,0.03)] border-none flex items-center gap-2 animate-[fadeIn_0.2s_ease-out_forwards]">
+          <div className="flex-1 h-[42px] bg-white rounded-[21px] px-4 shadow-[0_4px_15px_rgba(0,0,0,0.03)] border-none flex items-center gap-2 animate-[fadeIn_0.2s_ease-out_forwards]">
             <MagnifyingGlass size={18} weight="bold" className="text-[#8d8d9c] flex-shrink-0" />
             <input 
               type="text" 
@@ -463,7 +485,7 @@ const VetSchedule = () => {
           </div>
         ) : (
           <>
-            <h1 className="text-[22px] font-[800] text-[#1f1f2e] flex-grow ml-4">Schedule</h1>
+            <h1 className="text-[22px] font-[800] text-[#1f1f2e] flex-grow">Schedule</h1>
             <div className="flex gap-2.5">
               {/* Search Button matching the Home layout */}
               <button 

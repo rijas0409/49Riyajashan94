@@ -51,6 +51,7 @@ const DigitalPrescription = () => {
   const [petPassport, setPetPassport] = useState<any>(null);
   const [isPetPhotoError, setIsPetPhotoError] = useState(false);
   const [isVetPhotoError, setIsVetPhotoError] = useState(false);
+  const [hasRated, setHasRated] = useState(false);
 
   // Reset photo error flags when key IDs change
   useEffect(() => {
@@ -188,6 +189,17 @@ const DigitalPrescription = () => {
 
             if (uProf) setVetUser(uProf);
             if (vProf) setVetProfile(vProf);
+          }
+          
+          // Fetch existing rating
+          const { data: ratingData } = await supabase
+            .from("consultation_ratings")
+            .select("id")
+            .eq("appointment_id", appointmentId)
+            .maybeSingle();
+            
+          if (ratingData) {
+            setHasRated(true);
           }
           
           // Fetch prescription from dedicated prescriptions table
@@ -488,6 +500,7 @@ const DigitalPrescription = () => {
       setFeedbackSubmitted(true);
       setTimeout(() => {
         setIsFeedbackOpen(false);
+        setHasRated(true);
       }, 1500);
     } catch (e) {
       console.error(e);
@@ -495,6 +508,7 @@ const DigitalPrescription = () => {
       setFeedbackSubmitted(true);
       setTimeout(() => {
          setIsFeedbackOpen(false);
+         setHasRated(true);
       }, 1500);
     } finally {
       setSubmittingFeedback(false);
@@ -1143,11 +1157,13 @@ const DigitalPrescription = () => {
         )}
 
         {/* 14. Premium Feedback Button */}
-        <div className="feedback-trigger-zone">
-          <button className="btn-trigger-feedback" onClick={handleOpenFeedback}>
-            <span className="material-symbols-outlined">rate_review</span> Rate Consultation Experience
-          </button>
-        </div>
+        {!hasRated && (
+          <div className="feedback-trigger-zone">
+            <button className="btn-trigger-feedback" onClick={handleOpenFeedback}>
+              <span className="material-symbols-outlined">rate_review</span> Rate Consultation Experience
+            </button>
+          </div>
+        )}
 
       </div>
 
