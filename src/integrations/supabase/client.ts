@@ -2,6 +2,42 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+// Helper function to create a fully chainable, thenable mock Supabase query builder
+function createMockQueryChain(defaultValue: any = [], defaultError: any = null) {
+  const chain: any = {
+    then: (onfulfilled?: any, onrejected?: any) => {
+      return Promise.resolve({ data: defaultValue, error: defaultError }).then(onfulfilled, onrejected);
+    },
+    catch: (onrejected?: any) => {
+      return Promise.resolve({ data: defaultValue, error: defaultError }).catch(onrejected);
+    },
+    finally: (onfinally?: any) => {
+      return Promise.resolve({ data: defaultValue, error: defaultError }).finally(onfinally);
+    }
+  };
+
+  const methods = [
+    'select', 'insert', 'update', 'delete', 'upsert',
+    'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike',
+    'is', 'in', 'contains', 'containedBy', 'rangeGt', 'rangeGte',
+    'rangeLt', 'rangeLte', 'rangeAdjacent', 'overlaps',
+    'textSearch', 'match', 'not', 'or', 'filter',
+    'order', 'limit', 'range', 'single', 'maybeSingle',
+    'csv', 'geojson', 'explain', 'rollback'
+  ];
+
+  methods.forEach(method => {
+    chain[method] = (...args: any[]) => {
+      if (method === 'single' || method === 'maybeSingle') {
+        return createMockQueryChain(null, defaultError);
+      }
+      return chain;
+    };
+  });
+
+  return chain;
+}
+
 const VITE_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const VITE_SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
@@ -50,25 +86,7 @@ try {
           getPublicUrl: () => ({ data: { publicUrl: "" } })
         })
       },
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            single: async () => ({ data: null, error: null }),
-            maybeSingle: async () => ({ data: null, error: null }),
-            order: () => ({
-              limit: async () => ({ data: [], error: null })
-            })
-          }),
-          order: () => ({
-            limit: async () => ({ data: [], error: null })
-          }),
-          limit: async () => ({ data: [], error: null })
-        }),
-        insert: async () => ({ data: null, error: null }),
-        update: async () => ({ data: null, error: null }),
-        delete: async () => ({ data: null, error: null }),
-        upsert: async () => ({ data: null, error: null })
-      }),
+      from: () => createMockQueryChain([], null),
       rpc: async () => ({ data: null, error: null })
     } as any;
   } else {
@@ -112,25 +130,7 @@ try {
       signUp: async () => ({ data: { session: null, user: null }, error: fallbackError }),
       signOut: async () => ({ error: null })
     },
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          single: async () => ({ data: null, error: fallbackError }),
-          maybeSingle: async () => ({ data: null, error: fallbackError }),
-          order: () => ({
-            limit: async () => ({ data: [], error: fallbackError })
-          })
-        }),
-        order: () => ({
-          limit: async () => ({ data: [], error: fallbackError })
-        }),
-        limit: async () => ({ data: [], error: fallbackError })
-      }),
-      insert: async () => ({ data: null, error: fallbackError }),
-      update: async () => ({ data: null, error: fallbackError }),
-      delete: async () => ({ data: null, error: fallbackError }),
-      upsert: async () => ({ data: null, error: fallbackError })
-    })
+    from: () => createMockQueryChain([], fallbackError)
   } as any;
 }
 

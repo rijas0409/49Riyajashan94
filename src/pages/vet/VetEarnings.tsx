@@ -45,6 +45,50 @@ const VetEarnings = () => {
   ]);
   const showUnreadBadge = useMemo(() => notifications.some(n => n.isUnread), [notifications]);
 
+  useEffect(() => {
+    const prefetchProfile = async () => {
+      if (!user) return;
+      try {
+        const { data: vp } = await supabase.from("vet_profiles").select("*").eq("user_id", user.id).maybeSingle();
+        if (vp) {
+          const { data: reviewsData } = await supabase
+            .from("vet_reviews")
+            .select("rating")
+            .eq("vet_id", user.id);
+
+          const reviewsCount = reviewsData ? reviewsData.length : 0;
+          let avgRating = 5.0;
+          if (reviewsData && reviewsData.length > 0) {
+            avgRating = reviewsData.reduce((sum, r) => sum + r.rating, 0) / reviewsData.length;
+          } else if (vp.average_rating != null) {
+            avgRating = vp.average_rating;
+          }
+
+          const photo = vp.profile_photo || profile?.profile_photo;
+          let photoUrl = photo;
+          if (photo && !photo.startsWith("http")) {
+            photoUrl = supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
+          }
+
+          const designation = vp.hospital_role || vp.qualification || vp.specializations?.[0] || "";
+
+          localStorage.setItem("sruvo_vet_name", profile?.name || profile?.full_name || "Doctor");
+          localStorage.setItem("sruvo_vet_designation", designation);
+          localStorage.setItem("sruvo_vet_rating", String(avgRating));
+          localStorage.setItem("sruvo_vet_reviews", String(reviewsCount));
+          if (photoUrl) {
+            localStorage.setItem("sruvo_vet_photo", photoUrl);
+          }
+        }
+      } catch (err) {
+        console.error("Error prefetching vet profile:", err);
+      }
+    };
+    if (user) {
+      prefetchProfile();
+    }
+  }, [user, profile]);
+
   const fetchAppointments = useCallback(async () => {
     if (!user?.id) return;
     try {

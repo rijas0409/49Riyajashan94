@@ -20,7 +20,24 @@ const VetProfile = () => {
   const { signOut } = useAuth();
   const { user, profile: roleGuardProfile, isLoading: guardLoading, showSpinner } = useRoleGuard(["vet"], "/auth/vet", true);
   const [vetData, setVetData] = useState<any>(() => {
-    // Return a basic initial shape to prevent "Loading..." flash
+    const cachedName = localStorage.getItem("sruvo_vet_name");
+    const cachedDesignation = localStorage.getItem("sruvo_vet_designation");
+    const cachedRating = localStorage.getItem("sruvo_vet_rating");
+    const cachedReviews = localStorage.getItem("sruvo_vet_reviews");
+    const cachedPhoto = localStorage.getItem("sruvo_vet_photo");
+
+    if (cachedName || cachedDesignation) {
+      return {
+        name: cachedName || "Doctor",
+        specialty: cachedDesignation || "",
+        rating: cachedRating ? parseFloat(cachedRating) : 5.0,
+        reviews: cachedReviews ? parseInt(cachedReviews, 10) : 0,
+        photo: cachedPhoto || null,
+        isAdminApproved: true,
+        approvedAt: null
+      };
+    }
+
     if (roleGuardProfile) {
       const photo = roleGuardProfile.photo || roleGuardProfile.profile_photo;
       let photoUrl = photo;
@@ -29,7 +46,7 @@ const VetProfile = () => {
       }
       return {
         name: roleGuardProfile.name || "Doctor",
-        specialty: "Specialist",
+        specialty: "",
         rating: 5.0,
         reviews: 0,
         photo: photoUrl || null,
@@ -37,19 +54,15 @@ const VetProfile = () => {
         approvedAt: null
       };
     }
-    const cachedRole = localStorage.getItem("sruvo_user_role") === "vet";
-    if (cachedRole) {
-      return {
-        name: "Doctor",
-        specialty: "Specialist",
-        rating: 5.0,
-        reviews: 0,
-        photo: null,
-        isAdminApproved: true,
-        approvedAt: null
-      };
-    }
-    return null;
+    return {
+      name: "Doctor",
+      specialty: "",
+      rating: 5.0,
+      reviews: 0,
+      photo: null,
+      isAdminApproved: true,
+      approvedAt: null
+    };
   });
 
   useEffect(() => {
@@ -61,7 +74,7 @@ const VetProfile = () => {
       }
       setVetData(prev => ({
         name: roleGuardProfile.name || prev?.name || "Doctor",
-        specialty: prev?.specialty || "Specialist",
+        specialty: prev?.specialty || "",
         rating: prev?.rating || 5.0,
         reviews: prev?.reviews || 0,
         photo: photoUrl || prev?.photo || null,
@@ -83,11 +96,37 @@ const VetProfile = () => {
         photoUrl = supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
       }
 
+      // Fetch reviews and average rating from real database
+      const { data: reviewsData } = await supabase
+        .from("vet_reviews")
+        .select("rating")
+        .eq("vet_id", user.id);
+
+      const reviewCount = reviewsData ? reviewsData.length : 0;
+      let averageRating = 5.0;
+      if (reviewsData && reviewsData.length > 0) {
+        const totalRating = reviewsData.reduce((sum, r) => sum + r.rating, 0);
+        averageRating = totalRating / reviewsData.length;
+      } else if (vetProfile?.average_rating != null) {
+        averageRating = vetProfile.average_rating;
+      }
+
+      const designation = vetProfile?.hospital_role || vetProfile?.qualification || vetProfile?.specializations?.[0] || "";
+
+      // Cache values for next page load
+      localStorage.setItem("sruvo_vet_name", profile?.full_name || profile?.name || "Doctor");
+      localStorage.setItem("sruvo_vet_designation", designation);
+      localStorage.setItem("sruvo_vet_rating", String(averageRating));
+      localStorage.setItem("sruvo_vet_reviews", String(reviewCount));
+      if (photoUrl) {
+        localStorage.setItem("sruvo_vet_photo", photoUrl);
+      }
+
       setVetData({
         name: profile?.full_name || profile?.name || "Doctor",
-        specialty: vetProfile?.specializations?.[0] || "Specialist",
-        rating: vetProfile?.average_rating || 5.0,
-        reviews: 0,
+        specialty: designation,
+        rating: averageRating,
+        reviews: reviewCount,
         photo: photoUrl,
         isAdminApproved: true,
         approvedAt: profile?.created_at

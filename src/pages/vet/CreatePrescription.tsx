@@ -465,12 +465,16 @@ const CreatePrescription = () => {
   const handleFinalSubmit = async () => {
     const finalApptId = dbAppointment?.id || appointmentId;
     if (rating > 0 && createdPrescriptionId) {
-      await supabase.from('consultation_ratings').insert({
-        appointment_id: finalApptId,
-        prescription_id: createdPrescriptionId,
-        vet_id: resolvedVetId || vetId || null,
-        rating: rating,
-      });
+      try {
+        await supabase.from('consultation_ratings').insert({
+          appointment_id: finalApptId,
+          prescription_id: createdPrescriptionId,
+          vet_id: resolvedVetId || vetId || null,
+          rating: rating,
+        });
+      } catch (err) {
+        console.warn("Skipping obsolete consultation_ratings insert:", err);
+      }
     }
 
     // Step 5: Update Appointment status to trigger Buyer redirect

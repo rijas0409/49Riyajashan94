@@ -193,7 +193,7 @@ const DigitalPrescription = () => {
           
           // Fetch existing rating
           const { data: ratingData } = await supabase
-            .from("consultation_ratings")
+            .from("vet_reviews")
             .select("id")
             .eq("appointment_id", appointmentId)
             .maybeSingle();
@@ -491,11 +491,37 @@ const DigitalPrescription = () => {
     setSubmittingFeedback(true);
     try {
       if (appointmentId) {
-        await supabase.from("consultation_ratings").insert({
-          appointment_id: appointmentId,
-          rating: feedbackRating,
-          review: feedbackText
-        });
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session?.user?.id || appointment?.user_id;
+        const vetId = appointment?.vet_id;
+
+        if (userId && vetId) {
+          // 1. Insert review into vet_reviews
+          await supabase.from("vet_reviews").insert({
+            appointment_id: appointmentId,
+            user_id: userId,
+            vet_id: vetId,
+            rating: feedbackRating,
+            review_text: feedbackText
+          });
+
+          // 2. Fetch all reviews for this vet to calculate average rating
+          const { data: allReviews } = await supabase
+            .from("vet_reviews")
+            .select("rating")
+            .eq("vet_id", vetId);
+
+          if (allReviews && allReviews.length > 0) {
+            const totalRating = allReviews.reduce((sum, r) => sum + r.rating, 0);
+            const avgRating = totalRating / allReviews.length;
+            
+            // 3. Update vet_profiles
+            await supabase
+              .from("vet_profiles")
+              .update({ average_rating: avgRating })
+              .eq("user_id", vetId);
+          }
+        }
       }
       setFeedbackSubmitted(true);
       setTimeout(() => {

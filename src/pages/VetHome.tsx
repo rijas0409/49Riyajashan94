@@ -258,6 +258,34 @@ const VetDashboard = () => {
         setRealProfilePhoto(photoUrl);
       }
 
+      if (user?.id) {
+        // Fetch reviews and average rating from real database
+        const { data: reviewsData } = await supabase
+          .from("vet_reviews")
+          .select("rating")
+          .eq("vet_id", user.id);
+
+        const reviewCount = reviewsData ? reviewsData.length : 0;
+        let averageRating = 5.0;
+        if (reviewsData && reviewsData.length > 0) {
+          const totalRating = reviewsData.reduce((sum, r) => sum + r.rating, 0);
+          averageRating = totalRating / reviewsData.length;
+        } else if (vetProfile?.average_rating != null) {
+          averageRating = vetProfile.average_rating;
+        }
+
+        const designation = vetProfile?.hospital_role || vetProfile?.qualification || vetProfile?.specializations?.[0] || "";
+
+        // Cache values for next page load
+        localStorage.setItem("sruvo_vet_name", profile?.full_name || profile?.name || "Doctor");
+        localStorage.setItem("sruvo_vet_designation", designation);
+        localStorage.setItem("sruvo_vet_rating", String(averageRating));
+        localStorage.setItem("sruvo_vet_reviews", String(reviewCount));
+        if (photoUrl) {
+          localStorage.setItem("sruvo_vet_photo", photoUrl);
+        }
+      }
+
       await fetchPendingCount();
       await fetchUpcoming();
       setIsLoading(false);

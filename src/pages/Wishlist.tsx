@@ -52,7 +52,7 @@ const Wishlist = () => {
       const [petsRes, productsRes] = await Promise.all([
         supabase
           .from("wishlist_pets")
-          .select(`*, pet:pet_id(id, name, breed, price, images, category)`)
+          .select(`*, pet:pets(id, name, breed, price, images, category)`)
           .eq("user_id", session.user.id),
         supabase
           .from("wishlist_products")
