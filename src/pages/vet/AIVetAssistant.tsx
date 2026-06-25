@@ -94,7 +94,7 @@ const AIVetAssistant = () => {
       {/* Footer CTA - Fixed */}
       <div className="flex-shrink-0 px-4 pb-3 pt-3 bg-gradient-to-t from-white via-white to-transparent">
         <button
-          onClick={() => navigate("/vet/ai-assessment")}
+          onClick={() => navigate("/buyer/care-match")}
           className="w-full py-4 rounded-2xl font-bold text-white text-base flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-shadow"
           style={{ background: 'linear-gradient(90deg, #FF4D6D, #8B5CF6)' }}
         >

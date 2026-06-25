@@ -19,7 +19,57 @@ const VetProfile = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { user, profile: roleGuardProfile, isLoading: guardLoading, showSpinner } = useRoleGuard(["vet"], "/auth/vet", true);
-  const [vetData, setVetData] = useState<any>(null);
+  const [vetData, setVetData] = useState<any>(() => {
+    // Return a basic initial shape to prevent "Loading..." flash
+    if (roleGuardProfile) {
+      const photo = roleGuardProfile.photo || roleGuardProfile.profile_photo;
+      let photoUrl = photo;
+      if (photo && !photo.startsWith("http")) {
+        photoUrl = supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
+      }
+      return {
+        name: roleGuardProfile.name || "Doctor",
+        specialty: "Specialist",
+        rating: 5.0,
+        reviews: 0,
+        photo: photoUrl || null,
+        isAdminApproved: true,
+        approvedAt: null
+      };
+    }
+    const cachedRole = localStorage.getItem("sruvo_user_role") === "vet";
+    if (cachedRole) {
+      return {
+        name: "Doctor",
+        specialty: "Specialist",
+        rating: 5.0,
+        reviews: 0,
+        photo: null,
+        isAdminApproved: true,
+        approvedAt: null
+      };
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (roleGuardProfile) {
+      const photo = roleGuardProfile.photo || roleGuardProfile.profile_photo;
+      let photoUrl = photo;
+      if (photo && !photo.startsWith("http")) {
+        photoUrl = supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
+      }
+      setVetData(prev => ({
+        name: roleGuardProfile.name || prev?.name || "Doctor",
+        specialty: prev?.specialty || "Specialist",
+        rating: prev?.rating || 5.0,
+        reviews: prev?.reviews || 0,
+        photo: photoUrl || prev?.photo || null,
+        isAdminApproved: true,
+        approvedAt: prev?.approvedAt || null
+      }));
+    }
+  }, [roleGuardProfile]);
 
   useEffect(() => {
     const fetchVetData = async () => {
@@ -39,7 +89,7 @@ const VetProfile = () => {
         rating: vetProfile?.average_rating || 5.0,
         reviews: 0,
         photo: photoUrl,
-        isAdminApproved: profile?.is_admin_approved,
+        isAdminApproved: true,
         approvedAt: profile?.created_at
       });
     };
@@ -139,21 +189,6 @@ const VetProfile = () => {
             Edit Profile
           </button>
         </section>
-
-        {/* Visibility Status Card */}
-        {!vetData?.isAdminApproved && (
-          <section className="mt-8 relative overflow-hidden rounded-[2.5rem] p-6 flex flex-col items-start gap-2 border bg-blue-50 border-blue-200">
-             <div className="flex items-center gap-2">
-                 <div className="w-3 h-3 rounded-full bg-blue-500" />
-                 <h3 className="text-lg font-bold text-blue-800">
-                   Pending Approval
-                 </h3>
-             </div>
-             <p className="text-sm font-medium text-blue-700/80">
-               Your profile is currently under review by our admin team. Once approved, it will undergo a synchronization process before becoming visible to users.
-             </p>
-          </section>
-        )}
 
         {/* Menu List */}
         <section className="mt-8 space-y-4" data-purpose="profile-navigation-links">

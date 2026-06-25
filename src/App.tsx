@@ -73,6 +73,7 @@ import DigitalPrescription from "./pages/vet/DigitalPrescription";
 import FindingVet from "./pages/vet/FindingVet";
 import InstantAnalyzing from "./pages/vet/InstantAnalyzing";
 import InstantAssessment from "./pages/vet/InstantAssessment";
+import CareMatchAssessment from "./pages/vet/CareMatchAssessment";
 import InstantVideoCall from "./pages/vet/InstantVideoCall";
 import PaymentFailed from "./pages/vet/PaymentFailed";
 import PaymentSummary from "./pages/vet/PaymentSummary";
@@ -287,6 +288,7 @@ const App = () => (
                 <Route path="/vet/finding-vet" element={<FindingVet />} />
                 <Route path="/vet/instant-analyzing" element={<InstantAnalyzing />} />
                 <Route path="/vet/instant-assessment" element={<InstantAssessment />} />
+                <Route path="/buyer/care-match" element={<CareMatchAssessment />} />
                 <Route path="/vet/instant-video-call" element={<InstantVideoCall />} />
                 <Route path="/vet/payment-failed" element={<PaymentFailed />} />
                 <Route path="/vet/payment-summary" element={<PaymentSummary />} />

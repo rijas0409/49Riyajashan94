@@ -315,8 +315,9 @@ const VetDashboard = () => {
     return null;
   }
 
-  const doctorName = profile?.name || "Sarah";
-  const doctorFirstName = doctorName.split(' ')[0];
+  const doctorName = profile?.name || "Doctor";
+  const cleanDoctorName = doctorName.replace(/^(dr\.\s*|dr\s*)/i, "");
+  const doctorFirstName = cleanDoctorName.split(' ')[0] || "Doctor";
 
   return (
     <div className="min-h-screen font-sans antialiased text-[#1a1a24] bg-[#f9f9fb] selection:bg-purple-100 overflow-x-hidden">
