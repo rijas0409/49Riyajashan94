@@ -72,15 +72,25 @@ const VetProfile = () => {
       if (photo && !photo.startsWith("http")) {
         photoUrl = supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
       }
-      setVetData(prev => ({
-        name: roleGuardProfile.name || prev?.name || "Doctor",
-        specialty: prev?.specialty || "",
-        rating: prev?.rating || 5.0,
-        reviews: prev?.reviews || 0,
-        photo: photoUrl || prev?.photo || null,
-        isAdminApproved: true,
-        approvedAt: prev?.approvedAt || null
-      }));
+      setVetData(prev => {
+        const cachedRating = localStorage.getItem("sruvo_vet_rating");
+        const cachedReviews = localStorage.getItem("sruvo_vet_reviews");
+        const cachedDesignation = localStorage.getItem("sruvo_vet_designation");
+        
+        const prevRating = prev?.rating !== undefined ? prev.rating : (cachedRating ? parseFloat(cachedRating) : 5.0);
+        const prevReviews = prev?.reviews !== undefined ? prev.reviews : (cachedReviews ? parseInt(cachedReviews, 10) : 0);
+        const prevSpecialty = prev?.specialty || cachedDesignation || "";
+        
+        return {
+          name: roleGuardProfile.name || prev?.name || "Doctor",
+          specialty: prevSpecialty,
+          rating: prevRating,
+          reviews: prevReviews,
+          photo: photoUrl || prev?.photo || null,
+          isAdminApproved: true,
+          approvedAt: prev?.approvedAt || null
+        };
+      });
     }
   }, [roleGuardProfile]);
 
