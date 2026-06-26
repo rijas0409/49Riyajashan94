@@ -26,17 +26,22 @@ const Addresses = () => {
   useEffect(() => { fetchAddresses(); }, []);
 
   const fetchAddresses = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { navigate("/auth"); return; }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { navigate("/auth"); return; }
 
-    const { data } = await supabase
-      .from("addresses")
-      .select("*")
-      .eq("user_id", session.user.id)
-      .order("is_default", { ascending: false });
+      const { data } = await supabase
+        .from("addresses")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .order("is_default", { ascending: false });
 
-    setAddresses(data || []);
-    setLoading(false);
+      setAddresses(data || []);
+    } catch (err) {
+      console.error("Failed to fetch addresses:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAdd = async () => {

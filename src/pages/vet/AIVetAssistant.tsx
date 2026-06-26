@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, X, ChevronRight, PawPrint, FileText, Plus, ArrowRight } from "lucide-react";
 
@@ -32,8 +33,37 @@ const features = [
 const AIVetAssistant = () => {
   const navigate = useNavigate();
 
+  useEffect(() => {
+    // Prefetch smartmatch.html and Tailwind CDN resources
+    const prefetchHtml = document.createElement("link");
+    prefetchHtml.rel = "prefetch";
+    prefetchHtml.href = "/smartmatch.html";
+    document.head.appendChild(prefetchHtml);
+
+    const prefetchTailwind = document.createElement("link");
+    prefetchTailwind.rel = "prefetch";
+    prefetchTailwind.href = "https://cdn.tailwindcss.com?plugins=forms,container-queries";
+    document.head.appendChild(prefetchTailwind);
+
+    return () => {
+      try {
+        document.head.removeChild(prefetchHtml);
+        document.head.removeChild(prefetchTailwind);
+      } catch (e) {
+        console.warn("Clean-up warning:", e);
+      }
+    };
+  }, []);
+
   return (
     <div className="h-screen bg-gradient-to-b from-pink-50/50 via-white to-white flex flex-col overflow-hidden">
+      {/* Background preloader to warm up smartmatch layout and eliminate click-to-load latency */}
+      <iframe
+        src="/smartmatch.html"
+        title="smartmatch-preload"
+        className="hidden pointer-events-none absolute w-0 h-0"
+        style={{ display: "none", width: 0, height: 0, opacity: 0 }}
+      />
       {/* Header - Fixed */}
       <header className="flex-shrink-0 flex items-center justify-between px-4 pt-6 pb-2">
         <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">

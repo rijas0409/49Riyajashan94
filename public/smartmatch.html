@@ -1,0 +1,1992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"/>
+    <title>Sruvo - Care Match</title>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#d95191",
+                        "primary-container": "#fcebf3",
+                        "on-surface": "#412b36",
+                        "on-surface-variant": "#7c6872",
+                        "surface": "#fffbfe",
+                        "surface-container-low": "#fdf4f8",
+                        "surface-container-high": "#fbeff5",
+                        "surface-container-highest": "#f7e5ee",
+                    },
+                    fontFamily: {
+                        sans: ["Inter", "sans-serif"],
+                    },
+                    boxShadow: {
+                        'premium': '0 8px 32px 0 rgba(217, 81, 145, 0.15)',
+                        'chip': '0 4px 12px rgba(65, 43, 54, 0.05)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fffbfe;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .ease-sruvo {
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    
+        :root {
+            --primary-pink: #d95191;
+            --primary-purple: #ab47bc;
+            --text-dark: #1f2328;
+            --text-light: #6e7781;
+            --bg-color: #ffffff;
+            --border-color: #e1e4e8;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        /* --- Hide Scrollbar --- */
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* --- Continuous Bubble Floating Animation --- */
+        @keyframes bubbleFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .animate-bubble {
+            animation: bubbleFloat 3s ease-in-out infinite;
+        }
+
+        /* --- Top Navigation Bar --- */
+        .nav-titles { text-align: center; }
+        .nav-main-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 4px;
+        }
+        .nav-sub-title {
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--primary-pink);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* --- Progress Bar --- */
+        .progress-container { padding: 0 20px 20px 20px; }
+        .progress-text-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .step-count { color: #637381; letter-spacing: 0.5px; }
+        .step-name { color: var(--primary-pink); font-style: italic; }
+        .progress-track {
+            height: 6px;
+            background-color: #f1f2f4;
+            border-radius: 4px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 16.66%;
+            background: linear-gradient(90deg, var(--primary-pink), var(--primary-purple));
+            border-radius: 4px;
+            transition: width 0.5s ease-in-out;
+        }
+
+        /* Dynamic Options Styling */
+        .qa-option {
+            transition: all 0.2s ease;
+        }
+        .qa-option.selected {
+            border-color: var(--primary-pink);
+            background-color: #fcebf3;
+            color: var(--primary-pink);
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body class="text-on-surface antialiased min-h-screen flex justify-center bg-gray-100">
+
+    <div id="mainContainer" class="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl bg-surface h-[100dvh] md:h-[92dvh] md:my-auto md:rounded-[32px] md:shadow-premium relative flex flex-col overflow-x-hidden overflow-y-auto hide-scrollbar transition-all duration-300">
+        
+        <header class="w-full z-50 bg-surface flex flex-col pt-6 pb-2 px-6 shrink-0 sticky top-0">
+            <div class="flex items-center justify-between mb-5">
+                <button onclick="navigateParent('/vet/ai-assistant')" class="w-8 h-8 flex items-center justify-start text-on-surface-variant active:scale-90 transition-transform">
+                    <span class="material-symbols-outlined font-medium text-[26px]">arrow_back</span>
+                </button>
+                
+                <div class="nav-titles">
+                    <div class="nav-main-title">AI Vet Assistant</div>
+                    <div class="nav-sub-title">GUIDED DIAGNOSIS</div>
+                </div>
+                
+                <button onclick="navigateParent('/buyer/vet')" class="w-8 h-8 flex items-center justify-end text-on-surface-variant active:scale-90 transition-transform">
+                    <span class="material-symbols-outlined font-medium text-[26px]">close</span>
+                </button>
+            </div>
+
+            <div class="progress-container px-0 shrink-0">
+                <div class="progress-text-row">
+                    <span id="stepCount" class="step-count">STEP 1 OF 6</span>
+                    <span id="stepName" class="step-name">Select Pet</span>
+                </div>
+                <div class="progress-track">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+            </div>
+        </header>
+
+        <main id="dynamicContentWrapper" class="translate-y-[10vh] flex-1 w-full transition-all duration-700 ease-sruvo flex flex-col">
+            
+            <div id="questionSection" class="w-full px-6 transition-all duration-700 ease-sruvo mt-6 flex shrink-0">
+                <div id="headingTextContainer" class="relative pt-[26px] text-center w-full transition-all duration-300">
+                    <div id="decLine" class="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gradient-to-r from-primary to-purple-400 rounded-full shadow-sm transition-all duration-700 ease-sruvo"></div>
+                    <h1 id="mainHeadingText" class="text-[26px] font-black text-on-surface tracking-tight leading-tight transition-opacity duration-300">
+                        Who needs care<br>today?
+                    </h1>
+                </div>
+            </div>
+
+            <div id="petAvatarList" class="mt-6 pt-4 w-full flex overflow-x-auto md:overflow-x-visible md:flex-wrap md:justify-center hide-scrollbar snap-x snap-mandatory gap-5 md:gap-8 px-6 pb-8 transition-all duration-500 ease-sruvo opacity-100 scale-100 after:content-[''] after:min-w-[1px]">
+            </div>
+
+            <div id="petDetailsSection" class="hidden opacity-0 translate-y-10 transition-all duration-700 ease-sruvo mt-6 w-full flex-col items-center flex-1">
+                <div class="w-full flex flex-col items-center px-6">
+                    <div class="relative w-28 h-28 mb-3">
+                        <img id="detailPhoto" src="" alt="Pet" class="w-full h-full object-cover rounded-full shadow-lg border-[3px] border-surface-container-highest relative z-10 transition-transform duration-300">
+                        <div class="absolute bottom-1 right-1 bg-white p-0.5 rounded-full shadow-md z-20 pointer-events-none">
+                            <div class="bg-green-500 text-white w-4 h-4 rounded-full flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[11px] font-bold">check</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mb-6">
+                        <h2 id="detailName" class="text-3xl font-black tracking-tight text-on-surface"></h2>
+                        <span id="detailSpecies" class="inline-block mt-1.5 px-3 py-1 bg-primary-container text-primary text-[10px] uppercase font-extrabold tracking-widest rounded-full"></span>
+                        
+                        <button onclick="resetSelection()" class="mt-4 flex items-center justify-center gap-1.5 text-primary active:scale-95 transition-transform mx-auto">
+                            <span class="material-symbols-outlined text-[20px] font-bold">sync</span>
+                            <span class="font-bold text-[16px]">Change Pet</span>
+                        </button>
+                    </div>
+
+                    <div class="w-full flex flex-wrap justify-center gap-2.5 mb-6">
+                        <div class="px-4 py-2.5 bg-white rounded-full shadow-chip border border-outline-variant/10 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px] text-primary/70">category</span>
+                            <span id="detailBreed" class="text-[13px] font-bold text-on-surface"></span>
+                        </div>
+                        <div class="px-4 py-2.5 bg-white rounded-full shadow-chip border border-outline-variant/10 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px] text-primary/70">male</span>
+                            <span id="detailGender" class="text-[13px] font-bold text-on-surface"></span>
+                        </div>
+                        <div class="px-4 py-2.5 bg-white rounded-full shadow-chip border border-outline-variant/10 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px] text-primary/70">calendar_month</span>
+                            <span id="detailAge" class="text-[13px] font-bold text-on-surface"></span>
+                        </div>
+                        <div class="px-4 py-2.5 bg-white rounded-full shadow-chip border border-outline-variant/10 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px] text-primary/70">monitor_weight</span>
+                            <span id="detailWeight" class="text-[13px] font-bold text-on-surface"></span>
+                        </div>
+                    </div>
+
+                    <div class="w-full flex flex-col items-center text-center px-4 mb-8">
+                        <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant font-bold mb-1.5">Appearance / Color</p>
+                        <p id="detailAppearance" class="text-[14px] font-semibold text-on-surface/90"></p>
+                    </div>
+                </div>
+
+                <div class="sticky bottom-0 bg-surface w-full px-6 pt-4 pb-6 mt-auto z-40 border-t border-gray-100/50">
+                    <button onclick="goToStep2()" class="w-full bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group">
+                        Continue with <span id="btnPetName" class="font-black"></span>
+                        <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="step2Section" class="hidden opacity-0 translate-y-10 transition-all duration-700 ease-sruvo mt-8 w-full flex-col px-6 pb-6 gap-8 flex-1">
+            </div>
+
+            <div id="step2ContinueWrapper" class="hidden sticky bottom-0 bg-surface w-full px-6 pt-4 pb-6 mt-auto z-40 border-t border-gray-100/50">
+                <div class="w-full flex gap-3">
+                    <button onclick="goBackToStep1()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[24px]">history</span>
+                    </button>
+                    <button id="step2ContinueBtn" disabled onclick="goToStep3()" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group disabled:opacity-50 disabled:pointer-events-none">
+                        Continue to Diagnosis
+                        <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="step3Section" class="hidden opacity-0 translate-y-10 transition-all duration-700 ease-sruvo mt-8 w-full flex-col px-6 pb-6 gap-8 flex-1">
+            </div>
+
+            <div id="step3ContinueWrapper" class="hidden sticky bottom-0 bg-surface w-full px-6 pt-4 pb-6 mt-auto z-40 border-t border-gray-100/50">
+                <div class="w-full flex gap-3">
+                    <button onclick="goBackToStep2()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[24px]">history</span>
+                    </button>
+                    <button id="step3ContinueBtn" disabled onclick="goToStep4()" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group disabled:opacity-50 disabled:pointer-events-none">
+                        Continue 
+                        <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="step4Section" class="hidden opacity-0 translate-y-10 transition-all duration-700 ease-sruvo mt-8 w-full flex-col px-6 pb-6 gap-8 flex-1">
+            </div>
+
+            <div id="step4ContinueWrapper" class="hidden sticky bottom-0 bg-surface w-full px-6 pt-4 pb-6 mt-auto z-40 border-t border-gray-100/50">
+                <div class="w-full flex gap-3">
+                    <button onclick="goBackToStep3()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[24px]">history</span>
+                    </button>
+                    <button id="step4ContinueBtn" disabled onclick="goToStep5()" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group disabled:opacity-50 disabled:pointer-events-none">
+                        Continue 
+                        <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="step5Section" class="hidden opacity-0 translate-y-10 transition-all duration-700 ease-sruvo mt-6 w-full flex-col px-6 pb-6 flex-1">
+                <div class="flex flex-col mb-6">
+                    <p class="text-[14px] text-[#6e7781] font-medium">Add photos or a short video to help the veterinarian better understand the issue.</p>
+                </div>
+
+                <div class="w-full border-2 border-dashed border-gray-200 rounded-[24px] py-10 flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-gray-50/50 transition-colors relative select-none" onclick="document.getElementById('petMediaInput').click()">
+                    <input type="file" id="petMediaInput" multiple accept="image/*,video/*" class="hidden" onchange="handleStep5Media(event)">
+                    <div class="w-[56px] h-[56px] bg-[#fdf4f8] rounded-full flex items-center justify-center mb-3.5">
+                        <span class="material-symbols-outlined text-[#d95191] text-[26px]">photo_camera</span>
+                    </div>
+                    <span class="text-[16px] font-bold text-[#1f2328] mb-0.5">Tap to upload photo</span>
+                    <span class="text-[13px] text-[#6e7781] font-medium">JPG, PNG up to 10MB</span>
+                </div>
+
+                <div id="step5PreviewGrid" class="grid grid-cols-3 gap-3 mt-4 hidden"></div>
+
+                <div class="w-full bg-[#fbf5fa] rounded-[16px] p-4 mt-5 border border-[#f7e5ee]/40">
+                    <h4 class="text-[14px] font-bold text-[#1f2328] mb-2 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[#d95191] text-[18px]">photo_camera</span> Photo & Video Tips
+                    </h4>
+                    <ul class="space-y-1.5 text-[12px] text-[#6e7781] font-medium pl-1">
+                        <li class="flex items-start gap-2">
+                            <span class="w-[4px] h-[4px] rounded-full bg-gray-400 shrink-0 mt-1.5"></span>
+                            <span class="leading-tight">Capture the affected area clearly in good lighting.</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="w-[4px] h-[4px] rounded-full bg-gray-400 shrink-0 mt-1.5"></span>
+                            <span class="leading-tight">Focus on the affected area or your pet's behavior.</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="w-[4px] h-[4px] rounded-full bg-gray-400 shrink-0 mt-1.5"></span>
+                            <span class="leading-tight">Keep videos short (10–20 seconds) and steady.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="step5ContinueWrapper" class="hidden sticky bottom-0 bg-surface w-full px-6 pt-4 pb-6 mt-auto z-40 border-t border-gray-100/50">
+                <div class="w-full flex gap-3">
+                    <button onclick="goBackToStep4()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[24px]">history</span>
+                    </button>
+                    <button id="step5ContinueBtn" disabled onclick="goToStep6()" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group disabled:opacity-50 disabled:pointer-events-none">
+                        Continue 
+                        <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="step6Section" class="hidden opacity-0 translate-y-10 transition-all duration-700 ease-sruvo mt-6 w-full flex-col px-6 pb-6 gap-5 flex-1">
+            </div>
+
+            <div id="step6ContinueWrapper" class="hidden sticky bottom-0 bg-surface w-full px-6 pt-4 pb-6 mt-auto z-40 border-t border-gray-100/50">
+                <div class="w-full flex gap-3">
+                    <button onclick="goBackToStep5()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[24px]">history</span>
+                    </button>
+                    <button onclick="alert('Smart Match Initiated!')" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group">
+                        Smart Match
+                        <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">auto_awesome</span>
+                    </button>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        function navigateParent(path) {
+            window.parent.postMessage({ type: "NAVIGATE_PARENT", path: path }, "*");
+        }
+
+        let loggedInUserDatabaseRecords = [
+            { id: "srv_pet_001", name: "Gabru", photo: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300", species: "Dog", gender: "Male", breed: "Golden Retriever", appearance: "Golden Double Coat", age: "2 Yrs 4 Mos", weight: "32 kg" },
+            { id: "srv_pet_002", name: "Bella", photo: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=300", species: "Cat", gender: "Female", breed: "Persian", appearance: "White Fluffy Coat", age: "1 Yr 2 Mos", weight: "4.5 kg" },
+            { id: "srv_pet_003", name: "Rio", photo: "https://images.unsplash.com/photo-1552728089-57168d658b10?auto=format&fit=crop&q=80&w=300", species: "Bird", gender: "Male", breed: "Macaw", appearance: "Blue and Gold Feathers", age: "4 Yrs 1 Mo", weight: "1.2 kg" },
+            { id: "srv_pet_004", name: "Chintu", photo: "https://images.unsplash.com/photo-1425082661705-1834bfd09dca?auto=format&fit=crop&q=80&w=300", species: "Hamster", gender: "Male", breed: "Syrian", appearance: "Golden Brown", age: "8 Mos", weight: "150 g" }
+        ];
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get("userId") || "";
+
+        async function loadAndSubscribePetPassports() {
+            if (!userId) {
+                console.warn("No userId provided in URL, using static fallback.");
+                fetchAndRenderPetAvatars();
+                return;
+            }
+
+            // Initial fetch
+            await fetchPetPassports();
+
+            // Real-time listener
+            try {
+                if (!window.supabase) {
+                    await new Promise((resolve, reject) => {
+                        const script = document.createElement("script");
+                        script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+                        script.onload = resolve;
+                        script.onerror = reject;
+                        document.head.appendChild(script);
+                    });
+                }
+                
+                const configRes = await fetch("/api/config");
+                if (configRes.ok) {
+                    const config = await configRes.json();
+                    let url = config.supabaseUrl;
+                    try {
+                        const urlObj = new URL(url);
+                        url = urlObj.origin;
+                    } catch(e) {
+                        url = url.replace(/\/$/, "");
+                    }
+                    
+                    const supabaseClient = window.supabase.createClient(url, config.supabaseAnonKey);
+                    
+                    supabaseClient
+                        .channel('realtime_passports_channel')
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'pet_passports' }, (payload) => {
+                            console.log("[REALTIME] Change detected in pet_passports:", payload);
+                            fetchPetPassports();
+                        })
+                        .subscribe();
+                }
+            } catch (err) {
+                console.error("Realtime subscription setup failed:", err);
+            }
+        }
+
+        async function fetchPetPassports() {
+            if (!userId) {
+                fetchAndRenderPetAvatars();
+                return;
+            }
+            try {
+                const res = await fetch(`/api/pet-passport?userId=${userId}&_t=${Date.now()}`);
+                if (res.ok) {
+                    const rawData = await res.json();
+                    if (Array.isArray(rawData)) {
+                        loggedInUserDatabaseRecords = rawData.map(pet => {
+                            return {
+                                id: pet.id,
+                                name: pet.pet_name || "Unnamed Pet",
+                                photo: pet.photo_url || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300",
+                                species: pet.species || "N/A",
+                                gender: pet.gender || "N/A",
+                                breed: pet.breed || "N/A",
+                                appearance: pet.appearance || "N/A",
+                                age: (pet.approx_years !== undefined && pet.approx_years !== null) 
+                                    ? `${pet.approx_years} Yrs ${pet.approx_months || 0} Mos` 
+                                    : "N/A",
+                                weight: pet.weight ? `${pet.weight} kg` : "N/A"
+                            };
+                        });
+                        
+                        if (currentPet) {
+                            const updatedPet = loggedInUserDatabaseRecords.find(p => p.id === currentPet.id);
+                            if (updatedPet) {
+                                currentPet = updatedPet;
+                                populateDetails(currentPet);
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to fetch pet passports:", e);
+            } finally {
+                fetchAndRenderPetAvatars();
+            }
+        }
+
+        let currentPet = null;
+        let answeredQuestions = [];
+        let selectedMainConcernText = "";
+        let step5MediaFiles = [];
+
+        // Completion status tracking for strict button locking
+        let step2Completed = false;
+        let step3Completed = false;
+        let step4Completed = false;
+        let step5Completed = false;
+
+        // --- STEP 2 LOGIC --- //
+        const QA_TREE = {
+            "MAIN": {
+                q: "What is your main concern today?",
+                options: [
+                    { t: "Vomiting", s: ["Dog", "Cat"], next: "A1" },
+                    { t: "Diarrhea", s: ["Dog", "Cat", "Hamster"], next: "B1" },
+                    { t: "Loss of Appetite", s: ["Dog", "Cat", "Bird", "Hamster"], next: "P1" },
+                    { t: "Itching / Skin Issues", s: ["Dog", "Cat"], next: "C1" },
+                    { t: "Eye Problems", s: ["Dog", "Cat", "Bird", "Hamster"], next: "D1" },
+                    { t: "Ear Problems", s: ["Dog", "Cat"], next: "E1" },
+                    { t: "Coughing / Breathing Issues", s: ["Dog", "Cat"], next: "H1" },
+                    { t: "Injury / Wound", s: ["Dog", "Cat", "Bird", "Hamster"], next: "F1" },
+                    { t: "Mobility Issues", s: ["Dog", "Cat", "Bird", "Hamster"], next: "Q1" },
+                    { t: "Behavior Changes", s: ["Dog", "Cat", "Bird", "Hamster"], next: "G1" },
+                    { t: "Urinary / Litter Box Issues", s: ["Cat"], next: "J1" },
+                    { t: "Regurgitation / Crop Issue", s: ["Bird"], next: "K1" },
+                    { t: "Droppings Change", s: ["Bird"], next: "L1" },
+                    { t: "Feather Problems", s: ["Bird"], next: "M1" },
+                    { t: "Breathing Issues", s: ["Bird", "Hamster"], next: "N1" },
+                    { t: "Weakness / Lethargy", s: ["Bird"], next: "O1" },
+                    { t: "Other", s: ["Dog", "Cat", "Bird", "Hamster"], next: "I1" }
+                ]
+            },
+            "A1": { q: "How many times has {pet} vomited?", options: [{t:"Once", next:"A2"}, {t:"2–3 Times", next:"A2"}, {t:"4+ Times", next:"A1a"}] },
+            "A1a": { q: "Has vomiting increased today?", options: [{t:"Yes", next:"A2"}, {t:"No", next:"A2"}] },
+            "A2": { q: "Can {pet} drink water normally?", options: [{t:"Yes", next:"A3"}, {t:"No", next:"A2a"}] },
+            "A2a": { q: "Has {pet} refused water completely?", options: [{t:"Yes", next:"A3"}, {t:"No", next:"A3"}] },
+            "A3": { q: "Did the vomiting start after eating?", options: [{t:"Yes", next:"A4"}, {t:"No", next:"A4"}, {t:"Not Sure", next:"A4"}] },
+            "A4": { q: "Is there blood in the vomit?", options: [{t:"Yes", next:"A4a"}, {t:"No", next:"FIXED1"}] },
+            "A4a": { q: "How much blood did you notice?", options: [{t:"Small streaks", next:"FIXED1"}, {t:"Moderate amount", next:"FIXED1"}, {t:"Significant amount", next:"FIXED1"}] },
+            "B1": { q: "How many times today?", options: [{t:"1–2 Times", next:"B2"}, {t:"3–5 Times", next:"B2"}, {t:"5+ Times", next:"B2"}] },
+            "B2": { q: "Any blood visible?", options: [{t:"Yes", next:"B2a"}, {t:"No", next:"B3"}] },
+            "B2a": { q: "How much blood did you notice?", options: [{t:"Small streaks", next:"B3"}, {t:"Moderate amount", next:"B3"}, {t:"Significant amount", next:"B3"}] },
+            "B3": { q: "Is {pet} eating normally?", options: [{t:"Yes", next:"FIXED1"}, {t:"Less Than Usual", next:"FIXED1"}, {t:"Not Eating", next:"FIXED1"}] },
+            "C1": { q: "Which area is affected?", options: [{t:"Ears", next:"C2"}, {t:"Paws", next:"C2"}, {t:"Neck", next:"C2"}, {t:"Back", next:"C2"}, {t:"Whole Body", next:"C2"}] },
+            "C2": { q: "Any redness?", options: [{t:"Yes", next:"C3"}, {t:"No", next:"C3"}] },
+            "C3": { q: "Hair loss visible?", options: [{t:"Yes", next:"C4"}, {t:"No", next:"C4"}] },
+            "C4": { q: "How often is {pet} scratching?", options: [{t:"Occasionally", next:"FIXED1"}, {t:"Frequently", next:"FIXED1"}, {t:"Constantly", next:"FIXED1"}] },
+            "D1": { q: "What are you noticing?", options: [{t:"Redness", next:"D2"}, {t:"Watering", next:"D2"}, {t:"Swelling", next:"D2"}, {t:"Discharge", next:"D1a"}, {t:"Eye Partially Closed", next:"D2"}] },
+            "D1a": { q: "What does the discharge look like?", options: [{t:"Clear", next:"D2"}, {t:"Yellow", next:"D2"}, {t:"Green", next:"D2"}, {t:"Not Sure", next:"D2"}] },
+            "D2": { q: "One eye or both?", options: [{t:"One Eye", next:"D2a"}, {t:"Both Eyes", next:"FIXED1"}] },
+            "D2a": { q: "Which one left or right?", options: [{t:"Right Eye", next:"FIXED1"}, {t:"Left Eye", next:"FIXED1"}] },
+            "E1": { q: "What are you noticing?", options: [{t:"Head Shaking", next:"FIXED1"}, {t:"Ear Scratching", next:"FIXED1"}, {t:"Bad Smell", next:"FIXED1"}, {t:"Discharge", next:"E1a"}, {t:"Swelling", next:"FIXED1"}] },
+            "E1a": { q: "What color is the discharge?", options: [{t:"Brown", next:"FIXED1"}, {t:"Yellow", next:"FIXED1"}, {t:"Black", next:"FIXED1"}, {t:"Not Sure", next:"FIXED1"}] },
+            "F1": { q: "What type of injury?", options: [{t:"Cut", next:"F2"}, {t:"Bite", next:"F2"}, {t:"Bleeding", next:"F1a"}, {t:"Limping", next:"F1b"}, {t:"Unknown", next:"FIXED1"}] },
+            "F1a": { q: "How severe is the bleeding?", options: [{t:"Mild", next:"F2"}, {t:"Moderate", next:"F2"}, {t:"Heavy", next:"F2"}] },
+            "F1b": { q: "Can {pet} still walk?", options: [{t:"Yes", next:"FIXED1"}, {t:"With Difficulty", next:"FIXED1"}, {t:"Unable to Walk Normally", next:"FIXED1"}] },
+            "F2": { q: "Is bleeding currently active?", options: [{t:"Yes", next:"FIXED1"}, {t:"No", next:"FIXED1"}] },
+            "G1": { q: "What change have you noticed?", options: [{t:"Less Active Than Usual", next:"G2"}, {t:"Hiding More Often", next:"G2"}, {t:"Increased Aggression", next:"G2"}, {t:"Excessive Vocalization", next:"G2"}, {t:"Restlessness", next:"G2"}, {t:"Other", next:"G1_OTHER"}] },
+            "G1_OTHER": { q: "Please describe the changes you've noticed:", isInput: true, placeholder: "Describe any other behaviors...", next: "G2" },
+            "G2": { q: "When did this behavior begin?", options: [{t:"Today", next:"FIXED1"}, {t:"1–3 Days Ago", next:"FIXED1"}, {t:"More Than A Week Ago", next:"FIXED1"}] },
+            "H1": { q: "What are you noticing?", options: [{t:"Coughing", next:"H2"}, {t:"Sneezing", next:"H2"}, {t:"Noisy Breathing", next:"H2"}, {t:"Difficulty Breathing", next:"H2"}] },
+            "H2": { q: "How often does it happen?", options: [{t:"Occasionally", next:"FIXED1"}, {t:"Frequently", next:"FIXED1"}, {t:"Constantly", next:"FIXED1"}] },
+            "I1": { q: "Please describe the issue:", isInput: true, next: "FIXED1" },
+            "J1": { q: "What are you noticing?", options: [{t:"Frequent litter box visits", next:"J2"}, {t:"Straining to urinate", next:"J2"}, {t:"Blood in urine", next:"J2"}, {t:"Urinating outside litter box", next:"J2"}, {t:"Reduced urination", next:"J2"}] },
+            "J2": { q: "Is your cat able to pass urine?", options: [{t:"Yes", next:"J3"}, {t:"No", next:"J3"}, {t:"Small Amount", next:"J3"}, {t:"Not Sure", next:"J3"}] },
+            "J3": { q: "When did you first notice this?", options: [{t:"Today", next:"FIXED1"}, {t:"1–3 Days Ago", next:"FIXED1"}, {t:"More Than 3 Days Ago", next:"FIXED1"}] },
+            "K1": { q: "What are you noticing?", options: [{t:"Bringing up food", next:"K2"}, {t:"Crop appears swollen", next:"K2"}, {t:"Food remains in crop", next:"K2"}, {t:"Not Sure", next:"K2"}] },
+            "K2": { q: "How often has it happened?", options: [{t:"Once", next:"K3"}, {t:"Occasionally", next:"K3"}, {t:"Frequently", next:"K3"}] },
+            "K3": { q: "Is your bird eating normally?", options: [{t:"Yes", next:"FIXED1"}, {t:"Less Than Usual", next:"FIXED1"}, {t:"Not Eating", next:"FIXED1"}] },
+            "L1": { q: "What change have you noticed?", options: [{t:"Different color", next:"L2"}, {t:"More watery", next:"L2"}, {t:"Reduced droppings", next:"L2"}, {t:"Increased droppings", next:"L2"}, {t:"Not Sure", next:"L2"}] },
+            "L2": { q: "How long has this been happening?", options: [{t:"Today", next:"FIXED1"}, {t:"1–3 Days", next:"FIXED1"}, {t:"More Than 3 Days", next:"FIXED1"}] },
+            "M1": { q: "What are you noticing?", options: [{t:"Feather loss", next:"M2"}, {t:"Feather plucking", next:"M2"}, {t:"Damaged feathers", next:"M2"}, {t:"Poor feather condition", next:"M2"}] },
+            "M2": { q: "Which area is affected?", options: [{t:"Head", next:"M3"}, {t:"Neck", next:"M3"}, {t:"Wings", next:"M3"}, {t:"Chest", next:"M3"}, {t:"Multiple Areas", next:"M3"}] },
+            "M3": { q: "Is your bird grooming excessively?", options: [{t:"Yes", next:"FIXED1"}, {t:"No", next:"FIXED1"}, {t:"Not Sure", next:"FIXED1"}] },
+            "N1": { q: "What are you noticing?", options: [{t:"Open-mouth breathing", next:"N2"}, {t:"Wheezing", next:"N2"}, {t:"Clicking sounds", next:"N2"}, {t:"Labored breathing", next:"N2"}, {t:"Sneezing", next:"N2"}] },
+            "N2": { q: "How often does it happen?", options: [{t:"Occasionally", next:"N3"}, {t:"Frequently", next:"N3"}, {t:"Constantly", next:"N3"}] },
+            "N3": { q: "Is activity reduced?", options: [{t:"Yes", next:"FIXED1"}, {t:"No", next:"FIXED1"}] },
+            "O1": { q: "How is your bird behaving?", options: [{t:"Slightly less active", next:"O2"}, {t:"Sleeping more than usual", next:"O2"}, {t:"Not perching normally", next:"O2"}, {t:"Very weak", next:"O2"}] },
+            "O2": { q: "Is your bird eating normally?", options: [{t:"Yes", next:"O3"}, {t:"Less Than Usual", next:"O3"}, {t:"Not Eating", next:"O3"}] },
+            "O3": { q: "When did this start?", options: [{t:"Today", next:"1–3 Days Ago", next:"FIXED1"}, {t:"1–3 Days Ago", next:"FIXED1"}, {t:"More Than 3 Days Ago", next:"FIXED1"}] },
+            "P1": { q: "How is your pet eating?", options: [{t:"Eating Normally but Less Interested", next:"P2"}, {t:"Eating Less Than Usual", next:"P2"}, {t:"Barely Eating", next:"P2"}, {t:"Not Eating At All", next:"P2"}] },
+            "P2": { q: "How long has this been happening?", options: [{t:"Today", next:"P3"}, {t:"1–3 Days", next:"P3"}, {t:"More Than 3 Days", next:"P3"}] },
+            "P3": { q: "Is your pet drinking normally?", options: [{t:"Yes", next:"P4"}, {t:"Drinking Less Than Usual", next:"P4"}, {t:"Not Drinking", next:"P4"}, {t:"Not Sure", next:"P4"}] },
+            "P4": { q: "Have you noticed any weight loss?", options: [{t:"Yes", next:"FIXED1"}, {t:"No", next:"FIXED1"}, {t:"Not Sure", next:"FIXED1"}] },
+            "Q1": { q: "What are you noticing?", options: [{t:"Limping", next:"Q2"}, {t:"Difficulty Walking", next:"Q2"}, {t:"Difficulty Standing", next:"Q2"}, {t:"Difficulty Jumping / Climbing", next:"Q2"}, {t:"Reduced Movement", next:"Q2"}] },
+            "Q2": { q: "Is your pet able to move normally?", options: [{t:"Yes", next:"Q3"}, {t:"With Some Difficulty", next:"Q3"}, {t:"No", next:"Q3"}] },
+            "Q3": { q: "Did this start suddenly?", options: [{t:"Yes", next:"Q4"}, {t:"No", next:"Q4"}, {t:"Not Sure", next:"Q4"}] },
+            "Q4": { q: "Is there any visible swelling or injury?", options: [{t:"Yes", next:"FIXED1"}, {t:"No", next:"FIXED1"}, {t:"Not Sure", next:"FIXED1"}] },
+            "FIXED1": { q: "When did you first notice this issue?", options: [{t:"Today", next:"FIXED2"}, {t:"Yesterday", next:"FIXED2"}, {t:"2–3 Days Ago", next:"FIXED2"}, {t:"Within the Last Week", next:"FIXED2"}, {t:"More Than 1 Week Ago", next:"FIXED2"}] },
+            "FIXED2": { q: "Is the condition getting worse?", options: [{t:"Improving", next:"END"}, {t:"About the Same", next:"END"}, {t:"Getting Worse", next:"END"}] }
+        };
+
+        if (document.readyState === "complete" || document.readyState === "interactive") {
+            loadAndSubscribePetPassports();
+        } else {
+            document.addEventListener("DOMContentLoaded", () => {
+                loadAndSubscribePetPassports();
+            });
+        }
+
+        function fetchAndRenderPetAvatars() {
+            const container = document.getElementById("petAvatarList");
+            if (!container) return;
+            container.innerHTML = ""; 
+
+            loggedInUserDatabaseRecords.forEach((pet, index) => {
+                const petWrapper = document.createElement("div");
+                petWrapper.className = "flex flex-col items-center gap-2 shrink-0 snap-center animate-bubble";
+                petWrapper.style.animationDelay = `${index * 0.3}s`;
+
+                const button = document.createElement("button");
+                button.className = "relative w-[96px] h-[96px] rounded-full p-1 bg-gradient-to-tr from-primary to-purple-400 shadow-premium transition-transform duration-300 hover:scale-105 active:scale-90 group focus:outline-none";
+                
+                const img = document.createElement("img");
+                img.src = pet.photo;
+                img.alt = `${pet.name} profile`;
+                img.className = "w-full h-full object-cover rounded-full border-[3px] border-surface pointer-events-none";
+                
+                button.appendChild(img);
+                button.addEventListener("click", () => handlePetSelection(pet));
+
+                const nameLabel = document.createElement("span");
+                nameLabel.className = "text-[14px] font-bold text-on-surface";
+                nameLabel.innerText = pet.name;
+
+                petWrapper.appendChild(button);
+                petWrapper.appendChild(nameLabel);
+                container.appendChild(petWrapper);
+            });
+
+            const addWrapper = document.createElement("div");
+            addWrapper.className = "flex flex-col items-center gap-2 shrink-0 snap-center animate-bubble";
+            addWrapper.style.animationDelay = `${loggedInUserDatabaseRecords.length * 0.3}s`;
+
+            const addButton = document.createElement("button");
+            addButton.className = "relative w-[96px] h-[96px] rounded-full p-1 bg-gradient-to-tr from-primary to-purple-400 shadow-premium transition-transform duration-300 hover:scale-105 active:scale-90 group focus:outline-none";
+            addButton.addEventListener("click", () => navigateParent("/buyer/pet-passport?create=true"));
+            
+            const innerCircle = document.createElement("div");
+            innerCircle.className = "w-full h-full rounded-full border-[3px] border-surface bg-surface-container-low flex items-center justify-center pointer-events-none";
+            
+            const addIcon = document.createElement("span");
+            addIcon.className = "material-symbols-outlined text-[36px] text-primary/80";
+            addIcon.innerText = "add";
+            
+            innerCircle.appendChild(addIcon);
+            addButton.appendChild(innerCircle);
+
+            const addLabel = document.createElement("span");
+            addLabel.className = "text-[14px] font-bold text-on-surface";
+            addLabel.innerText = "Add Pet";
+
+            addWrapper.appendChild(addButton);
+            addWrapper.appendChild(addLabel);
+            container.appendChild(addWrapper);
+        }
+
+        function handlePetSelection(selectedPet) {
+            currentPet = selectedPet;
+            const wrapper = document.getElementById("dynamicContentWrapper");
+            const avatarList = document.getElementById("petAvatarList");
+            const detailsSection = document.getElementById("petDetailsSection");
+            const questionSection = document.getElementById("questionSection");
+            const textContainer = document.getElementById("headingTextContainer");
+            const decLine = document.getElementById("decLine");
+
+            wrapper.classList.remove("translate-y-[10vh]");
+            wrapper.classList.add("translate-y-0");
+            questionSection.classList.remove("mt-6");
+            questionSection.classList.add("mt-2");
+
+            textContainer.classList.remove("text-center", "pt-[26px]");
+            textContainer.classList.add("text-left", "pl-5");
+
+            decLine.classList.remove("w-12", "h-1.5", "bg-gradient-to-r", "top-0", "left-1/2", "-translate-x-1/2");
+            decLine.classList.add("w-1.5", "h-full", "bg-gradient-to-b", "top-0", "left-0");
+
+            avatarList.classList.remove("opacity-100", "scale-100");
+            avatarList.classList.add("opacity-0", "scale-90", "pointer-events-none");
+            
+            setTimeout(() => {
+                avatarList.classList.add("hidden");
+                populateDetails(selectedPet);
+
+                detailsSection.classList.remove("hidden");
+                detailsSection.classList.add("flex");
+                void detailsSection.offsetWidth; 
+                
+                detailsSection.classList.remove("opacity-0", "translate-y-10");
+                detailsSection.classList.add("opacity-100", "translate-y-0");
+
+            }, 400); 
+        }
+
+        function resetSelection() {
+            currentPet = null;
+            selectedMainConcernText = "";
+            answeredQuestions = [];
+            step2Completed = false;
+            step3Completed = false;
+            step4Completed = false;
+            step5Completed = false;
+            
+            // Clear step 2
+            const s2Sec = document.getElementById("step2Section");
+            if (s2Sec) s2Sec.innerHTML = "";
+            
+            // Clear step 3
+            step3AnsweredQuestions = [];
+            const s3Sec = document.getElementById("step3Section");
+            if (s3Sec) s3Sec.innerHTML = "";
+
+            // Clear step 4
+            step4AnsweredQuestions = [];
+            const s4Sec = document.getElementById("step4Section");
+            if (s4Sec) s4Sec.innerHTML = "";
+
+            // Clear step 5
+            step5MediaFiles = [];
+            const s5Grid = document.getElementById("step5PreviewGrid");
+            if (s5Grid) {
+                s5Grid.innerHTML = "";
+                s5Grid.classList.add("hidden");
+            }
+
+            const wrapper = document.getElementById("dynamicContentWrapper");
+            const avatarList = document.getElementById("petAvatarList");
+            const detailsSection = document.getElementById("petDetailsSection");
+            const questionSection = document.getElementById("questionSection");
+            const textContainer = document.getElementById("headingTextContainer");
+            const decLine = document.getElementById("decLine");
+            
+            const sectionsAndWrappers = [
+                document.getElementById("step2Section"), document.getElementById("step2ContinueWrapper"),
+                document.getElementById("step3Section"), document.getElementById("step3ContinueWrapper"),
+                document.getElementById("step4Section"), document.getElementById("step4ContinueWrapper"),
+                document.getElementById("step5Section"), document.getElementById("step5ContinueWrapper"),
+                document.getElementById("step6Section"), document.getElementById("step6ContinueWrapper")
+            ];
+
+            detailsSection.classList.remove("opacity-100", "translate-y-0");
+            detailsSection.classList.add("opacity-0", "translate-y-10");
+            
+            sectionsAndWrappers.forEach(el => {
+                if(el) {
+                    el.classList.add("hidden");
+                    el.classList.remove("flex", "opacity-100", "translate-y-0");
+                }
+            });
+
+            setTimeout(() => {
+                detailsSection.classList.add("hidden");
+                detailsSection.classList.remove("flex");
+
+                avatarList.classList.remove("hidden");
+                void avatarList.offsetWidth; 
+                avatarList.classList.remove("opacity-0", "scale-90", "pointer-events-none");
+                avatarList.classList.add("opacity-100", "scale-100");
+
+                textContainer.classList.add("text-center", "pt-[26px]");
+                textContainer.classList.remove("text-left", "pl-5");
+
+                decLine.classList.add("w-12", "h-1.5", "bg-gradient-to-r", "top-0", "left-1/2", "-translate-x-1/2");
+                decLine.classList.remove("w-1.5", "h-full", "bg-gradient-to-b", "top-0", "left-0");
+
+                questionSection.classList.remove("mt-2");
+                questionSection.classList.add("mt-6");
+
+                wrapper.classList.remove("translate-y-0");
+                wrapper.classList.add("translate-y-[10vh]");
+            }, 400);
+        }
+
+        function populateDetails(pet) {
+            document.getElementById("detailPhoto").src = pet.photo;
+            document.getElementById("detailName").innerText = pet.name;
+            document.getElementById("detailSpecies").innerText = pet.species;
+            document.getElementById("detailBreed").innerText = pet.breed;
+            document.getElementById("detailGender").innerText = pet.gender;
+            document.getElementById("detailAge").innerText = pet.age;
+            document.getElementById("detailWeight").innerText = pet.weight;
+            document.getElementById("detailAppearance").innerText = pet.appearance;
+            document.getElementById("btnPetName").innerText = pet.name;
+        }
+
+        function goToStep2() {
+            const detailsSection = document.getElementById("petDetailsSection");
+            const step2Section = document.getElementById("step2Section");
+            
+            detailsSection.classList.remove("opacity-100", "translate-y-0");
+            detailsSection.classList.add("opacity-0", "translate-y-10");
+
+            setTimeout(() => {
+                detailsSection.classList.add("hidden");
+                detailsSection.classList.remove("flex");
+
+                document.getElementById("stepCount").innerText = "STEP 2 OF 6";
+                document.getElementById("stepName").innerText = "Current Concern";
+                document.getElementById("progressFill").style.width = "33.33%";
+
+                const h1 = document.getElementById("mainHeadingText");
+                h1.style.opacity = "0";
+                
+                setTimeout(() => {
+                    h1.innerHTML = `Tell us what's happening with <span class="text-primary">${currentPet.name}</span> today.`;
+                    h1.style.opacity = "1";
+                    
+                    step2Section.classList.remove("hidden");
+                    step2Section.classList.add("flex");
+                    void step2Section.offsetWidth;
+                    step2Section.classList.remove("opacity-0", "translate-y-10");
+                    step2Section.classList.add("opacity-100", "translate-y-0");
+
+                    // Keep sticky button wrapper visible immediately but disabled until completed
+                    document.getElementById("step2ContinueWrapper").classList.remove("hidden");
+                    document.getElementById("step2ContinueBtn").disabled = !step2Completed;
+
+                    if(answeredQuestions.length === 0) {
+                        renderQuestion("MAIN");
+                    }
+                }, 300);
+            }, 400);
+        }
+
+        function renderQuestion(nodeId) {
+            const container = document.getElementById("step2Section");
+            const node = QA_TREE[nodeId];
+            if (!node) return;
+
+            const block = document.createElement("div");
+            block.id = `block_${nodeId}`;
+            block.className = "w-full transition-all duration-300";
+
+            const qText = node.q.replace(/{pet}/g, currentPet.name);
+            const titleHTML = `
+                <div class="flex items-start gap-2.5 mb-4">
+                    <div class="w-1.5 h-6 bg-primary rounded-full shrink-0 mt-1"></div>
+                    <h3 class="text-[17px] sm:text-[19px] font-bold text-on-surface leading-tight tracking-tight">${qText}</h3>
+                </div>
+            `;
+            
+            let contentHTML = "";
+
+            if (node.isInput) {
+                const placeholderVal = node.placeholder || "e.g. He is limping since morning";
+                contentHTML = `
+                    <div class="flex flex-col gap-3">
+                        <input type="text" id="input_${nodeId}" placeholder="${placeholderVal}" 
+                            class="w-full border-[1.5px] border-surface-container-highest rounded-[16px] px-4 py-3.5 text-[15px] font-medium text-on-surface placeholder:font-normal placeholder:text-on-surface-variant focus:outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all bg-white shadow-sm">
+                        <button onclick="handleInputSubmit('${nodeId}', '${node.next}')" 
+                            class="self-end px-5 py-2 rounded-full bg-primary-container text-primary font-bold text-[14px] active:scale-95 transition-transform shadow-sm">
+                            Submit
+                        </button>
+                    </div>
+                `;
+            } else {
+                let validOptions = node.options;
+                if (nodeId === "MAIN") {
+                    validOptions = node.options.filter(opt => {
+                        const speciesLower = currentPet.species ? currentPet.species.trim().toLowerCase() : "";
+                        return opt.s.some(s => s.trim().toLowerCase() === speciesLower);
+                    });
+                }
+
+                const optionsHTML = validOptions.map((opt, idx) => `
+                    <button id="btn_${nodeId}_${idx}" onclick="handleOptionSelect('${nodeId}', ${idx}, '${opt.next}')"
+                        class="qa-option text-left px-4 py-3 rounded-[16px] border-[1.5px] border-surface-container-highest bg-white text-on-surface font-semibold text-[15px] hover:border-primary/40 active:scale-[0.98] shadow-sm flex items-center justify-between gap-3 group w-auto shrink-0 grow-0">
+                        <span>${opt.t}</span>
+                        <span class="material-symbols-outlined text-[20px] text-primary opacity-0 -translate-x-2 transition-all group-[.selected]:opacity-100 group-[.selected]:translate-x-0 shrink-0">check_circle</span>
+                    </button>
+                `).join('');
+
+                contentHTML = `<div class="flex flex-wrap gap-2.5 w-full">${optionsHTML}</div>`;
+            }
+
+            block.innerHTML = titleHTML + contentHTML;
+            container.appendChild(block);
+
+            setTimeout(() => {
+                block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        }
+
+        function clearQuestionsAfter(nodeId) {
+            const currentBlock = document.getElementById(`block_${nodeId}`);
+            if (currentBlock) {
+                while (currentBlock.nextElementSibling) {
+                    currentBlock.nextElementSibling.remove();
+                }
+            }
+            
+            const index = answeredQuestions.indexOf(nodeId);
+            if (index > -1) {
+                answeredQuestions.splice(index + 1);
+            }
+            
+            // Lock button since answers were cleared/changed
+            step2Completed = false;
+            document.getElementById("step2ContinueBtn").disabled = true;
+        }
+
+        window.handleOptionSelect = function(nodeId, optIdx, nextNodeId) {
+            if (!answeredQuestions.includes(nodeId)) {
+                answeredQuestions.push(nodeId);
+            }
+            clearQuestionsAfter(nodeId);
+            
+            if (nodeId === "MAIN") {
+                let validOptions = QA_TREE["MAIN"].options.filter(opt => {
+                    const speciesLower = currentPet.species ? currentPet.species.trim().toLowerCase() : "";
+                    return opt.s.some(s => s.trim().toLowerCase() === speciesLower);
+                });
+                selectedMainConcernText = validOptions[optIdx].t;
+            }
+
+            const block = document.getElementById(`block_${nodeId}`);
+            const buttons = block.querySelectorAll('.qa-option');
+            buttons.forEach(b => b.classList.remove('selected'));
+            
+            const selectedBtn = document.getElementById(`btn_${nodeId}_${optIdx}`);
+            selectedBtn.classList.add('selected');
+
+            if (nextNodeId === "END") {
+                step2Completed = true;
+                document.getElementById("step2ContinueBtn").disabled = false;
+                setTimeout(() => {
+                    document.getElementById("step2ContinueWrapper").scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }, 100);
+            } else {
+                renderQuestion(nextNodeId);
+            }
+        };
+
+        window.handleInputSubmit = function(nodeId, nextNodeId) {
+            const inputVal = document.getElementById(`input_${nodeId}`).value.trim();
+            if (!inputVal) {
+                alert("Please describe the issue to proceed.");
+                return;
+            }
+
+            if (!answeredQuestions.includes(nodeId)) {
+                answeredQuestions.push(nodeId);
+            }
+            clearQuestionsAfter(nodeId);
+
+            if (nextNodeId === "END") {
+                step2Completed = true;
+                document.getElementById("step2ContinueBtn").disabled = false;
+                setTimeout(() => {
+                    document.getElementById("step2ContinueWrapper").scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }, 100);
+            } else {
+                renderQuestion(nextNodeId);
+            }
+        };
+
+
+        // --- STEP 3 LOGIC --- //
+
+        let STEP3_TREE = {};
+        let step3AnsweredQuestions = [];
+
+        function initStep3Tree() {
+            if(step3AnsweredQuestions.length > 0) return; // Keep answers if already initialized
+
+            step3AnsweredQuestions = [];
+            document.getElementById("step3Section").innerHTML = "";
+
+            STEP3_TREE = {
+                "S3_Q1": { 
+                    q: `Is {pet} vaccinated?`, 
+                    options: [{t:"Yes", next:"S3_Q2"}, {t:"No", next:"S3_Q2"}, {t:"Not Sure", next:"S3_Q2"}] 
+                }
+            };
+
+            const q2OptionsAll = [
+                {t: "No Known Conditions", s: ["Dog", "Cat", "Bird", "Hamster"]},
+                {t: "Allergies", s: ["Dog", "Cat"]},
+                {t: "Skin Issues", s: ["Dog", "Cat"]},
+                {t: "Heart Condition", s: ["Dog", "Cat"]},
+                {t: "Kidney Condition", s: ["Dog", "Cat"]},
+                {t: "Diabetes", s: ["Dog", "Cat", "Hamster"]},
+                {t: "Chronic Condition", s: ["Dog", "Cat", "Bird", "Hamster"]},
+                {t: "Respiratory Disease", s: ["Bird", "Hamster"]},
+                {t: "Dental Problems", s: ["Hamster"]},
+                {t: "Liver Disease", s: ["Bird"]},
+                {t: "Nutritional Deficiency", s: ["Bird"]},
+                {t: "Other", s: ["Dog", "Cat", "Bird", "Hamster"]}
+            ];
+            
+            let q2Valid = q2OptionsAll.filter(o => {
+                const speciesLower = currentPet.species ? currentPet.species.trim().toLowerCase() : "";
+                return o.s.some(s => s.trim().toLowerCase() === speciesLower);
+            }).map(o => ({
+                t: o.t,
+                next: o.t === "Other" ? "S3_Q2_OTHER" : "S3_Q3"
+            }));
+
+            STEP3_TREE["S3_Q2"] = {
+                q: `Does {pet} have any known health conditions?`,
+                options: q2Valid
+            };
+
+            STEP3_TREE["S3_Q2_OTHER"] = {
+                q: `Please specify the condition:`,
+                isInput: true,
+                placeholder: "Enter condition...",
+                next: "S3_Q3"
+            };
+
+            STEP3_TREE["S3_Q3"] = {
+                q: `Is {pet} currently taking any medication?`,
+                options: [{t:"Yes", next:"S3_Q3_TEXT"}, {t:"No", next:"S3_Q4"}, {t:"Not Sure", next:"S3_Q4"}]
+            };
+
+            STEP3_TREE["S3_Q3_TEXT"] = {
+                q: `What medication is {pet} currently taking?`,
+                isInput: true,
+                placeholder: "Enter medication name...",
+                next: "S3_Q4"
+            };
+
+            STEP3_TREE["S3_Q4"] = {
+                q: `Has {pet} had this issue before?`,
+                options: [{t:"Yes", next:"S3_Q4_SUB1"}, {t:"No", next:"S3_Q5"}, {t:"Not Sure", next:"S3_Q5"}]
+            };
+
+            STEP3_TREE["S3_Q4_SUB1"] = {
+                q: `When was the last occurrence?`,
+                options: [{t:"Within Last Month", next:"S3_Q4_SUB2"}, {t:"Within Last 6 Months", next:"S3_Q4_SUB2"}, {t:"More Than 6 Months Ago", next:"S3_Q4_SUB2"}]
+            };
+
+            STEP3_TREE["S3_Q4_SUB2"] = {
+                q: `Was veterinary treatment required previously?`,
+                options: [{t:"Yes", next:"S3_Q5"}, {t:"No", next:"S3_Q5"}, {t:"Not Sure", next:"S3_Q5"}]
+            };
+
+            STEP3_TREE["S3_Q5"] = {
+                q: `Has {pet} had any major surgery or treatment in the past?`,
+                options: [{t:"Yes", next:"S3_Q5_SUB"}, {t:"No", next:"S3_Q6_START"}, {t:"Not Sure", next:"S3_Q6_START"}]
+            };
+
+            STEP3_TREE["S3_Q5_SUB"] = {
+                q: `Was it within the last 12 months?`,
+                options: [{t:"Yes", next:"S3_Q6_START"}, {t:"No", next:"S3_Q6_START"}, {t:"Not Sure", next:"S3_Q6_START"}]
+            };
+
+            let q6Data = getDynamicStep3Q6Raw(selectedMainConcernText);
+            let firstQ6Node = "S3_Q7"; 
+
+            if (q6Data) {
+                if (Array.isArray(q6Data)) {
+                    q6Data.forEach((qObj, idx) => {
+                        let nodeId = `S3_Q6_${idx}`;
+                        let nextNodeId = (idx === q6Data.length - 1) ? "S3_Q7" : `S3_Q6_${idx + 1}`;
+                        if (idx === 0) firstQ6Node = nodeId;
+                        
+                        STEP3_TREE[nodeId] = {
+                            q: qObj.q,
+                            options: qObj.opt.map(opt => ({t: opt, next: nextNodeId}))
+                        };
+                    });
+                } else {
+                    firstQ6Node = "S3_Q6_0";
+                    STEP3_TREE["S3_Q6_0"] = {
+                        q: q6Data.q,
+                        options: q6Data.opt.map(opt => ({t: opt, next: "S3_Q7"}))
+                    };
+                }
+            }
+
+            STEP3_TREE["S3_Q5"].options.find(o => o.t === "No").next = firstQ6Node;
+            STEP3_TREE["S3_Q5"].options.find(o => o.t === "Not Sure").next = firstQ6Node;
+            STEP3_TREE["S3_Q5_SUB"].options.forEach(o => o.next = firstQ6Node);
+
+            STEP3_TREE["S3_Q7"] = {
+                q: `Anything else about {pet}'s health history that may help the veterinarian? <span class="text-on-surface-variant font-normal text-[14px]">(Optional)</span>`,
+                isInput: true,
+                isOptional: true,
+                placeholder: "Recent diet changes, travel, injuries, allergies, previous treatments...",
+                next: "END"
+            };
+
+            renderStep3Question("S3_Q1");
+        }
+
+        function getDynamicStep3Q6Raw(concern) {
+            if (["Vomiting", "Diarrhea", "Loss of Appetite"].includes(concern)) {
+                return { q: "Has {pet} eaten anything unusual recently?", opt: ["Yes", "No", "Not Sure"] };
+            }
+            if (["Itching / Skin Issues"].includes(concern)) {
+                return { q: "Has {pet} recently changed food, shampoo, grooming or environment?", opt: ["Yes", "No", "Not Sure"] };
+            }
+            if (["Eye Problems"].includes(concern)) {
+                return { q: "Any recent exposure to dust, chemicals, or eye irritation?", opt: ["Yes", "No", "Not Sure"] };
+            }
+            if (["Ear Problems"].includes(concern)) {
+                return [
+                    { q: "Has {pet} recently been swimming, bathed, or groomed?", opt: ["Yes", "No", "Not Sure"] },
+                    { q: "Has {pet} had similar issues before?", opt: ["Yes", "No", "Not Sure"] }
+                ];
+            }
+            if (["Coughing / Breathing Issues", "Breathing Issues"].includes(concern)) {
+                return { q: "Any recent dust, smoke, travel, or boarding exposure?", opt: ["Yes", "No", "Not Sure"] };
+            }
+            if (["Injury / Wound", "Mobility Issues"].includes(concern)) {
+                return { q: "Any recent fall, jump, rough play, or accident?", opt: ["Yes", "No", "Not Sure"] };
+            }
+            if (["Regurgitation / Crop Issue", "Droppings Change", "Feather Problems", "Weakness / Lethargy"].includes(concern)) {
+                return { q: "Any recent cage change, new food, or unusual stress?", opt: ["Yes", "No", "Not Sure"] };
+            }
+            if (currentPet && currentPet.species && currentPet.species.trim().toLowerCase() === "hamster") {
+                 return { q: "Any recent bedding change, new food, or cage change?", opt: ["Yes", "No", "Not Sure"] };
+            }
+            return null; 
+        }
+
+        function renderStep3Question(nodeId) {
+            const container = document.getElementById("step3Section");
+            const node = STEP3_TREE[nodeId];
+            if (!node) return;
+
+            const block = document.createElement("div");
+            block.id = `block_${nodeId}`;
+            block.className = "w-full transition-all duration-300";
+
+            const qText = node.q.replace(/{pet}/g, currentPet.name);
+            const titleHTML = `
+                <div class="flex items-start gap-2.5 mb-4">
+                    <div class="w-1.5 h-6 bg-primary rounded-full shrink-0 mt-1"></div>
+                    <h3 class="text-[17px] sm:text-[19px] font-bold text-on-surface leading-tight tracking-tight">${qText}</h3>
+                </div>
+            `;
+            
+            let contentHTML = "";
+
+            if (node.isInput) {
+                let placeholderText = node.placeholder || "";
+                let btnText = node.isOptional ? "Skip / Submit" : "Submit";
+                let inputHtml = "";
+                
+                if (node.isOptional) {
+                    inputHtml = `<textarea id="input_${nodeId}" rows="3" placeholder="${placeholderText}" class="w-full border-[1.5px] border-surface-container-highest rounded-[16px] px-4 py-3.5 text-[15px] font-medium text-on-surface placeholder:font-normal placeholder:text-on-surface-variant focus:outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all resize-none bg-white shadow-sm"></textarea>`;
+                } else {
+                    inputHtml = `<input type="text" id="input_${nodeId}" placeholder="${placeholderText}" class="w-full border-[1.5px] border-surface-container-highest rounded-[16px] px-4 py-3.5 text-[15px] font-medium text-on-surface placeholder:font-normal placeholder:text-on-surface-variant focus:outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all bg-white shadow-sm">`;
+                }
+
+                contentHTML = `
+                    <div class="flex flex-col gap-3">
+                        ${inputHtml}
+                        <button onclick="handleStep3InputSubmit('${nodeId}', '${node.next}', ${node.isOptional || false})" 
+                            class="self-end px-5 py-2 rounded-full bg-primary-container text-primary font-bold text-[14px] active:scale-95 transition-transform shadow-sm">
+                            ${btnText}
+                        </button>
+                    </div>
+                `;
+            } else {
+                const optionsHTML = node.options.map((opt, idx) => `
+                    <button id="btn_${nodeId}_${idx}" onclick="handleStep3OptionSelect('${nodeId}', ${idx}, '${opt.next}')"
+                        class="qa-option text-left px-4 py-3 rounded-[16px] border-[1.5px] border-surface-container-highest bg-white text-on-surface font-semibold text-[15px] hover:border-primary/40 active:scale-[0.98] shadow-sm flex items-center justify-between gap-3 group w-auto shrink-0 grow-0">
+                        <span>${opt.t}</span>
+                        <span class="material-symbols-outlined text-[20px] text-primary opacity-0 -translate-x-2 transition-all group-[.selected]:opacity-100 group-[.selected]:translate-x-0 shrink-0">check_circle</span>
+                    </button>
+                `).join('');
+
+                contentHTML = `<div class="flex flex-wrap gap-2.5 w-full">${optionsHTML}</div>`;
+            }
+
+            block.innerHTML = titleHTML + contentHTML;
+            container.appendChild(block);
+
+            setTimeout(() => {
+                block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        }
+
+        function clearStep3QuestionsAfter(nodeId) {
+            const currentBlock = document.getElementById(`block_${nodeId}`);
+            if (currentBlock) {
+                while (currentBlock.nextElementSibling) {
+                    currentBlock.nextElementSibling.remove();
+                }
+            }
+            
+            const index = step3AnsweredQuestions.indexOf(nodeId);
+            if (index > -1) {
+                step3AnsweredQuestions.splice(index + 1);
+            }
+            
+            step3Completed = false;
+            document.getElementById("step3ContinueBtn").disabled = true;
+        }
+
+        window.handleStep3OptionSelect = function(nodeId, optIdx, nextNodeId) {
+            if (!step3AnsweredQuestions.includes(nodeId)) {
+                step3AnsweredQuestions.push(nodeId);
+            }
+            clearStep3QuestionsAfter(nodeId);
+            
+            const block = document.getElementById(`block_${nodeId}`);
+            const buttons = block.querySelectorAll('.qa-option');
+            buttons.forEach(b => b.classList.remove('selected'));
+            
+            const selectedBtn = document.getElementById(`btn_${nodeId}_${optIdx}`);
+            selectedBtn.classList.add('selected');
+
+            if (nextNodeId === "END") {
+                step3Completed = true;
+                document.getElementById("step3ContinueBtn").disabled = false;
+                setTimeout(() => {
+                    document.getElementById("step3ContinueWrapper").scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }, 100);
+            } else {
+                renderStep3Question(nextNodeId);
+            }
+        };
+
+        window.handleStep3InputSubmit = function(nodeId, nextNodeId, isOptional) {
+            const inputVal = document.getElementById(`input_${nodeId}`).value.trim();
+            if (!inputVal && !isOptional) {
+                alert("Please provide details to proceed.");
+                return;
+            }
+
+            if (!step3AnsweredQuestions.includes(nodeId)) {
+                step3AnsweredQuestions.push(nodeId);
+            }
+            clearStep3QuestionsAfter(nodeId);
+
+            if (nextNodeId === "END") {
+                step3Completed = true;
+                document.getElementById("step3ContinueBtn").disabled = false;
+                setTimeout(() => {
+                    document.getElementById("step3ContinueWrapper").scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }, 100);
+            } else {
+                renderStep3Question(nextNodeId);
+            }
+        };
+
+        function goToStep3() {
+            const step2Section = document.getElementById("step2Section");
+            const step2ContinueWrapper = document.getElementById("step2ContinueWrapper");
+            const step3Section = document.getElementById("step3Section");
+
+            step2Section.classList.remove("opacity-100", "translate-y-0");
+            step2Section.classList.add("opacity-0", "translate-y-10");
+
+            setTimeout(() => {
+                step2Section.classList.add("hidden");
+                step2Section.classList.remove("flex");
+                step2ContinueWrapper.classList.add("hidden");
+
+                document.getElementById("stepCount").innerText = "STEP 3 OF 6";
+                document.getElementById("stepName").innerText = "Health Background";
+                document.getElementById("progressFill").style.width = "50%";
+
+                const h1 = document.getElementById("mainHeadingText");
+                h1.style.opacity = "0";
+
+                setTimeout(() => {
+                    h1.innerHTML = `Help us understand<br><span class="text-primary">${currentPet.name}'s</span> health history.`;
+                    h1.style.opacity = "1";
+
+                    step3Section.classList.remove("hidden");
+                    step3Section.classList.add("flex");
+                    void step3Section.offsetWidth;
+                    step3Section.classList.remove("opacity-0", "translate-y-10");
+                    step3Section.classList.add("opacity-100", "translate-y-0");
+
+                    // Always show sticky wrapper, but button state relies on completion
+                    document.getElementById("step3ContinueWrapper").classList.remove("hidden");
+                    document.getElementById("step3ContinueBtn").disabled = !step3Completed;
+
+                    initStep3Tree();
+                }, 300);
+            }, 400);
+        }
+
+
+        // --- STEP 4 LOGIC --- //
+
+        let STEP4_TREE = {};
+        let step4AnsweredQuestions = [];
+
+        function initStep4Tree() {
+            if(step4AnsweredQuestions.length > 0) return;
+
+            step4AnsweredQuestions = [];
+            document.getElementById("step4Section").innerHTML = "";
+
+            STEP4_TREE = {
+                "S4_Q1": {
+                    q: "How is {pet} behaving right now?",
+                    options: [
+                        {t: "Acting Normally", next: "S4_Q2"},
+                        {t: "Slightly Less Active", next: "S4_Q2"},
+                        {t: "More Tired Than Usual", next: "S4_Q2"},
+                        {t: "Restless / Uncomfortable", next: "S4_Q2"},
+                        {t: "Very Weak", next: "S4_Q2"}
+                    ]
+                },
+                "S4_Q2": {
+                    q: "How comfortable does {pet} seem right now?",
+                    options: [
+                        {t: "Comfortable", next: "S4_Q3"},
+                        {t: "Slightly Uncomfortable", next: "S4_Q3"},
+                        {t: "Restless", next: "S4_Q3"},
+                        {t: "In Visible Discomfort", next: "S4_Q3"}
+                    ]
+                },
+                "S4_Q3": {
+                    q: "Have you noticed any of these today?",
+                    options: [
+                        {t: "Shivering / Trembling", next: "S4_Q4"},
+                        {t: "Sleeping More Than Usual", next: "S4_Q4"},
+                        {t: "Hiding More Than Usual", next: "S4_Q4"},
+                        {t: "Less Responsive Than Usual", next: "S4_Q4"},
+                        {t: "None of These", next: "S4_Q4"}
+                    ]
+                },
+                "S4_Q4": {
+                    q: `Anything else you noticed about {pet} right now? <span class="text-on-surface-variant font-normal text-[14px]">(Optional)</span>`,
+                    isInput: true,
+                    isOptional: true,
+                    placeholder: "Any visible change in energy, posture, breathing, mood, or behavior.",
+                    next: "END"
+                }
+            };
+
+            renderStep4Question("S4_Q1");
+        }
+
+        function renderStep4Question(nodeId) {
+            const container = document.getElementById("step4Section");
+            const node = STEP4_TREE[nodeId];
+            if (!node) return;
+
+            const block = document.createElement("div");
+            block.id = `block_${nodeId}`;
+            block.className = "w-full transition-all duration-300";
+
+            const qText = node.q.replace(/{pet}/g, currentPet.name);
+            const titleHTML = `
+                <div class="flex items-start gap-2.5 mb-4">
+                    <div class="w-1.5 h-6 bg-primary rounded-full shrink-0 mt-1"></div>
+                    <h3 class="text-[17px] sm:text-[19px] font-bold text-on-surface leading-tight tracking-tight">${qText}</h3>
+                </div>
+            `;
+            
+            let contentHTML = "";
+
+            if (node.isInput) {
+                let placeholderText = node.placeholder || "";
+                let btnText = node.isOptional ? "Skip / Submit" : "Submit";
+                let inputHtml = `<textarea id="input_${nodeId}" rows="3" placeholder="${placeholderText}" class="w-full border-[1.5px] border-surface-container-highest rounded-[16px] px-4 py-3.5 text-[15px] font-medium text-on-surface placeholder:font-normal placeholder:text-on-surface-variant focus:outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all resize-none bg-white shadow-sm"></textarea>`;
+
+                contentHTML = `
+                    <div class="flex flex-col gap-3">
+                        ${inputHtml}
+                        <button onclick="handleStep4InputSubmit('${nodeId}', '${node.next}', ${node.isOptional || false})" 
+                            class="self-end px-5 py-2 rounded-full bg-primary-container text-primary font-bold text-[14px] active:scale-95 transition-transform shadow-sm">
+                            ${btnText}
+                        </button>
+                    </div>
+                `;
+            } else {
+                const optionsHTML = node.options.map((opt, idx) => `
+                    <button id="btn_${nodeId}_${idx}" onclick="handleStep4OptionSelect('${nodeId}', ${idx}, '${opt.next}')"
+                        class="qa-option text-left px-4 py-3 rounded-[16px] border-[1.5px] border-surface-container-highest bg-white text-on-surface font-semibold text-[15px] hover:border-primary/40 active:scale-[0.98] shadow-sm flex items-center justify-between gap-3 group w-auto shrink-0 grow-0">
+                        <span>${opt.t}</span>
+                        <span class="material-symbols-outlined text-[20px] text-primary opacity-0 -translate-x-2 transition-all group-[.selected]:opacity-100 group-[.selected]:translate-x-0 shrink-0">check_circle</span>
+                    </button>
+                `).join('');
+
+                contentHTML = `<div class="flex flex-wrap gap-2.5 w-full">${optionsHTML}</div>`;
+            }
+
+            block.innerHTML = titleHTML + contentHTML;
+            container.appendChild(block);
+
+            setTimeout(() => {
+                block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        }
+
+        function clearStep4QuestionsAfter(nodeId) {
+            const currentBlock = document.getElementById(`block_${nodeId}`);
+            if (currentBlock) {
+                while (currentBlock.nextElementSibling) {
+                    currentBlock.nextElementSibling.remove();
+                }
+            }
+            
+            const index = step4AnsweredQuestions.indexOf(nodeId);
+            if (index > -1) {
+                step4AnsweredQuestions.splice(index + 1);
+            }
+            
+            step4Completed = false;
+            document.getElementById("step4ContinueBtn").disabled = true;
+        }
+
+        window.handleStep4OptionSelect = function(nodeId, optIdx, nextNodeId) {
+            if (!step4AnsweredQuestions.includes(nodeId)) {
+                step4AnsweredQuestions.push(nodeId);
+            }
+            clearStep4QuestionsAfter(nodeId);
+            
+            const block = document.getElementById(`block_${nodeId}`);
+            const buttons = block.querySelectorAll('.qa-option');
+            buttons.forEach(b => b.classList.remove('selected'));
+            
+            const selectedBtn = document.getElementById(`btn_${nodeId}_${optIdx}`);
+            selectedBtn.classList.add('selected');
+
+            if (nextNodeId === "END") {
+                step4Completed = true;
+                document.getElementById("step4ContinueBtn").disabled = false;
+                setTimeout(() => {
+                    document.getElementById("step4ContinueWrapper").scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }, 100);
+            } else {
+                renderStep4Question(nextNodeId);
+            }
+        };
+
+        window.handleStep4InputSubmit = function(nodeId, nextNodeId, isOptional) {
+            const inputVal = document.getElementById(`input_${nodeId}`).value.trim();
+            if (!inputVal && !isOptional) {
+                alert("Please provide details to proceed.");
+                return;
+            }
+
+            if (!step4AnsweredQuestions.includes(nodeId)) {
+                step4AnsweredQuestions.push(nodeId);
+            }
+            clearStep4QuestionsAfter(nodeId);
+
+            if (nextNodeId === "END") {
+                step4Completed = true;
+                document.getElementById("step4ContinueBtn").disabled = false;
+                setTimeout(() => {
+                    document.getElementById("step4ContinueWrapper").scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }, 100);
+            } else {
+                renderStep4Question(nextNodeId);
+            }
+        };
+
+        function goToStep4() {
+            const step3Section = document.getElementById("step3Section");
+            const step3ContinueWrapper = document.getElementById("step3ContinueWrapper");
+            const step4Section = document.getElementById("step4Section");
+
+            step3Section.classList.remove("opacity-100", "translate-y-0");
+            step3Section.classList.add("opacity-0", "translate-y-10");
+
+            setTimeout(() => {
+                step3Section.classList.add("hidden");
+                step3Section.classList.remove("flex");
+                step3ContinueWrapper.classList.add("hidden");
+
+                document.getElementById("stepCount").innerText = "STEP 4 OF 6";
+                document.getElementById("stepName").innerText = "Current Health Status";
+                document.getElementById("progressFill").style.width = "66.66%";
+
+                const h1 = document.getElementById("mainHeadingText");
+                h1.style.opacity = "0";
+
+                setTimeout(() => {
+                    h1.innerHTML = `How is <span class="text-primary">${currentPet.name}</span> doing right now?`;
+                    h1.style.opacity = "1";
+
+                    step4Section.classList.remove("hidden");
+                    step4Section.classList.add("flex");
+                    void step4Section.offsetWidth;
+                    step4Section.classList.remove("opacity-0", "translate-y-10");
+                    step4Section.classList.add("opacity-100", "translate-y-0");
+
+                    document.getElementById("step4ContinueWrapper").classList.remove("hidden");
+                    document.getElementById("step4ContinueBtn").disabled = !step4Completed;
+
+                    initStep4Tree();
+                }, 300);
+            }, 400);
+        }
+
+
+        // --- STEP 5 LOGIC (PHOTOS & VIDEOS) --- //
+
+        function updateStep5ButtonState() {
+            step5Completed = step5MediaFiles.length > 0;
+            document.getElementById("step5ContinueBtn").disabled = !step5Completed;
+        }
+
+        function goToStep5() {
+            const step4Section = document.getElementById("step4Section");
+            const step4ContinueWrapper = document.getElementById("step4ContinueWrapper");
+            const step5Section = document.getElementById("step5Section");
+            const step5ContinueWrapper = document.getElementById("step5ContinueWrapper");
+
+            step4Section.classList.remove("opacity-100", "translate-y-0");
+            step4Section.classList.add("opacity-0", "translate-y-10");
+
+            setTimeout(() => {
+                step4Section.classList.add("hidden");
+                step4Section.classList.remove("flex");
+                step4ContinueWrapper.classList.add("hidden");
+
+                document.getElementById("stepCount").innerText = "STEP 5 OF 6";
+                document.getElementById("stepName").innerText = "Photos & Videos";
+                document.getElementById("progressFill").style.width = "83.33%";
+
+                const h1 = document.getElementById("mainHeadingText");
+                h1.style.opacity = "0";
+
+                setTimeout(() => {
+                    h1.innerHTML = `Photos & Videos`;
+                    h1.style.opacity = "1";
+
+                    step5Section.classList.remove("hidden");
+                    step5Section.classList.add("flex");
+                    void step5Section.offsetWidth;
+                    step5Section.classList.remove("opacity-0", "translate-y-10");
+                    step5Section.classList.add("opacity-100", "translate-y-0");
+
+                    step5ContinueWrapper.classList.remove("hidden");
+                    document.getElementById("step5ContinueBtn").disabled = !step5Completed;
+                }, 300);
+            }, 400);
+        }
+
+        window.handleStep5Media = function(event) {
+            const files = Array.from(event.target.files);
+            const grid = document.getElementById("step5PreviewGrid");
+            
+            files.forEach(file => {
+                const isVideo = file.type.startsWith("video/");
+                if (isVideo && step5MediaFiles.some(f => f.isVideo)) {
+                    alert("Only one video is allowed.");
+                    return;
+                }
+                
+                const mediaObject = {
+                    id: Date.now() + Math.random(),
+                    file: file,
+                    url: URL.createObjectURL(file),
+                    isVideo: isVideo
+                };
+                step5MediaFiles.push(mediaObject);
+            });
+            
+            updateStep5ButtonState();
+            renderStep5Thumbnails();
+        };
+
+        function renderStep5Thumbnails() {
+            const grid = document.getElementById("step5PreviewGrid");
+            if (step5MediaFiles.length === 0) {
+                grid.classList.add("hidden");
+                grid.innerHTML = "";
+                return;
+            }
+            
+            grid.classList.remove("hidden");
+            grid.innerHTML = "";
+            
+            step5MediaFiles.forEach(item => {
+                const thumbWrapper = document.createElement("div");
+                thumbWrapper.className = "relative aspect-square rounded-xl overflow-hidden bg-gray-100 border border-gray-200 shadow-sm";
+                
+                if (item.isVideo) {
+                    const video = document.createElement("video");
+                    video.src = item.url;
+                    video.className = "w-full h-full object-cover";
+                    thumbWrapper.appendChild(video);
+                    
+                    const videoBadge = document.createElement("div");
+                    videoBadge.className = "absolute inset-0 flex items-center justify-center bg-black/30";
+                    videoBadge.innerHTML = `<span class="material-symbols-outlined text-white text-xl">play_circle</span>`;
+                    thumbWrapper.appendChild(videoBadge);
+                } else {
+                    const img = document.createElement("img");
+                    img.src = item.url;
+                    img.className = "w-full h-full object-cover";
+                    thumbWrapper.appendChild(img);
+                }
+                
+                const deleteBtn = document.createElement("button");
+                deleteBtn.className = "absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center hover:bg-black transition-colors";
+                deleteBtn.innerHTML = `<span class="material-symbols-outlined text-[12px] font-bold">close</span>`;
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    step5MediaFiles = step5MediaFiles.filter(f => f.id !== item.id);
+                    updateStep5ButtonState();
+                    renderStep5Thumbnails();
+                };
+                
+                thumbWrapper.appendChild(deleteBtn);
+                grid.appendChild(thumbWrapper);
+            });
+        }
+
+
+        // --- STEP 6 LOGIC (REVIEW) --- //
+
+        function extractQA(blockId) {
+            const block = document.getElementById(blockId);
+            if (!block) return null;
+            const qEl = block.querySelector("h3");
+            const q = qEl ? qEl.innerText : "Question";
+
+            let a = "Not answered";
+            const selectedBtn = block.querySelector(".qa-option.selected span");
+            if (selectedBtn) {
+                a = selectedBtn.innerText;
+            } else {
+                const inputEl = block.querySelector("input[type='text'], textarea");
+                if (inputEl && inputEl.value.trim() !== "") {
+                    a = inputEl.value.trim();
+                } else if (inputEl && inputEl.value.trim() === "") {
+                    a = "Skipped";
+                }
+            }
+            return { q, a };
+        }
+
+        function generateReviewSectionHTML(title, stepNum, contentHTML) {
+            return `
+                <div class="w-full bg-white rounded-[24px] p-5 shadow-sm border border-surface-container-highest relative">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-[16px] font-bold text-on-surface flex items-center gap-2">
+                            <div class="w-1.5 h-4 bg-primary rounded-full"></div>
+                            ${title}
+                        </h4>
+                        <button onclick="editStep(${stepNum})" class="text-primary text-[13px] font-bold active:scale-95 transition-transform flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[16px]">edit</span> Edit
+                        </button>
+                    </div>
+                    <div class="flex flex-col gap-3">
+                        ${contentHTML}
+                    </div>
+                </div>
+            `;
+        }
+
+        window.goToStep6 = function() {
+            const step5Section = document.getElementById("step5Section");
+            const step5ContinueWrapper = document.getElementById("step5ContinueWrapper");
+            const step6Section = document.getElementById("step6Section");
+            const step6ContinueWrapper = document.getElementById("step6ContinueWrapper");
+
+            step5Section.classList.remove("opacity-100", "translate-y-0");
+            step5Section.classList.add("opacity-0", "translate-y-10");
+
+            setTimeout(() => {
+                step5Section.classList.add("hidden");
+                step5Section.classList.remove("flex");
+                step5ContinueWrapper.classList.add("hidden");
+
+                document.getElementById("stepCount").innerText = "STEP 6 OF 6";
+                document.getElementById("stepName").innerText = "Review";
+                document.getElementById("progressFill").style.width = "100%";
+
+                const h1 = document.getElementById("mainHeadingText");
+                h1.style.opacity = "0";
+
+                setTimeout(() => {
+                    h1.innerHTML = `Review your information before we find the best veterinarian for <span class="text-primary">${currentPet.name}</span>.`;
+                    h1.style.opacity = "1";
+
+                    buildReviewContent();
+
+                    step6Section.classList.remove("hidden");
+                    step6Section.classList.add("flex");
+                    void step6Section.offsetWidth;
+                    step6Section.classList.remove("opacity-0", "translate-y-10");
+                    step6Section.classList.add("opacity-100", "translate-y-0");
+
+                    step6ContinueWrapper.classList.remove("hidden");
+                }, 300);
+            }, 400);
+        }
+
+        function buildReviewContent() {
+            const container = document.getElementById("step6Section");
+            container.innerHTML = "";
+
+            // 1. Pet Profile
+            const petContent = `
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-y-3 gap-x-4">
+                    <div><span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Name</span><br><span class="text-[14px] font-bold text-on-surface">${currentPet.name}</span></div>
+                    <div><span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Type</span><br><span class="text-[14px] font-bold text-on-surface">${currentPet.species}</span></div>
+                    <div><span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Breed</span><br><span class="text-[14px] font-bold text-on-surface">${currentPet.breed}</span></div>
+                    <div><span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Age</span><br><span class="text-[14px] font-bold text-on-surface">${currentPet.age}</span></div>
+                    <div><span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Gender</span><br><span class="text-[14px] font-bold text-on-surface">${currentPet.gender}</span></div>
+                    <div><span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Weight</span><br><span class="text-[14px] font-bold text-on-surface">${currentPet.weight}</span></div>
+                </div>
+            `;
+            container.innerHTML += generateReviewSectionHTML("Pet Profile", 1, petContent);
+
+            // Helper for Q&A loops
+            const buildQAContent = (idList) => {
+                let html = "";
+                idList.forEach(id => {
+                    const qa = extractQA(`block_${id}`);
+                    if(qa && qa.a !== "Skipped") {
+                        html += `
+                            <div class="bg-surface-container-low p-3 rounded-xl border border-surface-container-highest/50 flex flex-col justify-between">
+                                <span class="text-[12px] text-on-surface-variant font-bold block mb-1 leading-tight">${qa.q}</span>
+                                <span class="text-[14px] font-bold text-primary">${qa.a}</span>
+                            </div>
+                        `;
+                    }
+                });
+                return html ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">${html}</div>` : `<span class="text-[14px] font-medium text-on-surface-variant">No data provided.</span>`;
+            };
+
+            // 2. Current Concern
+            container.innerHTML += generateReviewSectionHTML("Current Concern", 2, buildQAContent(answeredQuestions));
+
+            // 3. Health Background
+            container.innerHTML += generateReviewSectionHTML("Health Background", 3, buildQAContent(step3AnsweredQuestions));
+
+            // 4. Current Health Status
+            container.innerHTML += generateReviewSectionHTML("Current Health Status", 4, buildQAContent(step4AnsweredQuestions));
+
+            // 5. Photos & Videos
+            let mediaContent = "";
+            if(step5MediaFiles.length === 0) {
+                mediaContent = `<span class="text-[14px] font-medium text-on-surface-variant">No photos or videos uploaded.</span>`;
+            } else {
+                mediaContent = `<div class="grid grid-cols-4 gap-2">`;
+                step5MediaFiles.forEach(item => {
+                    let badge = item.isVideo ? `<div class="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg"><span class="material-symbols-outlined text-white text-[20px]">play_circle</span></div>` : "";
+                    let tag = item.isVideo ? `<video src="${item.url}" class="w-full h-full object-cover rounded-lg"></video>` : `<img src="${item.url}" class="w-full h-full object-cover rounded-lg">`;
+                    
+                    mediaContent += `
+                        <div class="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
+                            ${tag}
+                            ${badge}
+                        </div>
+                    `;
+                });
+                mediaContent += `</div>`;
+            }
+            container.innerHTML += generateReviewSectionHTML("Photos & Videos", 5, mediaContent);
+
+            // Important Note
+            container.innerHTML += `
+                <div class="mt-2 text-center px-1">
+                    <p class="text-[13px] text-on-surface-variant leading-relaxed font-medium">Please review the information above. Accurate details help us match you with the most suitable veterinarian and provide better consultation recommendations.</p>
+                </div>
+            `;
+        }
+
+        // Edit Step Routing Logic
+        window.editStep = function(stepIndex) {
+            const step6Section = document.getElementById("step6Section");
+            const step6ContinueWrapper = document.getElementById("step6ContinueWrapper");
+            
+            step6Section.classList.remove("opacity-100", "translate-y-0");
+            step6Section.classList.add("opacity-0", "translate-y-10");
+
+            setTimeout(() => {
+                step6Section.classList.add("hidden");
+                step6Section.classList.remove("flex");
+                step6ContinueWrapper.classList.add("hidden");
+
+                const h1 = document.getElementById("mainHeadingText");
+
+                if(stepIndex === 1) {
+                    document.getElementById("stepCount").innerText = "STEP 1 OF 6";
+                    document.getElementById("stepName").innerText = "Select Pet";
+                    document.getElementById("progressFill").style.width = "16.66%";
+                    h1.innerHTML = `Who needs care<br>today?`;
+
+                    const sec = document.getElementById("petDetailsSection");
+                    sec.classList.remove("hidden");
+                    sec.classList.add("flex");
+                    setTimeout(() => {
+                        sec.classList.remove("opacity-0", "translate-y-10");
+                        sec.classList.add("opacity-100", "translate-y-0");
+                    }, 50);
+                }
+                else if(stepIndex === 2) {
+                    document.getElementById("stepCount").innerText = "STEP 2 OF 6";
+                    document.getElementById("stepName").innerText = "Current Concern";
+                    document.getElementById("progressFill").style.width = "33.33%";
+                    h1.innerHTML = `Tell us what's happening with <span class="text-primary">${currentPet.name}</span> today.`;
+
+                    const sec = document.getElementById("step2Section");
+                    sec.classList.remove("hidden");
+                    sec.classList.add("flex");
+                    
+                    document.getElementById("step2ContinueWrapper").classList.remove("hidden");
+                    document.getElementById("step2ContinueBtn").disabled = !step2Completed;
+                    
+                    setTimeout(() => {
+                        sec.classList.remove("opacity-0", "translate-y-10");
+                        sec.classList.add("opacity-100", "translate-y-0");
+                    }, 50);
+                }
+                else if(stepIndex === 3) {
+                    document.getElementById("stepCount").innerText = "STEP 3 OF 6";
+                    document.getElementById("stepName").innerText = "Health Background";
+                    document.getElementById("progressFill").style.width = "50%";
+                    h1.innerHTML = `Help us understand<br><span class="text-primary">${currentPet.name}'s</span> health history.`;
+
+                    const sec = document.getElementById("step3Section");
+                    sec.classList.remove("hidden");
+                    sec.classList.add("flex");
+                    
+                    document.getElementById("step3ContinueWrapper").classList.remove("hidden");
+                    document.getElementById("step3ContinueBtn").disabled = !step3Completed;
+                    
+                    setTimeout(() => {
+                        sec.classList.remove("opacity-0", "translate-y-10");
+                        sec.classList.add("opacity-100", "translate-y-0");
+                    }, 50);
+                }
+                else if(stepIndex === 4) {
+                    document.getElementById("stepCount").innerText = "STEP 4 OF 6";
+                    document.getElementById("stepName").innerText = "Current Health Status";
+                    document.getElementById("progressFill").style.width = "66.66%";
+                    h1.innerHTML = `How is <span class="text-primary">${currentPet.name}</span> doing right now?`;
+
+                    const sec = document.getElementById("step4Section");
+                    sec.classList.remove("hidden");
+                    sec.classList.add("flex");
+                    
+                    document.getElementById("step4ContinueWrapper").classList.remove("hidden");
+                    document.getElementById("step4ContinueBtn").disabled = !step4Completed;
+                    
+                    setTimeout(() => {
+                        sec.classList.remove("opacity-0", "translate-y-10");
+                        sec.classList.add("opacity-100", "translate-y-0");
+                    }, 50);
+                }
+                else if(stepIndex === 5) {
+                    document.getElementById("stepCount").innerText = "STEP 5 OF 6";
+                    document.getElementById("stepName").innerText = "Photos & Videos";
+                    document.getElementById("progressFill").style.width = "83.33%";
+                    h1.innerHTML = `Photos & Videos`;
+
+                    const sec = document.getElementById("step5Section");
+                    sec.classList.remove("hidden");
+                    sec.classList.add("flex");
+                    
+                    document.getElementById("step5ContinueWrapper").classList.remove("hidden");
+                    document.getElementById("step5ContinueBtn").disabled = !step5Completed;
+                    
+                    setTimeout(() => {
+                        sec.classList.remove("opacity-0", "translate-y-10");
+                        sec.classList.add("opacity-100", "translate-y-0");
+                    }, 50);
+                }
+            }, 400);
+        }
+
+        // --- BACK BUTTON LOGIC --- //
+        
+        window.goBackToStep1 = function() {
+            const step2Section = document.getElementById("step2Section");
+            const step2ContinueWrapper = document.getElementById("step2ContinueWrapper");
+            const detailsSection = document.getElementById("petDetailsSection");
+            
+            step2Section.classList.remove("opacity-100", "translate-y-0");
+            step2Section.classList.add("opacity-0", "translate-y-10");
+            
+            setTimeout(() => {
+                step2Section.classList.add("hidden");
+                step2Section.classList.remove("flex");
+                step2ContinueWrapper.classList.add("hidden");
+                
+                document.getElementById("stepCount").innerText = "STEP 1 OF 6";
+                document.getElementById("stepName").innerText = "Select Pet";
+                document.getElementById("progressFill").style.width = "16.66%";
+                
+                const h1 = document.getElementById("mainHeadingText");
+                h1.style.opacity = "0";
+                setTimeout(() => {
+                    h1.innerHTML = `Who needs care<br>today?`;
+                    h1.style.opacity = "1";
+                    detailsSection.classList.remove("hidden");
+                    detailsSection.classList.add("flex");
+                    void detailsSection.offsetWidth;
+                    detailsSection.classList.remove("opacity-0", "translate-y-10");
+                    detailsSection.classList.add("opacity-100", "translate-y-0");
+                }, 300);
+            }, 400);
+        }
+
+        window.goBackToStep2 = function() {
+            const step3Section = document.getElementById("step3Section");
+            const step3ContinueWrapper = document.getElementById("step3ContinueWrapper");
+            const step2Section = document.getElementById("step2Section");
+            
+            step3Section.classList.remove("opacity-100", "translate-y-0");
+            step3Section.classList.add("opacity-0", "translate-y-10");
+            
+            setTimeout(() => {
+                step3Section.classList.add("hidden");
+                step3Section.classList.remove("flex");
+                step3ContinueWrapper.classList.add("hidden");
+                
+                document.getElementById("stepCount").innerText = "STEP 2 OF 6";
+                document.getElementById("stepName").innerText = "Current Concern";
+                document.getElementById("progressFill").style.width = "33.33%";
+                
+                const h1 = document.getElementById("mainHeadingText");
+                h1.style.opacity = "0";
+                setTimeout(() => {
+                    h1.innerHTML = `Tell us what's happening with <span class="text-primary">${currentPet.name}</span> today.`;
+                    h1.style.opacity = "1";
+                    step2Section.classList.remove("hidden");
+                    step2Section.classList.add("flex");
+                    void step2Section.offsetWidth;
+                    step2Section.classList.remove("opacity-0", "translate-y-10");
+                    step2Section.classList.add("opacity-100", "translate-y-0");
+                    
+                    document.getElementById("step2ContinueWrapper").classList.remove("hidden");
+                    document.getElementById("step2ContinueBtn").disabled = !step2Completed;
+                }, 300);
+            }, 400);
+        }
+
+        window.goBackToStep3 = function() {
+            const step4Section = document.getElementById("step4Section");
+            const step4ContinueWrapper = document.getElementById("step4ContinueWrapper");
+            const step3Section = document.getElementById("step3Section");
+            
+            step4Section.classList.remove("opacity-100", "translate-y-0");
+            step4Section.classList.add("opacity-0", "translate-y-10");
+            
+            setTimeout(() => {
+                step4Section.classList.add("hidden");
+                step4Section.classList.remove("flex");
+                step4ContinueWrapper.classList.add("hidden");
+                
+                document.getElementById("stepCount").innerText = "STEP 3 OF 6";
+                document.getElementById("stepName").innerText = "Health Background";
+                document.getElementById("progressFill").style.width = "50%";
+                
+                const h1 = document.getElementById("mainHeadingText");
+                h1.style.opacity = "0";
+                setTimeout(() => {
+                    h1.innerHTML = `Help us understand<br><span class="text-primary">${currentPet.name}'s</span> health history.`;
+                    h1.style.opacity = "1";
+                    step3Section.classList.remove("hidden");
+                    step3Section.classList.add("flex");
+                    void step3Section.offsetWidth;
+                    step3Section.classList.remove("opacity-0", "translate-y-10");
+                    step3Section.classList.add("opacity-100", "translate-y-0");
+                    
+                    document.getElementById("step3ContinueWrapper").classList.remove("hidden");
+                    document.getElementById("step3ContinueBtn").disabled = !step3Completed;
+                }, 300);
+            }, 400);
+        }
+
+        window.goBackToStep4 = function() {
+            const step5Section = document.getElementById("step5Section");
+            const step5ContinueWrapper = document.getElementById("step5ContinueWrapper");
+            const step4Section = document.getElementById("step4Section");
+            
+            step5Section.classList.remove("opacity-100", "translate-y-0");
+            step5Section.classList.add("opacity-0", "translate-y-10");
+            
+            setTimeout(() => {
+                step5Section.classList.add("hidden");
+                step5Section.classList.remove("flex");
+                step5ContinueWrapper.classList.add("hidden");
+                
+                document.getElementById("stepCount").innerText = "STEP 4 OF 6";
+                document.getElementById("stepName").innerText = "Current Health Status";
+                document.getElementById("progressFill").style.width = "66.66%";
+                
+                const h1 = document.getElementById("mainHeadingText");
+                h1.style.opacity = "0";
+                setTimeout(() => {
+                    h1.innerHTML = `How is <span class="text-primary">${currentPet.name}</span> doing right now?`;
+                    h1.style.opacity = "1";
+                    step4Section.classList.remove("hidden");
+                    step4Section.classList.add("flex");
+                    void step4Section.offsetWidth;
+                    step4Section.classList.remove("opacity-0", "translate-y-10");
+                    step4Section.classList.add("opacity-100", "translate-y-0");
+                    
+                    document.getElementById("step4ContinueWrapper").classList.remove("hidden");
+                    document.getElementById("step4ContinueBtn").disabled = !step4Completed;
+                }, 300);
+            }, 400);
+        }
+
+        window.goBackToStep5 = function() {
+            const step6Section = document.getElementById("step6Section");
+            const step6ContinueWrapper = document.getElementById("step6ContinueWrapper");
+            const step5Section = document.getElementById("step5Section");
+            
+            step6Section.classList.remove("opacity-100", "translate-y-0");
+            step6Section.classList.add("opacity-0", "translate-y-10");
+            
+            setTimeout(() => {
+                step6Section.classList.add("hidden");
+                step6Section.classList.remove("flex");
+                step6ContinueWrapper.classList.add("hidden");
+                
+                document.getElementById("stepCount").innerText = "STEP 5 OF 6";
+                document.getElementById("stepName").innerText = "Photos & Videos";
+                document.getElementById("progressFill").style.width = "83.33%";
+                
+                const h1 = document.getElementById("mainHeadingText");
+                h1.style.opacity = "0";
+                setTimeout(() => {
+                    h1.innerHTML = `Photos & Videos`;
+                    h1.style.opacity = "1";
+                    step5Section.classList.remove("hidden");
+                    step5Section.classList.add("flex");
+                    void step5Section.offsetWidth;
+                    step5Section.classList.remove("opacity-0", "translate-y-10");
+                    step5Section.classList.add("opacity-100", "translate-y-0");
+                    
+                    document.getElementById("step5ContinueWrapper").classList.remove("hidden");
+                    document.getElementById("step5ContinueBtn").disabled = !step5Completed;
+                }, 300);
+            }, 400);
+        }
+
+    </script>
+</body>
+</html>

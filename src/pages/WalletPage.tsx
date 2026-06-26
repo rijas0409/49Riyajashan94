@@ -22,22 +22,27 @@ const WalletPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const load = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { setLoading(false); return; }
-    const uid = session.user.id;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setLoading(false); return; }
+      const uid = session.user.id;
 
-    const { data: wallet } = await supabase.from("wallets").select("*").eq("user_id", uid).maybeSingle();
-    if (wallet) {
-      setBalance(wallet.balance || 0);
-      setWalletId(wallet.id);
-      const { data: txs } = await supabase
-        .from("wallet_transactions")
-        .select("*")
-        .eq("wallet_id", wallet.id)
-        .order("created_at", { ascending: false });
-      setTransactions(txs || []);
+      const { data: wallet } = await supabase.from("wallets").select("*").eq("user_id", uid).maybeSingle();
+      if (wallet) {
+        setBalance(wallet.balance || 0);
+        setWalletId(wallet.id);
+        const { data: txs } = await supabase
+          .from("wallet_transactions")
+          .select("*")
+          .eq("wallet_id", wallet.id)
+          .order("created_at", { ascending: false });
+        setTransactions(txs || []);
+      }
+    } catch (err) {
+      console.error("Failed to load wallet data:", err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {

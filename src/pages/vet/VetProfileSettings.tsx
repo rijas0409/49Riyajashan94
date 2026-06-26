@@ -47,7 +47,8 @@ const VetProfileSettings = () => {
   }, []);
 
   const fetchData = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
     if (!session) { navigate("/auth"); return; }
 
     const [pRes, vpRes] = await Promise.all([
@@ -83,6 +84,10 @@ const VetProfileSettings = () => {
     }
     
     setLoading(false);
+    } catch (err) {
+      console.error("Failed to fetch vet profile data:", err);
+      setLoading(false);
+    }
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

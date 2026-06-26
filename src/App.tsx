@@ -2,8 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { LocationProvider } from "./contexts/LocationContext";
 import { VetProtectionWrapper } from "./components/VetProtectionWrapper";
 import { CartProvider } from "./contexts/CartContext";
@@ -103,7 +103,7 @@ import VetRecentReviews from "./pages/vet/VetRecentReviews";
 import MyServices from "./pages/vet/MyServices";
 import VirtualConsults from "./pages/vet/VirtualConsults";
 
-import React, { Component, ReactNode } from "react";
+import React, { Component, ReactNode, useEffect } from "react";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null; errorInfo: React.ErrorInfo | null }> {
   constructor(props: { children: ReactNode }) {
@@ -166,6 +166,43 @@ const RouteTracker = () => {
 
 const queryClient = new QueryClient();
 
+const GlobalSmartMatchIframe = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const isMatch = location.pathname === "/buyer/care-match";
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === "NAVIGATE_PARENT") {
+        navigate(event.data.path);
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [navigate]);
+
+  const iframeSrc = user ? `/smartmatch.html?userId=${user.id}` : "/smartmatch.html";
+
+  return (
+    <div
+      className={`fixed inset-0 w-screen h-screen overflow-hidden bg-white z-[9999] transition-opacity duration-200 ${
+        isMatch ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+      }`}
+      style={{
+        visibility: isMatch ? "visible" : "hidden",
+      }}
+    >
+      <iframe
+        src={iframeSrc}
+        title="Sruvo - Care Match"
+        className="w-full h-full border-none m-0 p-0 block"
+        style={{ width: "100%", height: "100%", border: "none" }}
+      />
+    </div>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -176,6 +213,7 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <RouteTracker />
+              <GlobalSmartMatchIframe />
               <ErrorBoundary>
                 <Routes>
                 <Route path="/" element={<Index />} />
