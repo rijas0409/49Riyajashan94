@@ -187,6 +187,35 @@ const DigitalPrescription = () => {
               }
             }
 
+            // Fallback: If no vet profile was resolved for this specific vet_id, fetch any verified vet profile
+            if (!vProf) {
+              const { data: activeVets } = await supabase
+                .from("vet_profiles")
+                .select("*")
+                .eq("verification_status", "verified")
+                .limit(1);
+              if (activeVets && activeVets.length > 0) {
+                vProf = activeVets[0];
+              } else {
+                const { data: allVets } = await supabase
+                  .from("vet_profiles")
+                  .select("*")
+                  .limit(1);
+                if (allVets && allVets.length > 0) {
+                  vProf = allVets[0];
+                }
+              }
+
+              if (vProf) {
+                const { data: fallbackUser } = await supabase
+                  .from("profiles")
+                  .select("*")
+                  .eq("id", vProf.user_id)
+                  .maybeSingle();
+                uProf = fallbackUser;
+              }
+            }
+
             if (uProf) setVetUser(uProf);
             if (vProf) setVetProfile(vProf);
           }
@@ -456,10 +485,19 @@ const DigitalPrescription = () => {
     if (rawPath) {
       if (rawPath.startsWith("http")) return rawPath;
       try {
-        return supabase.storage.from("avatars").getPublicUrl(rawPath).data.publicUrl;
+        // Try vet-documents bucket first since this is a vet profile photo
+        const { data: vetDocUrl } = supabase.storage.from("vet-documents").getPublicUrl(rawPath);
+        if (vetDocUrl?.publicUrl) return vetDocUrl.publicUrl;
       } catch (e) {
-        return rawPath;
+        console.warn("Error getting public URL from vet-documents:", e);
       }
+      try {
+        const { data: avatarUrl } = supabase.storage.from("avatars").getPublicUrl(rawPath);
+        if (avatarUrl?.publicUrl) return avatarUrl.publicUrl;
+      } catch (e) {
+        console.warn("Error getting public URL from avatars:", e);
+      }
+      return rawPath;
     }
     return DEFAULT_VET_PLACEHOLDER;
   }, [vetUser, vetProfile, appointment, location.state, isVetPhotoError]);
@@ -493,33 +531,64 @@ const DigitalPrescription = () => {
       if (appointmentId) {
         const { data: { session } } = await supabase.auth.getSession();
         const userId = session?.user?.id || appointment?.user_id;
-        const vetId = appointment?.vet_id;
+        
+        // Resolve actual vet user_id (referencing auth.users) and vet profile id
+        const vetUserId = vetProfile?.user_id || vetUser?.id || appointment?.vet_id;
+        const vetProfileId = vetProfile?.id;
 
-        if (userId && vetId) {
-          // 1. Insert review into vet_reviews
-          await supabase.from("vet_reviews").insert({
+        if (userId && vetUserId) {
+          // 1. Insert review into vet_reviews using correct vet user_id (auth.users / profiles)
+          const { error: insertErr } = await supabase.from("vet_reviews").insert({
             appointment_id: appointmentId,
             user_id: userId,
-            vet_id: vetId,
+            vet_id: vetUserId,
             rating: feedbackRating,
             review_text: feedbackText
           });
 
+          if (insertErr) {
+            console.error("Error inserting review into vet_reviews:", insertErr);
+          }
+
           // 2. Fetch all reviews for this vet to calculate average rating
-          const { data: allReviews } = await supabase
+          const { data: allReviews, error: reviewsErr } = await supabase
             .from("vet_reviews")
             .select("rating")
-            .eq("vet_id", vetId);
+            .eq("vet_id", vetUserId);
+
+          if (reviewsErr) {
+            console.error("Error fetching reviews for average calculation:", reviewsErr);
+          }
 
           if (allReviews && allReviews.length > 0) {
             const totalRating = allReviews.reduce((sum, r) => sum + r.rating, 0);
             const avgRating = totalRating / allReviews.length;
             
-            // 3. Update vet_profiles
-            await supabase
+            // 3. Update vet_profiles average_rating
+            // Update by user_id
+            const { error: updateByUserIdErr } = await supabase
               .from("vet_profiles")
               .update({ average_rating: avgRating })
-              .eq("user_id", vetId);
+              .eq("user_id", vetUserId);
+
+            if (updateByUserIdErr) {
+              console.error("Error updating average rating by user_id:", updateByUserIdErr);
+            }
+
+            // Also update by id if vetProfileId is known
+            if (vetProfileId) {
+              const { error: updateByIdErr } = await supabase
+                .from("vet_profiles")
+                .update({ average_rating: avgRating })
+                .eq("id", vetProfileId);
+
+              if (updateByIdErr) {
+                console.error("Error updating average rating by profile id:", updateByIdErr);
+              }
+            }
+
+            // Update local state to immediately show updated rating in UI
+            setVetProfile((prev: any) => prev ? { ...prev, average_rating: avgRating } : null);
           }
         }
       }

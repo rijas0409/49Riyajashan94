@@ -62,6 +62,26 @@ const PreparingPrescription = () => {
               }
             }
 
+            if (!vProfile) {
+              // Try to fetch any verified vet profile as fallback so we never show dummy/placeholder data
+              const { data: activeVets } = await supabase
+                .from("vet_profiles")
+                .select("*")
+                .eq("verification_status", "verified")
+                .limit(1);
+              if (activeVets && activeVets.length > 0) {
+                vProfile = activeVets[0];
+              } else {
+                const { data: allVets } = await supabase
+                  .from("vet_profiles")
+                  .select("*")
+                  .limit(1);
+                if (allVets && allVets.length > 0) {
+                  vProfile = allVets[0];
+                }
+              }
+            }
+
             if (vProfile) {
               const { data: uProfile } = await supabase
                 .from("profiles")

@@ -430,11 +430,7 @@ const VetSchedule = () => {
       }
 
       if (activeTab === "Done") {
-        if (isPast) {
-          return apt.status === "completed" || apt.status === "done";
-        }
-        if (isToday) return apt.status === "completed";
-        return false; // Future can't be done
+        return apt.status === "completed" || apt.status === "done" || apt.status === "generated";
       }
       
       return false;
@@ -668,21 +664,19 @@ const VetSchedule = () => {
               }}
               className="bg-white rounded-[36px] p-6 shadow-[0_12px_35px_rgba(0,0,0,0.03)] relative overflow-hidden cursor-pointer active:scale-[0.98] transition-all border border-gray-50/50"
             >
-              {isToday && activeTab === 'Active' && (
-                <div className="absolute top-0 right-0 bg-[#d4f7e5] text-[#199450] px-4 py-2 rounded-bl-[20px] rounded-tr-[36px] text-[11px] font-[700] tracking-[0.5px] flex items-center gap-1.5 uppercase">
-                  <Timer size={14} weight="bold" className="animate-pulse" /> LIVE NOW
+              {(apt.status === 'completed' || apt.status === 'generated' || apt.status === 'done') ? (
+                <div className="absolute top-0 right-0 bg-[#e6fcf5] text-[#0ca678] px-4 py-2 rounded-bl-[20px] rounded-tr-[36px] text-[11px] font-[800] tracking-[0.5px] flex items-center gap-1.5 uppercase border-l border-b border-[#c3fae8]">
+                  <Check size={14} weight="bold" /> COMPLETED
                 </div>
-              )}
-              {activeTab === 'Done' && (
-                <div className="absolute top-0 right-0 bg-[#eef4ff] text-[#4b83ff] px-4 py-2 rounded-bl-[20px] rounded-tr-[36px] text-[11px] font-[700] tracking-[0.5px] flex items-center gap-1.5 uppercase">
-                  PROCESSED
-                </div>
-              )}
-              {activeTab === 'Cancelled' && (
+              ) : activeTab === 'Cancelled' ? (
                 <div className="absolute top-0 right-0 bg-red-50 text-red-600 px-4 py-2 rounded-bl-[20px] rounded-tr-[36px] text-[11px] font-[700] tracking-[0.5px] flex items-center gap-1.5 uppercase">
                   CANCELLED
                 </div>
-              )}
+              ) : isToday && activeTab === 'Active' ? (
+                <div className="absolute top-0 right-0 bg-[#d4f7e5] text-[#199450] px-4 py-2 rounded-bl-[20px] rounded-tr-[36px] text-[11px] font-[700] tracking-[0.5px] flex items-center gap-1.5 uppercase">
+                  <Timer size={14} weight="bold" className="animate-pulse" /> LIVE NOW
+                </div>
+              ) : null}
               {apt.status === 'pending' && activeTab === 'Upcoming' && (
                 <PendingTimer onExpire={() => updateAppointmentStatus(apt.id, "cancelled")} />
               )}
