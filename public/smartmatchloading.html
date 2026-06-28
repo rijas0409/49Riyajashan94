@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"/>
+    <title>Sruvo - Smart Match AI Analysis</title>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#d95191",
+                        "primary-container": "#fcebf3",
+                        "on-surface": "#412b36",
+                        "on-surface-variant": "#7c6872",
+                        "surface": "#fffbfe",
+                        "surface-container-low": "#fdf4f8",
+                        "surface-container-high": "#fbeff5",
+                        "surface-container-highest": "#f7e5ee",
+                    },
+                    fontFamily: {
+                        sans: ["Inter", "sans-serif"],
+                    },
+                    boxShadow: {
+                        'premium': '0 8px 32px 0 rgba(217, 81, 145, 0.15)',
+                        'inner-light': 'inset 0 2px 4px 0 rgba(255, 255, 255, 0.3)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; 
+            -webkit-tap-highlight-color: transparent;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Radar Animation */
+        @keyframes pulse-radar {
+            0% { transform: scale(0.65); opacity: 1; }
+            100% { transform: scale(2.2); opacity: 0; }
+        }
+        .animate-radar { animation: pulse-radar 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+        .animate-radar-delayed { animation: pulse-radar 2.5s cubic-bezier(0.4, 0, 0.2, 1) 1.25s infinite; }
+        
+        /* Subtle float for logs */
+        @keyframes slideInLog {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .log-enter { animation: slideInLog 0.4s ease-out forwards; }
+
+        /* Smooth continuous bump */
+        @keyframes smooth-bump {
+            0%, 100% { transform: scale(1); }
+            20% { transform: scale(1.08); } 
+        }
+        .animate-bump {
+            animation: smooth-bump 1.25s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+    </style>
+</head>
+<body class="text-on-surface antialiased">
+
+    <div class="w-full sm:max-w-[420px] bg-surface h-[100dvh] sm:h-[90vh] sm:max-h-[850px] sm:rounded-[32px] sm:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] sm:border sm:border-surface-container-highest relative flex flex-col overflow-hidden">
+        
+        <header class="w-full z-50 bg-surface flex flex-col pt-6 pb-2 px-6 shrink-0">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-8 h-8"></div>
+                
+                <div class="text-center">
+                    <div class="text-[16px] font-bold text-on-surface mb-1">AI Vet Assistant</div>
+                    <div class="text-[12px] font-extrabold text-primary tracking-[1px] uppercase">Smart Match</div>
+                </div>
+                
+                <button class="w-8 h-8 flex items-center justify-end text-on-surface-variant active:scale-90 transition-transform">
+                    <span class="material-symbols-outlined font-medium text-[26px]">close</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-1 w-full flex flex-col px-6 pb-4 overflow-y-auto hide-scrollbar">
+            
+            <div class="flex flex-col items-center mt-16 sm:mt-[72px]">
+                <div class="relative w-32 h-32 sm:w-36 sm:h-36 flex items-center justify-center">
+                    <div class="absolute inset-0 rounded-full bg-primary-container/50 animate-radar"></div>
+                    <div class="absolute inset-0 rounded-full bg-primary-container/40 animate-radar-delayed"></div>
+                    
+                    <div class="relative w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-tr from-primary to-[#ab47bc] rounded-full shadow-premium flex items-center justify-center z-10 animate-bump">
+                        <span class="material-symbols-outlined text-white text-[36px] sm:text-[42px]">stethoscope</span>
+                    </div>
+
+                    <div id="floatingDataTag" class="absolute text-[11px] font-bold px-2.5 py-1 bg-white border border-primary/20 rounded-full text-primary shadow-sm transition-all duration-500 opacity-0 transform translate-y-4 whitespace-nowrap z-20">
+                        Analyzing...
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 min-h-[20px]"></div>
+
+            <div class="text-center w-full mb-6 mt-4">
+                <h1 class="text-[24px] sm:text-[26px] font-black text-on-surface tracking-tight leading-tight mb-2">
+                    Finding the best vet<br>for your pet
+                </h1>
+                
+                <div class="h-6 flex items-center justify-center overflow-hidden">
+                    <p id="aiStatusText" class="text-[14px] sm:text-[15px] font-bold text-primary transition-opacity duration-300 opacity-100">
+                        Analyzing reported symptoms...
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-4 mt-auto">
+                <div class="bg-white rounded-[20px] p-4 border border-surface-container-highest shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] flex flex-col gap-3 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary to-[#ab47bc] opacity-50"></div>
+                    
+                    <div class="flex items-center gap-2 mb-2 pb-2 border-b border-surface-container-highest">
+                        <span class="relative flex h-2.5 w-2.5">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                        </span>
+                        <span class="text-[11px] uppercase font-bold text-on-surface-variant tracking-wider">Live System Logs</span>
+                    </div>
+                    
+                    <div class="flex flex-col gap-3 text-[12px] sm:text-[13px] font-medium" id="logContainer">
+                    </div>
+                </div>
+
+                <div class="w-full bg-white rounded-[24px] p-5 shadow-sm border border-surface-container-highest">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-[12px] sm:text-[13px] font-bold text-on-surface-variant uppercase tracking-wider">Analysis Progress</span>
+                        <span id="matchPercentage" class="text-[16px] font-black text-primary">0%</span>
+                    </div>
+                    
+                    <div class="w-full h-2.5 bg-surface-container-highest rounded-full overflow-hidden">
+                        <div id="matchProgressFill" class="h-full bg-gradient-to-r from-primary to-[#ab47bc] rounded-full w-0 transition-all duration-[200ms] ease-linear"></div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-center -mt-1">
+                    <button class="text-[12px] font-semibold text-on-surface-variant/70 hover:text-primary transition-colors uppercase tracking-wider py-1.5 px-4 rounded-full active:scale-95">
+                        Cancel Process
+                    </button>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const statusTextEl = document.getElementById("aiStatusText");
+            const progressBarEl = document.getElementById("matchProgressFill");
+            const percentageEl = document.getElementById("matchPercentage");
+            const logContainer = document.getElementById("logContainer");
+            const floatingTag = document.getElementById("floatingDataTag");
+
+            const TOTAL_DURATION_MS = 13000; // Updated to 13 seconds
+            const startTime = Date.now();
+
+            // Status Phrases
+            const statusPhrases = [
+                "Analyzing reported symptoms...",
+                "Cross-referencing medical history...",
+                "Evaluating behavioral changes...",
+                "Scanning local veterinary networks...",
+                "Checking real-time clinic availability...",
+                "Filtering by specialized expertise...",
+                "Matching requirements with top-rated vets...",
+                "Finalizing AI recommendations..."
+            ];
+
+            let currentPhraseIndex = 0;
+
+            const textInterval = setInterval(() => {
+                statusTextEl.style.opacity = "0";
+                setTimeout(() => {
+                    currentPhraseIndex = (currentPhraseIndex + 1) % statusPhrases.length;
+                    statusTextEl.innerText = statusPhrases[currentPhraseIndex];
+                    statusTextEl.style.opacity = "1";
+                }, 300);
+            }, 1625); // Adjusted for 13 seconds (13000 / 8)
+
+            const userChoices = ["Verified Clinics", "Urgent Status", "Symptoms Logged", "Proximity Scan", "High Rating"];
+            let tagIdx = 0;
+            
+            const tagInterval = setInterval(() => {
+                floatingTag.innerText = userChoices[tagIdx % userChoices.length];
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 65; 
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                
+                floatingTag.style.transform = `translate(${x}px, ${y}px) scale(1)`;
+                floatingTag.style.opacity = "1";
+                
+                setTimeout(() => { 
+                    floatingTag.style.opacity = "0"; 
+                    floatingTag.style.transform = `translate(${x}px, ${y + 10}px) scale(0.9)`;
+                }, 1000); // Adjusted fade out to prevent overlapping
+                tagIdx++;
+            }, 1300); // Adjusted interval for dynamic movement in 13s
+
+            const logData = [
+                { id: "log_0", text: "Fetching matching veterinary profiles", icon: "person_search" },
+                { id: "log_1", text: "Analyzing specific pet vulnerabilities", icon: "troubleshoot" },
+                { id: "log_2", text: "Validating system availability maps", icon: "map" },
+                { id: "log_3", text: "Ranking high-precision matching nodes", icon: "military_tech" },
+                { id: "log_4", text: "Securing priority appointment slots", icon: "event_available" }
+            ];
+
+            let currentLogIndex = -1;
+
+            function appendActiveLog(index) {
+                const logItem = logData[index];
+                const newLog = document.createElement("div");
+                newLog.id = logItem.id;
+                newLog.className = "flex items-center justify-between text-on-surface bg-surface-container-low p-2 rounded-lg border border-primary/10 log-enter";
+                newLog.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <span class="material-symbols-outlined text-[16px] text-primary">${logItem.icon}</span>
+                        <span>${logItem.text}</span>
+                    </div>
+                    <span class="material-symbols-outlined text-[16px] text-primary animate-spin">sync</span>
+                `;
+                logContainer.appendChild(newLog);
+            }
+
+            function processSequentialLogs(pct) {
+                let targetIndex = 0;
+                
+                if (pct >= 15 && pct < 35) targetIndex = 1;
+                else if (pct >= 35 && pct < 60) targetIndex = 2;
+                else if (pct >= 60 && pct < 85) targetIndex = 3;
+                else if (pct >= 85) targetIndex = 4;
+
+                if (targetIndex > currentLogIndex) {
+                    
+                    if (currentLogIndex >= 0) {
+                        const previousLog = document.getElementById(logData[currentLogIndex].id);
+                        if (previousLog) {
+                            previousLog.className = "flex items-center justify-between text-on-surface-variant/60 p-2 rounded-lg transition-all duration-500";
+                            const iconSpan = previousLog.querySelector("span.animate-spin");
+                            if (iconSpan) {
+                                iconSpan.className = "material-symbols-outlined text-[18px] text-green-500 transition-all duration-300 transform scale-110";
+                                iconSpan.innerText = "check_circle";
+                                setTimeout(() => iconSpan.classList.remove("scale-110"), 150);
+                            }
+                        }
+                    }
+
+                    currentLogIndex = targetIndex;
+                    appendActiveLog(currentLogIndex);
+
+                    const activeLogs = Array.from(logContainer.children).filter(c => !c.dataset.removing);
+                    
+                    while (activeLogs.length > 3) {
+                        const oldest = activeLogs.shift();
+                        oldest.dataset.removing = 'true';
+                        oldest.style.opacity = "0";
+                        oldest.style.height = "0";
+                        oldest.style.padding = "0";
+                        oldest.style.margin = "0";
+                        oldest.style.overflow = "hidden";
+                        oldest.style.transition = "all 0.4s ease";
+                        setTimeout(() => oldest.remove(), 400);
+                    }
+                }
+            }
+
+            appendActiveLog(0);
+            currentLogIndex = 0;
+
+            const progressInterval = setInterval(() => {
+                const elapsedTime = Date.now() - startTime;
+                let progress = (elapsedTime / TOTAL_DURATION_MS) * 100;
+                
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(progressInterval);
+                    clearInterval(textInterval);
+                    clearInterval(tagInterval);
+                    
+                    statusTextEl.style.opacity = "0";
+                    setTimeout(() => {
+                        statusTextEl.innerText = "Match Complete!";
+                        statusTextEl.classList.remove("text-primary");
+                        statusTextEl.classList.add("text-[#ab47bc]", "text-[16px]");
+                        statusTextEl.style.opacity = "1";
+                    }, 300);
+
+                    const activeSpins = logContainer.querySelectorAll(".animate-spin");
+                    activeSpins.forEach(spin => {
+                        spin.className = "material-symbols-outlined text-[18px] text-green-500";
+                        spin.innerText = "check_circle";
+                        spin.parentElement.className = "flex items-center justify-between text-on-surface-variant/60 p-2 rounded-lg";
+                    });
+                    
+                    if(document.getElementById("floatingDataTag")) {
+                        document.getElementById("floatingDataTag").style.display = 'none';
+                    }
+
+                    setTimeout(() => {
+                        alert("Transition to Final Doctor Match Results Screen.");
+                    }, 1000);
+                }
+
+                progressBarEl.style.width = `${progress}%`;
+                percentageEl.innerText = `${Math.floor

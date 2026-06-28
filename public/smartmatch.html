@@ -283,9 +283,6 @@
             </div>
 
             <div id="step5Section" class="hidden opacity-0 translate-y-10 transition-all duration-700 ease-sruvo mt-6 w-full flex-col px-6 pb-6 flex-1">
-                <div class="flex flex-col mb-6">
-                    <p class="text-[14px] text-[#6e7781] font-medium">Add photos or a short video to help the veterinarian better understand the issue.</p>
-                </div>
 
                 <div class="w-full border-2 border-dashed border-gray-200 rounded-[24px] py-10 flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-gray-50/50 transition-colors relative select-none" onclick="document.getElementById('petMediaInput').click()">
                     <input type="file" id="petMediaInput" multiple accept="image/*,video/*" class="hidden" onchange="handleStep5Media(event)">
@@ -339,7 +336,7 @@
                     <button onclick="goBackToStep5()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
                         <span class="material-symbols-outlined text-[24px]">history</span>
                     </button>
-                    <button onclick="alert('Smart Match Initiated!')" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group">
+                    <button onclick="navigateParent('/buyer/vet')" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group">
                         Smart Match
                         <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">auto_awesome</span>
                     </button>
@@ -412,6 +409,40 @@
             }
         }
 
+        function getFormattedPetAge(approxYears, approxMonths, dob) {
+            let yrs = 0;
+            let mos = 0;
+            let hasData = false;
+
+            if (approxYears !== null && approxYears !== undefined && approxYears !== "" && !isNaN(parseInt(approxYears, 10))) {
+                yrs = parseInt(approxYears, 10);
+                mos = parseInt(approxMonths, 10) || 0;
+                hasData = true;
+            } else if (dob) {
+                const dobDate = new Date(dob);
+                if (!isNaN(dobDate.getTime())) {
+                    const today = new Date();
+                    yrs = today.getFullYear() - dobDate.getFullYear();
+                    mos = today.getMonth() - dobDate.getMonth();
+                    if (mos < 0) {
+                        yrs--;
+                        mos += 12;
+                    }
+                    hasData = true;
+                }
+            }
+
+            if (!hasData) {
+                return "N/A";
+            }
+
+            if (yrs <= 0) {
+                return `${mos || 1} Mos`;
+            } else {
+                return `${yrs} Yr${yrs > 1 ? 's' : ''}${mos > 0 ? ` ${mos} Mo${mos > 1 ? 's' : ''}` : ""}`;
+            }
+        }
+
         async function fetchPetPassports() {
             if (!userId) {
                 fetchAndRenderPetAvatars();
@@ -431,9 +462,7 @@
                                 gender: pet.gender || "N/A",
                                 breed: pet.breed || "N/A",
                                 appearance: pet.appearance || "N/A",
-                                age: (pet.approx_years !== undefined && pet.approx_years !== null) 
-                                    ? `${pet.approx_years} Yrs ${pet.approx_months || 0} Mos` 
-                                    : "N/A",
+                                age: getFormattedPetAge(pet.approx_years, pet.approx_months, pet.dob),
                                 weight: pet.weight ? `${pet.weight} kg` : "N/A"
                             };
                         });
@@ -1475,7 +1504,7 @@
                 h1.style.opacity = "0";
 
                 setTimeout(() => {
-                    h1.innerHTML = `Photos & Videos`;
+                    h1.innerHTML = `Add photos or a short video to help the veterinarian better understand the issue.`;
                     h1.style.opacity = "1";
 
                     step5Section.classList.remove("hidden");
@@ -1801,7 +1830,7 @@
                     document.getElementById("stepCount").innerText = "STEP 5 OF 6";
                     document.getElementById("stepName").innerText = "Photos & Videos";
                     document.getElementById("progressFill").style.width = "83.33%";
-                    h1.innerHTML = `Photos & Videos`;
+                    h1.innerHTML = `Add photos or a short video to help the veterinarian better understand the issue.`;
 
                     const sec = document.getElementById("step5Section");
                     sec.classList.remove("hidden");
@@ -1973,7 +2002,7 @@
                 const h1 = document.getElementById("mainHeadingText");
                 h1.style.opacity = "0";
                 setTimeout(() => {
-                    h1.innerHTML = `Photos & Videos`;
+                    h1.innerHTML = `Add photos or a short video to help the veterinarian better understand the issue.`;
                     h1.style.opacity = "1";
                     step5Section.classList.remove("hidden");
                     step5Section.classList.add("flex");

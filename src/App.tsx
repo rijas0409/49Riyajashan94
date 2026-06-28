@@ -103,7 +103,7 @@ import VetRecentReviews from "./pages/vet/VetRecentReviews";
 import MyServices from "./pages/vet/MyServices";
 import VirtualConsults from "./pages/vet/VirtualConsults";
 
-import React, { Component, ReactNode, useEffect } from "react";
+import React, { Component, ReactNode, useEffect, useState } from "react";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null; errorInfo: React.ErrorInfo | null }> {
   constructor(props: { children: ReactNode }) {
@@ -171,10 +171,27 @@ const GlobalSmartMatchIframe = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isMatch = location.pathname === "/buyer/care-match";
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isMatch) {
+      setLoading(false);
+    }
+  }, [isMatch]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === "NAVIGATE_PARENT") {
+        if (event.data.path === "/buyer/vet") {
+          const iframeElement = document.querySelector('iframe[title="Sruvo - Care Match"]') as HTMLIFrameElement;
+          if (iframeElement && iframeElement.contentDocument) {
+            const stepCountEl = iframeElement.contentDocument.getElementById("stepCount");
+            if (stepCountEl && stepCountEl.innerText.includes("STEP 6")) {
+              setLoading(true);
+              return;
+            }
+          }
+        }
         navigate(event.data.path);
       }
     };
@@ -182,7 +199,45 @@ const GlobalSmartMatchIframe = () => {
     return () => window.removeEventListener("message", handleMessage);
   }, [navigate]);
 
-  const iframeSrc = user ? `/smartmatch.html?userId=${user.id}` : "/smartmatch.html";
+  const iframeSrc = loading
+    ? "/smartmatchloading.html"
+    : user
+    ? `/smartmatch.html?userId=${user.id}`
+    : "/smartmatch.html";
+
+  const handleLoadingIframeLoad = (e: React.SyntheticEvent<HTMLIFrameElement>) => {
+    if (!loading) return;
+    const iframe = e.currentTarget;
+    const innerDoc = iframe.contentDocument;
+    if (!innerDoc) return;
+
+    if (iframe.contentWindow) {
+      iframe.contentWindow.alert = (msg: string) => {
+        console.log("Intercepted completion alert:", msg);
+        setLoading(false);
+        navigate("/buyer/vet");
+      };
+    }
+
+    const buttons = Array.from(innerDoc.querySelectorAll("button"));
+    const cancelButton = buttons.find(btn => btn.textContent?.toLowerCase().includes("cancel"));
+    if (cancelButton) {
+      cancelButton.addEventListener("click", () => {
+        setLoading(false);
+      });
+    }
+
+    const closeButton = buttons.find(btn => {
+      const icon = btn.querySelector(".material-symbols-outlined");
+      return icon && icon.textContent?.trim() === "close";
+    });
+    if (closeButton) {
+      closeButton.addEventListener("click", () => {
+        setLoading(false);
+        navigate("/buyer/vet");
+      });
+    }
+  };
 
   return (
     <div
@@ -196,6 +251,7 @@ const GlobalSmartMatchIframe = () => {
       <iframe
         src={iframeSrc}
         title="Sruvo - Care Match"
+        onLoad={handleLoadingIframeLoad}
         className="w-full h-full border-none m-0 p-0 block"
         style={{ width: "100%", height: "100%", border: "none" }}
       />
