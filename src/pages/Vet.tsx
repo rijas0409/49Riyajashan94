@@ -806,7 +806,7 @@ const Vet = () => {
 
         {/* Smart Match Card */}
         <div 
-          onClick={() => navigate("/vet/ai-assistant")}
+          onClick={() => navigate("/buyer/care-match")}
           className="bg-card rounded-[18px] px-3 py-2.5 shadow-md border border-border flex items-center gap-2.5 cursor-pointer hover:shadow-lg transition-shadow"
         >
           <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#F2EAFE' }}>

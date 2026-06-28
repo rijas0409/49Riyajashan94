@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, X, ChevronRight, PawPrint, FileText, Plus, ArrowRight } from "lucide-react";
 
 const petImages = [
-  { src: "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=300&h=300&fit=crop", alt: "Dog", rotate: "-rotate-3" },
-  { src: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=300&h=300&fit=crop", alt: "Cat", rotate: "rotate-2" },
-  { src: "https://images.unsplash.com/photo-1552728089-57bdde30beb3?w=300&h=300&fit=crop", alt: "Bird", rotate: "rotate-3" },
-  { src: "https://images.unsplash.com/photo-1425082661705-1834bfd09dca?w=300&h=300&fit=crop", alt: "Hamster", rotate: "-rotate-2" },
+  { src: "/smartmatch-dog.png", alt: "Dog", rotate: "-rotate-3" },
+  { src: "/smartmatch-cat.png", alt: "Cat", rotate: "rotate-2" },
+  { src: "/smartmatch-bird.png", alt: "Bird", rotate: "rotate-3" },
+  { src: "/smartmatch-hamster.png", alt: "Hamster", rotate: "-rotate-2" },
 ];
 
 const features = [
@@ -30,7 +30,12 @@ const features = [
   },
 ];
 
-const AIVetAssistant = () => {
+interface AIVetAssistantProps {
+  onStartAssessment?: () => void;
+  onClose?: () => void;
+}
+
+const AIVetAssistant = ({ onStartAssessment, onClose }: AIVetAssistantProps) => {
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -66,14 +71,14 @@ const AIVetAssistant = () => {
       />
       {/* Header - Fixed */}
       <header className="flex-shrink-0 flex items-center justify-between px-4 pt-6 pb-2">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
+        <button onClick={onClose || (() => navigate(-1))} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
           <ArrowLeft className="w-5 h-5 text-foreground" />
         </button>
         <div className="text-center">
           <p className="text-xs font-bold tracking-widest uppercase" style={{ color: '#FF4D6D' }}>PREMIUM CARE</p>
           <p className="text-sm font-bold text-foreground">AI Vet Assistant</p>
         </div>
-        <button onClick={() => navigate("/buyer/vet")} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
+        <button onClick={onClose || (() => navigate("/buyer/vet"))} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
           <X className="w-5 h-5 text-foreground" />
         </button>
       </header>
@@ -124,7 +129,7 @@ const AIVetAssistant = () => {
       {/* Footer CTA - Fixed */}
       <div className="flex-shrink-0 px-4 pb-3 pt-3 bg-gradient-to-t from-white via-white to-transparent">
         <button
-          onClick={() => navigate("/buyer/care-match")}
+          onClick={onStartAssessment || (() => navigate("/buyer/care-match"))}
           className="w-full py-4 rounded-2xl font-bold text-white text-base flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-shadow"
           style={{ background: 'linear-gradient(90deg, #FF4D6D, #8B5CF6)' }}
         >
@@ -132,7 +137,7 @@ const AIVetAssistant = () => {
           <ArrowRight className="w-5 h-5" />
         </button>
         <button 
-          onClick={() => navigate("/buyer/vet")}
+          onClick={onClose || (() => navigate("/buyer/vet"))}
           className="w-full py-3 text-sm font-bold text-muted-foreground tracking-widest uppercase mt-2"
         >
           SKIP TO VET LIST

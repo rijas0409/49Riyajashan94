@@ -172,16 +172,20 @@ const GlobalSmartMatchIframe = () => {
   const { user } = useAuth();
   const isMatch = location.pathname === "/buyer/care-match";
   const [loading, setLoading] = useState(false);
+  const [showAssessment, setShowAssessment] = useState(false);
 
   useEffect(() => {
     if (!isMatch) {
       setLoading(false);
+      setShowAssessment(false);
     }
   }, [isMatch]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === "NAVIGATE_PARENT") {
+      if (!event.data) return;
+
+      if (event.data.type === "NAVIGATE_PARENT") {
         if (event.data.path === "/buyer/vet") {
           const iframeElement = document.querySelector('iframe[title="Sruvo - Care Match"]') as HTMLIFrameElement;
           if (iframeElement && iframeElement.contentDocument) {
@@ -192,52 +196,38 @@ const GlobalSmartMatchIframe = () => {
             }
           }
         }
+        if (event.data.path === "/vet/ai-assistant") {
+          setShowAssessment(false);
+          return;
+        }
         navigate(event.data.path);
+      } else if (event.data.type === "MATCH_COMPLETE") {
+        setLoading(false);
+        setShowAssessment(false);
+        navigate("/buyer/vet");
+      } else if (event.data.type === "CANCEL_LOADING") {
+        setLoading(false);
+      } else if (event.data.type === "CLOSE_LOADING") {
+        setLoading(false);
+        setShowAssessment(false);
+        navigate("/buyer/vet");
       }
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [navigate]);
 
-  const iframeSrc = loading
-    ? "/smartmatchloading.html"
-    : user
-    ? `/smartmatch.html?userId=${user.id}`
-    : "/smartmatch.html";
-
-  const handleLoadingIframeLoad = (e: React.SyntheticEvent<HTMLIFrameElement>) => {
-    if (!loading) return;
-    const iframe = e.currentTarget;
-    const innerDoc = iframe.contentDocument;
-    if (!innerDoc) return;
-
-    if (iframe.contentWindow) {
-      iframe.contentWindow.alert = (msg: string) => {
-        console.log("Intercepted completion alert:", msg);
-        setLoading(false);
-        navigate("/buyer/vet");
-      };
+  useEffect(() => {
+    if (loading) {
+      const iframe = document.querySelector('iframe[title="Sruvo - Care Match Loading"]') as HTMLIFrameElement;
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: "START_LOADING" }, "*");
+      }
     }
+  }, [loading]);
 
-    const buttons = Array.from(innerDoc.querySelectorAll("button"));
-    const cancelButton = buttons.find(btn => btn.textContent?.toLowerCase().includes("cancel"));
-    if (cancelButton) {
-      cancelButton.addEventListener("click", () => {
-        setLoading(false);
-      });
-    }
-
-    const closeButton = buttons.find(btn => {
-      const icon = btn.querySelector(".material-symbols-outlined");
-      return icon && icon.textContent?.trim() === "close";
-    });
-    if (closeButton) {
-      closeButton.addEventListener("click", () => {
-        setLoading(false);
-        navigate("/buyer/vet");
-      });
-    }
-  };
+  const mainIframeSrc = user ? `/smartmatch.html?userId=${user.id}` : "/smartmatch.html";
+  const loadingIframeSrc = "/smartmatchloading.html";
 
   return (
     <div
@@ -248,13 +238,49 @@ const GlobalSmartMatchIframe = () => {
         visibility: isMatch ? "visible" : "hidden",
       }}
     >
-      <iframe
-        src={iframeSrc}
-        title="Sruvo - Care Match"
-        onLoad={handleLoadingIframeLoad}
-        className="w-full h-full border-none m-0 p-0 block"
-        style={{ width: "100%", height: "100%", border: "none" }}
-      />
+      {/* Introduction Screen */}
+      <div 
+        className="absolute inset-0 w-full h-full bg-white transition-opacity duration-300"
+        style={{
+          opacity: showAssessment ? 0 : 1,
+          pointerEvents: showAssessment ? "none" : "auto",
+          zIndex: showAssessment ? 30 : 10,
+        }}
+      >
+        <AIVetAssistant
+          onStartAssessment={() => setShowAssessment(true)}
+          onClose={() => navigate("/buyer/vet")}
+        />
+      </div>
+
+      {/* Assessment Iframe Screens */}
+      <div 
+        className="absolute inset-0 w-full h-full bg-white"
+        style={{
+          zIndex: showAssessment ? 20 : 5,
+        }}
+      >
+        <iframe
+          src={mainIframeSrc}
+          title="Sruvo - Care Match"
+          className="absolute inset-0 w-full h-full border-none m-0 p-0 transition-opacity duration-300"
+          style={{
+            opacity: loading ? 0 : 1,
+            pointerEvents: loading ? "none" : "auto",
+            zIndex: loading ? 10 : 20,
+          }}
+        />
+        <iframe
+          src={loadingIframeSrc}
+          title="Sruvo - Care Match Loading"
+          className="absolute inset-0 w-full h-full border-none m-0 p-0 transition-opacity duration-300"
+          style={{
+            opacity: loading ? 1 : 0,
+            pointerEvents: loading ? "auto" : "none",
+            zIndex: loading ? 20 : 10,
+          }}
+        />
+      </div>
     </div>
   );
 };
@@ -369,7 +395,7 @@ const App = () => (
                 <Route path="/vet/analyzing" element={<AIAnalyzingCondition />} />
                 <Route path="/vet/ai-analyzing" element={<AIAnalyzingCondition />} />
                 <Route path="/vet/assessment" element={<AIVetAssessment />} />
-                <Route path="/vet/ai-assistant" element={<AIVetAssistant />} />
+                <Route path="/vet/ai-assistant" element={<Navigate to="/buyer/care-match" replace />} />
                 <Route path="/vet/booking-details" element={<BookingDetails />} />
                 <Route path="/vet/connection-ready" element={<ConnectionReady />} />
                 <Route path="/vet/consultation-plan" element={<ConsultationPlan />} />

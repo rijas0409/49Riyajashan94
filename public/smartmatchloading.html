@@ -94,7 +94,7 @@
                     <div class="text-[12px] font-extrabold text-primary tracking-[1px] uppercase">Smart Match</div>
                 </div>
                 
-                <button class="w-8 h-8 flex items-center justify-end text-on-surface-variant active:scale-90 transition-transform">
+                <button onclick="closeLoading()" class="w-8 h-8 flex items-center justify-end text-on-surface-variant active:scale-90 transition-transform">
                     <span class="material-symbols-outlined font-medium text-[26px]">close</span>
                 </button>
             </div>
@@ -159,7 +159,7 @@
                 </div>
                 
                 <div class="flex justify-center -mt-1">
-                    <button class="text-[12px] font-semibold text-on-surface-variant/70 hover:text-primary transition-colors uppercase tracking-wider py-1.5 px-4 rounded-full active:scale-95">
+                    <button onclick="cancelLoading()" class="text-[12px] font-semibold text-on-surface-variant/70 hover:text-primary transition-colors uppercase tracking-wider py-1.5 px-4 rounded-full active:scale-95">
                         Cancel Process
                     </button>
                 </div>
@@ -169,17 +169,22 @@
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const statusTextEl = document.getElementById("aiStatusText");
-            const progressBarEl = document.getElementById("matchProgressFill");
-            const percentageEl = document.getElementById("matchPercentage");
-            const logContainer = document.getElementById("logContainer");
-            const floatingTag = document.getElementById("floatingDataTag");
+        const statusTextEl = document.getElementById("aiStatusText");
+        const progressBarEl = document.getElementById("matchProgressFill");
+        const percentageEl = document.getElementById("matchPercentage");
+        const logContainer = document.getElementById("logContainer");
+        const floatingTag = document.getElementById("floatingDataTag");
 
-            const TOTAL_DURATION_MS = 13000; // Updated to 13 seconds
-            const startTime = Date.now();
+        const TOTAL_DURATION_MS = 13000; // 13 seconds
+        
+        let startTime;
+        let textInterval;
+        let tagInterval;
+        let progressInterval;
+        let currentPhraseIndex = 0;
+        let tagIdx = 0;
+        let currentLogIndex = -1;
 
-            // Status Phrases
             const statusPhrases = [
                 "Analyzing reported symptoms...",
                 "Cross-referencing medical history...",
@@ -191,36 +196,7 @@
                 "Finalizing AI recommendations..."
             ];
 
-            let currentPhraseIndex = 0;
-
-            const textInterval = setInterval(() => {
-                statusTextEl.style.opacity = "0";
-                setTimeout(() => {
-                    currentPhraseIndex = (currentPhraseIndex + 1) % statusPhrases.length;
-                    statusTextEl.innerText = statusPhrases[currentPhraseIndex];
-                    statusTextEl.style.opacity = "1";
-                }, 300);
-            }, 1625); // Adjusted for 13 seconds (13000 / 8)
-
             const userChoices = ["Verified Clinics", "Urgent Status", "Symptoms Logged", "Proximity Scan", "High Rating"];
-            let tagIdx = 0;
-            
-            const tagInterval = setInterval(() => {
-                floatingTag.innerText = userChoices[tagIdx % userChoices.length];
-                const angle = Math.random() * Math.PI * 2;
-                const radius = 65; 
-                const x = Math.cos(angle) * radius;
-                const y = Math.sin(angle) * radius;
-                
-                floatingTag.style.transform = `translate(${x}px, ${y}px) scale(1)`;
-                floatingTag.style.opacity = "1";
-                
-                setTimeout(() => { 
-                    floatingTag.style.opacity = "0"; 
-                    floatingTag.style.transform = `translate(${x}px, ${y + 10}px) scale(0.9)`;
-                }, 1000); // Adjusted fade out to prevent overlapping
-                tagIdx++;
-            }, 1300); // Adjusted interval for dynamic movement in 13s
 
             const logData = [
                 { id: "log_0", text: "Fetching matching veterinary profiles", icon: "person_search" },
@@ -230,10 +206,9 @@
                 { id: "log_4", text: "Securing priority appointment slots", icon: "event_available" }
             ];
 
-            let currentLogIndex = -1;
-
             function appendActiveLog(index) {
                 const logItem = logData[index];
+                if (!logItem) return;
                 const newLog = document.createElement("div");
                 newLog.id = logItem.id;
                 newLog.className = "flex items-center justify-between text-on-surface bg-surface-container-low p-2 rounded-lg border border-primary/10 log-enter";
@@ -256,8 +231,7 @@
                 else if (pct >= 85) targetIndex = 4;
 
                 if (targetIndex > currentLogIndex) {
-                    
-                    if (currentLogIndex >= 0) {
+                    if (currentLogIndex >= 0 && currentLogIndex < logData.length) {
                         const previousLog = document.getElementById(logData[currentLogIndex].id);
                         if (previousLog) {
                             previousLog.className = "flex items-center justify-between text-on-surface-variant/60 p-2 rounded-lg transition-all duration-500";
@@ -289,42 +263,117 @@
                 }
             }
 
-            appendActiveLog(0);
-            currentLogIndex = 0;
-
-            const progressInterval = setInterval(() => {
-                const elapsedTime = Date.now() - startTime;
-                let progress = (elapsedTime / TOTAL_DURATION_MS) * 100;
+            function startAnimation() {
+                // Clear any existing intervals
+                clearInterval(textInterval);
+                clearInterval(tagInterval);
+                clearInterval(progressInterval);
                 
-                if (progress >= 100) {
-                    progress = 100;
-                    clearInterval(progressInterval);
-                    clearInterval(textInterval);
-                    clearInterval(tagInterval);
-                    
+                logContainer.innerHTML = "";
+                if (floatingTag) {
+                    floatingTag.style.display = 'block';
+                    floatingTag.style.opacity = "0";
+                }
+                
+                startTime = Date.now();
+                currentPhraseIndex = 0;
+                tagIdx = 0;
+                currentLogIndex = -1;
+                
+                statusTextEl.innerText = statusPhrases[0];
+                statusTextEl.classList.add("text-primary");
+                statusTextEl.classList.remove("text-[#ab47bc]", "text-[16px]");
+                statusTextEl.style.opacity = "1";
+
+                progressBarEl.style.width = "0%";
+                percentageEl.innerText = "0%";
+
+                appendActiveLog(0);
+                currentLogIndex = 0;
+
+                textInterval = setInterval(() => {
                     statusTextEl.style.opacity = "0";
                     setTimeout(() => {
-                        statusTextEl.innerText = "Match Complete!";
-                        statusTextEl.classList.remove("text-primary");
-                        statusTextEl.classList.add("text-[#ab47bc]", "text-[16px]");
+                        currentPhraseIndex = (currentPhraseIndex + 1) % statusPhrases.length;
+                        statusTextEl.innerText = statusPhrases[currentPhraseIndex];
                         statusTextEl.style.opacity = "1";
                     }, 300);
+                }, 1625);
 
-                    const activeSpins = logContainer.querySelectorAll(".animate-spin");
-                    activeSpins.forEach(spin => {
-                        spin.className = "material-symbols-outlined text-[18px] text-green-500";
-                        spin.innerText = "check_circle";
-                        spin.parentElement.className = "flex items-center justify-between text-on-surface-variant/60 p-2 rounded-lg";
-                    });
+                tagInterval = setInterval(() => {
+                    floatingTag.innerText = userChoices[tagIdx % userChoices.length];
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = 65; 
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius;
                     
-                    if(document.getElementById("floatingDataTag")) {
-                        document.getElementById("floatingDataTag").style.display = 'none';
+                    floatingTag.style.transform = `translate(${x}px, ${y}px) scale(1)`;
+                    floatingTag.style.opacity = "1";
+                    
+                    setTimeout(() => { 
+                        floatingTag.style.opacity = "0"; 
+                        floatingTag.style.transform = `translate(${x}px, ${y + 10}px) scale(0.9)`;
+                    }, 1000);
+                    tagIdx++;
+                }, 1300);
+
+                progressInterval = setInterval(() => {
+                    const elapsedTime = Date.now() - startTime;
+                    let progress = (elapsedTime / TOTAL_DURATION_MS) * 100;
+                    
+                    if (progress >= 100) {
+                        progress = 100;
+                        clearInterval(progressInterval);
+                        clearInterval(textInterval);
+                        clearInterval(tagInterval);
+                        
+                        statusTextEl.style.opacity = "0";
+                        setTimeout(() => {
+                            statusTextEl.innerText = "Match Complete!";
+                            statusTextEl.classList.remove("text-primary");
+                            statusTextEl.classList.add("text-[#ab47bc]", "text-[16px]");
+                            statusTextEl.style.opacity = "1";
+                        }, 300);
+
+                        const activeSpins = logContainer.querySelectorAll(".animate-spin");
+                        activeSpins.forEach(spin => {
+                            spin.className = "material-symbols-outlined text-[18px] text-green-500";
+                            spin.innerText = "check_circle";
+                            spin.parentElement.className = "flex items-center justify-between text-on-surface-variant/60 p-2 rounded-lg";
+                        });
+                        
+                        if(document.getElementById("floatingDataTag")) {
+                            document.getElementById("floatingDataTag").style.display = 'none';
+                        }
+
+                        setTimeout(() => {
+                            window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
+                        }, 1000);
                     }
 
-                    setTimeout(() => {
-                        alert("Transition to Final Doctor Match Results Screen.");
-                    }, 1000);
-                }
+                    progressBarEl.style.width = `${progress}%`;
+                    percentageEl.innerText = `${Math.floor(progress)}%`;
+                    processSequentialLogs(progress);
+                }, 100);
+            }
 
-                progressBarEl.style.width = `${progress}%`;
-                percentageEl.innerText = `${Math.floor
+            // Start animation on load
+            startAnimation();
+
+            // Handle start message from parent React app
+            window.addEventListener("message", (event) => {
+                if (event.data && event.data.type === "START_LOADING") {
+                    startAnimation();
+                }
+            });
+
+        // Communication buttons
+        function cancelLoading() {
+            window.parent.postMessage({ type: "CANCEL_LOADING" }, "*");
+        }
+        function closeLoading() {
+            window.parent.postMessage({ type: "CLOSE_LOADING" }, "*");
+        }
+    </script>
+</body>
+</html>
