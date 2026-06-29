@@ -175,6 +175,7 @@ const GlobalSmartMatchIframe = () => {
   const isMatch = location.pathname === "/buyer/care-match";
   const [loading, setLoading] = useState(false);
   const [showAssessment, setShowAssessment] = useState(false);
+  const matchedVetResultRef = useRef<any>(null);
 
   useEffect(() => {
     if (!isMatch) {
@@ -188,8 +189,8 @@ const GlobalSmartMatchIframe = () => {
       if (!event.data) return;
 
       if (event.data.type === "SUBMIT_SMART_MATCH") {
-        setLoading(true);
         const payload = event.data.payload;
+        const iframe = document.querySelector('iframe[title="Sruvo - Care Match Loading"]') as HTMLIFrameElement;
 
         try {
           // 1. Save data to Supabase exactly as-is
@@ -204,81 +205,81 @@ const GlobalSmartMatchIframe = () => {
             }]);
           }
 
+          // Show loading screen only after DB insert
+          setLoading(true);
+
           // 2. AI + Algorithm Matching Engine
-          // Simulate AI processing delay
+          // Ensure loading UI shows for at least a few seconds
           await new Promise(resolve => setTimeout(resolve, 3000));
 
-          // Find the best suited vet based on strict city matching
-          const { data: vets, error } = await supabase
-            .from("vet_profiles")
-            .select("*")
-            .eq("city", city || "Mumbai") // Default fallback if no city selected
-            .eq("is_verified", true);
-
-          if (error) {
-            console.error("Error fetching vets:", error);
-            throw new Error("Failed to fetch vets");
-          }
-
+          let elapsed = 0;
           let matchedVet = null;
-          if (vets && vets.length > 0) {
-            // Find a vet matching expertise, defaulting to first available in city if no exact match
-            // Simple string matching for demonstration
-            matchedVet = vets.find(v => {
-              const spec = (v.specialization || "").toLowerCase();
-              return payload.concerns?.some((c: any) => 
-                spec.includes(c.question.toLowerCase()) || spec.includes(c.answer.toLowerCase())
-              );
-            });
-            if (!matchedVet) {
-              matchedVet = vets[0]; // Fallback to first available in city
+
+          while (elapsed < 49000) {
+            const { data: vets, error } = await supabase
+              .from("vet_profiles")
+              .select("*")
+              .eq("city", city || "Mumbai") // Strict city matching
+              .eq("is_verified", true);
+
+            if (error) {
+              console.error("Error fetching vets:", error);
             }
+
+            if (vets && vets.length > 0) {
+              // Find a vet matching expertise, defaulting to first available in city if no exact match
+              matchedVet = vets.find(v => {
+                const spec = (v.specialization || "").toLowerCase();
+                return payload.concerns?.some((c: any) => 
+                  spec.includes(c.question.toLowerCase()) || spec.includes(c.answer.toLowerCase())
+                );
+              });
+              
+              if (!matchedVet) {
+                matchedVet = vets[0]; // Fallback to first available in city
+              }
+              break;
+            }
+
+            // Wait 5 seconds before trying again if no vets found in city
+            await new Promise(r => setTimeout(r, 5000));
+            elapsed += 5000;
           }
 
           if (matchedVet) {
-            // Navigate directly to booking details
-            navigate("/vet/booking-details", { 
-              state: { 
-                matchedVet: { 
-                  id: matchedVet.id, 
-                  userId: matchedVet.id,
-                  name: matchedVet.name || "Dr. matched", 
-                  specialization: matchedVet.title || matchedVet.specialization || "Veterinarian", 
-                  image: matchedVet.profile_image || "https://images.unsplash.com/photo-1612349317150-e410f624c427?auto=format&fit=crop&q=80&w=200", 
-                  rating: matchedVet.rating || 4.8, 
-                  experience: matchedVet.years_exp || 5, 
-                  location: matchedVet.city || city, 
-                  consultationFee: matchedVet.consultation_fee || 500,
-                  nextAvailable: "Available Today",
-                  about: matchedVet.about || "Expert in veterinary care.",
-                  languages: ['English'],
-                  education: []
-                } 
-              } 
-            });
+            const formattedVet = {
+              id: matchedVet.id, 
+              userId: matchedVet.id,
+              name: matchedVet.name || "Dr. matched", 
+              specialization: matchedVet.title || matchedVet.specialization || "Veterinarian", 
+              image: matchedVet.profile_image || "https://images.unsplash.com/photo-1612349317150-e410f624c427?auto=format&fit=crop&q=80&w=200", 
+              rating: matchedVet.rating || 4.8, 
+              experience: matchedVet.years_exp || 5, 
+              location: matchedVet.city || city, 
+              consultationFee: matchedVet.consultation_fee || 500,
+              nextAvailable: "Available Today",
+              about: matchedVet.about || "Expert in veterinary care.",
+              languages: ['English'],
+              education: []
+            };
+            matchedVetResultRef.current = formattedVet;
+            if (iframe && iframe.contentWindow) {
+              iframe.contentWindow.postMessage({ type: "MATCH_FOUND" }, "*");
+            }
           } else {
-            console.warn("No vets found in the selected city");
-            // Fallback navigate
-            navigate("/buyer/vet");
+            console.warn("No vets found in the selected city after 49s");
+            matchedVetResultRef.current = null;
+            if (iframe && iframe.contentWindow) {
+              iframe.contentWindow.postMessage({ type: "NO_VET_FOUND" }, "*");
+            }
           }
         } catch (error) {
           console.error("Match error:", error);
-          navigate("/buyer/vet");
-        } finally {
-          setLoading(false);
-          setShowAssessment(false);
-        }
-      } else if (event.data.type === "NAVIGATE_PARENT") {
-        if (event.data.path === "/buyer/vet") {
-          const iframeElement = document.querySelector('iframe[title="Sruvo - Care Match"]') as HTMLIFrameElement;
-          if (iframeElement && iframeElement.contentDocument) {
-            const stepCountEl = iframeElement.contentDocument.getElementById("stepCount");
-            if (stepCountEl && stepCountEl.innerText.includes("STEP 6")) {
-              setLoading(true);
-              return;
-            }
+          if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage({ type: "NO_VET_FOUND" }, "*");
           }
         }
+      } else if (event.data.type === "NAVIGATE_PARENT") {
         if (event.data.path === "/vet/ai-assistant") {
           setShowAssessment(false);
           return;
@@ -287,7 +288,11 @@ const GlobalSmartMatchIframe = () => {
       } else if (event.data.type === "MATCH_COMPLETE") {
         setLoading(false);
         setShowAssessment(false);
-        navigate("/buyer/vet");
+        if (matchedVetResultRef.current) {
+          navigate("/vet/booking-details", { state: { matchedVet: matchedVetResultRef.current } });
+        } else {
+          navigate("/buyer/vet");
+        }
       } else if (event.data.type === "CANCEL_LOADING") {
         setLoading(false);
       } else if (event.data.type === "CLOSE_LOADING") {

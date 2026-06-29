@@ -282,10 +282,11 @@
                 
                 statusTextEl.innerText = statusPhrases[0];
                 statusTextEl.classList.add("text-primary");
-                statusTextEl.classList.remove("text-[#ab47bc]", "text-[16px]");
+                statusTextEl.classList.remove("text-[#ab47bc]", "text-[16px]", "text-red-500");
                 statusTextEl.style.opacity = "1";
 
                 progressBarEl.style.width = "0%";
+                progressBarEl.className = "h-full bg-gradient-to-r from-primary to-[#ab47bc] rounded-full w-0 transition-all duration-[200ms] ease-linear";
                 percentageEl.innerText = "0%";
 
                 appendActiveLog(0);
@@ -298,7 +299,7 @@
                         statusTextEl.innerText = statusPhrases[currentPhraseIndex];
                         statusTextEl.style.opacity = "1";
                     }, 300);
-                }, 1625);
+                }, 2000);
 
                 tagInterval = setInterval(() => {
                     floatingTag.innerText = userChoices[tagIdx % userChoices.length];
@@ -315,55 +316,105 @@
                         floatingTag.style.transform = `translate(${x}px, ${y + 10}px) scale(0.9)`;
                     }, 1000);
                     tagIdx++;
-                }, 1300);
+                }, 1500);
 
+                const MAX_DURATION = 49000;
                 progressInterval = setInterval(() => {
                     const elapsedTime = Date.now() - startTime;
-                    let progress = (elapsedTime / TOTAL_DURATION_MS) * 100;
-                    
-                    if (progress >= 100) {
-                        progress = 100;
-                        clearInterval(progressInterval);
-                        clearInterval(textInterval);
-                        clearInterval(tagInterval);
-                        
-                        statusTextEl.style.opacity = "0";
-                        setTimeout(() => {
-                            statusTextEl.innerText = "Match Complete!";
-                            statusTextEl.classList.remove("text-primary");
-                            statusTextEl.classList.add("text-[#ab47bc]", "text-[16px]");
-                            statusTextEl.style.opacity = "1";
-                        }, 300);
-
-                        const activeSpins = logContainer.querySelectorAll(".animate-spin");
-                        activeSpins.forEach(spin => {
-                            spin.className = "material-symbols-outlined text-[18px] text-green-500";
-                            spin.innerText = "check_circle";
-                            spin.parentElement.className = "flex items-center justify-between text-on-surface-variant/60 p-2 rounded-lg";
-                        });
-                        
-                        if(document.getElementById("floatingDataTag")) {
-                            document.getElementById("floatingDataTag").style.display = 'none';
-                        }
-
-                        setTimeout(() => {
-                            window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
-                        }, 1000);
-                    }
+                    // Go up to 95% over 49 seconds
+                    let progress = (elapsedTime / MAX_DURATION) * 95;
+                    if (progress > 95) progress = 95;
 
                     progressBarEl.style.width = `${progress}%`;
                     percentageEl.innerText = `${Math.floor(progress)}%`;
                     processSequentialLogs(progress);
-                }, 100);
+                }, 500);
+            }
+
+            function handleMatchFound() {
+                clearInterval(progressInterval);
+                clearInterval(textInterval);
+                clearInterval(tagInterval);
+                
+                progressBarEl.style.width = `100%`;
+                percentageEl.innerText = `100%`;
+                
+                statusTextEl.style.opacity = "0";
+                setTimeout(() => {
+                    statusTextEl.innerText = "Match Complete!";
+                    statusTextEl.classList.remove("text-primary");
+                    statusTextEl.classList.add("text-[#ab47bc]", "text-[16px]");
+                    statusTextEl.style.opacity = "1";
+                }, 300);
+
+                const activeSpins = logContainer.querySelectorAll(".animate-spin");
+                activeSpins.forEach(spin => {
+                    spin.className = "material-symbols-outlined text-[18px] text-green-500";
+                    spin.innerText = "check_circle";
+                    spin.parentElement.className = "flex items-center justify-between text-on-surface-variant/60 p-2 rounded-lg";
+                });
+                
+                if(document.getElementById("floatingDataTag")) {
+                    document.getElementById("floatingDataTag").style.display = 'none';
+                }
+
+                setTimeout(() => {
+                    window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
+                }, 1000);
+            }
+
+            function handleNoVetFound() {
+                clearInterval(progressInterval);
+                clearInterval(textInterval);
+                clearInterval(tagInterval);
+                
+                progressBarEl.style.width = `100%`;
+                progressBarEl.className = "h-full bg-red-500 rounded-full w-full transition-all duration-[200ms] ease-linear";
+                percentageEl.innerText = `Failed`;
+                
+                statusTextEl.style.opacity = "0";
+                setTimeout(() => {
+                    statusTextEl.innerHTML = "No Vet Found in your city.<br>Please try expanding your location.";
+                    statusTextEl.classList.remove("text-primary");
+                    statusTextEl.classList.add("text-red-500", "text-[16px]");
+                    statusTextEl.style.opacity = "1";
+                }, 300);
+
+                const activeSpins = logContainer.querySelectorAll(".animate-spin");
+                activeSpins.forEach(spin => {
+                    spin.className = "material-symbols-outlined text-[18px] text-red-500";
+                    spin.innerText = "cancel";
+                    spin.parentElement.className = "flex items-center justify-between text-red-500/80 p-2 rounded-lg";
+                });
+                
+                if(document.getElementById("floatingDataTag")) {
+                    document.getElementById("floatingDataTag").style.display = 'none';
+                }
+                
+                setTimeout(() => {
+                    const btn = document.createElement('button');
+                    btn.onclick = closeLoading;
+                    btn.className = "mt-4 bg-red-50 text-red-600 font-bold py-2 px-6 rounded-full active:scale-95 transition-transform border border-red-200 shadow-sm text-sm";
+                    btn.innerText = "Go Back";
+                    logContainer.innerHTML = "";
+                    logContainer.appendChild(btn);
+                    logContainer.className = "flex flex-col items-center justify-center py-4";
+                }, 1000);
             }
 
             // Start animation on load
             startAnimation();
 
-            // Handle start message from parent React app
+            // Handle messages from parent React app
             window.addEventListener("message", (event) => {
-                if (event.data && event.data.type === "START_LOADING") {
-                    startAnimation();
+                if (event.data) {
+                    if (event.data.type === "START_LOADING") {
+                        startAnimation();
+                    } else if (event.data.type === "MATCH_FOUND") {
+                        handleMatchFound();
+                    } else if (event.data.type === "NO_VET_FOUND") {
+                        handleNoVetFound();
+                    }
                 }
             });
 
