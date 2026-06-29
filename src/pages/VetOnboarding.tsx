@@ -21,7 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  Loader2, Upload, FileText, CheckCircle, Shield, ShieldCheck, Stethoscope,
+  Loader2, Upload, FileText, CheckCircle, Shield, ShieldCheck, Stethoscope, HeartPulse,
   Calendar, Banknote, User, Building2, ScrollText, Camera, Home, Video, Briefcase,
   CreditCard, GraduationCap, Plus, Trash2, ChevronLeft, ChevronRight, LogOut, MapPin,
   Dog, Cat, Bird, Sparkles, Sunrise, Sun, Moon, Copy, Check, X, Clock, CheckSquare, Info,
@@ -71,6 +71,54 @@ const EXPERTISE_BIRD = [
 const EXPERTISE_HAMSTER = [
   "General Small Animal Care", "Dental & Teeth Problems", "Digestive Issues", "Skin & Fur Conditions", "Nutritional Care", "Weight Management", "Respiratory Problems", "Behavioral Issues", "Senior Small Animal Care", "Preventive Care", "Emergency Care"
 ];
+
+const MEDICAL_SPEC_OPTIONS: Record<string, string[]> = {
+  Dog: [
+    "General Practice",
+    "Internal Medicine",
+    "Surgery",
+    "Orthopedic Surgery",
+    "Dermatology (Skin)",
+    "Ophthalmology (Eyes)",
+    "Dentistry",
+    "Cardiology",
+    "Neurology",
+    "Oncology",
+    "Nutrition",
+    "Behaviour Medicine",
+    "Reproductive Medicine",
+    "Emergency & Critical Care",
+    "Diagnostic Imaging"
+  ],
+  Cat: [
+    "General Practice",
+    "Internal Medicine",
+    "Surgery",
+    "Dermatology",
+    "Ophthalmology",
+    "Dentistry",
+    "Cardiology",
+    "Nutrition",
+    "Behaviour Medicine",
+    "Emergency & Critical Care",
+    "Diagnostic Imaging"
+  ],
+  Bird: [
+    "Avian Medicine",
+    "Avian Surgery",
+    "Emergency & Critical Care",
+    "Nutrition",
+    "Behaviour",
+    "Diagnostic Imaging"
+  ],
+  Hamster: [
+    "Exotic Pet Medicine",
+    "Small Mammal Surgery",
+    "Nutrition",
+    "Emergency Care",
+    "Diagnostic Imaging"
+  ]
+};
 
 const HamsterIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -221,6 +269,12 @@ const VetOnboarding = () => {
     hospitalName: "", hospitalRole: "", hospitalAddress: "", hospitalPincode: "", hospitalEmployeeId: "", hospitalJoiningProofFile: null as File | null,
     // Step 5 – Availability
     specializations: [] as string[], clinicalExpertise: [] as string[], consultationTypes: [] as string[],
+    medicalSpecializations: {
+      Dog: { primary: "", secondary: [] as string[] },
+      Cat: { primary: "", secondary: [] as string[] },
+      Bird: { primary: "", secondary: [] as string[] },
+      Hamster: { primary: "", secondary: [] as string[] },
+    } as Record<string, { primary: string; secondary: string[] }>,
     availableDays: [] as string[], morningSlots: false, eveningSlots: false,
     onlineFee: "", offlineFee: "", yearsOfExperience: "",
     emergencyAvailable: false,
@@ -537,6 +591,14 @@ const VetOnboarding = () => {
               isIndependentPractice: prev.isIndependentPractice || vp.self_practice || false,
               yearsOfExperience: prev.yearsOfExperience || vp.years_of_experience?.toString() || "",
               specializations: (prev.specializations && prev.specializations.length > 0) ? prev.specializations : (vp.specializations || []),
+              medicalSpecializations: prev.medicalSpecializations?.Dog?.primary || prev.medicalSpecializations?.Cat?.primary || prev.medicalSpecializations?.Bird?.primary || prev.medicalSpecializations?.Hamster?.primary
+                ? prev.medicalSpecializations
+                : (vp.medical_specializations || {
+                    Dog: { primary: "", secondary: [] },
+                    Cat: { primary: "", secondary: [] },
+                    Bird: { primary: "", secondary: [] },
+                    Hamster: { primary: "", secondary: [] }
+                  }),
               clinicalExpertise: (prev.clinicalExpertise && prev.clinicalExpertise.length > 0) ? prev.clinicalExpertise : (vp.clinical_expertise || []),
               consultationTypes: (prev.consultationTypes && prev.consultationTypes.length > 0) ? prev.consultationTypes : (vp.consultation_type ? vp.consultation_type.split(", ") : []),
               availableDays: (prev.availableDays && prev.availableDays.length > 0) ? prev.availableDays : (vp.available_days || []),
@@ -826,7 +888,16 @@ const VetOnboarding = () => {
     // Clear clinical expertise tags for pet types that are no longer selected
     const availableTags = shuffledExpertiseRef.current!.filter(t => newSpecs.includes(t.spec)).map(t => t.tag);
     const newExpertise = prev.clinicalExpertise.filter(tag => availableTags.includes(tag));
-    return { ...prev, specializations: newSpecs, clinicalExpertise: newExpertise };
+    
+    // Clear medical specializations for unselected specs
+    const newMedSpecs = { ...prev.medicalSpecializations };
+    for (const key of Object.keys(newMedSpecs)) {
+      if (!newSpecs.includes(key)) {
+        newMedSpecs[key] = { primary: "", secondary: [] };
+      }
+    }
+    
+    return { ...prev, specializations: newSpecs, clinicalExpertise: newExpertise, medicalSpecializations: newMedSpecs };
   });
 
   const availableExpertiseTags = shuffledExpertiseRef.current!
@@ -1266,6 +1337,7 @@ const VetOnboarding = () => {
         qualification: formData.qualification === "Other" ? formData.otherQualification : formData.qualification,
         years_of_experience: parseInt(formData.yearsOfExperience) || 0,
         specializations: formData.specializations,
+        medical_specializations: formData.medicalSpecializations,
         clinical_expertise: formData.clinicalExpertise,
         consultation_type: formData.consultationTypes.join(", "),
         vet_degree_file: vetDegreeUrl,
@@ -1663,13 +1735,27 @@ const VetOnboarding = () => {
         const standardFieldsValid = (
           formData.availableDays.length > 0 && 
           formData.specializations.length > 0 && 
-          formData.clinicalExpertise.length > 0 &&
           formData.consultationTypes.length > 0 && 
           formData.yearsOfExperience !== "" && 
           formData.onlineFee !== "" && 
           formData.offlineFee !== ""
         );
         if (!standardFieldsValid) return false;
+
+        // Both clinical expertise and Medical Specializations are mandatory for every selected species
+        const medicalSpecializationsValid = formData.specializations.every(spec => {
+          const med = formData.medicalSpecializations[spec];
+          return med && med.primary;
+        });
+        if (!medicalSpecializationsValid) return false;
+
+        const clinicalExpertiseValid = formData.specializations.every(spec => {
+          return formData.clinicalExpertise.some(tag => {
+            const matched = shuffledExpertiseRef.current?.find(t => t.tag === tag);
+            return matched && matched.spec === spec;
+          });
+        });
+        if (!clinicalExpertiseValid) return false;
 
         // Verify that for every selected day, every enabled period has at least one slot.
         const allSelectedDaysValid = formData.availableDays.every(d => {
@@ -3036,6 +3122,116 @@ const VetOnboarding = () => {
                     </div>
                   </div>
 
+                  {/* Medical Specializations - dynamically shown based on specializations */}
+                  {formData.specializations.length > 0 && (
+                    <div className="space-y-6 bg-white border border-[#F1F5F9] p-5 rounded-3xl shadow-sm/50">
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2">
+                          <HeartPulse className="w-4 h-4 text-[#EC4899] shrink-0" />
+                          <span className="text-[#8A1550] font-bold text-base sm:text-lg font-sans">Medical Specializations</span>
+                          <InfoTooltip message="Select 1 Primary and up to 3 Secondary medical specializations for each chosen pet species." />
+                        </div>
+                        <p className="text-slate-400 text-xs sm:text-sm font-medium ml-1">Choose 1 Primary and up to 3 Secondary medical specializations for each selected pet type.</p>
+                      </div>
+
+                      <div className="space-y-5">
+                        {formData.specializations.map(spec => (
+                          <div key={spec} className="border border-slate-100 rounded-2xl p-4 bg-slate-50/50 space-y-4">
+                            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                              <span className="px-3 py-1 rounded-full bg-pink-100 text-pink-700 text-xs font-black uppercase tracking-wider">{spec} Specialization</span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Primary Selection */}
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+                                  Primary Specialization <span className="text-pink-500">*</span>
+                                </label>
+                                <select
+                                  value={formData.medicalSpecializations[spec]?.primary || ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setFormData(prev => {
+                                      const current = prev.medicalSpecializations[spec] || { primary: "", secondary: [] };
+                                      const newSecondary = current.secondary.filter(s => s !== val);
+                                      return {
+                                        ...prev,
+                                        medicalSpecializations: {
+                                          ...prev.medicalSpecializations,
+                                          [spec]: { primary: val, secondary: newSecondary }
+                                        }
+                                      };
+                                    });
+                                  }}
+                                  className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-semibold focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-all text-slate-800"
+                                >
+                                  <option value="">Select Primary Specialization</option>
+                                  {MEDICAL_SPEC_OPTIONS[spec]?.map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* Secondary Selection */}
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                                  Secondary Specializations (Max 3)
+                                </label>
+                                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                                  {MEDICAL_SPEC_OPTIONS[spec]
+                                    ?.filter(opt => opt !== (formData.medicalSpecializations[spec]?.primary || ""))
+                                    ?.map(opt => {
+                                      const current = formData.medicalSpecializations[spec] || { primary: "", secondary: [] };
+                                      const isSelected = current.secondary.includes(opt);
+                                      return (
+                                        <button
+                                          key={opt}
+                                          type="button"
+                                          onClick={() => {
+                                            setFormData(prev => {
+                                              const curr = prev.medicalSpecializations[spec] || { primary: "", secondary: [] };
+                                              const alreadySelected = curr.secondary.includes(opt);
+                                              let newSec = [...curr.secondary];
+                                              if (alreadySelected) {
+                                                newSec = newSec.filter(x => x !== opt);
+                                              } else {
+                                                if (newSec.length >= 3) {
+                                                  toast.error("You can select a maximum of 3 secondary specializations.");
+                                                  return prev;
+                                                }
+                                                newSec.push(opt);
+                                              }
+                                              return {
+                                                ...prev,
+                                                medicalSpecializations: {
+                                                  ...prev.medicalSpecializations,
+                                                  [spec]: { ...curr, secondary: newSec }
+                                                }
+                                              };
+                                            });
+                                          }}
+                                          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all border ${
+                                            isSelected
+                                              ? "border-pink-350 bg-pink-50/50 text-[#EC4899] font-black shadow-sm"
+                                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                                          }`}
+                                        >
+                                          {isSelected ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3 text-slate-400" />}
+                                          <span>{opt}</span>
+                                        </button>
+                                      );
+                                    })}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Clinical Expertise - dynamically shown based on specializations */}
                   {formData.specializations.length > 0 && (
                     <div className="space-y-4 bg-white border border-[#F1F5F9] p-5 rounded-3xl shadow-sm/50">
@@ -4387,10 +4583,45 @@ const VetOnboarding = () => {
                                 </div>
                               </div>
 
-                              {/* A.1) Clinical Expertise */}
+                              {/* A.1) Medical Specializations */}
+                              {formData.specializations.some(spec => {
+                                const med = formData.medicalSpecializations[spec];
+                                return med && med.primary;
+                              }) && (
+                                <div className="space-y-3 pt-1">
+                                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider font-sans block">A.1) Medical Specializations</span>
+                                  <div className="space-y-2">
+                                    {formData.specializations.map(spec => {
+                                      const med = formData.medicalSpecializations[spec];
+                                      if (!med || !med.primary) return null;
+                                      return (
+                                        <div key={spec} className="bg-slate-50/60 rounded-2xl p-3 border border-slate-100 space-y-1.5">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="text-xs font-extrabold text-[#8A1550]">{spec} Specialization:</span>
+                                          </div>
+                                          <div className="flex flex-wrap gap-2 pt-1">
+                                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-pink-300 bg-pink-50 text-pink-700 text-xs font-bold">
+                                              <span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+                                              <span>{med.primary} (Primary)</span>
+                                            </div>
+                                            {med.secondary.map(sec => (
+                                              <div key={sec} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 text-xs font-semibold">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                                <span>{sec} (Secondary)</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* A.2) Clinical Expertise */}
                               {formData.clinicalExpertise.length > 0 && (
                                 <div className="space-y-2 pt-1">
-                                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider font-sans block">A.1) Clinical Expertise</span>
+                                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider font-sans block">A.2) Clinical Expertise</span>
                                   <div className="flex flex-wrap gap-2">
                                     {formData.clinicalExpertise.map(tag => (
                                       <div

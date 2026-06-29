@@ -1,6 +1,6 @@
 import { AdminData } from "@/pages/AdminDashboard";
 import { useState, useEffect } from "react";
-import { Search, CheckCircle2, XCircle, Eye, Star, X, FileText, Phone, Mail, MapPin, Clock, Calendar, CreditCard, Stethoscope, Camera, GraduationCap, Building, ChevronRight, AlertCircle, Sunrise, Sun, Moon, Check, Video, HeartHandshake, ShieldCheck, User, Briefcase, Home, Dog, Cat, Bird } from "lucide-react";
+import { Search, CheckCircle2, XCircle, Eye, Star, X, FileText, Phone, Mail, MapPin, Clock, Calendar, CreditCard, Stethoscope, HeartPulse, Camera, GraduationCap, Building, ChevronRight, AlertCircle, Sunrise, Sun, Moon, Check, Video, HeartHandshake, ShieldCheck, User, Briefcase, Home, Dog, Cat, Bird } from "lucide-react";
 
 const HamsterIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -665,10 +665,54 @@ const AdminVets = ({ data, actions }: Props) => {
                       </div>
                     </div>
 
-                    {/* A.1) Clinical Expertise */}
+                    {/* A.1) Medical Specializations */}
+                    {(() => {
+                      const medSpecs = selectedVet.medical_specializations as any;
+                      if (!medSpecs || typeof medSpecs !== "object") return null;
+                      
+                      const specs = Object.keys(medSpecs).filter(k => {
+                        const item = medSpecs[k];
+                        return item && item.primary;
+                      });
+                      
+                      if (specs.length === 0) return null;
+                      
+                      return (
+                        <div className="space-y-3 pt-1">
+                          <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider font-sans block">A.1) Medical Specializations</span>
+                          <div className="space-y-2">
+                            {specs.map(spec => {
+                              const med = medSpecs[spec];
+                              if (!med || !med.primary) return null;
+                              return (
+                                <div key={spec} className="bg-slate-50/60 rounded-2xl p-3 border border-slate-100 space-y-1.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs font-extrabold text-[#8A1550]">{spec} Specialization:</span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2 pt-1">
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-pink-300 bg-pink-50 text-pink-700 text-xs font-bold">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+                                      <span>{med.primary} (Primary)</span>
+                                    </div>
+                                    {(med.secondary || []).map((sec: string) => (
+                                      <div key={sec} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-600 text-xs font-semibold">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                        <span>{sec} (Secondary)</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* A.2) Clinical Expertise */}
                     {(selectedVet.clinical_expertise || []).length > 0 && (
                       <div className="space-y-2 pt-1">
-                        <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider font-sans block">A.1) Clinical Expertise</span>
+                        <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider font-sans block">A.2) Clinical Expertise</span>
                         <div className="flex flex-wrap gap-2">
                           {(selectedVet.clinical_expertise || []).map((tag: string) => (
                             <div
