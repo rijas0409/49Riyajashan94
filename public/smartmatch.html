@@ -336,9 +336,9 @@
                     <button onclick="goBackToStep5()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
                         <span class="material-symbols-outlined text-[24px]">history</span>
                     </button>
-                    <button onclick="navigateParent('/buyer/vet')" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group">
+                    <button onclick="submitSmartMatch()" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group">
+                        <span class="material-symbols-outlined text-lg group-hover:scale-110 transition-transform">auto_awesome</span>
                         Smart Match
-                        <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">auto_awesome</span>
                     </button>
                 </div>
             </div>
@@ -347,6 +347,29 @@
     </div>
 
     <script>
+        function submitSmartMatch() {
+            const buildQA = (idList) => {
+                let qaList = [];
+                idList.forEach(id => {
+                    const qa = extractQA(`block_${id}`);
+                    if(qa && qa.a !== "Skipped") {
+                        qaList.push({ question: qa.q, answer: qa.a });
+                    }
+                });
+                return qaList;
+            };
+
+            const payload = {
+                pet: currentPet,
+                concerns: buildQA(answeredQuestions),
+                healthBackground: buildQA(step3AnsweredQuestions),
+                currentHealthStatus: buildQA(step4AnsweredQuestions),
+                mediaFiles: step5MediaFiles
+            };
+
+            window.parent.postMessage({ type: "SUBMIT_SMART_MATCH", payload: payload }, "*");
+        }
+
         function navigateParent(path) {
             window.parent.postMessage({ type: "NAVIGATE_PARENT", path: path }, "*");
         }

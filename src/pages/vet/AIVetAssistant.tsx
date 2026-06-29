@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, X, ChevronRight, PawPrint, FileText, Plus, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 const petImages = [
   { src: "/smartmatch-dog.png", alt: "Dog", rotate: "-rotate-3" },
@@ -11,22 +11,40 @@ const petImages = [
 
 const features = [
   {
-    icon: <PawPrint className="w-6 h-6 text-white" />,
-    iconBg: "bg-purple-500",
+    icon: (
+      <img 
+        src="/pawwithprofilecard.png" 
+        alt="Profile Your Pet" 
+        className="w-12 h-12 object-contain"
+        referrerPolicy="no-referrer"
+      />
+    ),
     title: "Profile Your Pet",
-    subtitle: "Quick setup with breed and age.",
+    subtitle: "Quick setup with your pet's details.",
   },
   {
-    icon: <FileText className="w-6 h-6 text-white" />,
-    iconBg: "bg-pink-400",
+    icon: (
+      <img 
+        src="/messagewithsethoscope.png" 
+        alt="Share Symptoms" 
+        className="w-12 h-12 object-contain"
+        referrerPolicy="no-referrer"
+      />
+    ),
     title: "Share Symptoms",
-    subtitle: "Chat naturally about your concerns.",
+    subtitle: "Tell us what's concerning your pet Today.",
   },
   {
-    icon: <Plus className="w-6 h-6 text-white" />,
-    iconBg: "bg-purple-400",
+    icon: (
+      <img 
+        src="/shieldwithsethoscope.png" 
+        alt="Expert Guidance" 
+        className="w-12 h-12 object-contain"
+        referrerPolicy="no-referrer"
+      />
+    ),
     title: "Expert Guidance",
-    subtitle: "Instant advice & clinic matching.",
+    subtitle: "Personalised Care & Vet Matching",
   },
 ];
 
@@ -71,16 +89,15 @@ const AIVetAssistant = ({ onStartAssessment, onClose }: AIVetAssistantProps) => 
       />
       {/* Header - Fixed */}
       <header className="flex-shrink-0 flex items-center justify-between px-4 pt-6 pb-2">
-        <button onClick={onClose || (() => navigate(-1))} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
+        <button onClick={onClose || (() => navigate("/buyer/vet"))} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
           <ArrowLeft className="w-5 h-5 text-foreground" />
         </button>
         <div className="text-center">
-          <p className="text-xs font-bold tracking-widest uppercase" style={{ color: '#FF4D6D' }}>PREMIUM CARE</p>
-          <p className="text-sm font-bold text-foreground">AI Vet Assistant</p>
+          <p className="text-sm font-bold tracking-wider uppercase bg-gradient-to-r from-pink-600 to-purple-800 bg-clip-text text-transparent">
+            SMART CARE MATCH
+          </p>
         </div>
-        <button onClick={onClose || (() => navigate("/buyer/vet"))} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
-          <X className="w-5 h-5 text-foreground" />
-        </button>
+        <div className="w-10 h-10" />
       </header>
 
       {/* Scrollable Content */}
@@ -106,21 +123,20 @@ const AIVetAssistant = ({ onStartAssessment, onClose }: AIVetAssistantProps) => 
           </h1>
         </div>
         <p className="text-center text-sm text-muted-foreground px-8 mb-6">
-          Get instant veterinary guidance and book appointments with top-rated local experts.
+          Tell us a little about your pet and we'll help you find the care that's right for them.
         </p>
 
         {/* Feature Cards */}
         <div className="px-4 space-y-3 mb-6">
           {features.map((f, i) => (
             <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-border flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-xl ${f.iconBg} flex items-center justify-center flex-shrink-0`}>
+              <div className="w-12 h-12 flex items-center justify-center flex-shrink-0">
                 {f.icon}
               </div>
               <div className="flex-1">
                 <h4 className="font-bold text-foreground text-sm">{f.title}</h4>
                 <p className="text-xs text-muted-foreground">{f.subtitle}</p>
               </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
             </div>
           ))}
         </div>
@@ -133,11 +149,11 @@ const AIVetAssistant = ({ onStartAssessment, onClose }: AIVetAssistantProps) => 
           className="w-full py-4 rounded-2xl font-bold text-white text-base flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-shadow"
           style={{ background: 'linear-gradient(90deg, #FF4D6D, #8B5CF6)' }}
         >
-          Start AI Assessment
+          Get Personalised Match
           <ArrowRight className="w-5 h-5" />
         </button>
         <button 
-          onClick={onClose || (() => navigate("/buyer/vet"))}
+          onClick={() => navigate("/vet/all-specialists")}
           className="w-full py-3 text-sm font-bold text-muted-foreground tracking-widest uppercase mt-2"
         >
           SKIP TO VET LIST

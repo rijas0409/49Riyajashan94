@@ -4,9 +4,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { LocationProvider } from "./contexts/LocationContext";
+import { LocationProvider, useLocation as useCityLocation } from "./contexts/LocationContext";
 import { VetProtectionWrapper } from "./components/VetProtectionWrapper";
 import { CartProvider } from "./contexts/CartContext";
+import { supabase } from "@/integrations/supabase/client";
 
 // Pages
 import Index from "./pages/Index";
@@ -170,6 +171,7 @@ const GlobalSmartMatchIframe = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { city } = useCityLocation();
   const isMatch = location.pathname === "/buyer/care-match";
   const [loading, setLoading] = useState(false);
   const [showAssessment, setShowAssessment] = useState(false);
@@ -182,10 +184,91 @@ const GlobalSmartMatchIframe = () => {
   }, [isMatch]);
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = async (event: MessageEvent) => {
       if (!event.data) return;
 
-      if (event.data.type === "NAVIGATE_PARENT") {
+      if (event.data.type === "SUBMIT_SMART_MATCH") {
+        setLoading(true);
+        const payload = event.data.payload;
+
+        try {
+          // 1. Save data to Supabase exactly as-is
+          if (user) {
+            await supabase.from("smart_match_submissions").insert([{
+              user_id: user.id,
+              pet_data: payload.pet,
+              concerns: payload.concerns,
+              health_background: payload.healthBackground,
+              current_health_status: payload.currentHealthStatus,
+              media_files: payload.mediaFiles
+            }]);
+          }
+
+          // 2. AI + Algorithm Matching Engine
+          // Simulate AI processing delay
+          await new Promise(resolve => setTimeout(resolve, 3000));
+
+          // Find the best suited vet based on strict city matching
+          const { data: vets, error } = await supabase
+            .from("vet_profiles")
+            .select("*")
+            .eq("city", city || "Mumbai") // Default fallback if no city selected
+            .eq("is_verified", true);
+
+          if (error) {
+            console.error("Error fetching vets:", error);
+            throw new Error("Failed to fetch vets");
+          }
+
+          let matchedVet = null;
+          if (vets && vets.length > 0) {
+            // Find a vet matching expertise, defaulting to first available in city if no exact match
+            // Simple string matching for demonstration
+            matchedVet = vets.find(v => {
+              const spec = (v.specialization || "").toLowerCase();
+              return payload.concerns?.some((c: any) => 
+                spec.includes(c.question.toLowerCase()) || spec.includes(c.answer.toLowerCase())
+              );
+            });
+            if (!matchedVet) {
+              matchedVet = vets[0]; // Fallback to first available in city
+            }
+          }
+
+          if (matchedVet) {
+            // Navigate directly to booking details
+            navigate("/vet/booking-details", { 
+              state: { 
+                matchedVet: { 
+                  id: matchedVet.id, 
+                  userId: matchedVet.id,
+                  name: matchedVet.name || "Dr. matched", 
+                  specialization: matchedVet.title || matchedVet.specialization || "Veterinarian", 
+                  image: matchedVet.profile_image || "https://images.unsplash.com/photo-1612349317150-e410f624c427?auto=format&fit=crop&q=80&w=200", 
+                  rating: matchedVet.rating || 4.8, 
+                  experience: matchedVet.years_exp || 5, 
+                  location: matchedVet.city || city, 
+                  consultationFee: matchedVet.consultation_fee || 500,
+                  nextAvailable: "Available Today",
+                  about: matchedVet.about || "Expert in veterinary care.",
+                  languages: ['English'],
+                  education: []
+                } 
+              } 
+            });
+          } else {
+            console.warn("No vets found in the selected city");
+            // Fallback navigate
+            navigate("/buyer/vet");
+          }
+        } catch (error) {
+          console.error("Match error:", error);
+          navigate("/buyer/vet");
+        } finally {
+          setLoading(false);
+          setShowAssessment(false);
+        }
+      } else if (event.data.type === "NAVIGATE_PARENT") {
         if (event.data.path === "/buyer/vet") {
           const iframeElement = document.querySelector('iframe[title="Sruvo - Care Match"]') as HTMLIFrameElement;
           if (iframeElement && iframeElement.contentDocument) {
@@ -215,7 +298,7 @@ const GlobalSmartMatchIframe = () => {
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [navigate]);
+  }, [navigate, user, city]);
 
   useEffect(() => {
     if (loading) {
