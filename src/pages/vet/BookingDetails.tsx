@@ -518,7 +518,7 @@ const BookingDetails = () => {
     return baseSlots;
   }, [selectedDate, weeklyAvailabilityObject, hasNightZoneActive, safeFormatSelectedDate, safeFormatDate]);
 
-  const clinicFee = Number(vet.online_fee !== undefined ? vet.online_fee : (vet.onlineFee !== undefined ? vet.onlineFee : (vet.fee || 500)));
+  const clinicFee = Number(vet.consultation_fee !== undefined ? vet.consultation_fee : (vet.online_fee !== undefined ? vet.online_fee : (vet.fee || 500)));
   const homeFee = Number(vet.offline_fee !== undefined ? vet.offline_fee : (vet.offlineFee !== undefined ? vet.offlineFee : 800));
 
   // Determine dynamic demand and supply configuration for late night fee percentage
@@ -610,10 +610,10 @@ const BookingDetails = () => {
   }, [weeklyAvailabilityObject]);
 
   const vetName = vet.name || "Doctor";
-  const vetSpecialization = vet.specialization || "Veterinarian";
-  const vetImage = vet.image || "";
+  const vetSpecialization = vet.title || vet.specialization || "Veterinarian";
+  const vetImage = vet.profile_image || vet.image || "";
   const vetRating = vet.rating || 0;
-  const vetExperience = vet.experience || 0;
+  const vetExperience = vet.years_exp || vet.experience || 0;
 
   // Check if this is a direct profile booking or AI recommendation
   const isDirectBooking = isDirectState === true;
@@ -1679,7 +1679,7 @@ const BookingDetails = () => {
                                 petName: petNameVal,
                                 petBreed: petBreedVal,
                                 petType: petTypeVal,
-                                address: visitType === "home" ? "123 Premium Residency, Indiranagar" : (dbVetData?.hospital_address || dbVetData?.clinic_address || dbVetData?.hospital_name || dbVetData?.clinic_name || "HSR Paws Clinic, Sector 2"),
+                                address: visitType === "home" ? "Home Visit Address" : (dbVetData?.hospital_address || dbVetData?.clinic_address || dbVetData?.hospital_name || dbVetData?.clinic_name || vet?.hospital_address || vet?.clinic_address || "Clinic Address"),
                               };
                               localStorage.setItem(`payment_details_${realBookingId}`, JSON.stringify(paymentDetails));
                               if (selectedPetPassport?.id) {
@@ -1715,13 +1715,13 @@ const BookingDetails = () => {
                                     petName: selectedPetPassport?.pet_name || location.state?.petName || location.state?.selectedPet?.name || "Luna",
                                     petBreed: selectedPetPassport ? `${selectedPetPassport.breed || "Unknown Breed"} • ${selectedPetPassport.gender || "Unknown"}` : (location.state?.selectedPet?.breed || "Golden Retriever • Female"),
                                     petAge: selectedPetPassport ? (selectedPetPassport.approx_years !== null ? `${selectedPetPassport.approx_years} Years` : "Unknown Age") : "4 Years",
-                                    ownerName: "Sarah Jenkins",
-                                    ownerPhone: "+91 98765 43210",
-                                    address: visitType === "home" ? "123 Premium Residency, Indiranagar" : (dbVetData?.hospital_address || dbVetData?.clinic_address || dbVetData?.hospital_name || dbVetData?.clinic_name || "HSR Paws Clinic, Sector 2"),
+                                    ownerName: "Pet Owner",
+                                    ownerPhone: "",
+                                    address: visitType === "home" ? "Home Visit Address" : (dbVetData?.hospital_address || dbVetData?.clinic_address || dbVetData?.hospital_name || dbVetData?.clinic_name || vet?.hospital_address || vet?.clinic_address || "Clinic Address"),
                                     time: safeFormatSelectedDate("dd MMM yyyy") + ", " + selectedSlot,
                                     reason: "General Consultation & Checkup",
-                                    image: "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
-                                    distance: visitType === "home" ? "1.2 miles away" : "12 mins (4.2 miles)",
+                                    image: vetImage || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80",
+                                    distance: visitType === "home" ? "" : "Nearby",
                                     amount: total,
                                     payment_details: paymentDetails
                                   }

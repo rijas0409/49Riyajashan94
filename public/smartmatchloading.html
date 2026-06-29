@@ -336,31 +336,45 @@
                 clearInterval(textInterval);
                 clearInterval(tagInterval);
                 
-                progressBarEl.style.width = `100%`;
-                percentageEl.innerText = `100%`;
-                
-                statusTextEl.style.opacity = "0";
-                setTimeout(() => {
-                    statusTextEl.innerText = "Match Complete!";
-                    statusTextEl.classList.remove("text-primary");
-                    statusTextEl.classList.add("text-[#ab47bc]", "text-[16px]");
-                    statusTextEl.style.opacity = "1";
-                }, 300);
+                let currentProgress = parseFloat(percentageEl.innerText) || 0;
+                let speedUpInterval = setInterval(() => {
+                    currentProgress += 4;
+                    if (currentProgress >= 100) {
+                        currentProgress = 100;
+                        clearInterval(speedUpInterval);
+                        
+                        progressBarEl.style.width = `100%`;
+                        percentageEl.innerText = `100%`;
+                        processSequentialLogs(100);
+                        
+                        statusTextEl.style.opacity = "0";
+                        setTimeout(() => {
+                            statusTextEl.innerText = "Match Complete!";
+                            statusTextEl.classList.remove("text-primary");
+                            statusTextEl.classList.add("text-[#ab47bc]", "text-[16px]");
+                            statusTextEl.style.opacity = "1";
+                        }, 300);
 
-                const activeSpins = logContainer.querySelectorAll(".animate-spin");
-                activeSpins.forEach(spin => {
-                    spin.className = "material-symbols-outlined text-[18px] text-green-500";
-                    spin.innerText = "check_circle";
-                    spin.parentElement.className = "flex items-center justify-between text-on-surface-variant/60 p-2 rounded-lg";
-                });
-                
-                if(document.getElementById("floatingDataTag")) {
-                    document.getElementById("floatingDataTag").style.display = 'none';
-                }
+                        const activeSpins = logContainer.querySelectorAll(".animate-spin");
+                        activeSpins.forEach(spin => {
+                            spin.className = "material-symbols-outlined text-[18px] text-green-500";
+                            spin.innerText = "check_circle";
+                            spin.parentElement.className = "flex items-center justify-between text-on-surface-variant/60 p-2 rounded-lg transition-all";
+                        });
+                        
+                        if(document.getElementById("floatingDataTag")) {
+                            document.getElementById("floatingDataTag").style.display = 'none';
+                        }
 
-                setTimeout(() => {
-                    window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
-                }, 1000);
+                        setTimeout(() => {
+                            window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
+                        }, 1000);
+                    } else {
+                        progressBarEl.style.width = `${currentProgress}%`;
+                        percentageEl.innerText = `${Math.floor(currentProgress)}%`;
+                        processSequentialLogs(currentProgress);
+                    }
+                }, 40);
             }
 
             function handleNoVetFound() {

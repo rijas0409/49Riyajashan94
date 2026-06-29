@@ -221,7 +221,8 @@ const GlobalSmartMatchIframe = () => {
 
             const { data: allVets, error: vetsError } = await supabase
               .from("vet_profiles")
-              .select("*");
+              .select("*")
+              .ilike("city", `%${city || "Mumbai"}%`); // Filter by city
 
             if (vetsError) {
               console.error("Error fetching vets:", vetsError);
@@ -257,8 +258,8 @@ const GlobalSmartMatchIframe = () => {
                   );
                 });
                 
-                if (!matchedVet) {
-                  matchedVet = allVets[0]; // Fallback to first available
+                if (!matchedVet && allVets.length > 0) {
+                  matchedVet = allVets[0]; // Fallback to first available IN THE CITY
                 }
               }
               break;
@@ -278,22 +279,7 @@ const GlobalSmartMatchIframe = () => {
           }
 
           if (matchedVet) {
-            const formattedVet = {
-              id: matchedVet.id, 
-              userId: matchedVet.id,
-              name: matchedVet.name || "Dr. matched", 
-              specialization: matchedVet.title || matchedVet.specialization || "Veterinarian", 
-              image: matchedVet.profile_image || "https://images.unsplash.com/photo-1612349317150-e410f624c427?auto=format&fit=crop&q=80&w=200", 
-              rating: matchedVet.rating || 4.8, 
-              experience: matchedVet.years_exp || 5, 
-              location: matchedVet.city || city, 
-              consultationFee: matchedVet.consultation_fee || 500,
-              nextAvailable: "Available Today",
-              about: matchedVet.about || "Expert in veterinary care.",
-              languages: ['English'],
-              education: []
-            };
-            matchedVetResultRef.current = formattedVet;
+            matchedVetResultRef.current = matchedVet;
             if (iframe && iframe.contentWindow) {
               iframe.contentWindow.postMessage({ type: "MATCH_FOUND" }, "*");
             }
