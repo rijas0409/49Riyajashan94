@@ -900,9 +900,35 @@ const VetOnboarding = () => {
     return { ...prev, specializations: newSpecs, clinicalExpertise: newExpertise, medicalSpecializations: newMedSpecs };
   });
 
-  const availableExpertiseTags = shuffledExpertiseRef.current!
-    .filter(t => formData.specializations.includes(t.spec))
-    .map(t => t.tag);
+  const availableExpertiseTags = (() => {
+    if (!shuffledExpertiseRef.current) return [] as string[];
+    
+    // Get all unselected expertise objects (with both tag and spec)
+    const unselectedExpertise = shuffledExpertiseRef.current
+      .filter(t => formData.specializations.includes(t.spec))
+      .filter(t => !formData.clinicalExpertise.includes(t.tag));
+
+    // Count how many tags are currently selected for each species
+    const specSelectionCounts = formData.specializations.reduce((acc, spec) => {
+      acc[spec] = formData.clinicalExpertise.filter(tag => {
+        const match = shuffledExpertiseRef.current?.find(t => t.tag === tag);
+        return match && match.spec === spec;
+      }).length;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const sortedUnselectedExpertise = [...unselectedExpertise].sort((a, b) => {
+      const countA = specSelectionCounts[a.spec] || 0;
+      const countB = specSelectionCounts[b.spec] || 0;
+      // Prioritize species with fewer selected tags
+      if (countA !== countB) {
+        return countA - countB;
+      }
+      return 0;
+    });
+
+    return sortedUnselectedExpertise.map(t => t.tag);
+  })();
 
   const toggleClinicalExpertise = (tag: string) => {
     setFormData(prev => {
