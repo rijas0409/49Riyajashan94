@@ -138,6 +138,69 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
     }
   });
 
+  app.post("/api/smart-match", async (req, res) => {
+    try {
+      const { payload, vets } = req.body;
+      
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Missing Gemini API Key");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const prompt = `You are an expert veterinary assistant. Your task is to select the single best veterinarian for a pet based on the owner's questionnaire answers and a list of available veterinarians.
+      
+      Owner's Medical Case:
+      ${JSON.stringify(payload, null, 2)}
+      
+      Available Veterinarians:
+      ${JSON.stringify(vets.map((v: any) => ({
+        id: v.id,
+        name: v.name,
+        specialization: v.specialization,
+        consultation_fee: v.consultation_fee,
+        is_verified: v.is_verified,
+        city: v.city
+      })), null, 2)}
+      
+      Instructions:
+      1. Medical suitability for the pet's current problem (Highest priority)
+      2. Pet species compatibility
+      3. Current availability (Assume all provided vets are available)
+      4. Distance from user (Prefer same city if mentioned in payload)
+      5. Verified status (Prefer is_verified: true)
+      6. Relevant experience and specialization
+      7. Consultation fee (Lowest priority, NEVER outweighs medical suitability)
+      
+      Calculate an overall score for each veterinarian and select the single best match.
+      You MUST return exactly the "id" of the best veterinarian as a string.`;
+      
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              selectedVetId: { type: Type.STRING }
+            },
+            required: ["selectedVetId"]
+          }
+        }
+      });
+      
+      const responseText = response.text || "{}";
+      const result = JSON.parse(responseText);
+      
+      res.json(result);
+    } catch (err: any) {
+      console.error("Smart Match API error:", err);
+      res.status(500).json({ error: err.message || "Failed to process Smart Match" });
+    }
+  });
+
   // End Point: Pet AI Insights
   app.post("/api/pet-ai-insights", async (req, res) => {
     try {

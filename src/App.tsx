@@ -175,6 +175,7 @@ const GlobalSmartMatchIframe = () => {
   const isMatch = location.pathname === "/buyer/care-match";
   const [loading, setLoading] = useState(false);
   const [showAssessment, setShowAssessment] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const matchedVetResultRef = useRef<any>(null);
 
   useEffect(() => {
@@ -209,67 +210,71 @@ const GlobalSmartMatchIframe = () => {
           setLoading(true);
 
           // 2. AI + Algorithm Matching Engine
-          // Ensure loading UI shows for at least a few seconds
-          await new Promise(resolve => setTimeout(resolve, 3000));
-
-          let elapsed = 0;
+          const matchStartTime = Date.now();
           let matchedVet = null;
 
-          while (elapsed < 49000) {
-            let { data: vets, error } = await supabase
+          while (true) {
+            const elapsed = Date.now() - matchStartTime;
+            if (elapsed >= 49000) {
+              break;
+            }
+
+            const { data: allVets, error: vetsError } = await supabase
               .from("vet_profiles")
-              .select("*")
-              .eq("city", city || "Mumbai") // Strict city matching
-              .eq("is_verified", true);
+              .select("*");
 
-            if (error) {
-              console.error("Error fetching vets:", error);
+            if (vetsError) {
+              console.error("Error fetching vets:", vetsError);
             }
 
-            // Relax 1: Ignore verification in city
-            if (!vets || vets.length === 0) {
-              const { data: unverified } = await supabase
-                .from("vet_profiles")
-                .select("*")
-                .eq("city", city || "Mumbai");
-              vets = unverified;
-            }
+            if (allVets && allVets.length > 0) {
+              try {
+                const response = await fetch("/api/smart-match", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    payload,
+                    vets: allVets
+                  })
+                });
 
-            // Relax 2: Any verified vet anywhere
-            if (!vets || vets.length === 0) {
-              const { data: anyVerified } = await supabase
-                .from("vet_profiles")
-                .select("*")
-                .eq("is_verified", true);
-              vets = anyVerified;
-            }
+                if (response.ok) {
+                  const result = await response.json();
+                  if (result.selectedVetId) {
+                    matchedVet = allVets.find(v => String(v.id) === String(result.selectedVetId));
+                  }
+                }
+              } catch (e) {
+                console.error("Smart Match API error:", e);
+              }
 
-            // Relax 3: ANY vet in the database
-            if (!vets || vets.length === 0) {
-              const { data: anyVet } = await supabase
-                .from("vet_profiles")
-                .select("*");
-              vets = anyVet;
-            }
-
-            if (vets && vets.length > 0) {
-              // Find a vet matching expertise, defaulting to first available if no exact match
-              matchedVet = vets.find(v => {
-                const spec = (v.specialization || "").toLowerCase();
-                return payload.concerns?.some((c: any) => 
-                  spec.includes(c.question.toLowerCase()) || spec.includes(c.answer.toLowerCase())
-                );
-              });
-              
               if (!matchedVet) {
-                matchedVet = vets[0]; // Fallback to first available
+                // Fallback to basic match
+                matchedVet = allVets.find((v) => {
+                  const spec = (v.specialization || "").toLowerCase();
+                  return payload.concerns?.some((c: { question: string; answer: string }) => 
+                    spec.includes(c.question.toLowerCase()) || spec.includes(c.answer.toLowerCase())
+                  );
+                });
+                
+                if (!matchedVet) {
+                  matchedVet = allVets[0]; // Fallback to first available
+                }
               }
               break;
             }
 
-            // Wait 5 seconds before trying again if no vets found in DB at all
-            await new Promise(r => setTimeout(r, 5000));
-            elapsed += 5000;
+            // Wait 5 seconds before retrying
+            const remaining = 49000 - (Date.now() - matchStartTime);
+            if (remaining <= 0) break;
+            const waitTime = Math.min(5000, remaining);
+            await new Promise(r => setTimeout(r, waitTime));
+          }
+
+          // Ensure minimum 13 seconds of loading animation
+          const totalSearchElapsed = Date.now() - matchStartTime;
+          if (totalSearchElapsed < 13000) {
+            await new Promise(resolve => setTimeout(resolve, 13000 - totalSearchElapsed));
           }
 
           if (matchedVet) {
