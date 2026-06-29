@@ -667,7 +667,7 @@ const AdminVets = ({ data, actions }: Props) => {
 
                     {/* A.1) Medical Specializations */}
                     {(() => {
-                      const medSpecs = selectedVet.medical_specializations as any;
+                      const medSpecs = selectedVet.medical_specializations as Record<string, { primary?: string; secondary?: string[] }> | null;
                       if (!medSpecs || typeof medSpecs !== "object") return null;
                       
                       const specs = Object.keys(medSpecs).filter(k => {

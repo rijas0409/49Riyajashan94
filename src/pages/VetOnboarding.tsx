@@ -3134,100 +3134,174 @@ const VetOnboarding = () => {
                         <p className="text-slate-400 text-xs sm:text-sm font-medium ml-1">Choose 1 Primary and up to 3 Secondary medical specializations for each selected pet type.</p>
                       </div>
 
-                      <div className="space-y-5">
-                        {formData.specializations.map(spec => (
-                          <div key={spec} className="border border-slate-100 rounded-2xl p-4 bg-slate-50/50 space-y-4">
-                            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                              <span className="px-3 py-1 rounded-full bg-pink-100 text-pink-700 text-xs font-black uppercase tracking-wider">{spec} Specialization</span>
-                            </div>
+                      <div className="space-y-6 divide-y divide-slate-100">
+                        {(() => {
+                          const speciesOrder = ["Dog", "Cat", "Hamster", "Bird"];
+                          const sortedSelectedSpecs = [...formData.specializations].sort((a, b) => {
+                            const idxA = speciesOrder.indexOf(a);
+                            const idxB = speciesOrder.indexOf(b);
+                            return (idxA !== -1 ? idxA : 999) - (idxB !== -1 ? idxB : 999);
+                          });
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {/* Primary Selection */}
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
-                                  Primary Specialization <span className="text-pink-500">*</span>
-                                </label>
-                                <select
-                                  value={formData.medicalSpecializations[spec]?.primary || ""}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setFormData(prev => {
-                                      const current = prev.medicalSpecializations[spec] || { primary: "", secondary: [] };
-                                      const newSecondary = current.secondary.filter(s => s !== val);
-                                      return {
-                                        ...prev,
-                                        medicalSpecializations: {
-                                          ...prev.medicalSpecializations,
-                                          [spec]: { primary: val, secondary: newSecondary }
-                                        }
-                                      };
-                                    });
-                                  }}
-                                  className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-semibold focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-all text-slate-800"
-                                >
-                                  <option value="">Select Primary Specialization</option>
-                                  {MEDICAL_SPEC_OPTIONS[spec]?.map(opt => (
-                                    <option key={opt} value={opt}>{opt}</option>
-                                  ))}
-                                </select>
-                              </div>
+                          return sortedSelectedSpecs.map((spec, sIdx) => {
+                            const med = formData.medicalSpecializations[spec] || { primary: "", secondary: [] };
+                            const primaryVal = med.primary;
+                            const secondaryVals = med.secondary || [];
 
-                              {/* Secondary Selection */}
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-                                  Secondary Specializations (Max 3)
-                                </label>
-                                <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                                  {MEDICAL_SPEC_OPTIONS[spec]
-                                    ?.filter(opt => opt !== (formData.medicalSpecializations[spec]?.primary || ""))
-                                    ?.map(opt => {
-                                      const current = formData.medicalSpecializations[spec] || { primary: "", secondary: [] };
-                                      const isSelected = current.secondary.includes(opt);
-                                      return (
+                            // Filter unselected primaries
+                            const availablePrimaries = (MEDICAL_SPEC_OPTIONS[spec] || []).filter(
+                              opt => opt !== primaryVal
+                            );
+
+                            // Filter unselected secondaries
+                            const availableSecondaries = (MEDICAL_SPEC_OPTIONS[spec] || []).filter(
+                              opt => opt !== primaryVal && !secondaryVals.includes(opt)
+                            );
+
+                            return (
+                              <div key={spec} className={`space-y-4 ${sIdx > 0 ? "pt-5" : ""}`}>
+                                <div className="flex items-center gap-2 pb-1">
+                                  <span className="px-3 py-1 rounded-full bg-pink-50 text-pink-700 text-xs font-bold uppercase tracking-wider">{spec} Specialization</span>
+                                </div>
+
+                                {/* Primary Specialization Block */}
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-slate-700">Primary Specialization</span>
+                                  </div>
+
+                                  {/* Selected Primary */}
+                                  {primaryVal && (
+                                    <div className="flex flex-wrap gap-1.5 sm:gap-2 pb-1">
+                                      <div className="flex items-center gap-1.5 bg-[#FFF5F7] border border-[#EC4899] text-[#EC4899] px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-bold shadow-sm whitespace-nowrap shrink-0">
+                                        <span className="truncate">{primaryVal} (Primary)</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setFormData(prev => {
+                                              const current = prev.medicalSpecializations[spec] || { primary: "", secondary: [] };
+                                              return {
+                                                ...prev,
+                                                medicalSpecializations: {
+                                                  ...prev.medicalSpecializations,
+                                                  [spec]: { primary: "", secondary: current.secondary }
+                                                }
+                                              };
+                                            });
+                                          }}
+                                          className="p-0.5 hover:bg-pink-100 rounded-full transition-colors ml-1 shrink-0"
+                                        >
+                                          <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Suggested Primaries (only if none is selected) */}
+                                  {!primaryVal && availablePrimaries.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                                      {availablePrimaries.slice(0, 9).map((opt, index) => (
                                         <button
                                           key={opt}
                                           type="button"
                                           onClick={() => {
                                             setFormData(prev => {
-                                              const curr = prev.medicalSpecializations[spec] || { primary: "", secondary: [] };
-                                              const alreadySelected = curr.secondary.includes(opt);
-                                              let newSec = [...curr.secondary];
-                                              if (alreadySelected) {
-                                                newSec = newSec.filter(x => x !== opt);
-                                              } else {
-                                                if (newSec.length >= 3) {
-                                                  toast.error("You can select a maximum of 3 secondary specializations.");
-                                                  return prev;
-                                                }
-                                                newSec.push(opt);
-                                              }
+                                              const current = prev.medicalSpecializations[spec] || { primary: "", secondary: [] };
+                                              const newSecondary = current.secondary.filter(s => s !== opt);
                                               return {
                                                 ...prev,
                                                 medicalSpecializations: {
                                                   ...prev.medicalSpecializations,
-                                                  [spec]: { ...curr, secondary: newSec }
+                                                  [spec]: { primary: opt, secondary: newSecondary }
                                                 }
                                               };
                                             });
                                           }}
-                                          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all border ${
-                                            isSelected
-                                              ? "border-pink-350 bg-pink-50/50 text-[#EC4899] font-black shadow-sm"
-                                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                                          className={`items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 hover:bg-slate-100 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold transition-colors whitespace-nowrap shrink-0 min-w-0 ${
+                                            index >= 4 ? "hidden sm:flex" : "flex"
                                           }`}
                                         >
-                                          {isSelected ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3 text-slate-400" />}
-                                          <span>{opt}</span>
+                                          <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                                          <span className="truncate">{opt}</span>
                                         </button>
-                                      );
-                                    })}
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
+
+                                {/* Secondary Specializations Block (Conditional - only when primary is selected) */}
+                                {primaryVal && (
+                                  <div className="space-y-2 pt-2 border-t border-dashed border-slate-100">
+                                    <span className="text-xs font-bold text-slate-700 block">Secondary Specializations (Max 3)</span>
+
+                                    {/* Selected Secondaries */}
+                                    {secondaryVals.length > 0 && (
+                                      <div className="flex flex-wrap gap-1.5 sm:gap-2 pb-1">
+                                        {secondaryVals.map(val => (
+                                          <div key={val} className="flex items-center gap-1.5 bg-[#FFF5F7] border border-indigo-300 text-indigo-700 px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-bold shadow-sm whitespace-nowrap shrink-0">
+                                            <span className="truncate">{val} (Secondary)</span>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setFormData(prev => {
+                                                  const current = prev.medicalSpecializations[spec] || { primary: "", secondary: [] };
+                                                  return {
+                                                    ...prev,
+                                                    medicalSpecializations: {
+                                                      ...prev.medicalSpecializations,
+                                                      [spec]: { ...current, secondary: current.secondary.filter(x => x !== val) }
+                                                    }
+                                                  };
+                                                });
+                                              }}
+                                              className="p-0.5 hover:bg-indigo-100 rounded-full transition-colors ml-1 shrink-0"
+                                            >
+                                              <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {/* Suggested Secondaries */}
+                                    {availableSecondaries.length > 0 && (
+                                      <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                                        {availableSecondaries.slice(0, 9).map((opt, index) => (
+                                          <button
+                                            key={opt}
+                                            type="button"
+                                            onClick={() => {
+                                              setFormData(prev => {
+                                                const current = prev.medicalSpecializations[spec] || { primary: "", secondary: [] };
+                                                if (current.secondary.length >= 3) {
+                                                  toast.error("You can select a maximum of 3 secondary specializations.");
+                                                  return prev;
+                                                }
+                                                return {
+                                                  ...prev,
+                                                  medicalSpecializations: {
+                                                    ...prev.medicalSpecializations,
+                                                    [spec]: { ...current, secondary: [...current.secondary, opt] }
+                                                  }
+                                                };
+                                              });
+                                            }}
+                                            className={`items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 hover:bg-slate-100 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold transition-colors whitespace-nowrap shrink-0 min-w-0 ${
+                                              index >= 4 ? "hidden sm:flex" : "flex"
+                                            }`}
+                                          >
+                                            <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                                            <span className="truncate">{opt}</span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                          </div>
-                        ))}
+                            );
+                          });
+                        })()}
                       </div>
                     </div>
                   )}
