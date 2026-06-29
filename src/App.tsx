@@ -104,7 +104,7 @@ import VetRecentReviews from "./pages/vet/VetRecentReviews";
 import MyServices from "./pages/vet/MyServices";
 import VirtualConsults from "./pages/vet/VirtualConsults";
 
-import React, { Component, ReactNode, useEffect, useState } from "react";
+import React, { Component, ReactNode, useEffect, useState, useRef } from "react";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null; errorInfo: React.ErrorInfo | null }> {
   constructor(props: { children: ReactNode }) {
@@ -216,7 +216,7 @@ const GlobalSmartMatchIframe = () => {
           let matchedVet = null;
 
           while (elapsed < 49000) {
-            const { data: vets, error } = await supabase
+            let { data: vets, error } = await supabase
               .from("vet_profiles")
               .select("*")
               .eq("city", city || "Mumbai") // Strict city matching
@@ -226,8 +226,34 @@ const GlobalSmartMatchIframe = () => {
               console.error("Error fetching vets:", error);
             }
 
+            // Relax 1: Ignore verification in city
+            if (!vets || vets.length === 0) {
+              const { data: unverified } = await supabase
+                .from("vet_profiles")
+                .select("*")
+                .eq("city", city || "Mumbai");
+              vets = unverified;
+            }
+
+            // Relax 2: Any verified vet anywhere
+            if (!vets || vets.length === 0) {
+              const { data: anyVerified } = await supabase
+                .from("vet_profiles")
+                .select("*")
+                .eq("is_verified", true);
+              vets = anyVerified;
+            }
+
+            // Relax 3: ANY vet in the database
+            if (!vets || vets.length === 0) {
+              const { data: anyVet } = await supabase
+                .from("vet_profiles")
+                .select("*");
+              vets = anyVet;
+            }
+
             if (vets && vets.length > 0) {
-              // Find a vet matching expertise, defaulting to first available in city if no exact match
+              // Find a vet matching expertise, defaulting to first available if no exact match
               matchedVet = vets.find(v => {
                 const spec = (v.specialization || "").toLowerCase();
                 return payload.concerns?.some((c: any) => 
@@ -236,12 +262,12 @@ const GlobalSmartMatchIframe = () => {
               });
               
               if (!matchedVet) {
-                matchedVet = vets[0]; // Fallback to first available in city
+                matchedVet = vets[0]; // Fallback to first available
               }
               break;
             }
 
-            // Wait 5 seconds before trying again if no vets found in city
+            // Wait 5 seconds before trying again if no vets found in DB at all
             await new Promise(r => setTimeout(r, 5000));
             elapsed += 5000;
           }
