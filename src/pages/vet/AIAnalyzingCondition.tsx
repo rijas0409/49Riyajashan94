@@ -96,21 +96,59 @@ const AIAnalyzingCondition = () => {
           
           const sourceVets = verifiedVets;
 
-          // Simple scoring based on pet type from assessment
-          const petType = assessmentData.selectedPet || "";
           let bestVet = sourceVets[0];
-          let bestScore = 0;
+          
+          if (sourceVets.length > 0) {
+            try {
+              const formattedVets = sourceVets.map(v => ({
+                id: v.id,
+                name: v.profile?.full_name || v.profile?.name || "Veterinarian",
+                specializations: v.specializations,
+                experience: v.years_of_experience,
+                rating: v.average_rating,
+                consultation_type: v.consultation_type,
+                address: v.clinic_address
+              }));
 
-          for (const vet of sourceVets) {
-            let score = 0;
-            const specs = (vet.specializations || []).join(" ").toLowerCase();
-            if (specs.includes(petType.toLowerCase())) score += 10;
-            if (specs.includes("all") || specs.includes("general")) score += 3;
-            score += (vet.years_of_experience || 0) * 0.5;
-            score += (vet.average_rating || 0) * 2;
-            if (score > bestScore) {
-              bestScore = score;
-              bestVet = vet;
+              const response = await fetch("/api/smart-match", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  payload: assessmentData,
+                  vets: formattedVets
+                })
+              });
+
+              if (response.ok) {
+                const data = await response.json();
+                if (data.selectedVetId) {
+                  const matched = sourceVets.find(v => v.id === data.selectedVetId);
+                  if (matched) {
+                    bestVet = matched;
+                  }
+                }
+              } else {
+                console.warn("Smart match API failed, falling back to simple scoring");
+                // Fallback scoring
+                const petType = assessmentData.selectedPet || "";
+                let bestScore = 0;
+                for (const vet of sourceVets) {
+                  let score = 0;
+                  const specs = (vet.specializations || []).join(" ").toLowerCase();
+                  if (specs.includes(petType.toLowerCase())) score += 10;
+                  if (specs.includes("all") || specs.includes("general")) score += 3;
+                  score += (vet.years_of_experience || 0) * 0.5;
+                  score += (vet.average_rating || 0) * 2;
+                  if (score > bestScore) {
+                    bestScore = score;
+                    bestVet = vet;
+                  }
+                }
+              }
+            } catch (err) {
+              console.error("Smart match AI error:", err);
             }
           }
 

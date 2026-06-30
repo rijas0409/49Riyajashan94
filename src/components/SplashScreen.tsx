@@ -6,8 +6,8 @@ interface SplashScreenProps {
 
 const SplashScreen = ({ message }: SplashScreenProps) => {
   return (
-    <div className="min-h-screen bg-gradient-soft flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
+    <div className="min-h-screen bg-gradient-soft flex flex-col items-center justify-center">
+      <div className="w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
     </div>
   );
 };
