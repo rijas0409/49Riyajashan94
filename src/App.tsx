@@ -96,13 +96,15 @@ import VetSchedule from "./pages/vet/VetSchedule";
 import VetEarnings from "./pages/vet/VetEarnings";
 import VetProfile from "./pages/vet/VetProfile";
 import VetProfileSettings from "./pages/vet/VetProfileSettings";
-import VetContactDetails from "./pages/vet/VetContactDetails";
+import VetSettings from "./pages/vet/VetSettings";
 import VetWallet from "./pages/vet/VetWallet";
 import VetDocuments from "./pages/vet/VetDocuments";
 import VetPromoteProfile from "./pages/vet/VetPromoteProfile";
 import VetRecentReviews from "./pages/vet/VetRecentReviews";
 import MyServices from "./pages/vet/MyServices";
 import VirtualConsults from "./pages/vet/VirtualConsults";
+import VetProfessionalDetails from "./pages/vet/VetProfessionalDetails";
+import VetAvailability from "./pages/vet/VetAvailability";
 
 import React, { Component, ReactNode, useEffect, useState, useRef } from "react";
 
@@ -458,8 +460,10 @@ const App = () => (
                 <Route path="/vet/earnings" element={<VetEarnings />} />
                 <Route path="/vet/profile" element={<VetProfile />} />
                 <Route path="/vet/services" element={<MyServices />} />
+                <Route path="/vet/professional-details" element={<VetProfessionalDetails />} />
+                <Route path="/vet/availability" element={<VetAvailability />} />
+                <Route path="/vet/settings" element={<VetSettings />} />
                 <Route path="/vet/profile-settings" element={<VetProfileSettings />} />
-                <Route path="/vet/contact-details" element={<VetContactDetails />} />
                 <Route path="/vet/wallet" element={<VetWallet />} />
                 <Route path="/vet/documents" element={<VetDocuments />} />
                 <Route path="/vet/promote-profile" element={<VetPromoteProfile />} />

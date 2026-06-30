@@ -75,6 +75,7 @@ interface RealVet {
   user_id?: string;
   weekly_availability?: Record<string, unknown> | null;
   upcoming_slots?: string[];
+  isAd?: boolean;
 }
 
 interface Clinic {
@@ -517,6 +518,14 @@ const Vet = () => {
         console.log(`[Vet.tsx] Fetched ${profiles?.length || 0} associated profiles:`, profiles);
       }
 
+      const { data: adsData } = await supabase
+        .from("user_advertisements")
+        .select("user_id")
+        .eq("ad_type", "profile_promotion")
+        .eq("status", "active");
+        
+      const promotedVetIds = new Set((adsData || []).map(ad => ad.user_id));
+
       const pMap = new Map((profiles || []).map((p) => [p.id, p]));
 
       const getPublicUrl = (photo: string) => {
@@ -558,9 +567,17 @@ const Vet = () => {
             address_combined: `${vp?.clinic_address || ""} ${p?.address || ""} ${p?.city || ""} ${vp?.city || ""}`.trim(),
             vpCity: vp?.city,
             pCity: p?.city,
-            clinicAddress: vp?.clinic_address
+            clinicAddress: vp?.clinic_address,
+            isAd: promotedVetIds.has(vp.user_id)
           };
         });
+
+      // Sort by isAd (promoted first) and then normally
+      rawVetsArr.sort((a, b) => {
+        if (a.isAd && !b.isAd) return -1;
+        if (!a.isAd && b.isAd) return 1;
+        return 0; 
+      });
 
       // Filtered by city for "Near You" and "All Specialized Vets"
       const filteredVets = rawVetsArr.filter(vet => {
@@ -869,7 +886,11 @@ const Vet = () => {
           ) : (
             <div className="grid grid-cols-2 gap-4">
               {[...displayVets]
-                .sort((a, b) => (a.distance || 0) - (b.distance || 0))
+                .sort((a, b) => {
+                  if (a.isAd && !b.isAd) return -1;
+                  if (!a.isAd && b.isAd) return 1;
+                  return (a.distance || 0) - (b.distance || 0);
+                })
                 .slice(0, 2)
                 .map((vet) => (
                 <div 
@@ -883,6 +904,11 @@ const Vet = () => {
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <Stethoscope className="w-10 h-10 text-muted-foreground" />
+                      </div>
+                    )}
+                    {vet.isAd && (
+                      <div className="absolute top-0 right-0 bg-yellow-400 text-yellow-900 text-[10px] font-extrabold px-2 py-0.5 rounded-bl-lg shadow-sm uppercase tracking-wider z-10">
+                        Ad
                       </div>
                     )}
                     {vet.rating > 0 && (

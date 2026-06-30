@@ -20,6 +20,7 @@ type VetRecord = {
   vpCity?: string | null;
   pCity?: string | null;
   clinicAddress?: string | null;
+  isAd?: boolean;
 };
 
 export default function AllSpecializedVets() {
@@ -78,6 +79,14 @@ export default function AllSpecializedVets() {
           profilesData.forEach((p) => profilesMap.set(p.id, p));
         }
 
+        const { data: adsData } = await supabase
+          .from("user_advertisements")
+          .select("user_id")
+          .eq("ad_type", "profile_promotion")
+          .eq("status", "active");
+        
+        const promotedVetIds = new Set((adsData || []).map(ad => ad.user_id));
+
         const parsedVets: VetRecord[] = vetData
           .filter((vp: any) => {
             const profile = profilesMap.get(vp.user_id);
@@ -111,9 +120,17 @@ export default function AllSpecializedVets() {
               verification_status: vp.verification_status,
               vpCity: vp.city,
               pCity: profile?.city,
-              clinicAddress: vp.clinic_address
+              clinicAddress: vp.clinic_address,
+              isAd: promotedVetIds.has(vp.user_id)
             };
           });
+
+        // Sort by isAd (promoted first) and then normally
+        parsedVets.sort((a, b) => {
+          if (a.isAd && !b.isAd) return -1;
+          if (!a.isAd && b.isAd) return 1;
+          return 0; // maintain original relative order or could sort by rating
+        });
 
         console.log("[AllSpecializedVets] Parsed Vets (Before location filter):", parsedVets);
         setVets(parsedVets);
@@ -311,13 +328,13 @@ const matchCity = (vpCity: string | null, pCity: string | null, clinicAddress: s
         )}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
-            <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
+            <div className="w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mb-4" />
             <p className="font-medium animate-pulse">Loading verified specialists...</p>
           </div>
         ) : filteredVets.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center p-8 bg-white rounded-3xl border border-neutral-100 shadow-sm mt-10">
-            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-              <MapPin className="w-8 h-8 text-primary" />
+            <div className="w-20 h-20 bg-purple-50 rounded-full flex items-center justify-center mb-4">
+              <MapPin className="w-8 h-8 text-purple-600" />
             </div>
             <h3 className="text-xl font-bold text-neutral-900 mb-2">No Specialists Found</h3>
             <p className="text-neutral-500 max-w-sm">
@@ -339,12 +356,17 @@ const matchCity = (vpCity: string | null, pCity: string | null, clinicAddress: s
                 onClick={() => navigate(`/vet/doctor/${vet.id}`)}
                 className="bg-white rounded-2xl p-4 shadow-sm border border-neutral-100 flex gap-4 cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99]"
               >
-                <div className="w-24 h-24 rounded-2xl overflow-hidden bg-neutral-100 shrink-0">
+                <div className="w-24 h-24 rounded-2xl overflow-hidden bg-neutral-100 shrink-0 relative">
                   <img 
                     src={vet.image} 
                     alt={vet.name}
                     className="w-full h-full object-cover"
                   />
+                  {vet.isAd && (
+                    <div className="absolute top-0 left-0 bg-yellow-400 text-yellow-900 text-[9px] font-extrabold px-2 py-0.5 rounded-br-lg shadow-sm uppercase tracking-wider">
+                      Ad
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 flex flex-col justify-center min-w-0">
                   <div className="flex justify-between items-start gap-2">

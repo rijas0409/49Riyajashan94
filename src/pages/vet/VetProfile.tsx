@@ -4,7 +4,8 @@ import {
   CaretLeft, DotsThreeVertical, Star, PencilSimpleLine,
   SuitcaseSimple, IdentificationCard, Wallet, FileText,
   Megaphone, ChatTeardropText, Gear, SignOut,
-  House, CalendarDots, CaretRight, User
+  House, CalendarDots, CaretRight, User,
+  Buildings, Clock
 } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
@@ -12,14 +13,24 @@ import SplashScreen from "@/components/SplashScreen";
 import { toast } from "sonner";
 import { SafeImage } from "@/components/SafeImage";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
+
+interface VetData {
+  name: string;
+  specialty: string;
+  rating: number;
+  reviews: number;
+  photo: string | null;
+  isAdminApproved: boolean;
+  approvedAt: string | null;
+}
 
 const VetProfile = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { user, profile: roleGuardProfile, isLoading: guardLoading, showSpinner } = useRoleGuard(["vet"], "/auth/vet", true);
-  const [vetData, setVetData] = useState<any>(() => {
+  const [vetData, setVetData] = useState<VetData>(() => {
     const cachedName = localStorage.getItem("sruvo_vet_name");
     const cachedDesignation = localStorage.getItem("sruvo_vet_designation");
     const cachedRating = localStorage.getItem("sruvo_vet_rating");
@@ -94,56 +105,57 @@ const VetProfile = () => {
     }
   }, [roleGuardProfile]);
 
-  useEffect(() => {
-    const fetchVetData = async () => {
-      if (!user) return;
-      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      const { data: vetProfile } = await supabase.from("vet_profiles").select("*").eq("user_id", user.id).single();
-      
-      const photo = vetProfile?.profile_photo || profile?.profile_photo;
-      let photoUrl = photo;
-      if (photo && !photo.startsWith("http")) {
-        photoUrl = supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
-      }
+  const fetchVetData = useCallback(async () => {
+    if (!user) return;
+    const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+    const { data: vetProfile } = await supabase.from("vet_profiles").select("*").eq("user_id", user.id).single();
+    
+    const photo = vetProfile?.profile_photo || profile?.profile_photo;
+    let photoUrl = photo;
+    if (photo && !photo.startsWith("http")) {
+      photoUrl = supabase.storage.from("vet-documents").getPublicUrl(photo).data.publicUrl;
+    }
 
-      // Fetch reviews and average rating from real database
-      const { data: reviewsData } = await supabase
-        .from("vet_reviews")
-        .select("rating")
-        .eq("vet_id", user.id);
+    // Fetch reviews and average rating from real database
+    const { data: reviewsData } = await supabase
+      .from("vet_reviews")
+      .select("rating")
+      .eq("vet_id", user.id);
 
-      const reviewCount = reviewsData ? reviewsData.length : 0;
-      let averageRating = 5.0;
-      if (reviewsData && reviewsData.length > 0) {
-        const totalRating = reviewsData.reduce((sum, r) => sum + r.rating, 0);
-        averageRating = totalRating / reviewsData.length;
-      } else if (vetProfile?.average_rating != null) {
-        averageRating = vetProfile.average_rating;
-      }
+    const reviewCount = reviewsData ? reviewsData.length : 0;
+    let averageRating = 5.0;
+    if (reviewsData && reviewsData.length > 0) {
+      const totalRating = reviewsData.reduce((sum, r) => sum + r.rating, 0);
+      averageRating = totalRating / reviewsData.length;
+    } else if (vetProfile?.average_rating != null) {
+      averageRating = vetProfile.average_rating;
+    }
 
-      const designation = vetProfile?.hospital_role || vetProfile?.qualification || vetProfile?.specializations?.[0] || "";
+    const designation = vetProfile?.hospital_role || vetProfile?.qualification || vetProfile?.specializations?.[0] || "";
 
-      // Cache values for next page load
-      localStorage.setItem("sruvo_vet_name", profile?.full_name || profile?.name || "Doctor");
-      localStorage.setItem("sruvo_vet_designation", designation);
-      localStorage.setItem("sruvo_vet_rating", String(averageRating));
-      localStorage.setItem("sruvo_vet_reviews", String(reviewCount));
-      if (photoUrl) {
-        localStorage.setItem("sruvo_vet_photo", photoUrl);
-      }
+    // Cache values for next page load
+    localStorage.setItem("sruvo_vet_name", profile?.full_name || profile?.name || "Doctor");
+    localStorage.setItem("sruvo_vet_designation", designation);
+    localStorage.setItem("sruvo_vet_rating", String(averageRating));
+    localStorage.setItem("sruvo_vet_reviews", String(reviewCount));
+    if (photoUrl) {
+      localStorage.setItem("sruvo_vet_photo", photoUrl);
+    }
 
-      setVetData({
-        name: profile?.full_name || profile?.name || "Doctor",
-        specialty: designation,
-        rating: averageRating,
-        reviews: reviewCount,
-        photo: photoUrl,
-        isAdminApproved: true,
-        approvedAt: profile?.created_at
-      });
-    };
-    fetchVetData();
+    setVetData({
+      name: profile?.full_name || profile?.name || "Doctor",
+      specialty: designation,
+      rating: averageRating,
+      reviews: reviewCount,
+      photo: photoUrl,
+      isAdminApproved: true,
+      approvedAt: profile?.created_at
+    });
   }, [user]);
+
+  useEffect(() => {
+    fetchVetData();
+  }, [fetchVetData]);
 
   const handleLogout = async () => {
     try {
@@ -157,12 +169,11 @@ const VetProfile = () => {
 
   const menuItems = [
     { icon: <SuitcaseSimple size={24} />, label: "My Services", path: "/vet/services" },
-    { icon: <IdentificationCard size={24} />, label: "Contact Details", path: "/vet/contact-details" },
     { icon: <Wallet size={24} />, label: "Wallet", path: "/vet/wallet" },
     { icon: <FileText size={24} />, label: "Documents", path: "/vet/documents" },
     { icon: <Megaphone size={24} />, label: "Promote Profile", path: "/vet/promote-profile" },
     { icon: <ChatTeardropText size={24} />, label: "Recent Reviews", path: "/vet/recent-reviews" },
-    { icon: <Gear size={24} />, label: "Settings", path: "/vet/profile-settings" },
+    { icon: <Gear size={24} />, label: "Settings", path: "/vet/settings" },
   ];
 
   if (showSpinner) {
@@ -241,19 +252,49 @@ const VetProfile = () => {
 
         {/* Menu List */}
         <section className="mt-8 space-y-4" data-purpose="profile-navigation-links">
-          {menuItems.map((item, idx) => (
-            <div 
-              key={idx}
-              onClick={() => item.path !== "#" && navigate(item.path)}
-              className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.05)] cursor-pointer hover:bg-slate-50 transition-colors"
-            >
-              <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-500">
-                {item.icon}
-              </div>
-              <span className="flex-1 font-bold text-slate-800">{item.label}</span>
-              <CaretLeft size={20} className="text-slate-300 rotate-180" weight="bold" />
-            </div>
-          ))}
+          {menuItems.map((item, idx) => {
+            const isMyServices = item.label === "My Services";
+            return (
+              <React.Fragment key={idx}>
+                <div 
+                  onClick={() => item.path !== "#" && navigate(item.path)}
+                  className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.05)] cursor-pointer hover:bg-slate-50 transition-colors"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-500">
+                    {item.icon}
+                  </div>
+                  <span className="flex-1 font-bold text-slate-800">{item.label}</span>
+                  <CaretLeft size={20} className="text-slate-300 rotate-180" weight="bold" />
+                </div>
+
+                {isMyServices && (
+                  <>
+                    <div 
+                      onClick={() => navigate("/vet/professional-details")}
+                      className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.05)] cursor-pointer hover:bg-slate-50 transition-colors"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500">
+                        <Buildings size={24} weight="bold" />
+                      </div>
+                      <span className="flex-1 font-bold text-slate-800">Professional Details</span>
+                      <CaretLeft size={20} className="text-slate-300 rotate-180" weight="bold" />
+                    </div>
+
+                    <div 
+                      onClick={() => navigate("/vet/availability")}
+                      className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.05)] cursor-pointer hover:bg-slate-50 transition-colors mt-4"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-pink-50 flex items-center justify-center text-pink-500">
+                        <Clock size={24} weight="bold" />
+                      </div>
+                      <span className="flex-1 font-bold text-slate-800">Availability</span>
+                      <CaretLeft size={20} className="text-slate-300 rotate-180" weight="bold" />
+                    </div>
+                  </>
+                )}
+              </React.Fragment>
+            );
+          })}
 
           {/* Logout */}
           <div 
@@ -268,7 +309,6 @@ const VetProfile = () => {
           </div>
         </section>
       </main>
-
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-sm flex justify-center z-50 border-t border-gray-50/50 pb-safe">
         <div className="w-full max-w-7xl flex justify-between px-6 pt-4 pb-7">

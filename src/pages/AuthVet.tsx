@@ -44,12 +44,12 @@ const AuthVet = () => {
   }, [authReady, user, profile, navigate]);
 
   if (!authReady) {
-    return <div className="min-h-screen bg-gradient-soft flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-teal-600" /></div>;
+    return <div className="min-h-screen bg-gradient-soft flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-purple-600" /></div>;
   }
 
   // If already logged in, but just waiting to be redirected
   if (user && profile?.role === "vet") {
-    return <div className="min-h-screen bg-gradient-soft flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-teal-600" /></div>;
+    return <div className="min-h-screen bg-gradient-soft flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-purple-600" /></div>;
   }
 
 

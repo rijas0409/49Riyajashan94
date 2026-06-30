@@ -292,8 +292,8 @@ export default function VetsNearYou() {
           </div>
         ) : filteredVets.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center p-8 bg-white rounded-3xl border border-neutral-100 shadow-sm mt-8">
-            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-              <MapPin className="w-8 h-8 text-primary" />
+            <div className="w-20 h-20 bg-purple-50 rounded-full flex items-center justify-center mb-4">
+              <MapPin className="w-8 h-8 text-purple-600" />
             </div>
             <h3 className="text-xl font-bold text-neutral-900 mb-2">No Specialists Found</h3>
             <p className="text-sm text-neutral-500 max-w-[250px] mb-6">
