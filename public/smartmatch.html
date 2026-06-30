@@ -805,15 +805,19 @@
             
             detailsSection.classList.remove("opacity-100", "translate-y-0");
             detailsSection.classList.add("opacity-0", "translate-y-10");
-            document.getElementById("step1ContinueWrapper").classList.add("hidden");
 
             setTimeout(() => {
                 detailsSection.classList.add("hidden");
                 detailsSection.classList.remove("flex");
+                document.getElementById("step1ContinueWrapper").classList.add("hidden");
 
                 document.getElementById("stepCount").innerText = "STEP 2 OF 6";
                 document.getElementById("stepName").innerText = "Current Concern";
                 document.getElementById("progressFill").style.width = "33.33%";
+
+                // Update sticky button wrapper immediately at the 400ms mark
+                document.getElementById("step2ContinueWrapper").classList.remove("hidden");
+                document.getElementById("step2ContinueBtn").disabled = !step2Completed;
 
                 const h1 = document.getElementById("mainHeadingText");
                 h1.style.opacity = "0";
@@ -827,10 +831,6 @@
                     void step2Section.offsetWidth;
                     step2Section.classList.remove("opacity-0", "translate-y-10");
                     step2Section.classList.add("opacity-100", "translate-y-0");
-
-                    // Keep sticky button wrapper visible immediately but disabled until completed
-                    document.getElementById("step2ContinueWrapper").classList.remove("hidden");
-                    document.getElementById("step2ContinueBtn").disabled = !step2Completed;
 
                     if(answeredQuestions.length === 0) {
                         renderQuestion("MAIN");
@@ -1272,6 +1272,10 @@
                 document.getElementById("stepName").innerText = "Health Background";
                 document.getElementById("progressFill").style.width = "50%";
 
+                // Update sticky button wrapper immediately at the 400ms mark
+                document.getElementById("step3ContinueWrapper").classList.remove("hidden");
+                document.getElementById("step3ContinueBtn").disabled = !step3Completed;
+
                 const h1 = document.getElementById("mainHeadingText");
                 h1.style.opacity = "0";
 
@@ -1284,10 +1288,6 @@
                     void step3Section.offsetWidth;
                     step3Section.classList.remove("opacity-0", "translate-y-10");
                     step3Section.classList.add("opacity-100", "translate-y-0");
-
-                    // Always show sticky wrapper, but button state relies on completion
-                    document.getElementById("step3ContinueWrapper").classList.remove("hidden");
-                    document.getElementById("step3ContinueBtn").disabled = !step3Completed;
 
                     initStep3Tree();
                 }, 300);
@@ -1482,6 +1482,10 @@
                 document.getElementById("stepName").innerText = "Current Health Status";
                 document.getElementById("progressFill").style.width = "66.66%";
 
+                // Update sticky button wrapper immediately at the 400ms mark
+                document.getElementById("step4ContinueWrapper").classList.remove("hidden");
+                document.getElementById("step4ContinueBtn").disabled = !step4Completed;
+
                 const h1 = document.getElementById("mainHeadingText");
                 h1.style.opacity = "0";
 
@@ -1494,9 +1498,6 @@
                     void step4Section.offsetWidth;
                     step4Section.classList.remove("opacity-0", "translate-y-10");
                     step4Section.classList.add("opacity-100", "translate-y-0");
-
-                    document.getElementById("step4ContinueWrapper").classList.remove("hidden");
-                    document.getElementById("step4ContinueBtn").disabled = !step4Completed;
 
                     initStep4Tree();
                 }, 300);
@@ -1529,6 +1530,10 @@
                 document.getElementById("stepName").innerText = "Photos & Videos";
                 document.getElementById("progressFill").style.width = "83.33%";
 
+                // Update sticky button wrapper immediately at the 400ms mark
+                step5ContinueWrapper.classList.remove("hidden");
+                document.getElementById("step5ContinueBtn").disabled = !step5Completed;
+
                 const h1 = document.getElementById("mainHeadingText");
                 h1.style.opacity = "0";
 
@@ -1541,9 +1546,6 @@
                     void step5Section.offsetWidth;
                     step5Section.classList.remove("opacity-0", "translate-y-10");
                     step5Section.classList.add("opacity-100", "translate-y-0");
-
-                    step5ContinueWrapper.classList.remove("hidden");
-                    document.getElementById("step5ContinueBtn").disabled = !step5Completed;
                 }, 300);
             }, 400);
         }
@@ -1680,6 +1682,9 @@
                 document.getElementById("stepName").innerText = "Review";
                 document.getElementById("progressFill").style.width = "100%";
 
+                // Update sticky button wrapper immediately at the 400ms mark
+                step6ContinueWrapper.classList.remove("hidden");
+
                 const h1 = document.getElementById("mainHeadingText");
                 h1.style.opacity = "0";
 
@@ -1694,8 +1699,6 @@
                     void step6Section.offsetWidth;
                     step6Section.classList.remove("opacity-0", "translate-y-10");
                     step6Section.classList.add("opacity-100", "translate-y-0");
-
-                    step6ContinueWrapper.classList.remove("hidden");
                 }, 300);
             }, 400);
         }
@@ -1895,6 +1898,9 @@
                 document.getElementById("stepName").innerText = "Select Pet";
                 document.getElementById("progressFill").style.width = "16.66%";
                 
+                // Update sticky button wrapper immediately at the 400ms mark
+                document.getElementById("step1ContinueWrapper").classList.remove("hidden");
+
                 const h1 = document.getElementById("mainHeadingText");
                 h1.style.opacity = "0";
                 setTimeout(() => {
@@ -1905,7 +1911,6 @@
                     void detailsSection.offsetWidth;
                     detailsSection.classList.remove("opacity-0", "translate-y-10");
                     detailsSection.classList.add("opacity-100", "translate-y-0");
-                    document.getElementById("step1ContinueWrapper").classList.remove("hidden");
                 }, 300);
             }, 400);
         }
@@ -1927,6 +1932,10 @@
                 document.getElementById("stepName").innerText = "Current Concern";
                 document.getElementById("progressFill").style.width = "33.33%";
                 
+                // Update sticky button wrapper immediately at the 400ms mark
+                document.getElementById("step2ContinueWrapper").classList.remove("hidden");
+                document.getElementById("step2ContinueBtn").disabled = !step2Completed;
+
                 const h1 = document.getElementById("mainHeadingText");
                 h1.style.opacity = "0";
                 setTimeout(() => {
@@ -1937,9 +1946,6 @@
                     void step2Section.offsetWidth;
                     step2Section.classList.remove("opacity-0", "translate-y-10");
                     step2Section.classList.add("opacity-100", "translate-y-0");
-                    
-                    document.getElementById("step2ContinueWrapper").classList.remove("hidden");
-                    document.getElementById("step2ContinueBtn").disabled = !step2Completed;
                 }, 300);
             }, 400);
         }
@@ -1961,6 +1967,10 @@
                 document.getElementById("stepName").innerText = "Health Background";
                 document.getElementById("progressFill").style.width = "50%";
                 
+                // Update sticky button wrapper immediately at the 400ms mark
+                document.getElementById("step3ContinueWrapper").classList.remove("hidden");
+                document.getElementById("step3ContinueBtn").disabled = !step3Completed;
+
                 const h1 = document.getElementById("mainHeadingText");
                 h1.style.opacity = "0";
                 setTimeout(() => {
@@ -1971,9 +1981,6 @@
                     void step3Section.offsetWidth;
                     step3Section.classList.remove("opacity-0", "translate-y-10");
                     step3Section.classList.add("opacity-100", "translate-y-0");
-                    
-                    document.getElementById("step3ContinueWrapper").classList.remove("hidden");
-                    document.getElementById("step3ContinueBtn").disabled = !step3Completed;
                 }, 300);
             }, 400);
         }
@@ -1995,6 +2002,10 @@
                 document.getElementById("stepName").innerText = "Current Health Status";
                 document.getElementById("progressFill").style.width = "66.66%";
                 
+                // Update sticky button wrapper immediately at the 400ms mark
+                document.getElementById("step4ContinueWrapper").classList.remove("hidden");
+                document.getElementById("step4ContinueBtn").disabled = !step4Completed;
+
                 const h1 = document.getElementById("mainHeadingText");
                 h1.style.opacity = "0";
                 setTimeout(() => {
@@ -2005,9 +2016,6 @@
                     void step4Section.offsetWidth;
                     step4Section.classList.remove("opacity-0", "translate-y-10");
                     step4Section.classList.add("opacity-100", "translate-y-0");
-                    
-                    document.getElementById("step4ContinueWrapper").classList.remove("hidden");
-                    document.getElementById("step4ContinueBtn").disabled = !step4Completed;
                 }, 300);
             }, 400);
         }
@@ -2029,6 +2037,10 @@
                 document.getElementById("stepName").innerText = "Photos & Videos";
                 document.getElementById("progressFill").style.width = "83.33%";
                 
+                // Update sticky button wrapper immediately at the 400ms mark
+                document.getElementById("step5ContinueWrapper").classList.remove("hidden");
+                document.getElementById("step5ContinueBtn").disabled = !step5Completed;
+
                 const h1 = document.getElementById("mainHeadingText");
                 h1.style.opacity = "0";
                 setTimeout(() => {
@@ -2039,9 +2051,6 @@
                     void step5Section.offsetWidth;
                     step5Section.classList.remove("opacity-0", "translate-y-10");
                     step5Section.classList.add("opacity-100", "translate-y-0");
-                    
-                    document.getElementById("step5ContinueWrapper").classList.remove("hidden");
-                    document.getElementById("step5ContinueBtn").disabled = !step5Completed;
                 }, 300);
             }, 400);
         }

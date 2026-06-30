@@ -79,7 +79,7 @@ const AIVetAssistant = ({ onStartAssessment, onClose }: AIVetAssistantProps) => 
   }, []);
 
   return (
-    <div className="h-screen bg-gradient-to-b from-pink-50/50 via-white to-white flex flex-col overflow-hidden">
+    <div className="h-full bg-gradient-to-b from-pink-50/50 via-white to-white flex flex-col overflow-hidden">
       {/* Background preloader to warm up smartmatch layout and eliminate click-to-load latency */}
       <iframe
         src="/smartmatch.html"
