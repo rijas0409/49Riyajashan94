@@ -330,7 +330,7 @@ const GlobalSmartMatchIframe = () => {
 
   return (
     <div
-      className={`fixed inset-0 w-screen h-screen overflow-hidden bg-white z-[9999] transition-opacity duration-200 ${
+      className={`fixed inset-0 w-full h-full overflow-hidden bg-white z-[9999] transition-opacity duration-200 ${
         isMatch ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
       }`}
       style={{

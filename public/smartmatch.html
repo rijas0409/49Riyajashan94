@@ -57,11 +57,13 @@
             --border-color: #e1e4e8;
         }
 
-        body {
+        html, body {
+            height: 100%;
             margin: 0;
+            padding: 0;
+            overflow: hidden;
             background-color: var(--bg-color);
             color: var(--text-dark);
-            overflow-x: hidden;
             scroll-behavior: smooth;
         }
 
@@ -138,9 +140,9 @@
         }
     </style>
 </head>
-<body class="text-on-surface antialiased min-h-screen flex justify-center bg-gray-100">
+<body class="text-on-surface antialiased h-full flex justify-center bg-gray-100">
 
-    <div id="mainContainer" class="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl bg-surface h-[100dvh] md:h-[92dvh] md:my-auto md:rounded-[32px] md:shadow-premium relative flex flex-col overflow-hidden transition-all duration-300">
+    <div id="mainContainer" class="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl bg-surface h-full md:h-[92dvh] md:my-auto md:rounded-[32px] md:shadow-premium relative flex flex-col overflow-hidden transition-all duration-300">
         
         <header class="w-full z-50 bg-surface flex flex-col pt-6 pb-2 px-6 shrink-0 sticky top-0">
             <div class="flex items-center justify-between mb-5">
