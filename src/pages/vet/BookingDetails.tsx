@@ -86,6 +86,7 @@ const BookingDetails = () => {
   
   // Dynamic Real-time Consultation settings
   const [dbVetData, setDbVetData] = useState<any>(null);
+  const vet = useMemo(() => ({ ...(matchedVet || {}), ...(dbVetData || {}) }), [matchedVet, dbVetData]);
 
   const [passports, setPassports] = useState<any[]>(() => {
     try {
@@ -165,7 +166,7 @@ const BookingDetails = () => {
       if (matchedVet?.id) {
         const { data, error } = await supabase
           .from("vet_profiles")
-          .select("consultation_type, clinic_name, clinic_address, hospital_name, hospital_address")
+          .select("consultation_type, clinic_name, clinic_address, hospital_name, hospital_address, online_fee, offline_fee")
           .eq("id", matchedVet.id)
           .maybeSingle();
         if (data && !error) {
@@ -234,8 +235,57 @@ const BookingDetails = () => {
   });
   const [selectedSlot, setSelectedSlot] = useState("");
   const [disabledSlots, setDisabledSlots] = useState<string[]>([]);
-  const [selectedCoupon, setSelectedCoupon] = useState<typeof COUPONS[0] | null>(null);
+  const [selectedCoupon, setSelectedCoupon] = useState<any | null>(null);
   const [showCoupons, setShowCoupons] = useState(false);
+  const [customCoupons, setCustomCoupons] = useState<any[]>([]);
+
+  // Fetch veterinarian's custom coupons/offers
+  useEffect(() => {
+    const fetchCustomCoupons = async () => {
+      const resolvedUserId = vet?.user_id || vet?.userId;
+      if (!resolvedUserId) return;
+      try {
+        const { data, error } = await supabase
+          .from("user_advertisements")
+          .select("*")
+          .eq("user_id", resolvedUserId)
+          .eq("ad_type", "saving_corner_offer")
+          .eq("status", "active");
+
+        if (!error && data) {
+          const now = new Date();
+          const parsed = data.map((item: any) => {
+            try {
+              // Validate date constraints if they are present
+              if (item.start_date && new Date(item.start_date) > now) return null;
+              if (item.end_date && new Date(item.end_date) < now) return null;
+              return JSON.parse(item.description);
+            } catch (e) {
+              return null;
+            }
+          }).filter(Boolean);
+          setCustomCoupons(parsed);
+        }
+      } catch (err) {
+        console.error("Failed to fetch custom coupons:", err);
+      }
+    };
+    fetchCustomCoupons();
+  }, [vet?.user_id, vet?.userId]);
+
+  const allAvailableCoupons = useMemo(() => {
+    const formattedCustom = customCoupons.map((c: any) => ({
+      code: c.code,
+      value: c.value,
+      description: c.description || `Save ${c.type === "percentage" ? `${c.value}%` : `₹${c.value}`} on this vet!`,
+      type: c.type || "fixed",
+      isCustom: true,
+      minAmount: c.minAmount || 0,
+      maxDiscount: c.maxDiscount || null,
+      targetSlots: c.targetSlots || "all"
+    }));
+    return [...formattedCustom, ...COUPONS];
+  }, [customCoupons]);
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
 
   // Razorpay sandbox simulation states
@@ -247,8 +297,6 @@ const BookingDetails = () => {
   const [simulatedCardName, setSimulatedCardName] = useState("Jashan Pabla");
   const [simulatedBank, setSimulatedBank] = useState("HDFC Bank");
   const [simulatedWallet, setSimulatedWallet] = useState("Paytm Wallet");
-
-  const vet = useMemo(() => matchedVet || {}, [matchedVet]);
 
   // Read booked slots in real-time
   useEffect(() => {
@@ -518,8 +566,15 @@ const BookingDetails = () => {
     return baseSlots;
   }, [selectedDate, weeklyAvailabilityObject, hasNightZoneActive, safeFormatSelectedDate, safeFormatDate]);
 
-  const clinicFee = Number(vet.consultation_fee !== undefined ? vet.consultation_fee : (vet.online_fee !== undefined ? vet.online_fee : (vet.fee || 500)));
-  const homeFee = Number(vet.offline_fee !== undefined ? vet.offline_fee : (vet.offlineFee !== undefined ? vet.offlineFee : 800));
+  const clinicFee = Number(
+    vet.online_fee !== undefined ? vet.online_fee : 
+    (vet.onlineFee !== undefined ? vet.onlineFee : 
+    (vet.consultation_fee !== undefined ? vet.consultation_fee : 500))
+  );
+  const homeFee = Number(
+    vet.offline_fee !== undefined ? vet.offline_fee : 
+    (vet.offlineFee !== undefined ? vet.offlineFee : 800)
+  );
 
   // Determine dynamic demand and supply configuration for late night fee percentage
   const supplyAndDemand = useMemo(() => {
@@ -566,7 +621,17 @@ const BookingDetails = () => {
   const appliedNightSurcharge = (hasNightZoneActive && isNightSlotSelected) ? Math.round(current.visit * supplyAndDemand.surchargePercentage) : 0;
   
   const platformFee = Math.round(current.visit * 0.26);
-  const discount = selectedCoupon ? selectedCoupon.value : 0;
+  const discount = (() => {
+    if (!selectedCoupon) return 0;
+    if (selectedCoupon.type === "percentage") {
+      let calc = Math.round(current.visit * (selectedCoupon.value / 100));
+      if (selectedCoupon.maxDiscount) {
+        calc = Math.min(calc, selectedCoupon.maxDiscount);
+      }
+      return calc;
+    }
+    return selectedCoupon.value;
+  })();
   const total = Math.max(0, current.visit + platformFee + appliedNightSurcharge - discount);
 
   const isSelectedDateToday = !!(selectedDate && (selectedDate instanceof Date) && !isNaN(selectedDate.getTime()) &&
@@ -1034,37 +1099,78 @@ const BookingDetails = () => {
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 mt-4">
-                {COUPONS.map((coupon) => (
-                  <div 
-                    key={coupon.code}
-                    onClick={() => {
-                      setSelectedCoupon(coupon);
-                      setShowCoupons(false);
-                      toast.success(`Coupon ${coupon.code} applied!`);
-                    }}
-                    className={`relative p-4 rounded-2xl border-2 transition-all cursor-pointer ${
-                      selectedCoupon?.code === coupon.code 
-                        ? "border-teal-500 bg-teal-50/50" 
-                        : "border-muted hover:border-teal-200"
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-black text-[#151B32] text-sm tracking-wider bg-muted px-2 py-0.5 rounded border border-border">
-                            {coupon.code}
-                          </span>
-                          {selectedCoupon?.code === coupon.code && (
-                            <CheckCircle2 className="w-4 h-4 text-teal-600" />
+                {allAvailableCoupons.map((coupon) => {
+                  const isCustom = (coupon as any).isCustom;
+                  const isPercentage = (coupon as any).type === "percentage";
+                  return (
+                    <div 
+                      key={coupon.code}
+                      onClick={() => {
+                        // Check min booking amount
+                        if (coupon.minAmount && current.visit < coupon.minAmount) {
+                          toast.error(`This coupon requires a minimum booking amount of ₹${coupon.minAmount}`);
+                          return;
+                        }
+                        
+                        // Check target slot restriction
+                        if (coupon.targetSlots && coupon.targetSlots !== "all") {
+                          if (!selectedSlot) {
+                            toast.error(`Please select a time slot first to apply this coupon.`);
+                            return;
+                          }
+                          const slotPeriod = getSlotPeriod(selectedSlot);
+                          if (slotPeriod !== coupon.targetSlots) {
+                            toast.error(`This coupon is only valid for ${coupon.targetSlots} slots (Current: ${slotPeriod}).`);
+                            return;
+                          }
+                        }
+
+                        setSelectedCoupon(coupon);
+                        setShowCoupons(false);
+                        toast.success(`Coupon ${coupon.code} applied!`);
+                      }}
+                      className={`relative p-4 rounded-2xl border-2 transition-all cursor-pointer overflow-hidden ${
+                        selectedCoupon?.code === coupon.code 
+                          ? "border-emerald-500 bg-emerald-50/40" 
+                          : "border-muted hover:border-emerald-200"
+                      }`}
+                    >
+                      {isCustom && (
+                        <div className="absolute top-0 right-0 bg-[#108A4E] text-white text-[9px] font-black px-2.5 py-0.5 rounded-bl-xl uppercase tracking-wider">
+                          Exclusive Vet Offer
+                        </div>
+                      )}
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-black text-[#151B32] text-sm tracking-wider bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg">
+                              {coupon.code}
+                            </span>
+                            {selectedCoupon?.code === coupon.code && (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            )}
+                          </div>
+                          <p className="text-[13px] font-bold text-emerald-700">
+                            Save {isPercentage ? `${coupon.value}%` : `₹${coupon.value}`}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground mt-1">{coupon.description}</p>
+                          
+                          {coupon.minAmount > 0 && (
+                            <p className="text-[10px] text-amber-600 font-bold mt-1">
+                              • Min booking: ₹{coupon.minAmount}
+                            </p>
+                          )}
+                          {coupon.targetSlots && coupon.targetSlots !== "all" && (
+                            <p className="text-[10px] text-blue-600 font-bold">
+                              • Only valid for {coupon.targetSlots} slots
+                            </p>
                           )}
                         </div>
-                        <p className="text-[13px] font-bold text-teal-700">Save ₹{coupon.value}</p>
-                        <p className="text-[11px] text-muted-foreground mt-1">{coupon.description}</p>
+                        <button className="text-xs font-bold text-emerald-600 mt-1">APPLY</button>
                       </div>
-                      <button className="text-xs font-bold text-teal-600">APPLY</button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </DialogContent>
           </Dialog>

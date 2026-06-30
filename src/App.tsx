@@ -101,6 +101,7 @@ import VetWallet from "./pages/vet/VetWallet";
 import VetDocuments from "./pages/vet/VetDocuments";
 import VetPromoteProfile from "./pages/vet/VetPromoteProfile";
 import VetRecentReviews from "./pages/vet/VetRecentReviews";
+import VetSavingCorner from "./pages/vet/VetSavingCorner";
 import MyServices from "./pages/vet/MyServices";
 import VirtualConsults from "./pages/vet/VirtualConsults";
 import VetProfessionalDetails from "./pages/vet/VetProfessionalDetails";
@@ -467,6 +468,7 @@ const App = () => (
                 <Route path="/vet/wallet" element={<VetWallet />} />
                 <Route path="/vet/documents" element={<VetDocuments />} />
                 <Route path="/vet/promote-profile" element={<VetPromoteProfile />} />
+                <Route path="/vet/saving-corner" element={<VetSavingCorner />} />
                 <Route path="/vet/recent-reviews" element={<VetRecentReviews />} />
                 <Route path="/vet/virtual-consults" element={<VirtualConsults />} />
                 <Route path="/vet/consultation-detail" element={<ConsultationDetail />} />

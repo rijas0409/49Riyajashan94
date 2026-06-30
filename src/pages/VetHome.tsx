@@ -160,7 +160,24 @@ const VetDashboard = () => {
             ownerPhone: userProfile.phone || "+91 98765 43210",
             date: apt.appointment_date,
             status: apt.status,
-            amount: apt.amount
+            amount: (() => {
+              if (apt.consultation_notes) {
+                try {
+                  const notes = typeof apt.consultation_notes === "string" 
+                    ? JSON.parse(apt.consultation_notes) 
+                    : apt.consultation_notes;
+                  if (notes && notes.consultation_fee !== undefined) {
+                    const baseFee = Number(notes.consultation_fee) || 0;
+                    const nightFee = Number(notes.night_surcharge) || 0;
+                    return baseFee + Math.round(nightFee * 0.5);
+                  }
+                } catch (e) {
+                  console.warn("Failed to parse consultation_notes:", e);
+                }
+              }
+              const totalAmount = Number(apt.amount) || 0;
+              return Math.round(totalAmount * 0.74);
+            })()
           };
         });
 

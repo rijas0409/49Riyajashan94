@@ -104,7 +104,8 @@ const VetEarnings = () => {
           pet_name,
           pet_type,
           pet_breed,
-          user_id
+          user_id,
+          consultation_notes
         `)
         .eq("vet_id", user.id);
 
@@ -138,7 +139,24 @@ const VetEarnings = () => {
             time: apt.appointment_time || "11:30 AM",
             status: apt.status || "pending",
             image: userProfile.profile_photo || "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80",
-            amount: apt.amount
+            amount: (() => {
+              if (apt.consultation_notes) {
+                try {
+                  const notes = typeof apt.consultation_notes === "string" 
+                    ? JSON.parse(apt.consultation_notes) 
+                    : apt.consultation_notes;
+                  if (notes && notes.consultation_fee !== undefined) {
+                    const baseFee = Number(notes.consultation_fee) || 0;
+                    const nightFee = Number(notes.night_surcharge) || 0;
+                    return baseFee + Math.round(nightFee * 0.5);
+                  }
+                } catch (e) {
+                  console.warn("Failed to parse consultation_notes:", e);
+                }
+              }
+              const totalAmount = Number(apt.amount) || 0;
+              return Math.round(totalAmount * 0.74);
+            })()
           };
         });
         setAppointments(mapped);
