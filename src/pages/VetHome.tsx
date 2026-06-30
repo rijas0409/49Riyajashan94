@@ -169,7 +169,9 @@ const VetDashboard = () => {
                   if (notes && notes.consultation_fee !== undefined) {
                     const baseFee = Number(notes.consultation_fee) || 0;
                     const nightFee = Number(notes.night_surcharge) || 0;
-                    return baseFee + Math.round(nightFee * 0.5);
+                    const discount = Number(notes.discount) || 0;
+                    // Coupon discount offered by the vet is deducted from their base consultation fee
+                    return Math.max(0, baseFee - discount) + Math.round(nightFee * 0.5);
                   }
                 } catch (e) {
                   console.warn("Failed to parse consultation_notes:", e);
