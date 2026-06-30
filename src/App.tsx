@@ -91,6 +91,7 @@ import VetScheduleVisitDetails from "./pages/vet/VetScheduleVisitDetails";
 import AppointmentConfirmation from "./pages/vet/AppointmentConfirmation";
 import CreatePrescription from "./pages/vet/CreatePrescription";
 import VideoCall from "./pages/vet/VideoCall";
+import NoVetFound from "./pages/vet/NoVetFound";
 
 import VetSchedule from "./pages/vet/VetSchedule";
 import VetEarnings from "./pages/vet/VetEarnings";
@@ -253,17 +254,7 @@ const GlobalSmartMatchIframe = () => {
               }
 
               if (!matchedVet) {
-                // Fallback to basic match
-                matchedVet = allVets.find((v) => {
-                  const spec = (v.specialization || "").toLowerCase();
-                  return payload.concerns?.some((c: { question: string; answer: string }) => 
-                    spec.includes(c.question.toLowerCase()) || spec.includes(c.answer.toLowerCase())
-                  );
-                });
-                
-                if (!matchedVet && allVets.length > 0) {
-                  matchedVet = allVets[0]; // Fallback to first available IN THE CITY
-                }
+                console.info("No matching vet returned by Smart Match algorithm.");
               }
               break;
             }
@@ -311,14 +302,14 @@ const GlobalSmartMatchIframe = () => {
         if (matchedVetResultRef.current) {
           navigate("/vet/booking-details", { state: { matchedVet: matchedVetResultRef.current } });
         } else {
-          navigate("/buyer/vet");
+          navigate("/vet/no-vet-found");
         }
       } else if (event.data.type === "CANCEL_LOADING") {
         setLoading(false);
       } else if (event.data.type === "CLOSE_LOADING") {
         setLoading(false);
         setShowAssessment(false);
-        navigate("/buyer/vet");
+        navigate("/vet/no-vet-found");
       }
     };
     window.addEventListener("message", handleMessage);
@@ -525,6 +516,7 @@ const App = () => (
                 <Route path="/vet/payment-summary" element={<PaymentSummary />} />
                 <Route path="/buyer/vet/prescription/preparing" element={<PreparingPrescription />} />
                 <Route path="/vet/doctor/:id" element={<VetDoctorProfile />} />
+                <Route path="/vet/no-vet-found" element={<NoVetFound />} />
                 <Route path="/vet/near-you" element={<VetsNearYou />} />
                 <Route path="/vet/clinics-nearby" element={<ClinicsNearby />} />
                 <Route path="/vet/all-specialists" element={<AllSpecializedVets />} />

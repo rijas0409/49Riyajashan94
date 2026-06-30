@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   CaretLeft, Tag, Plus, Trash, Clock, Calendar, Check, 
-  CurrencyInr, Percent, Gift, Ticket, Circle, CheckCircle, Warning
+  CurrencyInr, Percent, Gift, Ticket, Circle, CheckCircle, Warning, MagnifyingGlass
 } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
@@ -27,9 +27,29 @@ const VetSavingCorner = () => {
   const { isLoading: guardLoading, showSpinner, user } = useRoleGuard(["vet"], "/auth/vet", true);
   
   const [offers, setOffers] = useState<Offer[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredOffers = useMemo(() => {
+    if (!searchQuery.trim()) return offers;
+    const query = searchQuery.toLowerCase();
+    return offers.filter((offer) => {
+      let details: any = {};
+      try {
+        details = JSON.parse(offer.description);
+      } catch (e) {
+        details = { code: offer.title };
+      }
+      const codeMatches = (details.code || offer.title || "").toLowerCase().includes(query);
+      const titleMatches = (offer.title || "").toLowerCase().includes(query);
+      const descMatches = (offer.description || "").toLowerCase().includes(query);
+      return codeMatches || titleMatches || descMatches;
+    });
+  }, [offers, searchQuery]);
+
   const [loadingOffers, setLoadingOffers] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [expandedOffers, setExpandedOffers] = useState<Record<string, boolean>>({});
 
   // Form State
   const [code, setCode] = useState("");
@@ -183,7 +203,7 @@ const VetSavingCorner = () => {
   }
 
   return (
-    <div className="bg-[#F8F8FC] min-h-screen pb-24 font-sans text-slate-900 selection:bg-purple-100">
+    <div className="bg-[#F8F8FC] min-h-screen pb-24 font-sans text-slate-900 selection:bg-pink-100">
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md px-4 py-4 flex items-center border-b border-slate-100">
         <button onClick={() => navigate("/vet/profile")} className="p-2 text-slate-700 hover:bg-slate-50 rounded-full transition-colors mr-4">
           <CaretLeft size={24} weight="bold" />
@@ -191,15 +211,15 @@ const VetSavingCorner = () => {
         <h1 className="text-xl font-bold text-slate-900">Saving Corner</h1>
       </header>
 
-      <main className="max-w-md mx-auto px-5 pt-6 space-y-6">
+      <main className="max-w-md mx-auto px-4 sm:px-5 pt-6 space-y-6">
         {/* Intro Section - Clean and Professional */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-[0_4px_24px_rgba(156,66,245,0.04)]">
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 shadow-[0_4px_24px_rgba(236,72,153,0.04)]">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#F4E8FF] flex items-center justify-center text-[#9C42F5]">
+            <div className="w-12 h-12 rounded-2xl bg-pink-50 flex items-center justify-center text-pink-500">
               <Ticket size={24} weight="fill" />
             </div>
             <div>
-              <span className="text-[10px] font-extrabold tracking-wider text-[#9C42F5] uppercase">VET SAVINGS ENGINE</span>
+              <span className="text-[10px] font-extrabold tracking-wider text-pink-500 uppercase">VET SAVINGS ENGINE</span>
               <h2 className="text-xl font-extrabold text-slate-900 leading-tight">Clinic & Home Offers</h2>
             </div>
           </div>
@@ -208,7 +228,7 @@ const VetSavingCorner = () => {
           </p>
           <button 
             onClick={() => { resetForm(); setShowCreateModal(true); }}
-            className="w-full bg-[#9C42F5] text-white hover:bg-[#8629df] font-bold py-4 px-6 rounded-2xl transition-all active:scale-95 text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#9C42F5]/10"
+            className="w-full bg-pink-500 text-white hover:bg-pink-600 font-bold py-3.5 px-6 rounded-2xl transition-all active:scale-95 text-sm flex items-center justify-center gap-2 shadow-lg shadow-pink-550/10"
           >
             <Plus size={16} weight="bold" /> Create New Offer
           </button>
@@ -218,18 +238,40 @@ const VetSavingCorner = () => {
         <div>
           <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3 px-1 flex items-center justify-between">
             <span>Your Active Coupons ({offers.length})</span>
-            {offers.length > 0 && <span className="text-xs text-[#9C42F5] font-extrabold">Realtime Live</span>}
+            {offers.length > 0 && <span className="text-xs text-pink-550 font-extrabold">Realtime Live</span>}
           </h3>
+
+          {/* Search bar inside VetSavingCorner */}
+          {offers.length > 0 && (
+            <div className="relative mb-4">
+              <MagnifyingGlass size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search your created coupon codes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-white border border-slate-100 rounded-2xl text-xs font-semibold placeholder:text-slate-400 focus:outline-none focus:border-pink-500 shadow-sm transition-all"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 hover:text-slate-600"
+                >
+                  CLEAR
+                </button>
+              )}
+            </div>
+          )}
 
           {loadingOffers ? (
             <div className="flex flex-col items-center justify-center py-12 space-y-3">
-              <div className="w-8 h-8 border-4 border-[#9C42F5] border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
               <p className="text-slate-400 text-xs font-medium">Loading active offers...</p>
             </div>
           ) : offers.length === 0 ? (
             <div className="bg-white rounded-3xl p-8 text-center border border-slate-100 shadow-sm flex flex-col items-center">
               <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-4">
-                <Tag size={32} weight="bold" className="text-purple-300" />
+                <Tag size={32} weight="bold" className="text-pink-300" />
               </div>
               <h4 className="font-bold text-slate-900 mb-1">No Offers Created</h4>
               <p className="text-slate-500 text-xs font-medium mb-5 max-w-[240px] mx-auto">
@@ -237,14 +279,24 @@ const VetSavingCorner = () => {
               </p>
               <button 
                 onClick={() => setShowCreateModal(true)}
-                className="bg-[#F4E8FF] text-[#9C42F5] font-bold py-3 px-6 rounded-xl hover:bg-[#ebd7ff] transition-colors active:scale-95 text-sm"
+                className="bg-pink-50 text-pink-550 font-bold py-3 px-6 rounded-xl hover:bg-pink-100 transition-colors active:scale-95 text-sm"
               >
                 Create First Code
               </button>
             </div>
+          ) : filteredOffers.length === 0 ? (
+            <div className="bg-white rounded-3xl p-8 text-center border border-slate-100 shadow-sm flex flex-col items-center">
+              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-4">
+                <Tag size={32} weight="bold" className="text-slate-400" />
+              </div>
+              <h4 className="font-bold text-slate-900 mb-1">No matching coupons</h4>
+              <p className="text-slate-500 text-xs font-medium mx-auto">
+                Try searching with a different code or keyword.
+              </p>
+            </div>
           ) : (
             <div className="space-y-4">
-              {offers.map((offer) => {
+              {filteredOffers.map((offer) => {
                 let details: any = {};
                 try {
                   details = JSON.parse(offer.description);
@@ -254,58 +306,129 @@ const VetSavingCorner = () => {
 
                 const isActive = offer.status === "active";
                 const isPercentage = details.type === "percentage";
+                const discountText = isPercentage 
+                  ? `Save ${details.value}% on this order!` 
+                  : `Save ₹${details.value} on this order!`;
+                
+                const isExpanded = !!expandedOffers[offer.id];
 
                 return (
-                  <div key={offer.id} className="bg-white rounded-3xl border border-slate-100 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] relative overflow-hidden">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="font-black text-slate-900 text-sm tracking-wider bg-slate-50 border border-slate-200 px-2.5 py-0.5 rounded-lg">
-                            {details.code || offer.title}
-                          </span>
-                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                            isActive 
-                              ? "bg-[#F4E8FF] text-[#9C42F5]" 
-                              : "bg-amber-50 text-amber-600"
-                          }`}>
-                            {isActive ? "LIVE" : "PAUSED"}
-                          </span>
-                        </div>
-                        <h4 className="font-extrabold text-sm text-slate-800">{details.title || offer.title}</h4>
-                        <p className="text-xs text-slate-500 font-semibold mt-1">
-                          {isPercentage ? `${details.value}% Off` : `₹${details.value} Off`} • {details.targetSlots === "all" ? "All Day" : `${details.targetSlots} slots`}
-                        </p>
-                      </div>
-
-                      <div className="flex gap-1.5">
-                        <button 
-                          onClick={() => handleToggleStatus(offer.id, offer.status)}
-                          className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all ${
-                            isActive 
-                              ? "border-amber-200 text-amber-600 hover:bg-amber-50" 
-                              : "border-purple-200 text-[#9C42F5] hover:bg-[#FAF6FF]"
-                          }`}
-                        >
-                          {isActive ? "Pause" : "Resume"}
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteOffer(offer.id)}
-                          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-                        >
-                          <Trash size={16} weight="bold" />
-                        </button>
+                  <div 
+                    key={offer.id} 
+                    className={`relative flex bg-white rounded-3xl border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.015)] overflow-hidden transition-all ${
+                      isExpanded ? "" : "h-[110px] max-h-[110px]"
+                    }`}
+                  >
+                    
+                    {/* Left Colored Band (Zomato/Swiggy style themed in Buyer Lavender/Pink) */}
+                    <div className="w-[64px] sm:w-[76px] shrink-0 bg-gradient-to-b from-pink-500 to-pink-600 relative overflow-hidden flex items-center justify-center">
+                      {/* Subtle multiple-stripe diagonal sheen (tirchhi lines) of light, translucent white */}
+                      <div 
+                        className="absolute inset-0 pointer-events-none opacity-40 mix-blend-overlay" 
+                        style={{
+                          backgroundImage: "repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0px, rgba(255, 255, 255, 0.8) 3px, transparent 3px, transparent 10px)"
+                        }}
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center z-10">
+                        <span className="font-black text-white text-[13px] sm:text-[15px] tracking-wider uppercase whitespace-nowrap -rotate-90 select-none drop-shadow-sm">
+                          {isPercentage ? `${details.value}% OFF` : `₹${details.value} OFF`}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="border-t border-slate-100 pt-3 mt-3 flex flex-wrap gap-y-2 justify-between items-center text-[11px] text-slate-400">
-                      <div className="flex items-center gap-1 font-semibold">
-                        <Calendar size={13} />
-                        <span>Ends {offer.end_date ? new Date(offer.end_date).toLocaleDateString() : "Never"}</span>
+                    {/* Classic Circle Punch Notches over the dividing line */}
+                    <div className="absolute top-0 bottom-0 left-[58px] sm:left-[70px] w-3 flex flex-col justify-around py-2.5 z-20 pointer-events-none">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#F8F8FC]" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#F8F8FC]" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#F8F8FC]" />
+                    </div>
+
+                    {/* Right Main Coupon Body */}
+                    <div className="flex-1 p-3 bg-white flex flex-col justify-between overflow-hidden">
+                      <div className={isExpanded ? "" : "h-full flex flex-col justify-between"}>
+                        <div>
+                          {/* Title & Status Row */}
+                          <div className="flex justify-between items-center gap-2">
+                            <span className="font-black text-[#1E1E2D] text-xs sm:text-sm tracking-wider uppercase leading-none">
+                              {details.code || offer.title}
+                            </span>
+                            <span className={`text-[8px] sm:text-[9px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full tracking-wider leading-none ${
+                              isActive 
+                                ? "bg-emerald-50 text-emerald-600" 
+                                : "bg-amber-50 text-amber-600"
+                            }`}>
+                              {isActive ? "LIVE" : "PAUSED"}
+                            </span>
+                          </div>
+
+                          {/* Discount Banner (Green text like Swiggy) */}
+                          <p className="text-emerald-600 font-extrabold text-[10px] sm:text-xs tracking-tight mt-1 leading-none">
+                            {discountText}
+                          </p>
+
+                          {/* Dotted / Dashed Divider */}
+                          <div className="border-t border-dashed border-slate-100 my-1 sm:my-1.5" />
+
+                          {/* Description */}
+                          <p className={`text-slate-500 font-medium text-[9px] sm:text-[10px] leading-tight sm:leading-relaxed ${
+                            isExpanded ? "" : "line-clamp-2"
+                          }`}>
+                            Use code {details.code || offer.title} & get {isPercentage ? `${details.value}%` : `₹${details.value}`} off on orders above ₹{details.minAmount || 0}.{details.maxDiscount && isPercentage ? ` Max: ₹${details.maxDiscount}.` : ""}
+                          </p>
+                        </div>
+
+                        {/* Info & Action Area */}
+                        <div className="mt-1.5">
+                          {isExpanded && (
+                            <div className="bg-slate-50 rounded-xl p-2 mb-2 text-[9px] sm:text-[10px] text-slate-500 font-semibold space-y-1 animate-fade-in border border-slate-100">
+                              <div className="flex justify-between">
+                                <span>Valid Until:</span>
+                                <span className="text-slate-700">{offer.end_date ? new Date(offer.end_date).toLocaleDateString() : "Never Expires"}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Slots:</span>
+                                <span className="text-slate-700 uppercase">{details.targetSlots === "all" ? "All Slots" : `${details.targetSlots} slots`}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Usage Limit:</span>
+                                <span className="text-slate-700">{details.limitPerUser === "one-time" ? "One-time use" : "Unlimited uses"}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex justify-between items-center leading-none">
+                            {/* MORE info toggle */}
+                            <button 
+                              onClick={() => setExpandedOffers(prev => ({ ...prev, [offer.id]: !prev[offer.id] }))}
+                              className="text-[9px] font-black tracking-wider text-pink-500 hover:underline uppercase flex items-center gap-0.5"
+                            >
+                              {isExpanded ? "- LESS" : "+ MORE"}
+                            </button>
+
+                            {/* Controls (Pause/Resume, Delete) */}
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => handleToggleStatus(offer.id, offer.status)}
+                                className={`text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-lg border transition-all ${
+                                  isActive 
+                                    ? "border-amber-200 text-amber-600 hover:bg-amber-50" 
+                                    : "border-pink-200 text-pink-500 hover:bg-pink-50/50"
+                                }`}
+                              >
+                                {isActive ? "Pause" : "Resume"}
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteOffer(offer.id)}
+                                className="p-0.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all active:scale-95"
+                                title="Delete Coupon"
+                              >
+                                <Trash size={12} weight="bold" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 font-semibold">
-                        <Clock size={13} />
-                        <span>Min Value: ₹{details.minAmount || 0}</span>
-                      </div>
+
                     </div>
                   </div>
                 );
@@ -321,7 +444,7 @@ const VetSavingCorner = () => {
           <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto space-y-6">
             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
               <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                <Ticket size={24} className="text-[#9C42F5]" /> Create Custom Offer
+                <Ticket size={24} className="text-pink-500" /> Create Custom Offer
               </h3>
               <button 
                 onClick={() => setShowCreateModal(false)}
@@ -340,7 +463,7 @@ const VetSavingCorner = () => {
                   placeholder="E.G. DOC50, MONSOON20"
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:border-[#9C42F5] focus:bg-white transition-all"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:border-pink-500 focus:bg-white transition-all"
                 />
               </div>
 
@@ -352,7 +475,7 @@ const VetSavingCorner = () => {
                   placeholder="E.G. Flat 50% Off / Monsoon Special"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:border-[#9C42F5] focus:bg-white transition-all"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:border-pink-500 focus:bg-white transition-all"
                 />
               </div>
 
@@ -365,7 +488,7 @@ const VetSavingCorner = () => {
                       onClick={() => setDiscountType("percentage")}
                       className={`flex-1 py-3 text-xs font-extrabold flex items-center justify-center gap-1 transition-all ${
                         discountType === "percentage" 
-                          ? "bg-[#9C42F5] text-white" 
+                          ? "bg-pink-500 text-white" 
                           : "bg-slate-50 text-slate-500 hover:bg-slate-100"
                       }`}
                     >
@@ -376,7 +499,7 @@ const VetSavingCorner = () => {
                       onClick={() => setDiscountType("fixed")}
                       className={`flex-1 py-3 text-xs font-extrabold flex items-center justify-center gap-1 transition-all ${
                         discountType === "fixed" 
-                          ? "bg-[#9C42F5] text-white" 
+                          ? "bg-pink-500 text-white" 
                           : "bg-slate-50 text-slate-500 hover:bg-slate-100"
                       }`}
                     >
@@ -396,7 +519,7 @@ const VetSavingCorner = () => {
                     placeholder={discountType === "percentage" ? "e.g. 15" : "e.g. 100"}
                     value={discountValue}
                     onChange={(e) => setDiscountValue(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:border-[#9C42F5] focus:bg-white transition-all"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:border-pink-500 focus:bg-white transition-all"
                   />
                 </div>
               </div>
@@ -409,7 +532,7 @@ const VetSavingCorner = () => {
                     placeholder="e.g. 300 (0 for none)"
                     value={minBookingAmount}
                     onChange={(e) => setMinBookingAmount(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:border-[#9C42F5] focus:bg-white transition-all"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:border-pink-500 focus:bg-white transition-all"
                   />
                 </div>
 
@@ -421,7 +544,7 @@ const VetSavingCorner = () => {
                     placeholder={discountType === "fixed" ? "N/A" : "e.g. 150"}
                     value={maxDiscount}
                     onChange={(e) => setMaxDiscount(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:border-[#9C42F5] focus:bg-white transition-all disabled:opacity-50"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:border-pink-500 focus:bg-white transition-all disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -433,7 +556,7 @@ const VetSavingCorner = () => {
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#9C42F5]"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-pink-500"
                   />
                 </div>
 
@@ -443,7 +566,7 @@ const VetSavingCorner = () => {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#9C42F5]"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-pink-500"
                   />
                 </div>
               </div>
@@ -467,11 +590,11 @@ const VetSavingCorner = () => {
                       onClick={() => setTargetSlots(s.key as any)}
                       className={`py-2 px-3 text-[11px] font-bold rounded-xl border flex items-center gap-1.5 transition-all text-left ${
                         targetSlots === s.key 
-                          ? "bg-[#F4E8FF] border-[#9C42F5] text-[#9C42F5]" 
+                          ? "bg-pink-50 border-pink-500 text-pink-600" 
                           : "border-slate-200 text-slate-600 hover:bg-slate-50"
                       }`}
                     >
-                      {targetSlots === s.key ? <CheckCircle size={14} weight="fill" className="text-[#9C42F5]" /> : <Circle size={14} />}
+                      {targetSlots === s.key ? <CheckCircle size={14} weight="fill" className="text-pink-500" /> : <Circle size={14} />}
                       {s.label}
                     </button>
                   ))}
@@ -487,7 +610,7 @@ const VetSavingCorner = () => {
                       name="userLimit" 
                       checked={limitPerUser === "one-time"} 
                       onChange={() => setLimitPerUser("one-time")}
-                      className="accent-[#9C42F5]"
+                      className="accent-pink-500"
                     />
                     One-time per user
                   </label>
@@ -497,7 +620,7 @@ const VetSavingCorner = () => {
                       name="userLimit" 
                       checked={limitPerUser === "unlimited"} 
                       onChange={() => setLimitPerUser("unlimited")}
-                      className="accent-[#9C42F5]"
+                      className="accent-pink-500"
                     />
                     Multiple uses allowed
                   </label>
@@ -515,7 +638,7 @@ const VetSavingCorner = () => {
                 <button 
                   type="submit"
                   disabled={creating}
-                  className="flex-1 py-3 text-sm font-bold text-white bg-[#9C42F5] hover:bg-[#8629df] disabled:bg-[#ebd7ff] rounded-2xl transition-all flex items-center justify-center gap-1.5 shadow-md shadow-[#9C42F5]/10"
+                  className="flex-1 py-3 text-sm font-bold text-white bg-pink-500 hover:bg-pink-600 disabled:bg-pink-200 rounded-2xl transition-all flex items-center justify-center gap-1.5 shadow-md shadow-pink-500/10"
                 >
                   {creating ? (
                     <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>

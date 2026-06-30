@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, MoreHorizontal, Star, Briefcase, ThumbsUp, Clock, Hospital, Home, MessageSquare, ArrowRight, CheckCircle2, Moon, ChevronUp, ChevronDown, Gift, Percent, ChevronRight, Ticket, X, Wallet, Lock, Check, Shield, Calendar } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Star, Briefcase, ThumbsUp, Clock, Hospital, Home, MessageSquare, ArrowRight, CheckCircle2, Moon, ChevronUp, ChevronDown, Gift, Percent, ChevronRight, Ticket, X, Wallet, Lock, Check, Shield, Calendar, Search } from "lucide-react";
 import { format, addDays, startOfToday } from "date-fns";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -237,6 +237,8 @@ const BookingDetails = () => {
   const [disabledSlots, setDisabledSlots] = useState<string[]>([]);
   const [selectedCoupon, setSelectedCoupon] = useState<any | null>(null);
   const [showCoupons, setShowCoupons] = useState(false);
+  const [couponSearchQuery, setCouponSearchQuery] = useState("");
+  const [manualCouponCode, setManualCouponCode] = useState("");
   const [customCoupons, setCustomCoupons] = useState<any[]>([]);
 
   // Fetch veterinarian's custom coupons/offers
@@ -286,6 +288,15 @@ const BookingDetails = () => {
     }));
     return [...formattedCustom, ...COUPONS];
   }, [customCoupons]);
+
+  const filteredCoupons = useMemo(() => {
+    if (!couponSearchQuery.trim()) return allAvailableCoupons;
+    const query = couponSearchQuery.toLowerCase();
+    return allAvailableCoupons.filter((c: any) => 
+      c.code.toLowerCase().includes(query) || 
+      (c.description && c.description.toLowerCase().includes(query))
+    );
+  }, [allAvailableCoupons, couponSearchQuery]);
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
 
   // Razorpay sandbox simulation states
@@ -678,7 +689,8 @@ const BookingDetails = () => {
   const vetSpecialization = vet.title || vet.specialization || "Veterinarian";
   const vetImage = vet.profile_image || vet.image || "";
   const vetRating = vet.rating || 0;
-  const vetExperience = vet.years_exp || vet.experience || 0;
+  const vetExperience = Number(vet.years_of_experience || vet.years_exp || vet.experience || 0);
+  const isOnlineAndActive = vet.is_active !== false && vet.status !== "OFFLINE" && vet.is_online !== false;
 
   // Check if this is a direct profile booking or AI recommendation
   const isDirectBooking = isDirectState === true;
@@ -709,7 +721,7 @@ const BookingDetails = () => {
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-5">
-        {!isDirectBooking && (
+        {!isDirectBooking && vetExperience > 0 && isOnlineAndActive && (
           <>
             <div className="flex justify-center">
               <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-green-50 text-green-600 text-xs font-bold tracking-wider uppercase">
@@ -1075,105 +1087,259 @@ const BookingDetails = () => {
             )}
           </div>
           
-          <Dialog open={showCoupons} onOpenChange={setShowCoupons}>
-            <DialogTrigger asChild>
-              <button className="w-full bg-white/80 backdrop-blur-sm border-2 border-dashed border-green-350 rounded-xl py-3 px-4 flex items-center justify-between hover:bg-white transition-colors group">
-                <div className="flex items-center gap-2">
-                  <Percent className="w-4 h-4 text-teal-600" />
-                  <span className="font-semibold text-teal-600 text-sm">
-                    {selectedCoupon ? (
-                      <span className="flex items-center gap-2">
-                        Coupon Applied: <span className="bg-teal-100 px-2 py-0.5 rounded text-xs font-bold outline-dashed outline-1 outline-teal-300">{selectedCoupon.code}</span>
-                      </span>
-                    ) : "Apply Coupon"}
+          <button 
+            onClick={() => setShowCoupons(true)}
+            className="w-full bg-white/80 backdrop-blur-sm border-2 border-dashed border-green-350 rounded-xl py-3 px-4 flex items-center justify-between hover:bg-white transition-colors group"
+          >
+            <div className="flex items-center gap-2">
+              <Percent className="w-4 h-4 text-teal-600" />
+              <span className="font-semibold text-teal-600 text-sm">
+                {selectedCoupon ? (
+                  <span className="flex items-center gap-2">
+                    Coupon Applied: <span className="bg-teal-100 px-2 py-0.5 rounded text-xs font-bold outline-dashed outline-1 outline-teal-300">{selectedCoupon.code}</span>
                   </span>
-                </div>
-                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
-              </button>
-            </DialogTrigger>
-            <DialogContent className="max-w-[95vw] sm:max-w-md rounded-3xl p-6">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                  <Ticket className="w-5 h-5 text-teal-600" />
-                  Available Coupons
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 mt-4">
-                {allAvailableCoupons.map((coupon) => {
-                  const isCustom = (coupon as any).isCustom;
-                  const isPercentage = (coupon as any).type === "percentage";
-                  return (
-                    <div 
-                      key={coupon.code}
-                      onClick={() => {
-                        // Check min booking amount
-                        if (coupon.minAmount && current.visit < coupon.minAmount) {
-                          toast.error(`This coupon requires a minimum booking amount of ₹${coupon.minAmount}`);
-                          return;
-                        }
-                        
-                        // Check target slot restriction
-                        if (coupon.targetSlots && coupon.targetSlots !== "all") {
-                          if (!selectedSlot) {
-                            toast.error(`Please select a time slot first to apply this coupon.`);
-                            return;
-                          }
-                          const slotPeriod = getSlotPeriod(selectedSlot);
-                          if (slotPeriod !== coupon.targetSlots) {
-                            toast.error(`This coupon is only valid for ${coupon.targetSlots} slots (Current: ${slotPeriod}).`);
-                            return;
-                          }
-                        }
+                ) : "Apply Coupon"}
+              </span>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+          </button>
 
-                        setSelectedCoupon(coupon);
-                        setShowCoupons(false);
-                        toast.success(`Coupon ${coupon.code} applied!`);
-                      }}
-                      className={`relative p-4 rounded-2xl border-2 transition-all cursor-pointer overflow-hidden ${
-                        selectedCoupon?.code === coupon.code 
-                          ? "border-emerald-500 bg-emerald-50/40" 
-                          : "border-muted hover:border-emerald-200"
-                      }`}
-                    >
-                      {isCustom && (
-                        <div className="absolute top-0 right-0 bg-[#108A4E] text-white text-[9px] font-black px-2.5 py-0.5 rounded-bl-xl uppercase tracking-wider">
-                          Exclusive Vet Offer
-                        </div>
-                      )}
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-black text-[#151B32] text-sm tracking-wider bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg">
-                              {coupon.code}
-                            </span>
-                            {selectedCoupon?.code === coupon.code && (
-                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                            )}
-                          </div>
-                          <p className="text-[13px] font-bold text-emerald-700">
-                            Save {isPercentage ? `${coupon.value}%` : `₹${coupon.value}`}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground mt-1">{coupon.description}</p>
-                          
-                          {coupon.minAmount > 0 && (
-                            <p className="text-[10px] text-amber-600 font-bold mt-1">
-                              • Min booking: ₹{coupon.minAmount}
-                            </p>
-                          )}
-                          {coupon.targetSlots && coupon.targetSlots !== "all" && (
-                            <p className="text-[10px] text-blue-600 font-bold">
-                              • Only valid for {coupon.targetSlots} slots
-                            </p>
-                          )}
-                        </div>
-                        <button className="text-xs font-bold text-emerald-600 mt-1">APPLY</button>
-                      </div>
-                    </div>
-                  );
-                })}
+          {/* Dedicated Full-Screen Saving Corner View */}
+          {showCoupons && (
+            <div className="fixed inset-0 bg-[#F8F8FC] z-[9999] flex flex-col animate-in fade-in slide-in-from-bottom duration-300">
+              {/* Premium Header */}
+              <div className="bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between shadow-sm shrink-0">
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => {
+                      setShowCoupons(false);
+                      setManualCouponCode("");
+                    }}
+                    className="p-1.5 hover:bg-slate-100 rounded-full transition-colors"
+                  >
+                    <ArrowLeft className="w-6 h-6 text-slate-800" />
+                  </button>
+                  <div className="text-left">
+                    <h2 className="text-lg font-black flex items-center gap-2 text-slate-900">
+                      <Ticket className="w-5 h-5 text-pink-500" />
+                      Saving Corner
+                    </h2>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    setShowCoupons(false);
+                    setManualCouponCode("");
+                  }}
+                  className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-            </DialogContent>
-          </Dialog>
+
+              {/* Dedicated Saving Corner Content Area */}
+              <div className="flex-1 overflow-y-auto p-4 max-w-lg mx-auto w-full space-y-4">
+                {/* Manual Code Input Bar (Full Width - Auto Appends when valid or manually applied) */}
+                <div className="bg-white rounded-3xl p-4 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Enter Coupon Code"
+                      value={manualCouponCode}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase();
+                        setManualCouponCode(val);
+                        
+                        // Keep the auto-match convenience check (or let them click apply)
+                        const found = allAvailableCoupons.find(c => c.code.toUpperCase() === val.trim());
+                        if (found) {
+                          if (found.minAmount && current.visit < found.minAmount) {
+                            return; // Wait for manual click if minAmount is not met to avoid confusing instant error while typing
+                          }
+                          if (found.targetSlots && found.targetSlots !== "all") {
+                            if (!selectedSlot) return;
+                            const slotPeriod = getSlotPeriod(selectedSlot);
+                            if (slotPeriod !== found.targetSlots) return;
+                          }
+                          setSelectedCoupon(found);
+                          setShowCoupons(false);
+                          setManualCouponCode("");
+                          toast.success(`Coupon ${found.code} applied automatically!`);
+                        }
+                      }}
+                      className="w-full pl-4 pr-24 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold uppercase tracking-wider placeholder:text-slate-400 placeholder:normal-case focus:outline-none focus:border-pink-500 focus:bg-white transition-all shadow-inner"
+                    />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
+                      {manualCouponCode.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = manualCouponCode.trim().toUpperCase();
+                            const found = allAvailableCoupons.find(c => c.code.toUpperCase() === val);
+                            if (found) {
+                              if (found.minAmount && current.visit < found.minAmount) {
+                                toast.error(`Code ${val} requires a minimum booking of ₹${found.minAmount}`);
+                                return;
+                              }
+                              if (found.targetSlots && found.targetSlots !== "all") {
+                                if (!selectedSlot) {
+                                  toast.error(`Please select a time slot first.`);
+                                  return;
+                                }
+                                const slotPeriod = getSlotPeriod(selectedSlot);
+                                if (slotPeriod !== found.targetSlots) {
+                                  toast.error(`Valid for ${found.targetSlots} slots only.`);
+                                  return;
+                                }
+                              }
+                              setSelectedCoupon(found);
+                              setShowCoupons(false);
+                              setManualCouponCode("");
+                              toast.success(`Coupon ${val} applied!`);
+                            } else {
+                              toast.error("Invalid coupon code.");
+                            }
+                          }}
+                          className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white font-extrabold text-[11px] rounded-xl transition-all active:scale-95 shadow-sm uppercase tracking-wider cursor-pointer"
+                        >
+                          Apply
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* List of Coupons */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 px-1">Available Offers</h3>
+                  {allAvailableCoupons.length === 0 ? (
+                    <div className="bg-white rounded-3xl p-8 text-center border border-slate-100 shadow-sm">
+                      <Ticket className="w-12 h-12 text-slate-300 mx-auto mb-2.5 stroke-[1.5]" />
+                      <p className="text-slate-400 font-bold text-xs">No active coupons available</p>
+                    </div>
+                  ) : (
+                    allAvailableCoupons.map((coupon) => {
+                      const isCustom = (coupon as any).isCustom;
+                      const isPercentage = (coupon as any).type === "percentage";
+                      const isSelected = selectedCoupon?.code === coupon.code;
+                      
+                      return (
+                        <div 
+                          key={coupon.code}
+                          onClick={() => {
+                            // Check min booking amount
+                            if (coupon.minAmount && current.visit < coupon.minAmount) {
+                              toast.error(`This coupon requires a minimum booking amount of ₹${coupon.minAmount}`);
+                              return;
+                            }
+                            
+                            // Check target slot restriction
+                            if (coupon.targetSlots && coupon.targetSlots !== "all") {
+                              if (!selectedSlot) {
+                                toast.error(`Please select a time slot first to apply this coupon.`);
+                                        return;
+                              }
+                              const slotPeriod = getSlotPeriod(selectedSlot);
+                              if (slotPeriod !== coupon.targetSlots) {
+                                toast.error(`This coupon is only valid for ${coupon.targetSlots} slots (Current: ${slotPeriod}).`);
+                                return;
+                              }
+                            }
+
+                            setSelectedCoupon(coupon);
+                            setShowCoupons(false);
+                            setManualCouponCode("");
+                            toast.success(`Coupon ${coupon.code} applied!`);
+                          }}
+                          className={`relative flex bg-white rounded-2xl border-2 transition-all cursor-pointer overflow-hidden min-h-[105px] select-none shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
+                            isSelected 
+                              ? "border-pink-500 bg-pink-50/5" 
+                              : "border-slate-100 hover:border-pink-200"
+                          }`}
+                        >
+                          {/* Left Colored Band (Themed to Lavender/Pink Buyer Theme) */}
+                          <div className="w-[64px] sm:w-[76px] shrink-0 bg-gradient-to-b from-pink-500 to-pink-600 relative overflow-hidden flex items-center justify-center">
+                            {/* Subtle multiple-stripe diagonal sheen (tirchhi lines) of light, translucent white */}
+                            <div 
+                              className="absolute inset-0 pointer-events-none opacity-40 mix-blend-overlay" 
+                              style={{
+                                backgroundImage: "repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0px, rgba(255, 255, 255, 0.8) 3px, transparent 3px, transparent 10px)"
+                              }}
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center z-10">
+                              <span className="font-black text-white text-[13px] sm:text-[15px] tracking-wider uppercase whitespace-nowrap -rotate-90 select-none drop-shadow-sm">
+                                {isPercentage ? `${coupon.value}% OFF` : `₹${coupon.value} OFF`}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Notches aligned exactly with the dividing line */}
+                          <div className="absolute top-0 bottom-0 left-[58px] sm:left-[70px] w-3 flex flex-col justify-around py-2 z-20 pointer-events-none">
+                            <div className="w-2.5 h-2.5 rounded-full bg-[#F8F8FC] border border-transparent" />
+                            <div className="w-2.5 h-2.5 rounded-full bg-[#F8F8FC] border border-transparent" />
+                            <div className="w-2.5 h-2.5 rounded-full bg-[#F8F8FC] border border-transparent" />
+                          </div>
+
+                          {/* Right Main Content */}
+                          <div className="flex-1 p-3.5 bg-white flex flex-col justify-between overflow-hidden">
+                            <div className="h-full flex flex-col justify-between">
+                              {/* Row 1: Code and Action/Applied status */}
+                              <div className="flex justify-between items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="font-black text-[#1E1E2D] text-xs sm:text-sm tracking-wide uppercase truncate leading-none">
+                                    {coupon.code}
+                                  </span>
+                                  {isCustom && (
+                                    <span className="bg-pink-50 text-pink-600 text-[7px] sm:text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 leading-none">
+                                      VET EXCLUSIVE
+                                    </span>
+                                  )}
+                                </div>
+                                {isSelected ? (
+                                  <span className="text-[9px] sm:text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-0.5 shrink-0 leading-none">
+                                    <CheckCircle2 className="w-3.5 h-3.5" /> APPLIED
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] sm:text-xs font-black text-pink-500 uppercase tracking-wider hover:underline shrink-0 leading-none">
+                                    APPLY
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Row 2: Green Savings Tag */}
+                              <p className="text-emerald-600 font-extrabold text-[10px] sm:text-xs tracking-tight leading-none mt-1">
+                                Save {isPercentage ? `${coupon.value}%` : `₹${coupon.value}`} on this order!
+                              </p>
+
+                              {/* Dotted Divider */}
+                              <div className="border-t border-dashed border-slate-100 my-1.5" />
+
+                              {/* Row 3: Description */}
+                              <p className="text-slate-500 font-medium text-[9px] sm:text-[10px] leading-snug line-clamp-2">
+                                {coupon.description || `Use code ${coupon.code} to get discount on your visit.`}
+                              </p>
+
+                              {/* Optional rules */}
+                              {(coupon.minAmount > 0 || (coupon.targetSlots && coupon.targetSlots !== "all")) && (
+                                <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[8px] sm:text-[9px] font-bold text-amber-600 mt-1 leading-none">
+                                  {coupon.minAmount > 0 && (
+                                    <span>• Min Order: ₹{coupon.minAmount}</span>
+                                  )}
+                                  {coupon.targetSlots && coupon.targetSlots !== "all" && (
+                                    <span className="text-blue-600 uppercase">• {coupon.targetSlots} slots only</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Summary */}

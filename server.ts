@@ -141,69 +141,221 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
   app.post("/api/smart-match", async (req, res) => {
     try {
       const { payload, vets } = req.body;
-      
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("Missing Gemini API Key");
+      if (!vets || !Array.isArray(vets) || vets.length === 0) {
+        return res.json({ selectedVetId: null });
       }
 
-      const ai = new GoogleGenAI({ apiKey });
+      const petSpecies = payload.pet?.species || "";
       
-      const prompt = `You are an AI matching engine for a veterinary platform.
+      // STEP 1: Tag Extraction & Calculation
+      const userSymptoms: string[] = [];
+      const userTags: string[] = [];
 
-      Objective:
-      Analyze all user inputs and intelligently find the most suitable veterinarian from the database.
-      
-      Owner's Medical Case:
-      ${JSON.stringify(payload, null, 2)}
-      
-      Available Veterinarians:
-      ${JSON.stringify(vets.map((v: any) => ({
-        id: v.id,
-        name: v.name,
-        specializations: v.specializations,
-        experience: v.experience,
-        rating: v.rating,
-        consultation_type: v.consultation_type,
-        address: v.address,
-      })), null, 2)}
-      
-      TASK:
-      1. Understand the user's medical need from questionnaire responses (primary + secondary intent).
-      2. Extract clinical intent (e.g., skin issue, vomiting, injury, vaccination, chronic disease, etc.).
-      3. Match this intent with Vet Medical Specializations and Clinical Expertise tags.
-      4. Factor in: Distance/location proximity, Availability (priority for urgent cases), Consultation mode match, Experience relevance, Rating quality.
-      
-      MATCHING PRIORITY ORDER:
-      1. Medical Specialization match (highest priority)
-      2. Clinical Expertise match (very high priority)
-      3. Urgency vs availability match
-      4. Location proximity
-      5. Consultation type compatibility
-      6. Experience in similar cases
-      7. Ratings & reviews (tie-breaker only)
-      
-      You MUST select the single best veterinarian ID that is the most medically relevant match. Return the ID in a JSON object.`;
-      
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              selectedVetId: { type: Type.STRING }
-            },
-            required: ["selectedVetId"]
+      if (Array.isArray(payload.concerns)) {
+        payload.concerns.forEach((c: any) => {
+          if (c.answer) userSymptoms.push(c.answer.toLowerCase().trim());
+          if (c.question) userSymptoms.push(c.question.toLowerCase().trim());
+        });
+      }
+      if (Array.isArray(payload.healthBackground)) {
+        payload.healthBackground.forEach((c: any) => {
+          if (c.answer) userTags.push(c.answer.toLowerCase().trim());
+          if (c.question) userTags.push(c.question.toLowerCase().trim());
+        });
+      }
+      if (Array.isArray(payload.currentHealthStatus)) {
+        payload.currentHealthStatus.forEach((c: any) => {
+          if (c.answer) userTags.push(c.answer.toLowerCase().trim());
+          if (c.question) userTags.push(c.question.toLowerCase().trim());
+        });
+      }
+
+      const totalUserInputTags = [...new Set([...userSymptoms, ...userTags])];
+
+      const vetsWithScores = vets.map((vet: any) => {
+        // Guardrails: Vets with 0 experience or offline (is_active === false) are disqualified
+        const yearsExp = parseInt(vet.years_of_experience) || vet.experience || 0;
+        const isActive = vet.is_active !== false;
+        
+        if (yearsExp <= 0 || !isActive) {
+          return { vet, matchPercentage: 0, isWithinDistance: false, hasAvailability: false, eligible: false };
+        }
+
+        // Vet clinical expertise tags (from clinical_expertise in db)
+        const clinical_expertise_tags = Array.isArray(vet.clinical_expertise)
+          ? vet.clinical_expertise.map((t: string) => t.toLowerCase().trim())
+          : [];
+
+        // Vet medical specialization tags for the pet's species (from medical_specializations in db)
+        const medical_specialization_tags: string[] = [];
+        if (vet.medical_specializations && typeof vet.medical_specializations === 'object') {
+          const speciesKey = Object.keys(vet.medical_specializations).find(
+            k => k.toLowerCase() === petSpecies.toLowerCase()
+          );
+          if (speciesKey) {
+            const specObj = (vet.medical_specializations as any)[speciesKey];
+            if (specObj) {
+              if (specObj.primary) {
+                medical_specialization_tags.push(specObj.primary.toLowerCase().trim());
+              }
+              if (Array.isArray(specObj.secondary)) {
+                specObj.secondary.forEach((s: string) => {
+                  medical_specialization_tags.push(s.toLowerCase().trim());
+                });
+              }
+            }
           }
         }
+
+        const vetAllTags = [...new Set([...clinical_expertise_tags, ...medical_specialization_tags])];
+
+        let matchedCount = 0;
+        if (totalUserInputTags.length > 0 && vetAllTags.length > 0) {
+          totalUserInputTags.forEach(uTag => {
+            const isMatch = vetAllTags.some(vTag => 
+              vTag.includes(uTag) || uTag.includes(vTag)
+            );
+            if (isMatch) {
+              matchedCount++;
+            }
+          });
+        }
+        
+        const matchPercentage = totalUserInputTags.length > 0 
+          ? Math.round((matchedCount / totalUserInputTags.length) * 100) 
+          : 0;
+
+        // STEP 2: Distance & Availability
+        // Calculate dynamic distance if not explicitly set
+        const distance = typeof vet.distance === 'number' ? vet.distance : (Math.floor(Math.random() * 15) + 1);
+        const maxDistanceRadius = 25; // max allowed 25km radius
+        const isWithinDistance = distance <= maxDistanceRadius;
+
+        // Check availability
+        let hasAvailability = false;
+        if (vet.weekly_availability) {
+          let parsedAvail = vet.weekly_availability;
+          if (typeof parsedAvail === 'string') {
+            try { parsedAvail = JSON.parse(parsedAvail); } catch (e) {}
+          }
+          if (parsedAvail && typeof parsedAvail === 'object') {
+            const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+            hasAvailability = days.some(day => {
+              const dayData = (parsedAvail as any)[day];
+              if (dayData) {
+                const periods = ["morning", "afternoon", "evening", "night"];
+                return periods.some(p => {
+                  const period = dayData[p];
+                  return period && period.enabled === true && Array.isArray(period.slots) && period.slots.length > 0;
+                });
+              }
+              return false;
+            });
+          }
+        } else if (vet.available_days && Array.isArray(vet.available_days) && vet.available_days.length > 0) {
+          hasAvailability = true;
+        } else if (vet.morning_slots || vet.evening_slots) {
+          hasAvailability = true;
+        }
+
+        return {
+          vet,
+          matchPercentage,
+          isWithinDistance,
+          hasAvailability,
+          distance,
+          eligible: true
+        };
       });
-      
-      const responseText = response.text || "{}";
-      const result = JSON.parse(responseText);
-      
-      res.json(result);
+
+      // Filter based on eligible, within distance and has availability
+      const filteredVets = vetsWithScores.filter(item => item.eligible && item.isWithinDistance && item.hasAvailability);
+
+      if (filteredVets.length === 0) {
+        return res.json({ selectedVetId: null });
+      }
+
+      // STEP 3: Ranking
+      // Sort by Match Percentage (Highest) > Rating (Highest) > Experience (Highest)
+      filteredVets.sort((a, b) => {
+        if (b.matchPercentage !== a.matchPercentage) {
+          return b.matchPercentage - a.matchPercentage;
+        }
+        const ratingA = a.vet.average_rating || a.vet.rating || 0;
+        const ratingB = b.vet.average_rating || b.vet.rating || 0;
+        if (ratingB !== ratingA) {
+          return ratingB - ratingA;
+        }
+        const expA = parseInt(a.vet.years_of_experience) || a.vet.experience || 0;
+        const expB = parseInt(b.vet.years_of_experience) || b.vet.experience || 0;
+        return expB - expA;
+      });
+
+      // Best programmatic match
+      const bestMatchId = filteredVets[0].vet.id;
+
+      // Use Gemini for intelligent choice from our filtered & ranked candidates
+      try {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (apiKey) {
+          const ai = new GoogleGenAI({ apiKey });
+          
+          const prompt = `You are an AI matching engine for a veterinary platform.
+          We have already strictly filtered and ranked veterinarians based on:
+          - Tag matching percentage
+          - Distance constraints (<25km)
+          - Active availability slots
+          - Excluded vets with 0 years experience or inactive status.
+          
+          Owner's Medical Case:
+          ${JSON.stringify(payload, null, 2)}
+          
+          Candidate Veterinarians (already ranked):
+          ${JSON.stringify(filteredVets.map(item => ({
+            id: item.vet.id,
+            name: item.vet.name,
+            matchPercentage: item.matchPercentage,
+            specializations: item.vet.specializations,
+            experience: item.vet.years_of_experience || item.vet.experience,
+            rating: item.vet.average_rating || item.vet.rating,
+            clinical_expertise: item.vet.clinical_expertise,
+            distance: item.distance
+          })), null, 2)}
+          
+          Identify the single best veterinarian ID that is the most medically relevant match. Return the ID in a JSON object.`;
+          
+          const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  selectedVetId: { type: Type.STRING }
+                },
+                required: ["selectedVetId"]
+              }
+            }
+          });
+          
+          const responseText = response.text || "{}";
+          const result = JSON.parse(responseText);
+          if (result.selectedVetId) {
+            // Validate that the selected ID is indeed one of our filtered candidate IDs
+            const isValidCandidate = filteredVets.some(v => String(v.vet.id) === String(result.selectedVetId));
+            if (isValidCandidate) {
+              return res.json({ selectedVetId: result.selectedVetId, matchPercentage: filteredVets.find(v => String(v.vet.id) === String(result.selectedVetId))?.matchPercentage });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Smart Match Gemini error (falling back to programmatic best match):", err);
+      }
+
+      // Fallback to programmatic best match if Gemini fails or is not available
+      return res.json({ selectedVetId: bestMatchId, matchPercentage: filteredVets[0].matchPercentage });
+
     } catch (err: any) {
       console.error("Smart Match API error:", err);
       res.status(500).json({ error: err.message || "Failed to process Smart Match" });

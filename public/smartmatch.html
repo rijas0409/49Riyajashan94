@@ -140,7 +140,7 @@
 </head>
 <body class="text-on-surface antialiased min-h-screen flex justify-center bg-gray-100">
 
-    <div id="mainContainer" class="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl bg-surface h-[100dvh] md:h-[92dvh] md:my-auto md:rounded-[32px] md:shadow-premium relative flex flex-col overflow-x-hidden overflow-y-auto hide-scrollbar transition-all duration-300">
+    <div id="mainContainer" class="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl bg-surface h-[100dvh] md:h-[92dvh] md:my-auto md:rounded-[32px] md:shadow-premium relative flex flex-col overflow-hidden transition-all duration-300">
         
         <header class="w-full z-50 bg-surface flex flex-col pt-6 pb-2 px-6 shrink-0 sticky top-0">
             <div class="flex items-center justify-between mb-5">
@@ -169,7 +169,7 @@
             </div>
         </header>
 
-        <main id="dynamicContentWrapper" class="translate-y-[10vh] flex-1 w-full transition-all duration-700 ease-sruvo flex flex-col">
+        <main id="dynamicContentWrapper" class="translate-y-[10vh] flex-1 w-full transition-all duration-700 ease-sruvo flex flex-col overflow-y-auto pb-32 hide-scrollbar">
             
             <div id="questionSection" class="w-full px-6 transition-all duration-700 ease-sruvo mt-6 flex shrink-0">
                 <div id="headingTextContainer" class="relative pt-[26px] text-center w-full transition-all duration-300">
@@ -228,58 +228,15 @@
                         <p id="detailAppearance" class="text-[14px] font-semibold text-on-surface/90"></p>
                     </div>
                 </div>
-
-                <div class="sticky bottom-0 bg-surface w-full px-6 pt-4 pb-6 mt-auto z-40 border-t border-gray-100/50">
-                    <button onclick="goToStep2()" class="w-full bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group">
-                        Continue with <span id="btnPetName" class="font-black"></span>
-                        <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                    </button>
-                </div>
             </div>
 
             <div id="step2Section" class="hidden opacity-0 translate-y-10 transition-all duration-700 ease-sruvo mt-8 w-full flex-col px-6 pb-6 gap-8 flex-1">
             </div>
 
-            <div id="step2ContinueWrapper" class="hidden sticky bottom-0 bg-surface w-full px-6 pt-4 pb-6 mt-auto z-40 border-t border-gray-100/50">
-                <div class="w-full flex gap-3">
-                    <button onclick="goBackToStep1()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-[24px]">history</span>
-                    </button>
-                    <button id="step2ContinueBtn" disabled onclick="goToStep3()" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group disabled:opacity-50 disabled:pointer-events-none">
-                        Continue to Diagnosis
-                        <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                    </button>
-                </div>
-            </div>
-
             <div id="step3Section" class="hidden opacity-0 translate-y-10 transition-all duration-700 ease-sruvo mt-8 w-full flex-col px-6 pb-6 gap-8 flex-1">
             </div>
 
-            <div id="step3ContinueWrapper" class="hidden sticky bottom-0 bg-surface w-full px-6 pt-4 pb-6 mt-auto z-40 border-t border-gray-100/50">
-                <div class="w-full flex gap-3">
-                    <button onclick="goBackToStep2()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-[24px]">history</span>
-                    </button>
-                    <button id="step3ContinueBtn" disabled onclick="goToStep4()" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group disabled:opacity-50 disabled:pointer-events-none">
-                        Continue 
-                        <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                    </button>
-                </div>
-            </div>
-
             <div id="step4Section" class="hidden opacity-0 translate-y-10 transition-all duration-700 ease-sruvo mt-8 w-full flex-col px-6 pb-6 gap-8 flex-1">
-            </div>
-
-            <div id="step4ContinueWrapper" class="hidden sticky bottom-0 bg-surface w-full px-6 pt-4 pb-6 mt-auto z-40 border-t border-gray-100/50">
-                <div class="w-full flex gap-3">
-                    <button onclick="goBackToStep3()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-[24px]">history</span>
-                    </button>
-                    <button id="step4ContinueBtn" disabled onclick="goToStep5()" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group disabled:opacity-50 disabled:pointer-events-none">
-                        Continue 
-                        <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                    </button>
-                </div>
             </div>
 
             <div id="step5Section" class="hidden opacity-0 translate-y-10 transition-all duration-700 ease-sruvo mt-6 w-full flex-col px-6 pb-6 flex-1">
@@ -316,34 +273,78 @@
                 </div>
             </div>
 
-            <div id="step5ContinueWrapper" class="hidden sticky bottom-0 bg-surface w-full px-6 pt-4 pb-6 mt-auto z-40 border-t border-gray-100/50">
-                <div class="w-full flex gap-3">
-                    <button onclick="goBackToStep4()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-[24px]">history</span>
-                    </button>
-                    <button id="step5ContinueBtn" disabled onclick="goToStep6()" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group disabled:opacity-50 disabled:pointer-events-none">
-                        Continue 
-                        <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                    </button>
-                </div>
-            </div>
-
             <div id="step6Section" class="hidden opacity-0 translate-y-10 transition-all duration-700 ease-sruvo mt-6 w-full flex-col px-6 pb-6 gap-5 flex-1">
             </div>
 
-            <div id="step6ContinueWrapper" class="hidden sticky bottom-0 bg-surface w-full px-6 pt-4 pb-6 mt-auto z-40 border-t border-gray-100/50">
-                <div class="w-full flex gap-3">
-                    <button onclick="goBackToStep5()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-[24px]">history</span>
-                    </button>
-                    <button onclick="submitSmartMatch()" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group">
-                        <span class="material-symbols-outlined text-lg group-hover:scale-110 transition-transform">auto_awesome</span>
-                        Smart Match
-                    </button>
-                </div>
-            </div>
-
         </main>
+
+        <!-- Continue & Back button wrappers placed as direct absolute-bottom children of mainContainer to ensure perfect responsiveness -->
+        <div id="step1ContinueWrapper" class="hidden absolute bottom-0 left-0 right-0 bg-surface w-full px-6 pt-4 pb-6 z-40 border-t border-gray-100/50">
+            <button onclick="goToStep2()" class="w-full bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group">
+                Continue with <span id="btnPetName" class="font-black"></span>
+                <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            </button>
+        </div>
+
+        <div id="step2ContinueWrapper" class="hidden absolute bottom-0 left-0 right-0 bg-surface w-full px-6 pt-4 pb-6 z-40 border-t border-gray-100/50">
+            <div class="w-full flex gap-3">
+                <button onclick="goBackToStep1()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-[24px]">history</span>
+                </button>
+                <button id="step2ContinueBtn" disabled onclick="goToStep3()" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group disabled:opacity-50 disabled:pointer-events-none">
+                    Continue to Diagnosis
+                    <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="step3ContinueWrapper" class="hidden absolute bottom-0 left-0 right-0 bg-surface w-full px-6 pt-4 pb-6 z-40 border-t border-gray-100/50">
+            <div class="w-full flex gap-3">
+                <button onclick="goBackToStep2()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-[24px]">history</span>
+                </button>
+                <button id="step3ContinueBtn" disabled onclick="goToStep4()" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group disabled:opacity-50 disabled:pointer-events-none">
+                    Continue 
+                    <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="step4ContinueWrapper" class="hidden absolute bottom-0 left-0 right-0 bg-surface w-full px-6 pt-4 pb-6 z-40 border-t border-gray-100/50">
+            <div class="w-full flex gap-3">
+                <button onclick="goBackToStep3()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-[24px]">history</span>
+                </button>
+                <button id="step4ContinueBtn" disabled onclick="goToStep5()" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group disabled:opacity-50 disabled:pointer-events-none">
+                    Continue 
+                    <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="step5ContinueWrapper" class="hidden absolute bottom-0 left-0 right-0 bg-surface w-full px-6 pt-4 pb-6 z-40 border-t border-gray-100/50">
+            <div class="w-full flex gap-3">
+                <button onclick="goBackToStep4()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-[24px]">history</span>
+                </button>
+                <button id="step5ContinueBtn" disabled onclick="goToStep6()" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group disabled:opacity-50 disabled:pointer-events-none">
+                    Continue 
+                    <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="step6ContinueWrapper" class="hidden absolute bottom-0 left-0 right-0 bg-surface w-full px-6 pt-4 pb-6 z-40 border-t border-gray-100/50">
+            <div class="w-full flex gap-3">
+                <button onclick="goBackToStep5()" class="w-[20%] bg-white border border-gray-200 text-gray-500 rounded-[20px] shadow-sm active:scale-95 transition-transform flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-[24px]">history</span>
+                </button>
+                <button onclick="submitSmartMatch()" class="flex-1 bg-primary text-white font-bold text-[15px] py-4 rounded-[20px] shadow-premium active:scale-95 transition-transform flex items-center justify-center gap-2 group">
+                    <span class="material-symbols-outlined text-lg group-hover:scale-110 transition-transform">auto_awesome</span>
+                    Smart Match
+                </button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -699,6 +700,7 @@
                 
                 detailsSection.classList.remove("opacity-0", "translate-y-10");
                 detailsSection.classList.add("opacity-100", "translate-y-0");
+                document.getElementById("step1ContinueWrapper").classList.remove("hidden");
 
             }, 400); 
         }
@@ -742,6 +744,7 @@
             const decLine = document.getElementById("decLine");
             
             const sectionsAndWrappers = [
+                document.getElementById("step1ContinueWrapper"),
                 document.getElementById("step2Section"), document.getElementById("step2ContinueWrapper"),
                 document.getElementById("step3Section"), document.getElementById("step3ContinueWrapper"),
                 document.getElementById("step4Section"), document.getElementById("step4ContinueWrapper"),
@@ -800,6 +803,7 @@
             
             detailsSection.classList.remove("opacity-100", "translate-y-0");
             detailsSection.classList.add("opacity-0", "translate-y-10");
+            document.getElementById("step1ContinueWrapper").classList.add("hidden");
 
             setTimeout(() => {
                 detailsSection.classList.add("hidden");
@@ -1899,6 +1903,7 @@
                     void detailsSection.offsetWidth;
                     detailsSection.classList.remove("opacity-0", "translate-y-10");
                     detailsSection.classList.add("opacity-100", "translate-y-0");
+                    document.getElementById("step1ContinueWrapper").classList.remove("hidden");
                 }, 300);
             }, 400);
         }
