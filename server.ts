@@ -149,10 +149,7 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
 
       const ai = new GoogleGenAI({ apiKey });
       
-      const prompt = `You are an AI matching engine for a veterinary platform.
-
-      Objective:
-      Analyze all user inputs and intelligently find the most suitable veterinarian from the database.
+      const prompt = `You are an expert veterinary assistant. Your task is to select the single best veterinarian for a pet based on the owner's questionnaire answers and a list of available veterinarians.
       
       Owner's Medical Case:
       ${JSON.stringify(payload, null, 2)}
@@ -161,29 +158,23 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
       ${JSON.stringify(vets.map((v: any) => ({
         id: v.id,
         name: v.name,
-        specializations: v.specializations,
-        experience: v.experience,
-        rating: v.rating,
-        consultation_type: v.consultation_type,
-        address: v.address,
+        specialization: v.specialization,
+        consultation_fee: v.consultation_fee,
+        is_verified: v.is_verified,
+        city: v.city
       })), null, 2)}
       
-      TASK:
-      1. Understand the user's medical need from questionnaire responses (primary + secondary intent).
-      2. Extract clinical intent (e.g., skin issue, vomiting, injury, vaccination, chronic disease, etc.).
-      3. Match this intent with Vet Medical Specializations and Clinical Expertise tags.
-      4. Factor in: Distance/location proximity, Availability (priority for urgent cases), Consultation mode match, Experience relevance, Rating quality.
+      Instructions:
+      1. Medical suitability for the pet's current problem (Highest priority)
+      2. Pet species compatibility
+      3. Current availability (Assume all provided vets are available)
+      4. Distance from user (Prefer same city if mentioned in payload)
+      5. Verified status (Prefer is_verified: true)
+      6. Relevant experience and specialization
+      7. Consultation fee (Lowest priority, NEVER outweighs medical suitability)
       
-      MATCHING PRIORITY ORDER:
-      1. Medical Specialization match (highest priority)
-      2. Clinical Expertise match (very high priority)
-      3. Urgency vs availability match
-      4. Location proximity
-      5. Consultation type compatibility
-      6. Experience in similar cases
-      7. Ratings & reviews (tie-breaker only)
-      
-      You MUST select the single best veterinarian ID that is the most medically relevant match. Return the ID in a JSON object.`;
+      Calculate an overall score for each veterinarian and select the single best match.
+      You MUST return exactly the "id" of the best veterinarian as a string.`;
       
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
