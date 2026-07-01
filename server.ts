@@ -139,17 +139,22 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
   });
 
   app.post("/api/smart-match", async (req, res) => {
+    console.log("[Smart Match Backend] Backend request received");
     try {
       let { payload, vets } = req.body;
       if (!vets || !Array.isArray(vets) || vets.length === 0) {
+        console.warn("[Smart Match Backend] No veterinarians provided in the request payload.");
         return res.json({ selectedVetId: null, status: "NO_VET_FOUND" });
       }
+
+      console.log(`[Smart Match Backend] Received ${vets.length} candidate veterinarians from frontend.`);
 
       // If vets are missing clinical_expertise or medical_specializations, fetch the complete profiles
       const firstVet = vets[0];
       const needsFullFetch = !firstVet.clinical_expertise || !firstVet.medical_specializations;
 
       if (needsFullFetch) {
+        console.log("[Smart Match Backend] Database query started: complete veterinary profiles fetch...");
         const supabaseAdmin = await getSupabaseAdmin();
         if (supabaseAdmin) {
           const vetIds = vets.map((v: any) => v.id);
@@ -159,11 +164,14 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
             .in("id", vetIds);
           
           if (!error && fullVets && fullVets.length > 0) {
+            console.log(`[Smart Match Backend] Successfully fetched complete database profiles for ${fullVets.length} veterinarians.`);
             const fullVetsMap = new Map(fullVets.map((v: any) => [String(v.id), v]));
             vets = vets.map((v: any) => {
               const full = fullVetsMap.get(String(v.id));
               return full ? { ...v, ...full } : v;
             });
+          } else if (error) {
+            console.error("[Smart Match Backend] Failed to fetch full profiles from database:", error.message);
           }
         }
       }
@@ -214,6 +222,7 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
         possibleSystemAffected: "General"
       };
 
+      console.log("[Smart Match Backend] AI analysis started: parsing pet symptoms and details...");
       try {
         const apiKey = process.env.GEMINI_API_KEY;
         if (apiKey) {
@@ -298,12 +307,16 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
           if (resText) {
             const parsed = JSON.parse(resText);
             analysis = { ...analysis, ...parsed };
+            console.log("[Smart Match Backend] AI reasoning completed successfully:", JSON.stringify(analysis));
           }
+        } else {
+          console.warn("[Smart Match Backend] GEMINI_API_KEY is missing, skipping AI diagnosis analysis and proceeding with rules fallback.");
         }
       } catch (e) {
-        console.error("AI Case analysis failed, using fallback:", e);
+        console.error("[Smart Match Backend] AI Case analysis failed, using fallback:", e);
       }
 
+      console.log("[Smart Match Backend] Ranking started: evaluating veterinarian clinical matching weights...");
       // 2. Multi-weighted matching & scoring system (Weighted out of 100)
       const vetsWithScores = vets.map((vet: any) => {
         const yearsExp = parseInt(vet.years_of_experience) || vet.experience || 0;
@@ -324,7 +337,7 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
 
         // Medical Specialization match → 25%
         let medSpecScore = 0;
-        if (vet.medical_specializations && typeof vet.medical_specializations === 'object') {
+        if (vet.medical_specializations && typeof vet.medical_specializations === 'object' && Object.keys(vet.medical_specializations).length > 0) {
           const speciesKey = Object.keys(vet.medical_specializations).find(
             k => k.toLowerCase() === analysis.species.toLowerCase().trim()
           );
@@ -370,7 +383,15 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
               } else {
                 medSpecScore = 5;
               }
+            } else {
+              medSpecScore = 15; // default baseline
             }
+          } else {
+            medSpecScore = 15; // default baseline
+          }
+        } else {
+          if (vetSpecs.includes(analysis.species.toLowerCase().trim())) {
+            medSpecScore = 15; // default baseline general practice score
           }
         }
 
@@ -399,6 +420,10 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
           if (expertiseScore === 0 && vetExpertise.some(exp => exp.includes("preventive") || exp.includes("general") || exp.includes("wellness"))) {
             expertiseScore = 5;
           }
+        } else {
+          if (vetSpecs.includes(analysis.species.toLowerCase().trim())) {
+            expertiseScore = 5; // default baseline clinical expertise
+          }
         }
 
         // Conditions Frequently Managed match → 15%
@@ -417,6 +442,9 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
 
         if (symptomsToCheck.length > 0) {
           conditionsScore = Math.min(15, Math.round((matchedSymptomCount / symptomsToCheck.length) * 15));
+        }
+        if (conditionsScore === 0 && vetSpecs.includes(analysis.species.toLowerCase().trim())) {
+          conditionsScore = 5; // default baseline conditions score
         }
 
         // Availability match → 10%
@@ -468,8 +496,8 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
           speciesScore + medSpecScore + expertiseScore + conditionsScore + availabilityScore + distanceScore + expRatingScore
         ));
 
-        // Selection Rule: Minimum match threshold of 75/100
-        const eligible = totalScore >= 75;
+        // Selection Rule: Minimum match threshold of 50/100
+        const eligible = totalScore >= 50;
 
         return {
           vet,
@@ -478,15 +506,18 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
         };
       });
 
+      console.log("[Smart Match Backend] Ranking completed.");
       const eligibleVets = vetsWithScores.filter(v => v.eligible);
 
       if (eligibleVets.length === 0) {
+        console.warn("[Smart Match Backend] No-match reason: All candidate veterinarians scored below the eligibility threshold of 50/100.");
         return res.json({ selectedVetId: null, status: "NO_VET_FOUND" });
       }
 
       // Pick highest scoring vet
       eligibleVets.sort((a, b) => b.totalScore - a.totalScore);
       const winner = eligibleVets[0];
+      console.log("[Smart Match Backend] Selected vet ID:", winner.vet.id, "with score:", winner.totalScore);
 
       // Generate short AI explanation (reason_for_selection)
       let reasonForSelection = `Selected due to high match score of ${winner.totalScore}/100 and extensive expertise in treating ${analysis.species} with ${analysis.primaryCondition}.`;
@@ -531,9 +562,10 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
           }
         }
       } catch (reasonErr) {
-        console.error("Error generating reason_for_selection:", reasonErr);
+        console.error("[Smart Match Backend] Error generating reason_for_selection:", reasonErr);
       }
 
+      console.log("[Smart Match Backend] Navigation decision: Match found and responding with selection info.");
       return res.json({
         selectedVetId: winner.vet.id,
         vet_id: winner.vet.id,
@@ -544,7 +576,11 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
       });
 
     } catch (err: any) {
-      console.error("Smart Match API error:", err);
+      console.error("[Smart Match Backend] Smart Match API error occurred!", {
+        message: err.message,
+        stack: err.stack,
+        payloadSummary: req.body ? { vetsCount: req.body.vets?.length, hasPayload: !!req.body.payload } : "no body"
+      });
       res.status(500).json({ error: err.message || "Failed to process Smart Match" });
     }
   });

@@ -198,10 +198,14 @@ const GlobalSmartMatchIframe = () => {
         const payload = event.data.payload;
         const iframe = document.querySelector('iframe[title="Sruvo - Care Match Loading"]') as HTMLIFrameElement;
 
+        console.log("[Smart Match Frontend] Smart Match request started");
+        console.log("[Smart Match Frontend] Step 6 payload built:", JSON.stringify(payload));
+
         try {
           // 1. Save data to Supabase exactly as-is
           if (user) {
-            await supabase.from("smart_match_submissions").insert([{
+            console.log("[Smart Match Frontend] Logging submission to database...");
+            const { error: dbErr } = await supabase.from("smart_match_submissions").insert([{
               user_id: user.id,
               pet_data: payload.pet,
               concerns: payload.concerns,
@@ -209,84 +213,139 @@ const GlobalSmartMatchIframe = () => {
               current_health_status: payload.currentHealthStatus,
               media_files: payload.mediaFiles
             }]);
+            if (dbErr) {
+              console.error("[Smart Match Frontend] Failed to save submission log to database:", dbErr.message);
+            } else {
+              console.log("[Smart Match Frontend] Submission successfully logged in database.");
+            }
           }
 
-          // Show loading screen only after DB insert
+          // Show loading screen
           setLoading(true);
 
           // 2. AI + Algorithm Matching Engine
           const matchStartTime = Date.now();
           let matchedVet = null;
+          let attemptCount = 0;
+          let latestErrorMsg = "";
+          let latestStatusCode = null;
+          let latestResponseBody = "";
 
           while (true) {
             const elapsed = Date.now() - matchStartTime;
             if (elapsed >= 49000) {
+              console.log("[Smart Match Frontend] 49-second maximum search duration timeout reached.");
               break;
             }
 
-            const { data: allVets, error: vetsError } = await supabase
-              .from("vet_profiles")
-              .select("*")
-              .ilike("city", `%${city || "Mumbai"}%`); // Filter by city
+            attemptCount++;
+            console.log(`[Smart Match Frontend] Search attempt #${attemptCount} initiated (elapsed: ${Math.round(elapsed / 1000)}s, state: searching)`);
 
-            if (vetsError) {
-              console.error("Error fetching vets:", vetsError);
-            }
+            try {
+              console.log("[Smart Match Frontend] Database query started: fetching vet profiles from Supabase...");
+              const { data: allVets, error: vetsError } = await supabase
+                .from("vet_profiles")
+                .select("*")
+                .ilike("city", `%${city || "Mumbai"}%`); // Filter by city
 
-            if (allVets && allVets.length > 0) {
-              try {
-                const response = await fetch("/api/smart-match", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    payload,
-                    vets: allVets
-                  })
-                });
+              if (vetsError) {
+                console.error("[Smart Match Frontend] Database query failed with error:", vetsError.message);
+                throw vetsError;
+              }
 
-                if (response.ok) {
-                  const result = await response.json();
-                  if (result.selectedVetId) {
-                    matchedVet = allVets.find(v => String(v.id) === String(result.selectedVetId));
+              console.log("[Smart Match Frontend] Number of vets returned from Supabase database query:", allVets?.length || 0);
+
+              if (allVets && allVets.length > 0) {
+                console.log("[Smart Match Frontend] Request sent to backend (/api/smart-match)...");
+                try {
+                  const response = await fetch("/api/smart-match", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      payload,
+                      vets: allVets
+                    })
+                  });
+
+                  console.log("[Smart Match Frontend] Backend request completed. Status:", response.status);
+
+                  if (response.ok) {
+                    const result = await response.json();
+                    console.log("[Smart Match Frontend] Selected vet ID returned:", result.selectedVetId);
+                    if (result.selectedVetId) {
+                      matchedVet = allVets.find(v => String(v.id) === String(result.selectedVetId));
+                      if (matchedVet) {
+                        console.log("[Smart Match Frontend] Matched veterinarian profile selected:", matchedVet.id, "state: matched");
+                        break; // Exit the loop since we successfully found a qualified vet match!
+                      }
+                    } else {
+                      console.log("[Smart Match Frontend] No-match reason returned from API: selectedVetId is null");
+                    }
+                  } else {
+                    latestStatusCode = response.status;
+                    latestResponseBody = await response.text();
+                    console.error(`[Smart Match Frontend] Backend returned error status: ${response.status}`, {
+                      responseBody: latestResponseBody
+                    });
                   }
+                } catch (fetchErr: any) {
+                  latestErrorMsg = fetchErr?.message || String(fetchErr);
+                  console.error("[Smart Match Frontend] Error connecting to backend (API call might not have reached backend):", fetchErr);
                 }
-              } catch (e) {
-                console.error("Smart Match API error:", e);
+              } else {
+                console.warn("[Smart Match Frontend] No veterinarian profiles found in database matching city:", city || "Mumbai");
               }
+            } catch (err: any) {
+              latestErrorMsg = err?.message || String(err);
+              console.error("[Smart Match Frontend] An error occurred during database fetching or query compilation:", err);
+            }
 
-              if (!matchedVet) {
-                console.info("No matching vet returned by Smart Match algorithm.");
-              }
+            // Early error tolerance: Keep searching, do not fail instantly.
+            // Wait 5 seconds before retrying, until we exhaust the 49-second limit.
+            const loopElapsed = Date.now() - matchStartTime;
+            const remaining = 49000 - loopElapsed;
+            if (remaining <= 5000) {
+              console.log(`[Smart Match Frontend] Search budget exhausted (${Math.round(remaining / 1000)}s remaining). Exiting loop.`);
               break;
             }
 
-            // Wait 5 seconds before retrying
-            const remaining = 49000 - (Date.now() - matchStartTime);
-            if (remaining <= 0) break;
-            const waitTime = Math.min(5000, remaining);
-            await new Promise(r => setTimeout(r, waitTime));
+            console.log(`[Smart Match Frontend] Retrying next search attempt in 5 seconds. (${Math.round(remaining / 1000)}s remaining in budget)`);
+            await new Promise(resolve => setTimeout(resolve, 5000));
           }
 
-          // Ensure minimum 13 seconds of loading animation ONLY if a vet was found
+          // Enforce timing rules:
+          // - Minimum loading time: 13 seconds
+          // - Maximum loading time: 49 seconds
           const totalSearchElapsed = Date.now() - matchStartTime;
-          if (matchedVet && totalSearchElapsed < 13000) {
-            await new Promise(resolve => setTimeout(resolve, 13000 - totalSearchElapsed));
-          }
-
           if (matchedVet) {
+            if (totalSearchElapsed < 13000) {
+              const delay = 13000 - totalSearchElapsed;
+              console.log(`[Smart Match Frontend] Real vet found in ${Math.round(totalSearchElapsed / 1000)}s. Waiting for remaining ${Math.round(delay / 1000)}s to satisfy 13-second minimum loading duration...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+            } else {
+              console.log(`[Smart Match Frontend] Real vet found in ${Math.round(totalSearchElapsed / 1000)}s. Navigating immediately (passed 13s minimum).`);
+            }
+
+            console.log("[Smart Match Frontend] Navigation decision: Match found. Sending MATCH_FOUND to loading screen.");
             matchedVetResultRef.current = matchedVet;
             if (iframe && iframe.contentWindow) {
               iframe.contentWindow.postMessage({ type: "MATCH_FOUND" }, "*");
             }
           } else {
-            console.warn("No valid vets found by Smart Match algorithm.");
+            console.warn("[Smart Match Frontend] Navigation decision: Search completed with no matched veterinarian (state: no_match). Sending NO_VET_FOUND to loading screen.");
+            console.error("[Smart Match Frontend] Detailed error diagnostics:", {
+              latestErrorMsg,
+              latestStatusCode,
+              latestResponseBody
+            });
             matchedVetResultRef.current = null;
             if (iframe && iframe.contentWindow) {
               iframe.contentWindow.postMessage({ type: "NO_VET_FOUND" }, "*");
             }
           }
-        } catch (error) {
-          console.error("Match error:", error);
+        } catch (error: any) {
+          console.error("[Smart Match Frontend] Unhandled exception occurred in matching orchestrator:", error);
+          matchedVetResultRef.current = null;
           if (iframe && iframe.contentWindow) {
             iframe.contentWindow.postMessage({ type: "NO_VET_FOUND" }, "*");
           }
