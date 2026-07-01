@@ -1565,8 +1565,18 @@
                     id: Date.now() + Math.random(),
                     file: file,
                     url: URL.createObjectURL(file),
-                    isVideo: isVideo
+                    isVideo: isVideo,
+                    base64: null
                 };
+
+                if (!isVideo) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        mediaObject.base64 = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+
                 step5MediaFiles.push(mediaObject);
             });
             

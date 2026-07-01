@@ -258,40 +258,54 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
           hasAvailability = true;
         }
 
+        // STEP 3: Weighted Scoring Algorithm
+        let weightedScore = 0;
+        
+        // 1. Tag Match / Specialization relevance (0-40 points)
+        weightedScore += (matchPercentage / 100) * 40;
+
+        // 2. Experience (0-20 points, cap at 20 years)
+        const expScore = Math.min(yearsExp, 20) * 1; 
+        weightedScore += expScore;
+
+        // 3. Rating (0-15 points)
+        const rating = vet.average_rating || vet.rating || 0;
+        weightedScore += (rating / 5) * 15;
+
+        // 4. Distance (0-15 points, closer is better)
+        const distanceScore = isWithinDistance ? Math.max(0, 15 - (distance / maxDistanceRadius) * 15) : 0;
+        weightedScore += distanceScore;
+
+        // 5. Availability Boost (10 points)
+        if (hasAvailability) {
+          weightedScore += 10;
+        }
+
+        const MINIMUM_MATCH_THRESHOLD = 30; // Minimum score out of 100 to be eligible
+        const eligible = isWithinDistance && hasAvailability && weightedScore >= MINIMUM_MATCH_THRESHOLD;
+
         return {
           vet,
           matchPercentage,
+          weightedScore,
           isWithinDistance,
           hasAvailability,
           distance,
-          eligible: true
+          eligible
         };
       });
 
-      // Filter based on eligible, within distance and has availability
-      const filteredVets = vetsWithScores.filter(item => item.eligible && item.isWithinDistance && item.hasAvailability);
+      // Filter based on eligibility (which includes distance, availability, and threshold)
+      const filteredVets = vetsWithScores.filter(item => item.eligible);
 
       if (filteredVets.length === 0) {
         return res.json({ selectedVetId: null });
       }
 
-      // STEP 3: Ranking
-      // Sort by Match Percentage (Highest) > Rating (Highest) > Experience (Highest)
-      filteredVets.sort((a, b) => {
-        if (b.matchPercentage !== a.matchPercentage) {
-          return b.matchPercentage - a.matchPercentage;
-        }
-        const ratingA = a.vet.average_rating || a.vet.rating || 0;
-        const ratingB = b.vet.average_rating || b.vet.rating || 0;
-        if (ratingB !== ratingA) {
-          return ratingB - ratingA;
-        }
-        const expA = parseInt(a.vet.years_of_experience) || a.vet.experience || 0;
-        const expB = parseInt(b.vet.years_of_experience) || b.vet.experience || 0;
-        return expB - expA;
-      });
+      // Sort by Weighted Score (Highest)
+      filteredVets.sort((a, b) => b.weightedScore - a.weightedScore);
 
-      // Best programmatic match
+      // Best programmatic match based on the weighted score
       const bestMatchId = filteredVets[0].vet.id;
 
       // Use Gemini for intelligent choice from our filtered & ranked candidates
@@ -301,20 +315,16 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
           const ai = new GoogleGenAI({ apiKey });
           
           const prompt = `You are an AI matching engine for a veterinary platform.
-          We have already strictly filtered and ranked veterinarians based on:
-          - Tag matching percentage
-          - Distance constraints (<25km)
-          - Active availability slots
-          - Excluded vets with 0 years experience or inactive status.
+          We have already strictly filtered and scored veterinarians using a weighted ranking algorithm.
           
           Owner's Medical Case:
-          ${JSON.stringify(payload, null, 2)}
+          ${JSON.stringify({ ...payload, mediaFiles: undefined }, null, 2)}
           
-          Candidate Veterinarians (already ranked):
+          Candidate Veterinarians (already ranked by weighted score):
           ${JSON.stringify(filteredVets.map(item => ({
             id: item.vet.id,
             name: item.vet.name,
-            matchPercentage: item.matchPercentage,
+            weightedScore: item.weightedScore,
             specializations: item.vet.specializations,
             experience: item.vet.years_of_experience || item.vet.experience,
             rating: item.vet.average_rating || item.vet.rating,
@@ -322,11 +332,30 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
             distance: item.distance
           })), null, 2)}
           
-          Identify the single best veterinarian ID that is the most medically relevant match. Return the ID in a JSON object.`;
+          Identify the single best veterinarian ID that is the most medically relevant match based on the medical case and the candidates' expertise.
+          Return ONLY a JSON object with the property "selectedVetId".`;
+
+          const contents: any[] = [{ text: prompt }];
+
+          if (payload.mediaFiles && Array.isArray(payload.mediaFiles)) {
+            payload.mediaFiles.forEach((media: any) => {
+              if (!media.isVideo && media.base64 && typeof media.base64 === 'string') {
+                const match = media.base64.match(/^data:(image\/[a-zA-Z]*);base64,([^\"]*)$/);
+                if (match) {
+                  contents.push({
+                    inlineData: {
+                      mimeType: match[1],
+                      data: match[2]
+                    }
+                  });
+                }
+              }
+            });
+          }
           
           const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
-            contents: prompt,
+            contents: contents,
             config: {
               responseMimeType: "application/json",
               responseSchema: {

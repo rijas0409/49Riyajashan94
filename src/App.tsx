@@ -266,9 +266,9 @@ const GlobalSmartMatchIframe = () => {
             await new Promise(r => setTimeout(r, waitTime));
           }
 
-          // Ensure minimum 13 seconds of loading animation
+          // Ensure minimum 13 seconds of loading animation ONLY if a vet was found
           const totalSearchElapsed = Date.now() - matchStartTime;
-          if (totalSearchElapsed < 13000) {
+          if (matchedVet && totalSearchElapsed < 13000) {
             await new Promise(resolve => setTimeout(resolve, 13000 - totalSearchElapsed));
           }
 
@@ -278,7 +278,7 @@ const GlobalSmartMatchIframe = () => {
               iframe.contentWindow.postMessage({ type: "MATCH_FOUND" }, "*");
             }
           } else {
-            console.warn("No vets found in the selected city after 49s");
+            console.warn("No valid vets found by Smart Match algorithm.");
             matchedVetResultRef.current = null;
             if (iframe && iframe.contentWindow) {
               iframe.contentWindow.postMessage({ type: "NO_VET_FOUND" }, "*");

@@ -39,21 +39,49 @@ const AIAnalyzingCondition = () => {
       setTimeout(() => setActiveStep(i), i * (isBypassUser ? 300 : 900))
     );
 
-    // Fetch real vet from DB and navigate with data
     const fetchAndNavigate = async () => {
+      const startTime = Date.now();
+
+      const navigateWithTiming = (path: string, stateData?: any) => {
+        const elapsed = Date.now() - startTime;
+        let delay = 0;
+        
+        if (elapsed < 13000 && path !== "/vet/no-vet-found") {
+          delay = 13000 - elapsed;
+        }
+
+        if (delay > 0) {
+          setTimeout(() => {
+            navigate(path, { state: stateData });
+          }, delay);
+        } else {
+          if (path === "/vet/no-vet-found") {
+            navigate(path);
+          } else {
+            navigate(path, { state: stateData });
+          }
+        }
+      };
+
       try {
-        // 1. Fetch verified active vet_profiles first
-        const { data: vetProfiles, error: vpErr } = await supabase
-          .from("vet_profiles")
-          .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, qualification, clinic_address, weekly_availability, consultation_type")
-          .in("verification_status", ["verified", "approved"])
-          .eq("is_active", true);
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("SEARCH_TIMEOUT")), 49000);
+        });
 
-        if (vpErr) throw vpErr;
+        const performSearch = async () => {
+          // 1. Fetch verified active vet_profiles first
+          const { data: vetProfiles, error: vpErr } = await supabase
+            .from("vet_profiles")
+            .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, qualification, clinic_address, weekly_availability, consultation_type")
+            .in("verification_status", ["verified", "approved"])
+            .eq("is_active", true);
 
-        let matchedVet = null;
+          if (vpErr) throw vpErr;
 
-        if (vetProfiles && vetProfiles.length > 0) {
+          if (!vetProfiles || vetProfiles.length === 0) {
+            return null;
+          }
+
           // 2. Fetch corresponding profiles
           const { data: profiles, error: profileErr } = await supabase
             .from("profiles")
@@ -65,7 +93,6 @@ const AIAnalyzingCondition = () => {
           }
 
           const pMap = new Map((profiles || []).map(p => [p.id, p]));
-
           const searchMode = (assessmentData.selectedMode || "video").toLowerCase();
 
           const verifiedVets = vetProfiles
@@ -91,12 +118,11 @@ const AIAnalyzingCondition = () => {
             });
           
           if (verifiedVets.length === 0) {
-            console.warn("No verified and approved vets found.");
+            return null;
           }
           
           const sourceVets = verifiedVets;
-
-          let bestVet = sourceVets[0];
+          let bestVet = null;
           
           if (sourceVets.length > 0) {
             try {
@@ -129,34 +155,17 @@ const AIAnalyzingCondition = () => {
                     bestVet = matched;
                   }
                 }
-              } else {
-                console.warn("Smart match API failed, falling back to simple scoring");
-                // Fallback scoring
-                const petType = assessmentData.selectedPet || "";
-                let bestScore = 0;
-                for (const vet of sourceVets) {
-                  let score = 0;
-                  const specs = (vet.specializations || []).join(" ").toLowerCase();
-                  if (specs.includes(petType.toLowerCase())) score += 10;
-                  if (specs.includes("all") || specs.includes("general")) score += 3;
-                  score += (vet.years_of_experience || 0) * 0.5;
-                  score += (vet.average_rating || 0) * 2;
-                  if (score > bestScore) {
-                    bestScore = score;
-                    bestVet = vet;
-                  }
-                }
               }
             } catch (err) {
-              console.error("Smart match AI error:", err);
+              console.error("Smart match API error:", err);
             }
           }
 
           if (bestVet) {
-            const rawName = bestVet.profile?.full_name || bestVet.profile?.name || (bestVet.user_id === "f9834ef6-778d-4384-8d17-6316fffa03b6" ? "Jashan Pabla" : "Veterinarian");
+            const rawName = bestVet.profile?.full_name || bestVet.profile?.name || "Veterinarian";
             const realName = `Dr. ${rawName}`;
 
-            matchedVet = {
+            return {
               id: bestVet.id,
               userId: bestVet.user_id,
               name: realName,
@@ -172,20 +181,20 @@ const AIAnalyzingCondition = () => {
               weekly_availability: bestVet.weekly_availability || null,
             };
           }
-        }
+          
+          return null;
+        };
 
-        // Wait for animation to complete then navigate
-        setTimeout(() => {
-          navigate("/vet/booking-details", {
-            state: { ...assessmentData, matchedVet }
-          });
-        }, isBypassUser ? 1500 : 4000);
+        const matchedVet = await Promise.race([performSearch(), timeoutPromise]) as any;
+
+        if (matchedVet) {
+          navigateWithTiming("/vet/booking-details", { ...assessmentData, matchedVet });
+        } else {
+          navigateWithTiming("/vet/no-vet-found");
+        }
       } catch (err) {
         console.error('Error fetching vet:', err);
-        // toast.error("Failed to connect with analytical server. Retrying..."); // Optional or use regular console.error
-        setTimeout(() => {
-          navigate("/vet/booking-details", { state: assessmentData });
-        }, isBypassUser ? 1500 : 4000);
+        navigateWithTiming("/vet/no-vet-found");
       }
     };
 

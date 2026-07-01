@@ -406,14 +406,8 @@
                 }
                 
                 setTimeout(() => {
-                    const btn = document.createElement('button');
-                    btn.onclick = closeLoading;
-                    btn.className = "mt-4 bg-red-50 text-red-600 font-bold py-2 px-6 rounded-full active:scale-95 transition-transform border border-red-200 shadow-sm text-sm";
-                    btn.innerText = "Go Back";
-                    logContainer.innerHTML = "";
-                    logContainer.appendChild(btn);
-                    logContainer.className = "flex flex-col items-center justify-center py-4";
-                }, 1000);
+                    closeLoading();
+                }, 1500);
             }
 
             // Start animation on load
