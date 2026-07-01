@@ -122,10 +122,13 @@ const FREQUENT_CONDITIONS = [
   { name: "Urinary / Litter Box Issues", species: ["Cat"] },
   { name: "Regurgitation / Crop Issue", species: ["Bird"] },
   { name: "Droppings Change", species: ["Bird"] },
-  { name: "Feather Problems", species: ["Bird"] },
-  { name: "Breathing Issues", species: ["Bird", "Hamster"] },
-  { name: "Weakness / Lethargy", species: ["Bird"] },
-  { name: "Other", species: ["Dog", "Cat", "Bird", "Hamster"] }
+  { name: "Feather Plucking / Skin Issues", species: ["Bird"] },
+  { name: "Lethargy / Fluffed Up", species: ["Bird"] },
+  { name: "Breathing Issues / Wheezing", species: ["Bird"] },
+  { name: "Scent Gland / Skin Issues", species: ["Hamster"] },
+  { name: "Overgrown Teeth", species: ["Hamster"] },
+  { name: "Wet Tail / Diarrhea", species: ["Hamster"] },
+  { name: "Lumps / Tumors", species: ["Hamster"] }
 ];
 
 const Specializations = () => {

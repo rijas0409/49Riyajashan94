@@ -30,13 +30,13 @@ const AIAnalyzingCondition = () => {
 
     const progressInterval = setInterval(() => {
       setProgress(prev => {
-        if (prev >= 100) return 100;
-        return prev + (isBypassUser ? 5 : 2);
+        if (prev >= 98) return 98;
+        return prev + 1;
       });
-    }, isBypassUser ? 40 : 80);
+    }, isBypassUser ? 40 : 130);
 
     const timers = steps.map((_, i) =>
-      setTimeout(() => setActiveStep(i), i * (isBypassUser ? 300 : 900))
+      setTimeout(() => setActiveStep(i), i * (isBypassUser ? 300 : 3250))
     );
 
     const fetchAndNavigate = async () => {
@@ -51,10 +51,12 @@ const AIAnalyzingCondition = () => {
         const elapsed = Date.now() - startTime;
         let delay = 0;
         
-        // Ensure steps finish animating if found early (minimum 4.5 seconds for visual steps)
-        if (elapsed < 4500 && path !== "/vet/no-vet-found") {
-          delay = 4500 - elapsed;
+        // Ensure steps finish animating if found early (minimum 13 seconds for visual steps)
+        if (elapsed < 13000 && path !== "/vet/no-vet-found") {
+          delay = 13000 - elapsed;
         }
+
+        setProgress(100);
 
         if (delay > 0) {
           setTimeout(() => {

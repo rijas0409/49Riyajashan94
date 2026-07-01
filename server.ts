@@ -140,98 +140,287 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
 
   app.post("/api/smart-match", async (req, res) => {
     try {
-      const { payload, vets } = req.body;
+      let { payload, vets } = req.body;
       if (!vets || !Array.isArray(vets) || vets.length === 0) {
-        return res.json({ selectedVetId: null });
+        return res.json({ selectedVetId: null, status: "NO_VET_FOUND" });
       }
 
-      const petSpecies = payload.pet?.species || "";
-      
-      // STEP 1: Tag Extraction & Calculation
-      const userSymptoms: string[] = [];
-      const userTags: string[] = [];
+      // If vets are missing clinical_expertise or medical_specializations, fetch the complete profiles
+      const firstVet = vets[0];
+      const needsFullFetch = !firstVet.clinical_expertise || !firstVet.medical_specializations;
 
+      if (needsFullFetch) {
+        const supabaseAdmin = await getSupabaseAdmin();
+        if (supabaseAdmin) {
+          const vetIds = vets.map((v: any) => v.id);
+          const { data: fullVets, error } = await supabaseAdmin
+            .from("vet_profiles")
+            .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, qualification, clinic_address, weekly_availability, consultation_type, medical_specializations, clinical_expertise")
+            .in("id", vetIds);
+          
+          if (!error && fullVets && fullVets.length > 0) {
+            const fullVetsMap = new Map(fullVets.map((v: any) => [String(v.id), v]));
+            vets = vets.map((v: any) => {
+              const full = fullVetsMap.get(String(v.id));
+              return full ? { ...v, ...full } : v;
+            });
+          }
+        }
+      }
+
+      // Extract pet clinical parameters
+      const petSpecies = payload.selectedPet || payload.pet?.species || "";
+      const petName = payload.petName || payload.pet?.name || "Pet";
+      const petAge = payload.years ? `${payload.years} years ${payload.months || 0} months` : (payload.pet?.age || "unknown");
+
+      const userSymptoms: string[] = [];
+      if (Array.isArray(payload.selectedSymptoms)) {
+        userSymptoms.push(...payload.selectedSymptoms);
+      }
       if (Array.isArray(payload.concerns)) {
         payload.concerns.forEach((c: any) => {
-          if (c.answer) userSymptoms.push(c.answer.toLowerCase().trim());
-          if (c.question) userSymptoms.push(c.question.toLowerCase().trim());
+          if (c.answer) userSymptoms.push(c.answer);
+          if (c.question) userSymptoms.push(c.question);
         });
       }
+
+      const userBackground: string[] = [];
+      if (payload.existingConditions) userBackground.push(payload.existingConditions);
+      if (payload.medications) userBackground.push(payload.medications);
       if (Array.isArray(payload.healthBackground)) {
         payload.healthBackground.forEach((c: any) => {
-          if (c.answer) userTags.push(c.answer.toLowerCase().trim());
-          if (c.question) userTags.push(c.question.toLowerCase().trim());
+          if (c.answer) userBackground.push(c.answer);
+          if (c.question) userBackground.push(c.question);
         });
       }
+
+      const userStatus: string[] = [];
+      if (payload.urgency) userStatus.push(`Urgency level: ${payload.urgency}`);
+      if (payload.additionalDetails) userStatus.push(payload.additionalDetails);
       if (Array.isArray(payload.currentHealthStatus)) {
         payload.currentHealthStatus.forEach((c: any) => {
-          if (c.answer) userTags.push(c.answer.toLowerCase().trim());
-          if (c.question) userTags.push(c.question.toLowerCase().trim());
+          if (c.answer) userStatus.push(c.answer);
+          if (c.question) userStatus.push(c.question);
         });
       }
 
-      const totalUserInputTags = [...new Set([...userSymptoms, ...userTags])];
+      // 1. AI reasoning and triage
+      let analysis = {
+        species: petSpecies,
+        primaryCondition: "General Consultation",
+        secondarySymptoms: userSymptoms,
+        severityLevel: "Medium",
+        urgency: "Normal",
+        possibleSystemAffected: "General"
+      };
 
+      try {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (apiKey) {
+          const ai = new GoogleGenAI({
+            apiKey,
+            httpOptions: {
+              headers: {
+                'User-Agent': 'aistudio-build',
+              }
+            }
+          });
+
+          const analysisPrompt = `
+          You are an elite veterinary triage expert. Analyze this pet clinical case and perform deep reasoning to determine the triaged medical condition.
+          
+          CASE DETAILS:
+          - Species: ${petSpecies}
+          - Name: ${petName}
+          - Age: ${petAge}
+          - Symptoms/Concerns: ${JSON.stringify(userSymptoms)}
+          - Health Background (Conditions, Medications): ${JSON.stringify(userBackground)}
+          - Status Details/Urgency: ${JSON.stringify(userStatus)}
+          
+          Based on this clinical picture, determine:
+          1. The target Species (Dog / Cat / Bird / Hamster / etc.)
+          2. The Primary Condition (a concise, medically relevant diagnostic term, e.g. Gastroenteritis, Otitis Externa, Dermatitis, Respiratory Infection, Conjunctivitis, etc.)
+          3. Secondary Symptoms (list of key clinical signs)
+          4. Severity Level (Low / Medium / High)
+          5. Urgency Level (Normal / Urgent / Emergency)
+          6. Possible System Affected (Choose exactly one of: GI, Skin, Respiratory, Neurological, Ophthalmology, Cardiology, Musculoskeletal, Dental, Behavioural, Reproductive, General)
+          
+          Respond ONLY with a JSON object of this schema:
+          {
+            "species": string,
+            "primaryCondition": string,
+            "secondarySymptoms": string[],
+            "severityLevel": "Low" | "Medium" | "High",
+            "urgency": "Normal" | "Urgent" | "Emergency",
+            "possibleSystemAffected": string
+          }`;
+
+          const contents: any[] = [{ text: analysisPrompt }];
+
+          // Include uploaded photos/videos for visual reasoning if present
+          if (payload.mediaFiles && Array.isArray(payload.mediaFiles)) {
+            payload.mediaFiles.forEach((media: any) => {
+              if (!media.isVideo && media.base64 && typeof media.base64 === 'string') {
+                const match = media.base64.match(/^data:(image\/[a-zA-Z]*);base64,([^\"]*)$/);
+                if (match) {
+                  contents.push({
+                    inlineData: {
+                      mimeType: match[1],
+                      data: match[2]
+                    }
+                  });
+                }
+              }
+            });
+          }
+
+          const response = await ai.models.generateContent({
+            model: "gemini-3.5-flash",
+            contents: contents,
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  species: { type: Type.STRING },
+                  primaryCondition: { type: Type.STRING },
+                  secondarySymptoms: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  severityLevel: { type: Type.STRING, enum: ["Low", "Medium", "High"] },
+                  urgency: { type: Type.STRING, enum: ["Normal", "Urgent", "Emergency"] },
+                  possibleSystemAffected: { type: Type.STRING }
+                },
+                required: ["species", "primaryCondition", "secondarySymptoms", "severityLevel", "urgency", "possibleSystemAffected"]
+              }
+            }
+          });
+
+          const resText = response.text?.trim() || "";
+          if (resText) {
+            const parsed = JSON.parse(resText);
+            analysis = { ...analysis, ...parsed };
+          }
+        }
+      } catch (e) {
+        console.error("AI Case analysis failed, using fallback:", e);
+      }
+
+      // 2. Multi-weighted matching & scoring system (Weighted out of 100)
       const vetsWithScores = vets.map((vet: any) => {
-        // Guardrails: Vets with 0 experience or offline (is_active === false) are disqualified
         const yearsExp = parseInt(vet.years_of_experience) || vet.experience || 0;
         const isActive = vet.is_active !== false;
-        
+
         if (yearsExp <= 0 || !isActive) {
-          return { vet, matchPercentage: 0, isWithinDistance: false, hasAvailability: false, eligible: false };
+          return { vet, totalScore: 0, eligible: false };
         }
 
-        // Vet clinical expertise tags (from clinical_expertise in db)
-        const clinical_expertise_tags = Array.isArray(vet.clinical_expertise)
-          ? vet.clinical_expertise.map((t: string) => t.toLowerCase().trim())
+        // Species match → 20%
+        let speciesScore = 0;
+        const vetSpecs = Array.isArray(vet.specializations)
+          ? vet.specializations.map((s: string) => s.toLowerCase().trim())
           : [];
+        if (vetSpecs.includes(analysis.species.toLowerCase().trim())) {
+          speciesScore = 20;
+        }
 
-        // Vet medical specialization tags for the pet's species (from medical_specializations in db)
-        const medical_specialization_tags: string[] = [];
+        // Medical Specialization match → 25%
+        let medSpecScore = 0;
         if (vet.medical_specializations && typeof vet.medical_specializations === 'object') {
           const speciesKey = Object.keys(vet.medical_specializations).find(
-            k => k.toLowerCase() === petSpecies.toLowerCase()
+            k => k.toLowerCase() === analysis.species.toLowerCase().trim()
           );
           if (speciesKey) {
-            const specObj = (vet.medical_specializations as any)[speciesKey];
-            if (specObj) {
-              if (specObj.primary) {
-                medical_specialization_tags.push(specObj.primary.toLowerCase().trim());
-              }
-              if (Array.isArray(specObj.secondary)) {
-                specObj.secondary.forEach((s: string) => {
-                  medical_specialization_tags.push(s.toLowerCase().trim());
-                });
+            const medSpec = (vet.medical_specializations as any)[speciesKey];
+            if (medSpec) {
+              const primary = (medSpec.primary || "").toLowerCase().trim();
+              const secondaries = Array.isArray(medSpec.secondary)
+                ? medSpec.secondary.map((s: string) => s.toLowerCase().trim())
+                : [];
+              
+              const systemAffected = (analysis.possibleSystemAffected || "").toLowerCase().trim();
+
+              const systemKeywords: Record<string, string[]> = {
+                gi: ["internal medicine", "general practice", "emergency & critical care", "nutrition"],
+                gastrointestinal: ["internal medicine", "general practice", "emergency & critical care", "nutrition"],
+                skin: ["dermatology (skin)", "dermatology", "general practice"],
+                dermatological: ["dermatology (skin)", "dermatology", "general practice"],
+                eyes: ["ophthalmology (eyes)", "ophthalmology", "general practice"],
+                ophthalmological: ["ophthalmology (eyes)", "ophthalmology", "general practice"],
+                dental: ["dentistry", "general practice"],
+                cardiovascular: ["cardiology", "internal medicine"],
+                cardiology: ["cardiology", "internal medicine"],
+                neurological: ["neurology", "internal medicine"],
+                neurology: ["neurology", "internal medicine"],
+                oncology: ["oncology", "surgery", "internal medicine"],
+                orthopedic: ["orthopedic surgery", "surgery", "general practice"],
+                musculoskeletal: ["orthopedic surgery", "surgery", "general practice"],
+                respiratory: ["internal medicine", "general practice", "emergency & critical care"],
+                behavioral: ["behaviour medicine", "behaviour", "general practice"],
+                reproductive: ["reproductive medicine", "general practice"]
+              };
+
+              const systemKey = Object.keys(systemKeywords).find(k => systemAffected.includes(k) || k.includes(systemAffected));
+              const relevantSpecs = systemKey ? systemKeywords[systemKey] : ["general practice", "internal medicine"];
+
+              if (primary && relevantSpecs.includes(primary)) {
+                medSpecScore = 25;
+              } else if (secondaries.some(sec => relevantSpecs.includes(sec))) {
+                medSpecScore = 18;
+              } else if (primary === "general practice" || primary === "internal medicine") {
+                medSpecScore = 15;
+              } else {
+                medSpecScore = 5;
               }
             }
           }
         }
 
-        const vetAllTags = [...new Set([...clinical_expertise_tags, ...medical_specialization_tags])];
+        // Clinical Expertise match → 20%
+        let expertiseScore = 0;
+        const vetExpertise = Array.isArray(vet.clinical_expertise)
+          ? vet.clinical_expertise.map((t: string) => t.toLowerCase().trim())
+          : [];
+        if (vetExpertise.length > 0) {
+          let matchCount = 0;
+          const termsToMatch = [
+            ...(analysis.secondarySymptoms || []).map((s: string) => s.toLowerCase().trim()),
+            (analysis.primaryCondition || "").toLowerCase().trim(),
+            (analysis.possibleSystemAffected || "").toLowerCase().trim()
+          ].filter(Boolean);
 
-        let matchedCount = 0;
-        if (totalUserInputTags.length > 0 && vetAllTags.length > 0) {
-          totalUserInputTags.forEach(uTag => {
-            const isMatch = vetAllTags.some(vTag => 
-              vTag.includes(uTag) || uTag.includes(vTag)
-            );
-            if (isMatch) {
-              matchedCount++;
+          termsToMatch.forEach(term => {
+            if (vetExpertise.some(exp => exp.includes(term) || term.includes(exp))) {
+              matchCount++;
             }
           });
+
+          if (termsToMatch.length > 0) {
+            expertiseScore = Math.min(20, Math.round((matchCount / termsToMatch.length) * 20));
+          }
+          if (expertiseScore === 0 && vetExpertise.some(exp => exp.includes("preventive") || exp.includes("general") || exp.includes("wellness"))) {
+            expertiseScore = 5;
+          }
         }
-        
-        const matchPercentage = totalUserInputTags.length > 0 
-          ? Math.round((matchedCount / totalUserInputTags.length) * 100) 
-          : 0;
 
-        // STEP 2: Distance & Availability
-        // Calculate dynamic distance if not explicitly set
-        const distance = typeof vet.distance === 'number' ? vet.distance : (Math.floor(Math.random() * 15) + 1);
-        const maxDistanceRadius = 25; // max allowed 25km radius
-        const isWithinDistance = distance <= maxDistanceRadius;
+        // Conditions Frequently Managed match → 15%
+        let conditionsScore = 0;
+        const symptomsToCheck = [
+          (analysis.primaryCondition || "").toLowerCase().trim(),
+          ...(analysis.secondarySymptoms || []).map((s: string) => s.toLowerCase().trim())
+        ].filter(Boolean);
 
-        // Check availability
+        let matchedSymptomCount = 0;
+        symptomsToCheck.forEach(sym => {
+          if (vetExpertise.some(exp => exp === sym || exp.includes(sym) || sym.includes(exp))) {
+            matchedSymptomCount++;
+          }
+        });
+
+        if (symptomsToCheck.length > 0) {
+          conditionsScore = Math.min(15, Math.round((matchedSymptomCount / symptomsToCheck.length) * 15));
+        }
+
+        // Availability match → 10%
+        let availabilityScore = 0;
         let hasAvailability = false;
         if (vet.weekly_availability) {
           let parsedAvail = vet.weekly_availability;
@@ -257,133 +446,102 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
         } else if (vet.morning_slots || vet.evening_slots) {
           hasAvailability = true;
         }
-
-        // STEP 3: Weighted Scoring Algorithm
-        let weightedScore = 0;
-        
-        // 1. Tag Match / Specialization relevance (0-40 points)
-        weightedScore += (matchPercentage / 100) * 40;
-
-        // 2. Experience (0-20 points, cap at 20 years)
-        const expScore = Math.min(yearsExp, 20) * 1; 
-        weightedScore += expScore;
-
-        // 3. Rating (0-15 points)
-        const rating = vet.average_rating || vet.rating || 0;
-        weightedScore += (rating / 5) * 15;
-
-        // 4. Distance (0-15 points, closer is better)
-        const distanceScore = isWithinDistance ? Math.max(0, 15 - (distance / maxDistanceRadius) * 15) : 0;
-        weightedScore += distanceScore;
-
-        // 5. Availability Boost (10 points)
         if (hasAvailability) {
-          weightedScore += 10;
+          availabilityScore = 10;
         }
 
-        const MINIMUM_MATCH_THRESHOLD = 30; // Minimum score out of 100 to be eligible
-        const eligible = isWithinDistance && hasAvailability && weightedScore >= MINIMUM_MATCH_THRESHOLD;
+        // Distance → 5%
+        let distanceScore = 0;
+        const distance = typeof vet.distance === 'number' ? vet.distance : (Math.floor(Math.random() * 15) + 1);
+        if (distance <= 5) distanceScore = 5;
+        else if (distance <= 10) distanceScore = 4;
+        else if (distance <= 15) distanceScore = 3;
+        else if (distance <= 25) distanceScore = 2;
+
+        // Experience + Ratings → 5%
+        const rating = vet.average_rating || vet.rating || 4.5;
+        const expPoints = Math.min(2.5, (yearsExp / 10) * 2.5);
+        const ratingPoints = Math.min(2.5, (rating / 5) * 2.5);
+        const expRatingScore = parseFloat((expPoints + ratingPoints).toFixed(1));
+
+        const totalScore = Math.min(100, Math.round(
+          speciesScore + medSpecScore + expertiseScore + conditionsScore + availabilityScore + distanceScore + expRatingScore
+        ));
+
+        // Selection Rule: Minimum match threshold of 75/100
+        const eligible = totalScore >= 75;
 
         return {
           vet,
-          matchPercentage,
-          weightedScore,
-          isWithinDistance,
-          hasAvailability,
-          distance,
+          totalScore,
           eligible
         };
       });
 
-      // Filter based on eligibility (which includes distance, availability, and threshold)
-      const filteredVets = vetsWithScores.filter(item => item.eligible);
+      const eligibleVets = vetsWithScores.filter(v => v.eligible);
 
-      if (filteredVets.length === 0) {
-        return res.json({ selectedVetId: null });
+      if (eligibleVets.length === 0) {
+        return res.json({ selectedVetId: null, status: "NO_VET_FOUND" });
       }
 
-      // Sort by Weighted Score (Highest)
-      filteredVets.sort((a, b) => b.weightedScore - a.weightedScore);
+      // Pick highest scoring vet
+      eligibleVets.sort((a, b) => b.totalScore - a.totalScore);
+      const winner = eligibleVets[0];
 
-      // Best programmatic match based on the weighted score
-      const bestMatchId = filteredVets[0].vet.id;
+      // Generate short AI explanation (reason_for_selection)
+      let reasonForSelection = `Selected due to high match score of ${winner.totalScore}/100 and extensive expertise in treating ${analysis.species} with ${analysis.primaryCondition}.`;
 
-      // Use Gemini for intelligent choice from our filtered & ranked candidates
       try {
         const apiKey = process.env.GEMINI_API_KEY;
         if (apiKey) {
-          const ai = new GoogleGenAI({ apiKey });
-          
-          const prompt = `You are an AI matching engine for a veterinary platform.
-          We have already strictly filtered and scored veterinarians using a weighted ranking algorithm.
-          
-          Owner's Medical Case:
-          ${JSON.stringify({ ...payload, mediaFiles: undefined }, null, 2)}
-          
-          Candidate Veterinarians (already ranked by weighted score):
-          ${JSON.stringify(filteredVets.map(item => ({
-            id: item.vet.id,
-            name: item.vet.name,
-            weightedScore: item.weightedScore,
-            specializations: item.vet.specializations,
-            experience: item.vet.years_of_experience || item.vet.experience,
-            rating: item.vet.average_rating || item.vet.rating,
-            clinical_expertise: item.vet.clinical_expertise,
-            distance: item.distance
-          })), null, 2)}
-          
-          Identify the single best veterinarian ID that is the most medically relevant match based on the medical case and the candidates' expertise.
-          Return ONLY a JSON object with the property "selectedVetId".`;
-
-          const contents: any[] = [{ text: prompt }];
-
-          if (payload.mediaFiles && Array.isArray(payload.mediaFiles)) {
-            payload.mediaFiles.forEach((media: any) => {
-              if (!media.isVideo && media.base64 && typeof media.base64 === 'string') {
-                const match = media.base64.match(/^data:(image\/[a-zA-Z]*);base64,([^\"]*)$/);
-                if (match) {
-                  contents.push({
-                    inlineData: {
-                      mimeType: match[1],
-                      data: match[2]
-                    }
-                  });
-                }
-              }
-            });
-          }
-          
-          const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: contents,
-            config: {
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                  selectedVetId: { type: Type.STRING }
-                },
-                required: ["selectedVetId"]
+          const ai = new GoogleGenAI({
+            apiKey,
+            httpOptions: {
+              headers: {
+                'User-Agent': 'aistudio-build',
               }
             }
           });
+
+          const reasonPrompt = `
+          Write a highly professional and comforting short selection explanation (1-2 sentences) for a pet owner.
+          Explain why this specific veterinarian was selected as the perfect match for their pet's clinical case.
           
-          const responseText = response.text || "{}";
-          const result = JSON.parse(responseText);
-          if (result.selectedVetId) {
-            // Validate that the selected ID is indeed one of our filtered candidate IDs
-            const isValidCandidate = filteredVets.some(v => String(v.vet.id) === String(result.selectedVetId));
-            if (isValidCandidate) {
-              return res.json({ selectedVetId: result.selectedVetId, matchPercentage: filteredVets.find(v => String(v.vet.id) === String(result.selectedVetId))?.matchPercentage });
-            }
+          PET CASE:
+          - Species: ${analysis.species}
+          - Condition: ${analysis.primaryCondition}
+          - Severity: ${analysis.severityLevel}
+          - Urgency: ${analysis.urgency}
+          
+          MATCHED VETERINARIAN:
+          - Name: ${winner.vet.name}
+          - Specializations: ${JSON.stringify(winner.vet.specializations)}
+          - Years of Experience: ${winner.vet.years_of_experience || winner.vet.experience}
+          - Score Match: ${winner.totalScore}/100
+          
+          Respond only with the 1-2 sentence explanation. Do not wrap in markdown or JSON. Just plain text.`;
+
+          const reasonResponse = await ai.models.generateContent({
+            model: "gemini-3.5-flash",
+            contents: reasonPrompt,
+          });
+
+          if (reasonResponse.text) {
+            reasonForSelection = reasonResponse.text.trim();
           }
         }
-      } catch (err) {
-        console.error("Smart Match Gemini error (falling back to programmatic best match):", err);
+      } catch (reasonErr) {
+        console.error("Error generating reason_for_selection:", reasonErr);
       }
 
-      // Fallback to programmatic best match if Gemini fails or is not available
-      return res.json({ selectedVetId: bestMatchId, matchPercentage: filteredVets[0].matchPercentage });
+      return res.json({
+        selectedVetId: winner.vet.id,
+        vet_id: winner.vet.id,
+        name: winner.vet.name,
+        specialization: Array.isArray(winner.vet.specializations) ? winner.vet.specializations.join(", ") : (winner.vet.specializations || "General Veterinarian"),
+        match_score: winner.totalScore,
+        reason_for_selection: reasonForSelection
+      });
 
     } catch (err: any) {
       console.error("Smart Match API error:", err);
