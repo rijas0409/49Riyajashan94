@@ -632,23 +632,16 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
         else if (yearsExp >= 3) experienceScore = 2;
         else experienceScore = 1;
 
-        // Weight 7: Ratings (5%)
-        let ratingScore = 1;
-        const rating = vet.average_rating || vet.rating || 0;
-        const effectiveRating = rating > 0 ? rating : 4.5;
-        if (effectiveRating >= 4.8) ratingScore = 5;
-        else if (effectiveRating >= 4.5) ratingScore = 4;
-        else if (effectiveRating >= 4.0) ratingScore = 3;
-        else if (effectiveRating >= 3.0) ratingScore = 2;
-        else ratingScore = 1;
+        // Weight 7: Ratings (5%) - TEMPORARILY SET TO 0 FOR DEBUGGING
+        let ratingScore = 0;
 
         // Calculate final score
         const finalScore = Math.min(100, Math.round(
           speciesScore + medSpecScore + expertiseScore + conditionsScore + consultationModeScore + distanceScore + experienceScore + ratingScore
         ));
 
-        const accepted = finalScore >= 50;
-        const rejectionReason = accepted ? "" : `Rejected: Score ${finalScore} is below minimum threshold of 50`;
+        const accepted = finalScore >= 30; // TEMPORARILY LOWERED FOR DEBUGGING (from 50 to 30)
+        const rejectionReason = accepted ? "" : `Rejected: Score ${finalScore} is below minimum threshold of 30`;
 
         console.log(`[Smart Match Evaluation] Vet ID: ${vetId} | Name: ${vetName}
   - Species Treated: ${speciesTreatedStr}
@@ -679,7 +672,7 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
       const eligibleVets = scoredVets.filter(v => v.eligible);
 
       if (eligibleVets.length === 0) {
-        console.warn("[Smart Match Backend] Navigation Decision: No veterinarian matched minimum scoring threshold of 50. Returning NO_VET_FOUND.");
+        console.warn("[Smart Match Backend] Navigation Decision: No veterinarian matched minimum scoring threshold of 30. Returning NO_VET_FOUND.");
         return res.json({ selectedVetId: null, status: "NO_VET_FOUND", analysis });
       }
 
