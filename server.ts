@@ -195,7 +195,7 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
           const vetIds = vets.map((v: any) => v.id);
           const { data: fullVets, error } = await supabaseAdmin
             .from("vet_profiles")
-            .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, qualification, clinic_address, weekly_availability, consultation_type, medical_specializations, clinical_expertise")
+            .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, qualification, clinic_address, consultation_type, medical_specializations, clinical_expertise, available_days, morning_slots, evening_slots, weekend_availability, support_24x7, emergency_available")
             .in("id", vetIds);
           
           if (!error && fullVets && fullVets.length > 0) {
@@ -338,70 +338,115 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
       // 2. Algorithm First: Filtering and scoring
       console.log("[Smart Match Backend] Database Query Started: filtering and evaluating eligibility...");
 
+      let fetchedCount = vets.length;
+      let activeCount = 0;
+      let verifiedCount = 0;
+      let availableCount = 0;
+      let speciesMatchCount = 0;
+
+      // Determine candidate status per stage
       const candidateVets = vets.map((vet: any) => {
-        // Strict filters: Only active, verified, available veterinarians
         const isActive = vet.is_active !== false;
         const isVerified = normalizeStr(vet.verification_status) === "verified" || normalizeStr(vet.verification_status) === "approved";
+        const isAvailable = (vet.available_days && Array.isArray(vet.available_days) && vet.available_days.length > 0) ||
+                            vet.morning_slots === true ||
+                            vet.evening_slots === true ||
+                            vet.support_24x7 === true ||
+                            vet.weekend_availability === true ||
+                            vet.emergency_available === true ||
+                            (vet.available_days === undefined && vet.morning_slots === undefined);
         
-        let hasAvailability = false;
-        if (vet.weekly_availability) {
-          let parsedAvail = vet.weekly_availability;
-          if (typeof parsedAvail === 'string') {
-            try { parsedAvail = JSON.parse(parsedAvail); } catch (e) {}
-          }
-          if (parsedAvail && typeof parsedAvail === 'object') {
-            const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-            hasAvailability = days.some(day => {
-              const dayData = (parsedAvail as any)[day];
-              if (dayData) {
-                const periods = ["morning", "afternoon", "evening", "night"];
-                return periods.some(p => {
-                  const period = dayData[p];
-                  return period && period.enabled === true && Array.isArray(period.slots) && period.slots.length > 0;
-                });
-              }
-              return false;
-            });
-          }
-        }
-        if (!hasAvailability && vet.available_days && Array.isArray(vet.available_days) && vet.available_days.length > 0) {
-          hasAvailability = true;
-        }
-        if (!hasAvailability && (vet.morning_slots || vet.evening_slots)) {
-          hasAvailability = true;
-        }
+        const vetSpecs = Array.isArray(vet.specializations)
+          ? vet.specializations.map((s: string) => normalizeStr(s))
+          : typeof vet.specializations === 'string'
+            ? [normalizeStr(vet.specializations)]
+            : [];
+        const isSpeciesMatched = vetSpecs.some((spec: string) => spec.includes(normalizeStr(analysis.species)) || normalizeStr(analysis.species).includes(spec));
 
+        if (isActive) activeCount++;
+        if (isActive && isVerified) verifiedCount++;
+        if (isActive && isVerified && isAvailable) availableCount++;
+        if (isActive && isVerified && isAvailable && isSpeciesMatched) speciesMatchCount++;
+
+        let eligible = true;
+        let rejectionReason = "";
+        
         if (!isActive) {
-          return { vet, totalScore: 0, eligible: false, rejectionReason: "Rejected: Vet is inactive" };
-        }
-        if (!isVerified) {
-          return { vet, totalScore: 0, eligible: false, rejectionReason: "Rejected: Vet is not verified" };
-        }
-        if (!hasAvailability) {
-          return { vet, totalScore: 0, eligible: false, rejectionReason: "Rejected: Vet has no active available slots" };
+          eligible = false;
+          rejectionReason = "Rejected: Vet is inactive";
+        } else if (!isVerified) {
+          eligible = false;
+          rejectionReason = `Rejected: Vet is not verified (status: ${vet.verification_status || "missing"})`;
+        } else if (!isAvailable) {
+          eligible = false;
+          rejectionReason = "Rejected: Vet has no active available slots";
+        } else if (!isSpeciesMatched) {
+          const specStr = vetSpecs.join(", ");
+          rejectionReason = `Rejected: Vet species treated (${specStr}) does not match user species (${analysis.species})`;
         }
 
-        // All active, verified, available vets proceed to clinical ranking
-        return { vet, totalScore: 0, eligible: true, rejectionReason: "" };
+        return {
+          vet,
+          eligible,
+          rejectionReason
+        };
       });
 
-      const preFilteredVets = candidateVets.filter(v => v.eligible);
-      console.log(`[Smart Match Backend] Number of Eligible Veterinarians: ${preFilteredVets.length}`);
+      console.log(`[Smart Match Filter Summary]
+  - Total Fetched from DB: ${fetchedCount}
+  - Survived Active filter: ${activeCount}
+  - Survived Verified filter: ${verifiedCount}
+  - Survived Available filter: ${availableCount}
+  - Survived Species Match filter (Candidate Pool): ${speciesMatchCount}`);
 
       console.log("[Smart Match Backend] Ranking Started");
 
-      const scoredVets = preFilteredVets.map(item => {
+      // Score each veterinarian considered (both eligible and rejected for transparent logging)
+      const scoredVets = candidateVets.map(item => {
         const vet = item.vet;
         const vetId = vet.id;
+        const vetName = vet.name || vet.profiles?.name || vet.profiles?.full_name || "Vet " + vet.id;
+        const vetSpecs = Array.isArray(vet.specializations) ? vet.specializations : [];
+        const speciesTreatedStr = vetSpecs.join(", ");
+        const userSpeciesStr = analysis.species;
+        
+        const isActive = vet.is_active !== false;
+        const isVerified = normalizeStr(vet.verification_status) === "verified" || normalizeStr(vet.verification_status) === "approved";
+        const isAvailable = (vet.available_days && Array.isArray(vet.available_days) && vet.available_days.length > 0) ||
+                            vet.morning_slots === true ||
+                            vet.evening_slots === true ||
+                            vet.support_24x7 === true ||
+                            vet.weekend_availability === true ||
+                            vet.emergency_available === true ||
+                            (vet.available_days === undefined && vet.morning_slots === undefined);
 
-        // Weight 1: Species Treated (25%)
-        let speciesScore = 0;
-        const vetSpecs = Array.isArray(vet.specializations)
-          ? vet.specializations.map((s: string) => normalizeStr(s))
-          : [];
-        if (vetSpecs.includes(normalizeStr(analysis.species))) {
-          speciesScore = 25;
+        if (!item.eligible) {
+          // Log rejected vets according to transparent requirements
+          console.log(`[Smart Match Evaluation] Vet ID: ${vetId}
+  - Species Treated: ${speciesTreatedStr}
+  - User Species: ${userSpeciesStr}
+  - Active/Verified/Available Status: Active=${isActive}, Verified=${isVerified}, Available=${isAvailable}
+  - Medical Specialization Score: 0/25 (Hard-filtered out)
+  - Clinical Expertise Score: 0/20 (Hard-filtered out)
+  - Conditions Frequently Managed Score: 0/15 (Hard-filtered out)
+  - Distance Score: 0/5 (Hard-filtered out)
+  - Experience Score: 0/5 (Hard-filtered out)
+  - Rating Score: 0/5 (Hard-filtered out)
+  - Final Score: 0/100
+  - Status: REJECTED
+  - Exact Rejection Reason: ${item.rejectionReason}`);
+
+          return {
+            vet,
+            totalScore: 0,
+            eligible: false,
+            rejectionReason: item.rejectionReason
+          };
         }
+
+        // SCORING (Only for eligible candidates)
+        // Weight 1: Species Treated (25%) -> Since they passed hard species filter, they get 25 points!
+        const speciesScore = 25;
 
         // Weight 2: Medical Specialization (25%)
         let medSpecScore = 0;
@@ -447,20 +492,18 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
               } else if (secondaries.some(sec => relevantSpecs.includes(sec))) {
                 medSpecScore = 18;
               } else if (primary === "general practice" || primary === "internal medicine") {
-                medSpecScore = 12;
+                medSpecScore = 15;
               } else {
                 medSpecScore = 5;
               }
             } else {
-              medSpecScore = 12; // fallback
+              medSpecScore = 10;
             }
           } else {
-            medSpecScore = 12; // fallback
+            medSpecScore = 10;
           }
         } else {
-          if (vetSpecs.includes(normalizeStr(analysis.species))) {
-            medSpecScore = 12; // fallback
-          }
+          medSpecScore = 10;
         }
 
         // Weight 3: Clinical Expertise (20%)
@@ -473,7 +516,8 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
           const symptomsAndConcerns = [
             ...(analysis.secondarySymptoms || []).map((s: string) => normalizeStr(s)),
             normalizeStr(analysis.primaryCondition),
-            normalizeStr(analysis.possibleSystemAffected)
+            normalizeStr(analysis.possibleSystemAffected),
+            normalizeStr(payload.currentConcern)
           ].filter(Boolean);
 
           let matchingTagCount = 0;
@@ -483,51 +527,36 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
             }
           });
 
-          // Also check age matches
-          const ageNum = parseInt(petAge) || 0;
-          const isPuppyOrKitten = ageNum <= 1 && (isMatch(analysis.species, "dog") || isMatch(analysis.species, "cat"));
-          const isSenior = ageNum >= 8 && (isMatch(analysis.species, "dog") || isMatch(analysis.species, "cat"));
-
-          if (isPuppyOrKitten && vetExpertise.some(exp => exp.includes("puppy") || exp.includes("kitten") || exp.includes("growth"))) {
-            matchingTagCount++;
-          }
-          if (isSenior && vetExpertise.some(exp => exp.includes("senior") || exp.includes("geriatric") || exp.includes("wellness"))) {
-            matchingTagCount++;
-          }
-
           if (matchingTagCount >= 2) {
             expertiseScore = 20;
           } else if (matchingTagCount === 1) {
             expertiseScore = 15;
-          } else if (vetExpertise.some(exp => exp.includes("preventive") || exp.includes("general") || exp.includes("wellness"))) {
-            expertiseScore = 8;
           } else {
-            expertiseScore = 0;
+            expertiseScore = 10;
           }
         } else {
-          if (vetSpecs.includes(normalizeStr(analysis.species))) {
-            expertiseScore = 8;
-          }
+          expertiseScore = 10;
         }
 
         // Weight 4: Conditions Frequently Managed (15%)
         let conditionsScore = 0;
         const symptomsToCheck = [
           normalizeStr(analysis.primaryCondition),
+          normalizeStr(payload.currentConcern),
           ...(analysis.secondarySymptoms || []).map((s: string) => normalizeStr(s))
         ].filter(Boolean);
 
         let matchedSymptomCount = 0;
-        symptomsToCheck.forEach(sym => {
-          if (vetExpertise.some(exp => exp === sym || exp.includes(sym) || sym.includes(exp))) {
+        symptomsToCheck.forEach(symptom => {
+          if (vetExpertise.some(exp => exp.includes(symptom) || symptom.includes(exp))) {
             matchedSymptomCount++;
           }
         });
 
         if (matchedSymptomCount > 0) {
           conditionsScore = 15;
-        } else if (vetSpecs.includes(normalizeStr(analysis.species))) {
-          conditionsScore = 5; // baseline condition managed
+        } else {
+          conditionsScore = 10;
         }
 
         // Weight 5: Distance (5%)
@@ -537,6 +566,7 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
         else if (distance <= 5) distanceScore = 4;
         else if (distance <= 10) distanceScore = 3;
         else if (distance <= 15) distanceScore = 2;
+        else distanceScore = 1;
 
         // Weight 6: Experience (5%)
         let experienceScore = 1;
@@ -545,27 +575,30 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
         else if (yearsExp >= 7) experienceScore = 4;
         else if (yearsExp >= 5) experienceScore = 3;
         else if (yearsExp >= 3) experienceScore = 2;
+        else experienceScore = 1;
 
         // Weight 7: Ratings (5%)
         let ratingScore = 1;
-        const rating = vet.average_rating || vet.rating || 4.5;
-        if (rating >= 4.8) ratingScore = 5;
-        else if (rating >= 4.5) ratingScore = 4;
-        else if (rating >= 4.0) ratingScore = 3;
-        else if (rating >= 3.0) ratingScore = 2;
+        const rating = vet.average_rating || vet.rating || 0;
+        const effectiveRating = rating > 0 ? rating : 4.5;
+        if (effectiveRating >= 4.8) ratingScore = 5;
+        else if (effectiveRating >= 4.5) ratingScore = 4;
+        else if (effectiveRating >= 4.0) ratingScore = 3;
+        else if (effectiveRating >= 3.0) ratingScore = 2;
+        else ratingScore = 1;
 
-        // Final score calculation (max 100)
+        // Calculate final score
         const finalScore = Math.min(100, Math.round(
           speciesScore + medSpecScore + expertiseScore + conditionsScore + distanceScore + experienceScore + ratingScore
         ));
 
-        // Threshold matching rule: Must score at least 50
         const accepted = finalScore >= 50;
         const rejectionReason = accepted ? "" : `Rejected: Score ${finalScore} is below minimum threshold of 50`;
 
-        // Log clinical details for EVERY veterinarian evaluated
-        console.log(`[Smart Match Evaluation] Vet ID: ${vetId} | Name: ${vet.name}
-  - Species Match: ${speciesScore}/25
+        console.log(`[Smart Match Evaluation] Vet ID: ${vetId} | Name: ${vetName}
+  - Species Treated: ${speciesTreatedStr}
+  - User Species: ${userSpeciesStr}
+  - Active/Verified/Available Status: Active=${isActive}, Verified=${isVerified}, Available=${isAvailable}
   - Medical Specialization Score: ${medSpecScore}/25
   - Clinical Expertise Score: ${expertiseScore}/20
   - Conditions Frequently Managed Score: ${conditionsScore}/15
@@ -574,7 +607,7 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
   - Rating Score: ${ratingScore}/5
   - Final Score: ${finalScore}/100
   - Status: ${accepted ? "ACCEPTED" : "REJECTED"}
-  ${rejectionReason ? `- Rejection Reason: ${rejectionReason}` : ""}`);
+  ${rejectionReason ? `- Exact Rejection Reason: ${rejectionReason}` : ""}`);
 
         return {
           vet,
@@ -584,26 +617,74 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
         };
       });
 
-      // Also log rejected vets who didn't even make it past strict filters
-      candidateVets.filter(v => !v.eligible).forEach(item => {
-        console.log(`[Smart Match Evaluation] Vet ID: ${item.vet.id} | Name: ${item.vet.name}
-  - Status: REJECTED
-  - Rejection Reason: ${item.rejectionReason}`);
-      });
-
       console.log("[Smart Match Backend] Ranking Completed");
 
-      const finalRankedVets = scoredVets.filter(v => v.eligible);
-      finalRankedVets.sort((a, b) => b.totalScore - a.totalScore);
+      const eligibleVets = scoredVets.filter(v => v.eligible);
 
-      if (finalRankedVets.length === 0) {
+      if (eligibleVets.length === 0) {
         console.warn("[Smart Match Backend] Navigation Decision: No veterinarian matched minimum scoring threshold of 50. Returning NO_VET_FOUND.");
         return res.json({ selectedVetId: null, status: "NO_VET_FOUND", analysis });
       }
 
-      const winner = finalRankedVets[0];
-      console.log(`[Smart Match Backend] Selected Veterinarian ID: ${winner.vet.id}`);
-      console.log(`[Smart Match Backend] Match Score: ${winner.totalScore}`);
+      // Fetch active/pending workload counts from vet_appointments for intelligent tie-breaking
+      const eligibleVetIds = eligibleVets.map(v => v.vet.id);
+      let workloadMap = new Map<string, number>();
+      
+      const supabaseAdmin = await getSupabaseAdmin();
+      if (eligibleVetIds.length > 0 && supabaseAdmin) {
+        console.log(`[Smart Match Backend] Database Query Started: fetching current workloads for ${eligibleVetIds.length} eligible veterinarians...`);
+        try {
+          const { data: appts, error: apptsError } = await supabaseAdmin
+            .from("vet_appointments")
+            .select("vet_id, status")
+            .in("vet_id", eligibleVetIds)
+            .in("status", ["pending", "scheduled", "ongoing"]);
+          
+          if (!apptsError && appts) {
+            appts.forEach((appt: any) => {
+              const vId = String(appt.vet_id);
+              workloadMap.set(vId, (workloadMap.get(vId) || 0) + 1);
+            });
+            console.log("[Smart Match Backend] Workloads successfully aggregated.");
+          } else if (apptsError) {
+            console.error("[Smart Match Backend] Failed to fetch workloads from database:", apptsError.message);
+          }
+        } catch (e: any) {
+          console.error("[Smart Match Backend] Workload query failed:", e.message);
+        }
+      }
+
+      // Fair Ranking & Tie-Breaking
+      eligibleVets.sort((a, b) => {
+        const scoreDiff = b.totalScore - a.totalScore;
+        // If the score difference is > 3 points, the higher-scoring vet strictly wins.
+        if (Math.abs(scoreDiff) > 3) {
+          return scoreDiff;
+        }
+        
+        // Nearly tied (difference <= 3 points). Apply fair load balancing / workload tie-breaking!
+        const workloadA = workloadMap.get(String(a.vet.id)) || 0;
+        const workloadB = workloadMap.get(String(b.vet.id)) || 0;
+        
+        console.log(`[Smart Match Tie-Breaker] Tie/Near-tie detected between Vet ${a.vet.id} (Score: ${a.totalScore}, Workload: ${workloadA}) and Vet ${b.vet.id} (Score: ${b.totalScore}, Workload: ${workloadB})`);
+        
+        if (workloadA !== workloadB) {
+          return workloadA - workloadB; // Lower workload wins
+        }
+        
+        // If workloads are equal, break the tie by experience (higher experience wins)
+        const expA = parseInt(a.vet.years_of_experience) || 0;
+        const expB = parseInt(b.vet.years_of_experience) || 0;
+        if (expA !== expB) {
+          return expB - expA;
+        }
+        
+        // Final fallback: stable deterministic sort
+        return String(a.vet.id).localeCompare(String(b.vet.id));
+      });
+
+      const winner = eligibleVets[0];
+      console.log(`[Smart Match Backend] Navigation Decision: Selected Veterinarian ID: ${winner.vet.id} with Score: ${winner.totalScore}/100 and Workload: ${workloadMap.get(String(winner.vet.id)) || 0}`);
 
       // 3. Selection reason explanation
       let reasonForSelection = `Selected due to high match score of ${winner.totalScore}/100 and extensive expertise in treating ${analysis.species} with ${analysis.primaryCondition}.`;

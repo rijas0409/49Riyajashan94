@@ -9,30 +9,14 @@ const keyMatch = code.match(/rawKey = VITE_SUPABASE_PUBLISHABLE_KEY \|\| "(.*?)"
 const supabase = createClient(urlMatch?.[1] || "", keyMatch?.[1] || "");
 
 async function check() {
-  console.log("Fetching Vets (Anon)...");
+  console.log("Fetching ALL Vets...");
   
   const { data, error } = await supabase
     .from("vet_profiles")
-    .select("*")
-    .in("verification_status", ["verified", "approved"])
-    .eq("is_active", true)
-    .limit(1);
+    .select("id, user_id, is_active, verification_status, specializations, available_days, morning_slots, evening_slots, average_rating, years_of_experience");
     
-  console.log("Error (No hint):", error);
-  console.log("Data snippet:", JSON.stringify(data?.[0], null, 2));
-
-  console.log("Fetching profiles for Vets (Anon)...");
-  
-  const userIds = data?.map(v => v.user_id) || [];
-  if (userIds.length > 0) {
-    const { data: profiles, error: pError } = await supabase
-      .from("profiles")
-      .select("id, name, email")
-      .in("id", userIds);
-      
-    console.log("Profiles Error:", pError);
-    console.log("Profiles Data length:", profiles?.length);
-    console.log("Profiles Data:", profiles);
-  }
+  console.log("Error:", error);
+  console.log("Total vets:", data?.length);
+  console.log("Vets list:", JSON.stringify(data, null, 2));
 }
 check();
