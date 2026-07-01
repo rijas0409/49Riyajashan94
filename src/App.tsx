@@ -230,31 +230,32 @@ const GlobalSmartMatchIframe = () => {
           let latestErrorMsg = "";
           let latestStatusCode = null;
           let latestResponseBody = "";
-
+          let latestAnalysis: any = null;
+ 
           while (true) {
             const elapsed = Date.now() - matchStartTime;
             if (elapsed >= 49000) {
               console.log("[Smart Match Frontend] 49-second maximum search duration timeout reached.");
               break;
             }
-
+ 
             attemptCount++;
             console.log(`[Smart Match Frontend] Search attempt #${attemptCount} initiated (elapsed: ${Math.round(elapsed / 1000)}s, state: searching)`);
-
+ 
             try {
               console.log("[Smart Match Frontend] Database query started: fetching vet profiles from Supabase...");
               const { data: allVets, error: vetsError } = await supabase
                 .from("vet_profiles")
                 .select("*")
                 .ilike("city", `%${city || "Mumbai"}%`); // Filter by city
-
+ 
               if (vetsError) {
                 console.error("[Smart Match Frontend] Database query failed with error:", vetsError.message);
                 throw vetsError;
               }
-
+ 
               console.log("[Smart Match Frontend] Number of vets returned from Supabase database query:", allVets?.length || 0);
-
+ 
               if (allVets && allVets.length > 0) {
                 console.log("[Smart Match Frontend] Request sent to backend (/api/smart-match)...");
                 try {
@@ -263,15 +264,19 @@ const GlobalSmartMatchIframe = () => {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       payload,
-                      vets: allVets
+                      vets: allVets,
+                      analysis: latestAnalysis
                     })
                   });
-
+ 
                   console.log("[Smart Match Frontend] Backend request completed. Status:", response.status);
-
+ 
                   if (response.ok) {
                     const result = await response.json();
                     console.log("[Smart Match Frontend] Selected vet ID returned:", result.selectedVetId);
+                    if (result.analysis) {
+                      latestAnalysis = result.analysis;
+                    }
                     if (result.selectedVetId) {
                       matchedVet = allVets.find(v => String(v.id) === String(result.selectedVetId));
                       if (matchedVet) {
