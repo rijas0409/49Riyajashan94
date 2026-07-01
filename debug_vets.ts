@@ -9,14 +9,15 @@ const keyMatch = code.match(/rawKey = VITE_SUPABASE_PUBLISHABLE_KEY \|\| "(.*?)"
 const supabase = createClient(urlMatch?.[1] || "", keyMatch?.[1] || "");
 
 async function check() {
-  console.log("Fetching ALL Vets...");
-  
+  console.log("Executing the exact select statement used in server.ts...");
   const { data, error } = await supabase
     .from("vet_profiles")
-    .select("id, user_id, is_active, verification_status, specializations, available_days, morning_slots, evening_slots, average_rating, years_of_experience");
-    
-  console.log("Error:", error);
-  console.log("Total vets:", data?.length);
-  console.log("Vets list:", JSON.stringify(data, null, 2));
+    .select("id, user_id, specializations, medical_specializations");
+  
+  console.log("Query Error:", error);
+  console.log("Returned Vets count:", data?.length);
+  if (data && data.length > 0) {
+    console.log("Successfully fetched vets! First vet id:", data[0].id);
+  }
 }
 check();

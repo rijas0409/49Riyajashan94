@@ -246,8 +246,7 @@ const GlobalSmartMatchIframe = () => {
               console.log("[Smart Match Frontend] Database query started: fetching vet profiles from Supabase...");
               const { data: allVets, error: vetsError } = await supabase
                 .from("vet_profiles")
-                .select("*")
-                .ilike("city", `%${city || "Mumbai"}%`); // Filter by city
+                .select("*");
  
               if (vetsError) {
                 console.error("[Smart Match Frontend] Database query failed with error:", vetsError.message);

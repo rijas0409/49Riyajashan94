@@ -111,13 +111,10 @@ const AIAnalyzingCondition = () => {
                 const modes = Array.isArray(vp.consultation_type)
                   ? vp.consultation_type.map((m: unknown) => String(m).toLowerCase())
                   : typeof vp.consultation_type === 'string'
-                    ? [vp.consultation_type.toLowerCase()]
+                    ? vp.consultation_type.toLowerCase() === 'both' ? ['video', 'clinic'] : [vp.consultation_type.toLowerCase()]
                     : [];
 
-                if (searchMode.includes("clinic") && !modes.some((m: string) => m.includes("clinic"))) return false;
-                if (searchMode.includes("home") && !modes.some((m: string) => m.includes("home"))) return false;
-                if (searchMode.includes("video") && !modes.some((m: string) => m.includes("video"))) return false;
-
+                // Consultation mode is NO LONGER a hard filter. It must proceed to backend scoring.
                 return true;
               })
               .map(vp => {

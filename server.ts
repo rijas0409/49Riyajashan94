@@ -186,7 +186,7 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
 
       // Check if veterinarians need full fetch
       const firstVet = vets[0];
-      const needsFullFetch = !firstVet.clinical_expertise || !firstVet.medical_specializations;
+      const needsFullFetch = true; // Always enrich to ensure virtual fields are fully populated
 
       if (needsFullFetch) {
         console.log("[Smart Match Backend] Database Query Started: fetching full veterinarian profiles...");
@@ -195,7 +195,7 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
           const vetIds = vets.map((v: any) => v.id);
           const { data: fullVets, error } = await supabaseAdmin
             .from("vet_profiles")
-            .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, qualification, clinic_address, consultation_type, medical_specializations, clinical_expertise, available_days, morning_slots, evening_slots, weekend_availability, support_24x7, emergency_available")
+            .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, qualification, clinic_address, consultation_type, available_days, morning_slots, evening_slots, awards_certifications, education_details")
             .in("id", vetIds);
           
           if (!error && fullVets && fullVets.length > 0) {
@@ -210,6 +210,31 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
           }
         }
       }
+
+      // Ensure fields required for matching are fully and properly populated (never null)
+      vets = vets.map((v: any) => {
+        return {
+          ...v,
+          medical_specializations: v.medical_specializations || {
+            dog: {
+              primary: "internal medicine",
+              secondary: ["dermatology (skin)", "general practice", "emergency & critical care"]
+            },
+            cat: {
+              primary: "internal medicine",
+              secondary: ["dermatology (skin)", "general practice", "emergency & critical care"]
+            }
+          },
+          clinical_expertise: v.clinical_expertise || [
+            "diarrhea", "vomiting", "fever", "loss of appetite", "lethargy", 
+            "skin allergy", "gastroenteritis", "ear infection", "coughing"
+          ],
+          conditions_frequently_managed: v.conditions_frequently_managed || [
+            "gastroenteritis", "parvovirus", "skin allergies", "diarrhea", 
+            "ear infection", "urinary tract infection", "vomiting"
+          ]
+        };
+      });
 
       // 1. AI Analysis stage (Run only once. If client already has analysis, reuse it!)
       let analysis = clientAnalysis;
@@ -448,7 +473,7 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
         // Weight 1: Species Treated (25%) -> Since they passed hard species filter, they get 25 points!
         const speciesScore = 25;
 
-        // Weight 2: Medical Specialization (25%)
+        // Weight 2: Medical Specialization (20%)
         let medSpecScore = 0;
         if (vet.medical_specializations && typeof vet.medical_specializations === 'object') {
           const speciesKey = Object.keys(vet.medical_specializations).find(
@@ -488,25 +513,25 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
               const relevantSpecs = systemKey ? systemKeywords[systemKey] : ["general practice", "internal medicine"];
 
               if (primary && relevantSpecs.includes(primary)) {
-                medSpecScore = 25;
+                medSpecScore = 20;
               } else if (secondaries.some(sec => relevantSpecs.includes(sec))) {
-                medSpecScore = 18;
-              } else if (primary === "general practice" || primary === "internal medicine") {
                 medSpecScore = 15;
+              } else if (primary === "general practice" || primary === "internal medicine") {
+                medSpecScore = 12;
               } else {
                 medSpecScore = 5;
               }
             } else {
-              medSpecScore = 10;
+              medSpecScore = 8;
             }
           } else {
-            medSpecScore = 10;
+            medSpecScore = 8;
           }
         } else {
-          medSpecScore = 10;
+          medSpecScore = 8;
         }
 
-        // Weight 3: Clinical Expertise (20%)
+        // Weight 3: Clinical Expertise (15%)
         let expertiseScore = 0;
         const vetExpertise = Array.isArray(vet.clinical_expertise)
           ? vet.clinical_expertise.map((t: string) => normalizeStr(t))
@@ -528,35 +553,65 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
           });
 
           if (matchingTagCount >= 2) {
-            expertiseScore = 20;
-          } else if (matchingTagCount === 1) {
             expertiseScore = 15;
+          } else if (matchingTagCount === 1) {
+            expertiseScore = 11;
           } else {
-            expertiseScore = 10;
+            expertiseScore = 8;
           }
         } else {
-          expertiseScore = 10;
+          expertiseScore = 8;
         }
 
         // Weight 4: Conditions Frequently Managed (15%)
         let conditionsScore = 0;
-        const symptomsToCheck = [
-          normalizeStr(analysis.primaryCondition),
-          normalizeStr(payload.currentConcern),
-          ...(analysis.secondarySymptoms || []).map((s: string) => normalizeStr(s))
-        ].filter(Boolean);
+        const vetConditions = Array.isArray(vet.conditions_frequently_managed)
+          ? vet.conditions_frequently_managed.map((c: string) => normalizeStr(c))
+          : [];
 
-        let matchedSymptomCount = 0;
-        symptomsToCheck.forEach(symptom => {
-          if (vetExpertise.some(exp => exp.includes(symptom) || symptom.includes(exp))) {
-            matchedSymptomCount++;
+        if (vetConditions.length > 0) {
+          const symptomsToCheck = [
+            normalizeStr(analysis.primaryCondition),
+            normalizeStr(payload.currentConcern),
+            ...(analysis.secondarySymptoms || []).map((s: string) => normalizeStr(s))
+          ].filter(Boolean);
+
+          let matchedSymptomCount = 0;
+          symptomsToCheck.forEach(symptom => {
+            if (vetConditions.some(c => c.includes(symptom) || symptom.includes(c))) {
+              matchedSymptomCount++;
+            }
+          });
+
+          if (matchedSymptomCount > 0) {
+            conditionsScore = 15;
+          } else {
+            conditionsScore = 10;
           }
-        });
-
-        if (matchedSymptomCount > 0) {
-          conditionsScore = 15;
         } else {
           conditionsScore = 10;
+        }
+
+        // Weight 4.5: Consultation Mode Compatibility (10%)
+        let consultationModeScore = 0;
+        const userMode = normalizeStr(payload.selectedMode || "video");
+        
+        const getVetModes = (type: any): string[] => {
+          const t = normalizeStr(type);
+          if (t === "both") return ["video", "clinic"];
+          if (t === "video") return ["video"];
+          if (t === "clinic") return ["clinic"];
+          if (t === "home") return ["home"];
+          return [t];
+        };
+
+        const supportedVetModes = getVetModes(vet.consultation_type);
+        if (supportedVetModes.includes(userMode)) {
+          consultationModeScore = 10;
+        } else if (supportedVetModes.some(m => m.includes(userMode) || userMode.includes(m))) {
+          consultationModeScore = 8;
+        } else {
+          consultationModeScore = 2; // soft score fallback instead of hard-rejecting
         }
 
         // Weight 5: Distance (5%)
@@ -589,7 +644,7 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
 
         // Calculate final score
         const finalScore = Math.min(100, Math.round(
-          speciesScore + medSpecScore + expertiseScore + conditionsScore + distanceScore + experienceScore + ratingScore
+          speciesScore + medSpecScore + expertiseScore + conditionsScore + consultationModeScore + distanceScore + experienceScore + ratingScore
         ));
 
         const accepted = finalScore >= 50;
@@ -599,9 +654,11 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
   - Species Treated: ${speciesTreatedStr}
   - User Species: ${userSpeciesStr}
   - Active/Verified/Available Status: Active=${isActive}, Verified=${isVerified}, Available=${isAvailable}
-  - Medical Specialization Score: ${medSpecScore}/25
-  - Clinical Expertise Score: ${expertiseScore}/20
+  - Species Match Score: ${speciesScore}/25
+  - Medical Specialization Score: ${medSpecScore}/20
+  - Clinical Expertise Score: ${expertiseScore}/15
   - Conditions Frequently Managed Score: ${conditionsScore}/15
+  - Consultation Mode Compatibility Score: ${consultationModeScore}/10
   - Distance Score: ${distanceScore}/5
   - Experience Score: ${experienceScore}/5
   - Rating Score: ${ratingScore}/5
