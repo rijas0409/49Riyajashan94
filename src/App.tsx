@@ -104,6 +104,7 @@ import VetPromoteProfile from "./pages/vet/VetPromoteProfile";
 import VetRecentReviews from "./pages/vet/VetRecentReviews";
 import VetSavingCorner from "./pages/vet/VetSavingCorner";
 import MyServices from "./pages/vet/MyServices";
+import Specializations from "./pages/vet/Specializations";
 import VirtualConsults from "./pages/vet/VirtualConsults";
 import VetProfessionalDetails from "./pages/vet/VetProfessionalDetails";
 import VetAvailability from "./pages/vet/VetAvailability";
@@ -452,6 +453,7 @@ const App = () => (
                 <Route path="/vet/earnings" element={<VetEarnings />} />
                 <Route path="/vet/profile" element={<VetProfile />} />
                 <Route path="/vet/services" element={<MyServices />} />
+                <Route path="/vet/specializations" element={<Specializations />} />
                 <Route path="/vet/professional-details" element={<VetProfessionalDetails />} />
                 <Route path="/vet/availability" element={<VetAvailability />} />
                 <Route path="/vet/settings" element={<VetSettings />} />

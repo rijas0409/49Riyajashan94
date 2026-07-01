@@ -5,7 +5,7 @@ import {
   SuitcaseSimple, IdentificationCard, Wallet, FileText,
   Megaphone, ChatTeardropText, Gear, SignOut,
   House, CalendarDots, CaretRight, User,
-  Buildings, Clock, Tag
+  Buildings, Clock, Tag, Stethoscope
 } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
@@ -169,6 +169,7 @@ const VetProfile = () => {
 
   const menuItems = [
     { icon: <SuitcaseSimple size={24} />, label: "My Services", path: "/vet/services" },
+    { icon: <Stethoscope size={24} />, label: "Specializations", path: "/vet/specializations" },
     { icon: <Wallet size={24} />, label: "Wallet", path: "/vet/wallet" },
     { icon: <FileText size={24} />, label: "Documents", path: "/vet/documents" },
     { icon: <Tag size={24} />, label: "Saving Corner", path: "/vet/saving-corner" },
