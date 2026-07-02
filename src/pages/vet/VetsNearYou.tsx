@@ -68,7 +68,6 @@ export default function VetsNearYou() {
           clinic_address,
           profile_photo,
           verification_status,
-          city,
           consultation_type,
           weekly_availability
         `)
@@ -131,7 +130,7 @@ export default function VetsNearYou() {
               image: photo || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=800&h=1200&fit=crop",
               city: addressStr,
               verification_status: vp.verification_status,
-              vpCity: vp.city,
+              vpCity: undefined,
               pCity: profile?.city,
               clinicAddress: vp.clinic_address,
               weekly_availability: vp.weekly_availability,

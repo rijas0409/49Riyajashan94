@@ -477,7 +477,7 @@ const Vet = () => {
       // 1. Fetch verified active vet_profiles first
       const { data: vetProfiles, error: vpErr } = await supabase
         .from("vet_profiles")
-        .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, clinic_address, city, consultation_type, weekly_availability")
+        .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, clinic_address, consultation_type, weekly_availability")
         .in("verification_status", ["verified", "approved"])
         .eq("is_active", true);
 
@@ -564,8 +564,8 @@ const Vet = () => {
             distance: Math.floor(Math.random() * 20) + 1,
             availability: availInfo.availabilityText,
             upcoming_slots: availInfo.upcoming_slots,
-            address_combined: `${vp?.clinic_address || ""} ${p?.address || ""} ${p?.city || ""} ${vp?.city || ""}`.trim(),
-            vpCity: vp?.city,
+            address_combined: `${vp?.clinic_address || ""} ${p?.address || ""} ${p?.city || ""}`.trim(),
+            vpCity: undefined,
             pCity: p?.city,
             clinicAddress: vp?.clinic_address,
             isAd: promotedVetIds.has(vp.user_id)

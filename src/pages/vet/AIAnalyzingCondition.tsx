@@ -1,9 +1,7 @@
-import { useEffect, useState, useMemo } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Stethoscope, Check } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner"; // Added toast import
 
 const vetAvatars = [
   { id: "1", image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop" },
@@ -19,9 +17,7 @@ const steps = [
 
 const AIAnalyzingCondition = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
-  const assessmentData = useMemo(() => location.state || {}, [location.state]);
   const [activeStep, setActiveStep] = useState(0);
   const [progress, setProgress] = useState(0);
 
@@ -39,182 +35,14 @@ const AIAnalyzingCondition = () => {
       setTimeout(() => setActiveStep(i), i * (isBypassUser ? 300 : 3250))
     );
 
-    const fetchAndNavigate = async () => {
-      const startTime = Date.now();
-      const maxSearchDuration = 49000;
-      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-      let matchedVet: any = null;
-      let attempt = 0;
 
-      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-      const navigateWithTiming = (path: string, stateData?: any) => {
-        const elapsed = Date.now() - startTime;
-        let delay = 0;
-        
-        // Ensure steps finish animating if found early (minimum 13 seconds for visual steps)
-        if (elapsed < 13000 && path !== "/vet/no-vet-found") {
-          delay = 13000 - elapsed;
-        }
 
-        setProgress(100);
-
-        if (delay > 0) {
-          setTimeout(() => {
-            navigate(path, { state: stateData });
-          }, delay);
-        } else {
-          navigate(path, { state: stateData });
-        }
-      };
-
-      console.log("Smart Match request received - starting search...");
-
-      while (Date.now() - startTime < maxSearchDuration) {
-        attempt++;
-        console.log(`Smart Match database search & AI analysis started (attempt ${attempt})...`);
-        try {
-          // 1. Fetch verified active vet_profiles first
-          const { data: vetProfiles, error: vpErr } = await supabase
-            .from("vet_profiles")
-            .select("id, user_id, specializations, years_of_experience, online_fee, average_rating, verification_status, is_active, profile_photo, offline_fee, qualification, clinic_address, weekly_availability, consultation_type")
-            .in("verification_status", ["verified", "approved"])
-            .eq("is_active", true);
-
-          if (vpErr) {
-            console.error("Database query failed:", vpErr);
-            throw vpErr;
-          }
-
-          console.log(`Number of veterinarians retrieved: ${vetProfiles?.length || 0}`);
-
-          if (vetProfiles && vetProfiles.length > 0) {
-            // 2. Fetch corresponding profiles
-            const { data: profiles, error: profileErr } = await supabase
-              .from("profiles")
-              .select("id, name, full_name, profile_photo, is_admin_approved, role")
-              .in("id", vetProfiles.map(p => p.user_id));
-
-            if (profileErr) {
-              console.error("Error fetching user profiles:", profileErr);
-            }
-
-            const pMap = new Map((profiles || []).map(p => [p.id, p]));
-            const searchMode = (assessmentData.selectedMode || "video").toLowerCase();
-
-            const verifiedVets = vetProfiles
-              .filter(vp => {
-                const p = pMap.get(vp.user_id);
-                // If profile exists, check if admin approved. If profile is missing, bypass check.
-                if (p && !p.is_admin_approved) return false;
-
-                // Real-time Booking Assignment matching filter
-                const modes = Array.isArray(vp.consultation_type)
-                  ? vp.consultation_type.map((m: unknown) => String(m).toLowerCase())
-                  : typeof vp.consultation_type === 'string'
-                    ? vp.consultation_type.toLowerCase() === 'both' ? ['video', 'clinic'] : [vp.consultation_type.toLowerCase()]
-                    : [];
-
-                // Consultation mode is NO LONGER a hard filter. It must proceed to backend scoring.
-                return true;
-              })
-              .map(vp => {
-                const p = pMap.get(vp.user_id);
-                return {
-                  ...vp,
-                  profile: p
-                };
-              });
-
-            console.log(`Number of eligible veterinarians: ${verifiedVets.length}`);
-
-            if (verifiedVets.length > 0) {
-              const formattedVets = verifiedVets.map(v => ({
-                id: v.id,
-                name: v.profile?.full_name || v.profile?.name || "Veterinarian",
-                specializations: v.specializations,
-                experience: v.years_of_experience,
-                rating: v.average_rating,
-                consultation_type: v.consultation_type,
-                address: v.clinic_address
-              }));
-
-              console.log("Ranking started: sending ranked candidate veterinarians to AI...");
-              const response = await fetch("/api/smart-match", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                  payload: assessmentData,
-                  vets: formattedVets
-                })
-              });
-
-              if (response.ok) {
-                const data = await response.json();
-                console.log("Selected veterinarian ID from AI matching response:", data.selectedVetId);
-                if (data.selectedVetId) {
-                  const matched = verifiedVets.find(v => v.id === data.selectedVetId);
-                  if (matched) {
-                    const rawName = matched.profile?.full_name || matched.profile?.name || "Veterinarian";
-                    const realName = `Dr. ${rawName}`;
-
-                    matchedVet = {
-                      id: matched.id,
-                      userId: matched.user_id,
-                      name: realName,
-                      specialization: (matched.specializations || []).join(", ") || "General Veterinarian",
-                      image: matched.profile_photo || matched.profile?.profile_photo || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&h=200&fit=crop",
-                      rating: matched.average_rating || 4.9,
-                      experience: matched.years_of_experience || 0,
-                      fee: matched.online_fee || 800,
-                      qualification: matched.qualification || "BVSc",
-                      onlineFee: matched.online_fee || 500,
-                      offlineFee: matched.offline_fee || 800,
-                      clinicAddress: matched.clinic_address || "",
-                      weekly_availability: matched.weekly_availability || null,
-                    };
-                    console.log("Search completed - Match found:", matchedVet);
-                    break;
-                  }
-                }
-              } else {
-                console.error("Smart match API returned error status:", response.status);
-              }
-            }
-          }
-        } catch (err) {
-          console.error("Error fetching vet profile or calling AI during attempt:", err);
-        }
-
-        // Wait before retrying to prevent aggressive loops, up to the remaining duration of the 49-second budget
-        const elapsed = Date.now() - startTime;
-        const remaining = maxSearchDuration - elapsed;
-        if (remaining <= 5000) {
-          console.log(`Timeout approaching (${Math.round(remaining / 1000)}s left). Breaking retry loop.`);
-          break;
-        }
-
-        console.log(`No match found on this attempt. Retrying in 5 seconds... (${Math.round(remaining / 1000)}s remaining in search budget)`);
-        await new Promise(resolve => setTimeout(resolve, 5000));
-      }
-
-      if (matchedVet) {
-        console.log("Navigation decision: redirecting to Booking Details screen");
-        navigateWithTiming("/vet/booking-details", { ...assessmentData, matchedVet });
-      } else {
-        console.log("Navigation decision: 49-second timeout expired with no qualified veterinarians. Redirecting to No Vet Found screen.");
-        navigate("/vet/no-vet-found");
-      }
-    };
-
-    fetchAndNavigate();
 
     return () => {
       clearInterval(progressInterval);
       timers.forEach(clearTimeout);
     };
-  }, [assessmentData, navigate, user?.email]);
+  }, [navigate, user?.email]);
 
   return (
     <div className="h-screen bg-background flex flex-col items-center justify-between px-4 py-8">
