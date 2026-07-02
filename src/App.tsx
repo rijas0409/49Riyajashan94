@@ -211,7 +211,24 @@ const GlobalSmartMatchIframe = () => {
             throw new Error(`Server returned status ${res.status}`);
           }
           const data = await res.json();
-          console.log("[Smart Match Frontend] Fetch success from POST /api/smart-match. Veterinarians count:", data.totalVets, data);
+          console.log("[Smart Match Frontend] Fetch success from POST /api/smart-match. Veterinarians count:", data.totalFetched, data);
+
+          const iframe = document.querySelector('iframe[title="Sruvo - Care Match Loading"]') as HTMLIFrameElement;
+          if (iframe && iframe.contentWindow) {
+            const count = typeof data.eligibleCandidates === "number" 
+              ? data.eligibleCandidates 
+              : (Array.isArray(data.candidates) ? data.candidates.length : 0);
+
+            if (count > 0) {
+              console.log("[Smart Match Frontend] Posting MATCH_FOUND to loading iframe");
+              iframe.contentWindow.postMessage({ type: "MATCH_FOUND" }, "*");
+            } else {
+              console.log("[Smart Match Frontend] Posting NO_VET_FOUND to loading iframe");
+              iframe.contentWindow.postMessage({ type: "NO_VET_FOUND" }, "*");
+            }
+          } else {
+            console.warn("[Smart Match Frontend] Loading iframe not found to send match status message!");
+          }
         })
         .catch((err) => {
           console.error("[Smart Match Frontend] Error calling POST /api/smart-match:", err);
