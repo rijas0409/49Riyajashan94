@@ -359,9 +359,9 @@
                 clearInterval(textInterval);
                 clearInterval(tagInterval);
 
-                let currentProgress = parseFloat(percentageEl.innerText) || 95;
+                let currentProgress = 95;
                 let speedUpInterval = setInterval(() => {
-                    currentProgress += 4;
+                    currentProgress += 1;
                     if (currentProgress >= 100) {
                         currentProgress = 100;
                         clearInterval(speedUpInterval);
@@ -425,14 +425,10 @@
                         }
                     } else {
                         progressBarEl.style.width = `${currentProgress}%`;
-                        if (apiStatus === "MATCH_FOUND") {
-                            percentageEl.innerText = `${Math.floor(currentProgress)}%`;
-                        } else {
-                            percentageEl.innerText = `${Math.floor(currentProgress)}%`;
-                        }
+                        percentageEl.innerText = `${Math.floor(currentProgress)}%`;
                         processSequentialLogs(currentProgress);
                     }
-                }, 40);
+                }, 500);
             }
 
             // Start animation on load
