@@ -221,11 +221,11 @@ const GlobalSmartMatchIframe = () => {
           console.log("- iframe exists?:", !!iframe);
           console.log("- iframe.contentWindow exists?:", iframe ? !!iframe.contentWindow : false);
 
-          if (iframe && iframe.contentWindow) {
-            const count = typeof data.eligibleCandidates === "number" 
-              ? data.eligibleCandidates 
-              : (Array.isArray(data.candidates) ? data.candidates.length : 0);
+          const count = typeof data.eligibleCandidates === "number" 
+            ? data.eligibleCandidates 
+            : (Array.isArray(data.candidates) ? data.candidates.length : 0);
 
+          if (iframe && iframe.contentWindow) {
             if (count > 0) {
               console.log("[Smart Match Frontend] Posting MATCH_FOUND to loading iframe");
               iframe.contentWindow.postMessage({ type: "MATCH_FOUND" }, "*");
@@ -237,9 +237,33 @@ const GlobalSmartMatchIframe = () => {
           } else {
             console.warn("[Smart Match Frontend] Loading iframe not found to send match status message!");
           }
+
+          // Single source of truth: backend response dictates the resolution.
+          // Start the 2000ms timer to wait for the iframe completion animation, then navigate directly.
+          setTimeout(() => {
+            console.log("STEP 11 reached");
+            console.log("STEP 12 reached");
+            setLoading(false);
+            setShowAssessment(false);
+            if (count > 0 && data.candidates && data.candidates.length > 0) {
+              navigate("/vet/booking-details", { state: { matchedVet: data.candidates[0] } });
+            } else {
+              navigate("/vet/no-vet-found");
+            }
+          }, 2000);
         })
         .catch((err) => {
           console.error("[Smart Match Frontend] Error calling POST /api/smart-match:", err);
+          const iframe = document.querySelector('iframe[title="Sruvo - Care Match Loading"]') as HTMLIFrameElement;
+          if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage({ type: "NO_VET_FOUND" }, "*");
+          }
+          // On error, also complete progress animation and navigate to No Vet Found after 2 seconds.
+          setTimeout(() => {
+            setLoading(false);
+            setShowAssessment(false);
+            navigate("/vet/no-vet-found");
+          }, 2000);
         });
       } else if (event.data.type === "NAVIGATE_PARENT") {
         if (event.data.path === "/vet/ai-assistant") {
@@ -247,16 +271,6 @@ const GlobalSmartMatchIframe = () => {
           return;
         }
         navigate(event.data.path);
-      } else if (event.data.type === "MATCH_COMPLETE") {
-        console.log("STEP 11 reached");
-        console.log("STEP 12 reached");
-        setLoading(false);
-        setShowAssessment(false);
-        if (matchedVetResultRef.current) {
-          navigate("/vet/booking-details", { state: { matchedVet: matchedVetResultRef.current } });
-        } else {
-          navigate("/vet/no-vet-found");
-        }
       } else if (event.data.type === "CANCEL_LOADING") {
         setLoading(false);
       } else if (event.data.type === "CLOSE_LOADING") {
@@ -278,7 +292,8 @@ const GlobalSmartMatchIframe = () => {
     }
   }, [loading]);
 
-  const mainIframeSrc = user ? `/smartmatch.html?userId=${user.id}` : "/smartmatch.html";
+  const isRijas = (user?.email?.toLowerCase().includes("rijas") || user?.id?.toLowerCase().includes("rijas")) ? "true" : "false";
+  const mainIframeSrc = user ? `/smartmatch.html?userId=${user.id}&isRijas=${isRijas}` : "/smartmatch.html";
   const loadingIframeSrc = "/smartmatchloading.html";
 
   return (

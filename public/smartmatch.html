@@ -387,10 +387,24 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get("userId") || "";
+        const isRijas = urlParams.get("isRijas") === "true" || (userId && userId.toLowerCase().includes("rijas"));
 
         async function loadAndSubscribePetPassports() {
             if (!userId) {
                 console.warn("No userId provided in URL, using static fallback.");
+                if (isRijas && !loggedInUserDatabaseRecords.some(p => p.id === "srv_pet_demo_rijas")) {
+                    loggedInUserDatabaseRecords.unshift({
+                        id: "srv_pet_demo_rijas",
+                        name: "Rocky (Demo)",
+                        photo: "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=300",
+                        species: "Dog",
+                        gender: "Male",
+                        breed: "Siberian Husky",
+                        appearance: "Black and White Thick Coat",
+                        age: "3 Yrs",
+                        weight: "28 kg"
+                    });
+                }
                 fetchAndRenderPetAvatars();
                 return;
             }
@@ -472,6 +486,19 @@
 
         async function fetchPetPassports() {
             if (!userId) {
+                if (isRijas && !loggedInUserDatabaseRecords.some(p => p.id === "srv_pet_demo_rijas")) {
+                    loggedInUserDatabaseRecords.unshift({
+                        id: "srv_pet_demo_rijas",
+                        name: "Rocky (Demo)",
+                        photo: "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=300",
+                        species: "Dog",
+                        gender: "Male",
+                        breed: "Siberian Husky",
+                        appearance: "Black and White Thick Coat",
+                        age: "3 Yrs",
+                        weight: "28 kg"
+                    });
+                }
                 fetchAndRenderPetAvatars();
                 return;
             }
@@ -494,6 +521,20 @@
                             };
                         });
                         
+                        if (isRijas) {
+                            loggedInUserDatabaseRecords.unshift({
+                                id: "srv_pet_demo_rijas",
+                                name: "Rocky (Demo)",
+                                photo: "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=300",
+                                species: "Dog",
+                                gender: "Male",
+                                breed: "Siberian Husky",
+                                appearance: "Black and White Thick Coat",
+                                age: "3 Yrs",
+                                weight: "28 kg"
+                            });
+                        }
+
                         if (currentPet) {
                             const updatedPet = loggedInUserDatabaseRecords.find(p => p.id === currentPet.id);
                             if (updatedPet) {
@@ -506,6 +547,19 @@
             } catch (e) {
                 console.error("Failed to fetch pet passports:", e);
             } finally {
+                if (isRijas && !loggedInUserDatabaseRecords.some(p => p.id === "srv_pet_demo_rijas")) {
+                    loggedInUserDatabaseRecords.unshift({
+                        id: "srv_pet_demo_rijas",
+                        name: "Rocky (Demo)",
+                        photo: "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=300",
+                        species: "Dog",
+                        gender: "Male",
+                        breed: "Siberian Husky",
+                        appearance: "Black and White Thick Coat",
+                        age: "3 Yrs",
+                        weight: "28 kg"
+                    });
+                }
                 fetchAndRenderPetAvatars();
             }
         }
