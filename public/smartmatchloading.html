@@ -184,6 +184,9 @@
         let currentPhraseIndex = 0;
         let tagIdx = 0;
         let currentLogIndex = -1;
+        let apiStatus = null;
+        let isAt95 = false;
+        let isAnimatingTo100 = false;
 
             const statusPhrases = [
                 "Analyzing reported symptoms...",
@@ -279,6 +282,9 @@
                 currentPhraseIndex = 0;
                 tagIdx = 0;
                 currentLogIndex = -1;
+                apiStatus = null;
+                isAt95 = false;
+                isAnimatingTo100 = false;
                 
                 statusTextEl.innerText = statusPhrases[0];
                 statusTextEl.classList.add("text-primary");
@@ -323,21 +329,37 @@
                     const elapsedTime = Date.now() - startTime;
                     // Go up to 95% over 49 seconds
                     let progress = (elapsedTime / MAX_DURATION) * 95;
-                    if (progress > 95) progress = 95;
+                    
+                    if (progress >= 95) {
+                        progress = 95;
+                        if (!isAt95) {
+                            isAt95 = true;
+                        }
 
-                    progressBarEl.style.width = `${progress}%`;
-                    percentageEl.innerText = `${Math.floor(progress)}%`;
-                    processSequentialLogs(progress);
+                        progressBarEl.style.width = `95%`;
+                        percentageEl.innerText = `95%`;
+                        processSequentialLogs(95);
+
+                        if (apiStatus && !isAnimatingTo100) {
+                            finishAnimation();
+                        }
+                    } else {
+                        progressBarEl.style.width = `${progress}%`;
+                        percentageEl.innerText = `${Math.floor(progress)}%`;
+                        processSequentialLogs(progress);
+                    }
                 }, 500);
             }
 
-            function handleMatchFound() {
-                console.log("STEP 9 reached");
+            function finishAnimation() {
+                if (isAnimatingTo100) return;
+                isAnimatingTo100 = true;
+                
                 clearInterval(progressInterval);
                 clearInterval(textInterval);
                 clearInterval(tagInterval);
-                
-                let currentProgress = parseFloat(percentageEl.innerText) || 0;
+
+                let currentProgress = parseFloat(percentageEl.innerText) || 95;
                 let speedUpInterval = setInterval(() => {
                     currentProgress += 4;
                     if (currentProgress >= 100) {
@@ -345,71 +367,72 @@
                         clearInterval(speedUpInterval);
                         
                         progressBarEl.style.width = `100%`;
-                        percentageEl.innerText = `100%`;
-                        processSequentialLogs(100);
                         
-                        statusTextEl.style.opacity = "0";
-                        setTimeout(() => {
-                            statusTextEl.innerText = "Match Complete!";
-                            statusTextEl.classList.remove("text-primary");
-                            statusTextEl.classList.add("text-[#ab47bc]", "text-[16px]");
-                            statusTextEl.style.opacity = "1";
-                        }, 300);
+                        if (apiStatus === "MATCH_FOUND") {
+                            percentageEl.innerText = `100%`;
+                            processSequentialLogs(100);
+                            
+                            statusTextEl.style.opacity = "0";
+                            setTimeout(() => {
+                                statusTextEl.innerText = "Match Complete!";
+                                statusTextEl.classList.remove("text-primary");
+                                statusTextEl.classList.add("text-[#ab47bc]", "text-[16px]");
+                                statusTextEl.style.opacity = "1";
+                            }, 300);
 
-                        const activeSpins = logContainer.querySelectorAll(".animate-spin");
-                        activeSpins.forEach(spin => {
-                            spin.className = "material-symbols-outlined text-[18px] text-green-500";
-                            spin.innerText = "check_circle";
-                            spin.parentElement.className = "flex items-center justify-between text-on-surface-variant/60 p-2 rounded-lg transition-all";
-                        });
-                        
-                        if(document.getElementById("floatingDataTag")) {
-                            document.getElementById("floatingDataTag").style.display = 'none';
+                            const activeSpins = logContainer.querySelectorAll(".animate-spin");
+                            activeSpins.forEach(spin => {
+                                spin.className = "material-symbols-outlined text-[18px] text-green-500";
+                                spin.innerText = "check_circle";
+                                spin.parentElement.className = "flex items-center justify-between text-on-surface-variant/60 p-2 rounded-lg transition-all";
+                            });
+                            
+                            if(document.getElementById("floatingDataTag")) {
+                                document.getElementById("floatingDataTag").style.display = 'none';
+                            }
+
+                            setTimeout(() => {
+                                console.log("STEP 10 reached");
+                                window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
+                            }, 1000);
+                        } else {
+                            // NO_VET_FOUND or ERROR
+                            progressBarEl.className = "h-full bg-red-500 rounded-full w-full transition-all duration-[200ms] ease-linear";
+                            percentageEl.innerText = `No Match`;
+                            
+                            statusTextEl.style.opacity = "0";
+                            setTimeout(() => {
+                                statusTextEl.innerHTML = "No Vet Found in your city.<br>Please try expanding your location.";
+                                statusTextEl.classList.remove("text-primary");
+                                statusTextEl.classList.add("text-red-500", "text-[16px]");
+                                statusTextEl.style.opacity = "1";
+                            }, 300);
+
+                            const activeSpins = logContainer.querySelectorAll(".animate-spin");
+                            activeSpins.forEach(spin => {
+                                spin.className = "material-symbols-outlined text-[18px] text-red-500";
+                                spin.innerText = "cancel";
+                                spin.parentElement.className = "flex items-center justify-between text-red-500/80 p-2 rounded-lg";
+                            });
+                            
+                            if(document.getElementById("floatingDataTag")) {
+                                document.getElementById("floatingDataTag").style.display = 'none';
+                            }
+                            
+                            setTimeout(() => {
+                                closeLoading();
+                            }, 1500);
                         }
-
-                        setTimeout(() => {
-                            console.log("STEP 10 reached");
-                            window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
-                        }, 1000);
                     } else {
                         progressBarEl.style.width = `${currentProgress}%`;
-                        percentageEl.innerText = `${Math.floor(currentProgress)}%`;
+                        if (apiStatus === "MATCH_FOUND") {
+                            percentageEl.innerText = `${Math.floor(currentProgress)}%`;
+                        } else {
+                            percentageEl.innerText = `${Math.floor(currentProgress)}%`;
+                        }
                         processSequentialLogs(currentProgress);
                     }
                 }, 40);
-            }
-
-            function handleNoVetFound() {
-                clearInterval(progressInterval);
-                clearInterval(textInterval);
-                clearInterval(tagInterval);
-                
-                progressBarEl.style.width = `100%`;
-                progressBarEl.className = "h-full bg-red-500 rounded-full w-full transition-all duration-[200ms] ease-linear";
-                percentageEl.innerText = `No Match`;
-                
-                statusTextEl.style.opacity = "0";
-                setTimeout(() => {
-                    statusTextEl.innerHTML = "No Vet Found in your city.<br>Please try expanding your location.";
-                    statusTextEl.classList.remove("text-primary");
-                    statusTextEl.classList.add("text-red-500", "text-[16px]");
-                    statusTextEl.style.opacity = "1";
-                }, 300);
-
-                const activeSpins = logContainer.querySelectorAll(".animate-spin");
-                activeSpins.forEach(spin => {
-                    spin.className = "material-symbols-outlined text-[18px] text-red-500";
-                    spin.innerText = "cancel";
-                    spin.parentElement.className = "flex items-center justify-between text-red-500/80 p-2 rounded-lg";
-                });
-                
-                if(document.getElementById("floatingDataTag")) {
-                    document.getElementById("floatingDataTag").style.display = 'none';
-                }
-                
-                setTimeout(() => {
-                    closeLoading();
-                }, 1500);
             }
 
             // Start animation on load
@@ -423,9 +446,15 @@
                     if (event.data.type === "START_LOADING") {
                         startAnimation();
                     } else if (event.data.type === "MATCH_FOUND") {
-                        handleMatchFound();
+                        apiStatus = "MATCH_FOUND";
+                        if (isAt95 && !isAnimatingTo100) {
+                            finishAnimation();
+                        }
                     } else if (event.data.type === "NO_VET_FOUND") {
-                        handleNoVetFound();
+                        apiStatus = "NO_VET_FOUND";
+                        if (isAt95 && !isAnimatingTo100) {
+                            finishAnimation();
+                        }
                     }
                 }
             });
