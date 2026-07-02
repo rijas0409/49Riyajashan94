@@ -332,6 +332,7 @@
             }
 
             function handleMatchFound() {
+                console.log("STEP 9 reached");
                 clearInterval(progressInterval);
                 clearInterval(textInterval);
                 clearInterval(tagInterval);
@@ -367,6 +368,7 @@
                         }
 
                         setTimeout(() => {
+                            console.log("STEP 10 reached");
                             window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
                         }, 1000);
                     } else {
@@ -416,6 +418,8 @@
             // Handle messages from parent React app
             window.addEventListener("message", (event) => {
                 if (event.data) {
+                    console.log("STEP 8 reached");
+                    console.log("Message event data:", JSON.stringify(event.data));
                     if (event.data.type === "START_LOADING") {
                         startAnimation();
                     } else if (event.data.type === "MATCH_FOUND") {

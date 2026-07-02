@@ -140,6 +140,7 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
 
   // End Point: Sruvo Smart Match (Phase 2 Backend Candidate Filtering Pipeline)
   app.post("/api/smart-match", async (req, res) => {
+    console.log("STEP 3 reached");
     console.log("[Smart Match Backend] Request received at POST /api/smart-match");
 
     try {
@@ -300,6 +301,7 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
       console.log(`- After Species filter: ${stage4Species.length}`);
       console.log(`- After Condition Frequently Managed filter: ${stage5Concern.length}`);
 
+      console.log("STEP 4 reached");
       console.log("[Smart Match Backend] Response sent successfully");
       return res.json({
         success: true,

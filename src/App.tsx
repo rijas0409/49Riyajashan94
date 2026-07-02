@@ -199,6 +199,7 @@ const GlobalSmartMatchIframe = () => {
         const payload = event.data.payload || {};
         console.log("[Smart Match Frontend] Complete questionnaire payload from Step 1-6 received:", payload);
 
+        console.log("STEP 2 reached");
         fetch("/api/smart-match", {
           method: "POST",
           headers: {
@@ -211,9 +212,15 @@ const GlobalSmartMatchIframe = () => {
             throw new Error(`Server returned status ${res.status}`);
           }
           const data = await res.json();
-          console.log("[Smart Match Frontend] Fetch success from POST /api/smart-match. Veterinarians count:", data.totalFetched, data);
+          console.log("STEP 5 reached");
+          console.log("Complete response JSON:", JSON.stringify(data));
 
           const iframe = document.querySelector('iframe[title="Sruvo - Care Match Loading"]') as HTMLIFrameElement;
+          console.log("STEP 6 reached");
+          console.log("- iframe reference:", iframe);
+          console.log("- iframe exists?:", !!iframe);
+          console.log("- iframe.contentWindow exists?:", iframe ? !!iframe.contentWindow : false);
+
           if (iframe && iframe.contentWindow) {
             const count = typeof data.eligibleCandidates === "number" 
               ? data.eligibleCandidates 
@@ -226,6 +233,7 @@ const GlobalSmartMatchIframe = () => {
               console.log("[Smart Match Frontend] Posting NO_VET_FOUND to loading iframe");
               iframe.contentWindow.postMessage({ type: "NO_VET_FOUND" }, "*");
             }
+            console.log("STEP 7 reached");
           } else {
             console.warn("[Smart Match Frontend] Loading iframe not found to send match status message!");
           }
@@ -240,6 +248,8 @@ const GlobalSmartMatchIframe = () => {
         }
         navigate(event.data.path);
       } else if (event.data.type === "MATCH_COMPLETE") {
+        console.log("STEP 11 reached");
+        console.log("STEP 12 reached");
         setLoading(false);
         setShowAssessment(false);
         if (matchedVetResultRef.current) {
