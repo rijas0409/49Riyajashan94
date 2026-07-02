@@ -215,6 +215,136 @@ const GlobalSmartMatchIframe = () => {
           console.log("STEP 5 reached");
           console.log("Complete response JSON:", JSON.stringify(data));
 
+          const candidates = Array.isArray(data.candidates) ? data.candidates : [];
+          const scoredCandidates = Array.isArray(data.scoredCandidates) ? data.scoredCandidates : [];
+
+          // Implement Phase 4 Winner Selection Logic
+          let bestScored: any = null;
+
+          for (const cand of scoredCandidates) {
+            if (!cand || !cand.id) continue;
+            const rawVet = candidates.find((v: any) => (v.id === cand.id || v.user_id === cand.id));
+            if (!rawVet) continue;
+
+            if (!bestScored) {
+              bestScored = { cand, rawVet };
+              continue;
+            }
+
+            // Compare with current bestScored
+            // Rule 1: Highest totalScore
+            if (cand.totalScore > bestScored.cand.totalScore) {
+              bestScored = { cand, rawVet };
+            } else if (cand.totalScore === bestScored.cand.totalScore) {
+              // Rule 2: If same totalScore, apply tie-breakers sequentially:
+              
+              // 2.1 Higher years of experience
+              const expA = typeof rawVet.years_of_experience === "number" ? rawVet.years_of_experience : 0;
+              const expB = typeof bestScored.rawVet.years_of_experience === "number" ? bestScored.rawVet.years_of_experience : 0;
+              
+              if (expA > expB) {
+                console.log(`[Smart Match Tie-Break] Same totalScore ${cand.totalScore}. Breaking tie: Vet ${cand.id} has higher experience (${expA} years) than Vet ${bestScored.cand.id} (${expB} years).`);
+                bestScored = { cand, rawVet };
+              } else if (expA === expB) {
+                // 2.2 Lower consultation fee
+                const feeA = typeof rawVet.online_fee === "number" ? rawVet.online_fee : (typeof rawVet.offline_fee === "number" ? rawVet.offline_fee : 500);
+                const feeB = typeof bestScored.rawVet.online_fee === "number" ? bestScored.rawVet.online_fee : (typeof bestScored.rawVet.offline_fee === "number" ? bestScored.rawVet.offline_fee : 500);
+
+                if (feeA < feeB) {
+                  console.log(`[Smart Match Tie-Break] Same experience ${expA} years. Breaking tie: Vet ${cand.id} has lower fee (${feeA}) than Vet ${bestScored.cand.id} (${feeB}).`);
+                  bestScored = { cand, rawVet };
+                } else if (feeA === feeB) {
+                  // 2.3 Higher rating
+                  const ratingA = typeof rawVet.average_rating === "number" ? rawVet.average_rating : 0;
+                  const ratingB = typeof bestScored.rawVet.average_rating === "number" ? bestScored.rawVet.average_rating : 0;
+
+                  if (ratingA > ratingB) {
+                    console.log(`[Smart Match Tie-Break] Same fee ${feeA}. Breaking tie: Vet ${cand.id} has higher rating (${ratingA}) than Vet ${bestScored.cand.id} (${ratingB}).`);
+                    bestScored = { cand, rawVet };
+                  } else if (ratingA === ratingB) {
+                    // 2.4 Closer distance (higher distanceScore since score is normalized lower-is-better)
+                    const distScoreA = typeof cand.distanceScore === "number" ? cand.distanceScore : 0;
+                    const distScoreB = typeof bestScored.cand.distanceScore === "number" ? bestScored.cand.distanceScore : 0;
+                    
+                    if (distScoreA > distScoreB) {
+                      console.log(`[Smart Match Tie-Break] Same rating ${ratingA}. Breaking tie: Vet ${cand.id} is closer (distanceScore ${distScoreA}) than Vet ${bestScored.cand.id} (distanceScore ${distScoreB}).`);
+                      bestScored = { cand, rawVet };
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          // Print detailed logs as required
+          console.log("-----------------------------------------");
+          console.log("SMART MATCH FRONTEND WINNER SELECTION LOGS");
+          console.log("-----------------------------------------");
+          console.log(`total scored candidates: ${scoredCandidates.length}`);
+          scoredCandidates.forEach((cand: any) => {
+            const rawVet = candidates.find((v: any) => (v.id === cand.id || v.user_id === cand.id));
+            const exp = rawVet ? rawVet.years_of_experience : "unknown";
+            const fee = rawVet ? (rawVet.online_fee || rawVet.offline_fee || 500) : "unknown";
+            const rating = rawVet ? rawVet.average_rating : "unknown";
+            console.log(`Candidate ID: ${cand.id} | Total Score: ${cand.totalScore} | Experience: ${exp} years | Fee: ${fee} | Rating: ${rating}`);
+          });
+
+          if (bestScored) {
+            console.log(`selected vet ID: ${bestScored.rawVet.id}`);
+            console.log(`final navigation decision: Navigate to Booking Details (/vet/booking-details)`);
+
+            // Fetch corresponding profile name & photo from supabase to build matchedVetResultRef
+            try {
+              const { data: prof } = await supabase
+                .from("profiles")
+                .select("name, full_name, profile_photo")
+                .eq("id", bestScored.rawVet.user_id)
+                .maybeSingle();
+
+              const rawName = prof?.full_name || prof?.name || (bestScored.rawVet.user_id === "f9834ef6-778d-4384-8d17-6316fffa03b6" ? "Jashan Pabla" : "Veterinarian");
+              const realName = `Dr. ${rawName}`;
+
+              matchedVetResultRef.current = {
+                id: bestScored.rawVet.id,
+                userId: bestScored.rawVet.user_id,
+                name: realName,
+                specialization: bestScored.rawVet.specializations?.[0] || "General Veterinarian",
+                image: prof?.profile_photo || bestScored.rawVet.profile_photo || "",
+                rating: bestScored.rawVet.average_rating || 0,
+                experience: bestScored.rawVet.years_of_experience || 0,
+                fee: bestScored.rawVet.online_fee || 499,
+                onlineFee: bestScored.rawVet.online_fee || 500,
+                offlineFee: bestScored.rawVet.offline_fee || 800,
+                weekly_availability: bestScored.rawVet.weekly_availability,
+              };
+            } catch (err) {
+              console.error("[Smart Match Frontend] Error fetching winner profile details:", err);
+              // Fallback
+              matchedVetResultRef.current = {
+                id: bestScored.rawVet.id,
+                userId: bestScored.rawVet.user_id,
+                name: `Dr. Veterinarian`,
+                specialization: bestScored.rawVet.specializations?.[0] || "General Veterinarian",
+                image: bestScored.rawVet.profile_photo || "",
+                rating: bestScored.rawVet.average_rating || 0,
+                experience: bestScored.rawVet.years_of_experience || 0,
+                fee: bestScored.rawVet.online_fee || 499,
+                onlineFee: bestScored.rawVet.online_fee || 500,
+                offlineFee: bestScored.rawVet.offline_fee || 800,
+                weekly_availability: bestScored.rawVet.weekly_availability,
+              };
+            }
+          } else {
+            console.log(`final navigation decision: Navigate to No Vet Found (/vet/no-vet-found)`);
+            if (scoredCandidates.length === 0) {
+              console.log(`exact reason if no winner is selected: No scoredCandidates returned from the backend (scoredCandidates is empty)`);
+            } else {
+              console.log(`exact reason if no winner is selected: scoredCandidates returned from the backend but all values are invalid (no matching candidates)`);
+            }
+            matchedVetResultRef.current = null;
+          }
+          console.log("-----------------------------------------");
+
           const iframe = document.querySelector('iframe[title="Sruvo - Care Match Loading"]') as HTMLIFrameElement;
           console.log("STEP 6 reached");
           console.log("- iframe reference:", iframe);
@@ -222,9 +352,8 @@ const GlobalSmartMatchIframe = () => {
           console.log("- iframe.contentWindow exists?:", iframe ? !!iframe.contentWindow : false);
 
           if (iframe && iframe.contentWindow) {
-            const count = typeof data.eligibleCandidates === "number" 
-              ? data.eligibleCandidates 
-              : (Array.isArray(data.candidates) ? data.candidates.length : 0);
+            // Count of valid candidates/winner selected
+            const count = matchedVetResultRef.current ? 1 : 0;
 
             if (count > 0) {
               console.log("[Smart Match Frontend] Posting MATCH_FOUND to loading iframe");
