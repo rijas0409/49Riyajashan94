@@ -351,6 +351,7 @@
 
     <script>
         function submitSmartMatch() {
+            console.log("[SmartMatch Log] Stage 1: Step 6 Submit - event started");
             const buildQA = (idList) => {
                 let qaList = [];
                 idList.forEach(id => {
@@ -370,6 +371,8 @@
                 mediaFiles: step5MediaFiles
             };
 
+            console.log("[SmartMatch Log] Stage 1: Step 6 Submit - payload compiled:", JSON.stringify(payload));
+            console.log("[SmartMatch Log] Stage 1: Step 6 Submit - event completed (sending postMessage to parent)");
             window.parent.postMessage({ type: "SUBMIT_SMART_MATCH", payload: payload }, "*");
         }
 

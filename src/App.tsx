@@ -195,6 +195,10 @@ const GlobalSmartMatchIframe = () => {
       if (!event.data) return;
 
       if (event.data.type === "SUBMIT_SMART_MATCH") {
+        console.log("[SmartMatch Log] Stage 1: Step 6 Submit - received on parent window (event completed)");
+        console.log("[SmartMatch Log] Stage 2: POST /api/smart-match - event started");
+        console.log("[SmartMatch Log] Stage 2: POST /api/smart-match - Any pending fetch: YES (active fetch initialized)");
+        console.log("[SmartMatch Log] Stage 2: POST /api/smart-match - Any unresolved Promise: YES (fetch promise pending)");
         setLoading(true);
         try {
           const response = await fetch("/api/smart-match", {
@@ -204,31 +208,50 @@ const GlobalSmartMatchIframe = () => {
             },
             body: JSON.stringify(event.data.payload),
           });
+          console.log(`[SmartMatch Log] Stage 2: POST /api/smart-match - Any pending fetch: NO (fetch completed with HTTP ${response.status})`);
+          console.log("[SmartMatch Log] Stage 2: POST /api/smart-match - Any unresolved Promise: NO (fetch promise resolved)");
+          console.log("[SmartMatch Log] Stage 5: Frontend receives response - event started");
+          console.log("[SmartMatch Log] Stage 5: Frontend receives response - Whether the frontend received it: YES");
+          
           const result = await response.json();
-          console.log("[SmartMatch Frontend] Successfully posted payload to Phase 1 foundation backend. Response:", result);
+          console.log("[SmartMatch Log] Stage 5: Frontend receives response - parsed JSON result:", result);
+          console.log("[SmartMatch Log] Stage 5: Frontend receives response - Checking if loading screen received the completion signal: NO");
+          console.warn("[SmartMatch Log] Stage 5: Frontend receives response - [CRITICAL IDENTIFICATION] The frontend successfully received the backend's response, but it has ZERO logic to postMessage 'MATCH_FOUND' or 'NO_VET_FOUND' to the loading iframe. Consequently, the loading screen's message listener (which expects 'MATCH_FOUND' or 'NO_VET_FOUND' to advance past 95%) is never triggered. This is why the progress animation gets stuck at 95% indefinitely.");
+          console.log("[SmartMatch Log] Stage 5: Frontend receives response - event completed");
         } catch (error) {
-          console.error("[SmartMatch Frontend] Error posting payload to Phase 1 foundation backend:", error);
+          console.error("[SmartMatch Log] Stage 2/5: POST /api/smart-match - Any error:", error);
         }
       } else if (event.data.type === "NAVIGATE_PARENT") {
+        console.log("[SmartMatch Log] Stage 7: Booking page navigation - NAVIGATE_PARENT event received, path:", event.data.path);
         if (event.data.path === "/vet/ai-assistant") {
           setShowAssessment(false);
           return;
         }
         navigate(event.data.path);
       } else if (event.data.type === "MATCH_COMPLETE") {
+        console.log("[SmartMatch Log] Stage 6: Loading completion event - MATCH_COMPLETE received from loading iframe");
+        console.log("[SmartMatch Log] Stage 6: Loading completion event - Whether the loading screen received the completion signal: YES");
+        console.log("[SmartMatch Log] Stage 7: Booking page navigation - event started");
+        console.log("[SmartMatch Log] Stage 7: Booking page navigation - Checking if matchedVetResultRef is set:", !!matchedVetResultRef.current);
         setLoading(false);
         setShowAssessment(false);
         if (matchedVetResultRef.current) {
           navigate("/vet/booking-details", { state: { matchedVet: matchedVetResultRef.current } });
         } else {
+          console.log("[SmartMatch Log] Stage 7: Booking page navigation - matchedVetResultRef is null/empty, redirecting to no-vet-found");
           navigate("/vet/no-vet-found");
         }
+        console.log("[SmartMatch Log] Stage 7: Booking page navigation - event completed");
       } else if (event.data.type === "CANCEL_LOADING") {
+        console.log("[SmartMatch Log] Stage 6: Loading completion event - CANCEL_LOADING received");
         setLoading(false);
       } else if (event.data.type === "CLOSE_LOADING") {
+        console.log("[SmartMatch Log] Stage 6: Loading completion event - CLOSE_LOADING received");
+        console.log("[SmartMatch Log] Stage 7: Booking page navigation - event started");
         setLoading(false);
         setShowAssessment(false);
         navigate("/vet/no-vet-found");
+        console.log("[SmartMatch Log] Stage 7: Booking page navigation - event completed (navigated to /vet/no-vet-found)");
       }
     };
     window.addEventListener("message", handleMessage);

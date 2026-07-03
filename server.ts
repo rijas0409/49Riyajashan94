@@ -206,27 +206,29 @@ Keep descriptions concise (max 2 sentences).`;
 
   // End Point: Sruvo Smart Match — Phase 1 Foundation
   app.post("/api/smart-match", async (req, res) => {
-    console.log("[SmartMatch] ==========================================");
-    console.log("[SmartMatch] [Log 1/8] Request Received");
+    console.log("[SmartMatch Log] Stage 3: Backend execution - event started");
+    console.log("[SmartMatch Log] Stage 3: Backend execution - Whether the backend returned a response: PENDING");
 
     try {
       const payload = req.body;
-      console.log("[SmartMatch] [Log 2/8] Raw Payload Received:", JSON.stringify(payload, null, 2));
+      console.log("[SmartMatch Log] Stage 3: Backend execution - Received payload keys:", Object.keys(payload || {}));
 
       // 1. Validate payload shape
       if (!payload) {
-        console.warn("[SmartMatch] [Log 3/8] Payload Validation Result: FAILED (Empty payload)");
+        console.warn("[SmartMatch Log] Stage 3: Backend execution - Payload Validation Result: FAILED (Any error: Empty payload)");
+        console.log("[SmartMatch Log] Stage 4: Response returned - event completed (sending status 400)");
         return res.status(400).json({ success: false, error: "Empty payload received" });
       }
 
       const { pet, concerns, healthBackground, currentHealthStatus, mediaFiles } = payload;
 
       if (!pet || !pet.species || !pet.name) {
-        console.warn("[SmartMatch] [Log 3/8] Payload Validation Result: FAILED (Missing basic pet details like species or name)");
+        console.warn("[SmartMatch Log] Stage 3: Backend execution - Payload Validation Result: FAILED (Any error: Missing pet species or name)");
+        console.log("[SmartMatch Log] Stage 4: Response returned - event completed (sending status 400)");
         return res.status(400).json({ success: false, error: "Missing pet details (name, species are required)" });
       }
 
-      console.log("[SmartMatch] [Log 3/8] Payload Validation Result: SUCCESS");
+      console.log("[SmartMatch Log] Stage 3: Backend execution - Payload Validation Result: SUCCESS");
 
       // 2. Normalize the request
       const rawSpecies = pet.species ? String(pet.species).trim() : "";
@@ -281,29 +283,30 @@ Keep descriptions concise (max 2 sentences).`;
         mediaReferences: mediaFiles || []
       };
 
-      console.log("[SmartMatch] [Log 4/8] Normalized Payload:", JSON.stringify(normalizedRequest, null, 2));
+      console.log("[SmartMatch Log] Stage 3: Backend execution - [Log 4/8] Normalized Payload:", JSON.stringify(normalizedRequest));
 
       // 3. Connect to database
-      console.log("[SmartMatch] [Log 5/8] Connecting to database...");
+      console.log("[SmartMatch Log] Stage 3: Backend execution - [Log 5/8] Connecting to database... (unresolved Promise created)");
       const supabaseAdmin = await getSupabaseAdmin();
       if (!supabaseAdmin) {
-        console.error("[SmartMatch] Database connection result: FAILED");
+        console.error("[SmartMatch Log] Stage 3: Backend execution - Database connection result: FAILED (Any error: No admin client)");
         throw new Error("Failed to connect to database");
       }
-      console.log("[SmartMatch] Database connection result: SUCCESS");
+      console.log("[SmartMatch Log] Stage 3: Backend execution - Database connection result: SUCCESS (Promise resolved)");
 
       // 4. Fetch real veterinarian records from the database
+      console.log("[SmartMatch Log] Stage 3: Backend execution - Fetching real veterinarian records... (unresolved Promise created / pending fetch)");
       const { data: vetProfiles, error: fetchErr } = await supabaseAdmin
         .from("vet_profiles")
         .select("*");
 
       if (fetchErr) {
-        console.error("[SmartMatch] Fetching veterinarians from DB failed:", fetchErr);
+        console.error("[SmartMatch Log] Stage 3: Backend execution - Fetching veterinarians from DB failed (Any error:", fetchErr, ")");
         throw fetchErr;
       }
 
       const totalFetched = vetProfiles?.length || 0;
-      console.log(`[SmartMatch] [Log 6/8] Total Veterinarians Fetched: ${totalFetched}`);
+      console.log(`[SmartMatch Log] Stage 3: Backend execution - Total Veterinarians Fetched: ${totalFetched} (Promise resolved)`);
 
       // 5. Build field schema map for logging and debugging
       const fieldMap = {
@@ -372,7 +375,7 @@ Keep descriptions concise (max 2 sentences).`;
         medical_specializations: { type: "Json", nullable: true }
       };
 
-      console.log("[SmartMatch] [Log 7/8] List of field names available on vet profiles:", Object.keys(fieldMap));
+      console.log("[SmartMatch Log] Stage 3: Backend execution - [Log 7/8] List of field names available on vet profiles:", Object.keys(fieldMap));
 
       const rawVets = vetProfiles || [];
       rawVets.forEach((vet: any, idx: number) => {
@@ -382,11 +385,11 @@ Keep descriptions concise (max 2 sentences).`;
             nullOrMissingFields.push(field);
           }
         });
-        console.log(`[SmartMatch] Profile #${idx + 1} (${vet.id}): Null/Missing fields count: ${nullOrMissingFields.length}. Fields: ${nullOrMissingFields.join(", ")}`);
+        console.log(`[SmartMatch Log] Stage 3: Backend execution - Profile #${idx + 1} (${vet.id}): Null/Missing fields count: ${nullOrMissingFields.length}. Fields: ${nullOrMissingFields.join(", ")}`);
       });
 
-      console.log("[SmartMatch] [Log 8/8] Response Sent");
-      console.log("[SmartMatch] ==========================================");
+      console.log("[SmartMatch Log] Stage 3: Backend execution - event completed");
+      console.log("[SmartMatch Log] Stage 4: Response returned - Whether the backend returned a response: YES");
 
       return res.json({
         success: true,
@@ -397,7 +400,7 @@ Keep descriptions concise (max 2 sentences).`;
       });
 
     } catch (err: any) {
-      console.error("[SmartMatch] Endpoint experienced an error:", err);
+      console.error("[SmartMatch Log] Stage 3/4: Backend execution - Any error:", err.message || String(err));
       return res.status(500).json({ success: false, error: err.message || String(err) });
     }
   });

@@ -319,11 +319,19 @@
                 }, 1500);
 
                 const MAX_DURATION = 49000;
+                let logged95 = false;
                 progressInterval = setInterval(() => {
                     const elapsedTime = Date.now() - startTime;
                     // Go up to 95% over 49 seconds
                     let progress = (elapsedTime / MAX_DURATION) * 95;
-                    if (progress > 95) progress = 95;
+                    if (progress > 95) {
+                        progress = 95;
+                        if (!logged95) {
+                            logged95 = true;
+                            console.log("[SmartMatch Log] Stage 6: Progress animation has reached 95%. Max duration (49s) reached.");
+                            console.log("[SmartMatch Log] Stage 6: Whether the loading screen received the completion signal: NO (still waiting for MATCH_FOUND or NO_VET_FOUND from parent...)");
+                        }
+                    }
 
                     progressBarEl.style.width = `${progress}%`;
                     percentageEl.innerText = `${Math.floor(progress)}%`;
@@ -332,6 +340,8 @@
             }
 
             function handleMatchFound() {
+                console.log("[SmartMatch Log] Stage 6: Loading screen received the completion signal: YES (MATCH_FOUND)");
+                console.log("[SmartMatch Log] Stage 6: Loading completion event - started (animating to 100%)");
                 clearInterval(progressInterval);
                 clearInterval(textInterval);
                 clearInterval(tagInterval);
@@ -366,6 +376,7 @@
                             document.getElementById("floatingDataTag").style.display = 'none';
                         }
 
+                        console.log("[SmartMatch Log] Stage 6: Loading completion event - completed (sending MATCH_COMPLETE to parent)");
                         setTimeout(() => {
                             window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
                         }, 1000);
@@ -378,6 +389,8 @@
             }
 
             function handleNoVetFound() {
+                console.log("[SmartMatch Log] Stage 6: Loading screen received the completion signal: YES (NO_VET_FOUND)");
+                console.log("[SmartMatch Log] Stage 6: Loading completion event - completed (handling NO_VET_FOUND failure UI)");
                 clearInterval(progressInterval);
                 clearInterval(textInterval);
                 clearInterval(tagInterval);
@@ -416,6 +429,7 @@
             // Handle messages from parent React app
             window.addEventListener("message", (event) => {
                 if (event.data) {
+                    console.log("[SmartMatch Log] Stage 6: Message received from parent in loading iframe:", event.data.type);
                     if (event.data.type === "START_LOADING") {
                         startAnimation();
                     } else if (event.data.type === "MATCH_FOUND") {
