@@ -183,6 +183,32 @@ const GlobalSmartMatchIframe = () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const matchedVetResultRef = useRef<any>(null);
 
+  const navigateRef = useRef(navigate);
+  const userRef = useRef(user);
+  const cityRef = useRef(city);
+  const loadingRef = useRef(loading);
+  const showAssessmentRef = useRef(showAssessment);
+
+  useEffect(() => {
+    navigateRef.current = navigate;
+  }, [navigate]);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    cityRef.current = city;
+  }, [city]);
+
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+
+  useEffect(() => {
+    showAssessmentRef.current = showAssessment;
+  }, [showAssessment]);
+
   useEffect(() => {
     if (!isMatch) {
       setLoading(false);
@@ -194,7 +220,9 @@ const GlobalSmartMatchIframe = () => {
     const handleMessage = async (event: MessageEvent) => {
       if (!event.data) return;
 
-      if (event.data.type === "SUBMIT_SMART_MATCH") {
+      console.log("[Smart Match Listener] Received message event:", event.data.type, event.data);
+
+      if (event.data.type === "SUBMIT_SMART_MATCH" || event.data.type === "SUBMIT_FORM") {
         setLoading(true);
         const payload = event.data.payload || {};
         console.log("[Smart Match Frontend] Complete questionnaire payload from Step 1-6 received:", payload);
@@ -379,28 +407,41 @@ const GlobalSmartMatchIframe = () => {
           setShowAssessment(false);
           return;
         }
-        navigate(event.data.path);
+        navigateRef.current(event.data.path);
+      } else if (event.data.type === "MATCH_FOUND") {
+        console.log("[Smart Match Frontend] Explicit MATCH_FOUND message received from client");
+        const iframe = document.querySelector('iframe[title="Sruvo - Care Match Loading"]') as HTMLIFrameElement;
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.postMessage({ type: "MATCH_FOUND" }, "*");
+        }
+      } else if (event.data.type === "NO_VET_FOUND") {
+        console.log("[Smart Match Frontend] Explicit NO_VET_FOUND message received from client");
+        matchedVetResultRef.current = null;
+        const iframe = document.querySelector('iframe[title="Sruvo - Care Match Loading"]') as HTMLIFrameElement;
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.postMessage({ type: "NO_VET_FOUND" }, "*");
+        }
       } else if (event.data.type === "MATCH_COMPLETE") {
         console.log("STEP 11 reached");
         console.log("STEP 12 reached");
         setLoading(false);
         setShowAssessment(false);
         if (matchedVetResultRef.current) {
-          navigate("/vet/booking-details", { state: { matchedVet: matchedVetResultRef.current } });
+          navigateRef.current("/vet/booking-details", { state: { matchedVet: matchedVetResultRef.current } });
         } else {
-          navigate("/vet/no-vet-found");
+          navigateRef.current("/vet/no-vet-found");
         }
       } else if (event.data.type === "CANCEL_LOADING") {
         setLoading(false);
       } else if (event.data.type === "CLOSE_LOADING") {
         setLoading(false);
         setShowAssessment(false);
-        navigate("/vet/no-vet-found");
+        navigateRef.current("/vet/no-vet-found");
       }
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [navigate, user, city]);
+  }, []);
 
   useEffect(() => {
     if (loading) {
