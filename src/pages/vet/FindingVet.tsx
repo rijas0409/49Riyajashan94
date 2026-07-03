@@ -16,14 +16,6 @@ const FindingVet = () => {
 
   useEffect(() => {
     const stateData = location.state || {};
-    
-    // Disable/bypass independent search and duplicate orchestration for the Smart Match flow.
-    // Smart Match has only one source of truth (managed in App.tsx) and should not be interfered with.
-    if (stateData.isSmartMatch || stateData.fromSmartMatch) {
-      console.log("[FindingVet] Smart Match flow detected. Bypassing duplicate orchestration in FindingVet.tsx.");
-      return;
-    }
-
     const timer = setInterval(() => {
       setSearchTime(prev => prev + 1);
     }, 1000);
