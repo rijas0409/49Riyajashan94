@@ -263,7 +263,13 @@
                 }
             }
 
+            let isVetFound = true;
+            let isRunning = false;
+
             function startAnimation() {
+                if (isRunning) return;
+                isRunning = true;
+
                 // Clear any existing intervals
                 clearInterval(textInterval);
                 clearInterval(tagInterval);
@@ -318,67 +324,73 @@
                     tagIdx++;
                 }, 2000);
 
-                const PROGRESS_DURATION = 48000; // Progress reaches 100% in exactly 48s
                 const TOTAL_DURATION = 49000;    // Entire loading screen runs for exactly 49s
 
                 progressInterval = setInterval(() => {
                     const elapsedTime = Date.now() - startTime;
+                    const limitDuration = isVetFound ? 48000 : 48906;
                     
-                    // Progress from 1% to 100% over PROGRESS_DURATION
-                    let progress = 1 + (elapsedTime / PROGRESS_DURATION) * 99;
-                    if (progress >= 100) {
+                    // Progress from 1% to 100% over limitDuration
+                    let progress = 1 + (elapsedTime / limitDuration) * 99;
+                    if (elapsedTime >= limitDuration) {
                         progress = 100;
                         clearInterval(progressInterval);
                         clearInterval(textInterval);
                         clearInterval(tagInterval);
+                        isRunning = false;
 
                         progressBarEl.style.width = "100%";
                         percentageEl.innerText = "100%";
                         processSequentialLogs(100);
 
-                        // Success UI Transition
-                        statusTextEl.style.opacity = "0";
-                        setTimeout(() => {
-                            statusTextEl.innerText = "Match Complete!";
-                            statusTextEl.classList.remove("text-primary");
-                            statusTextEl.classList.add("text-[#ab47bc]", "text-[16px]");
-                            statusTextEl.style.opacity = "1";
-                        }, 300);
+                        if (isVetFound) {
+                            // Success UI Transition
+                            statusTextEl.style.opacity = "0";
+                            setTimeout(() => {
+                                statusTextEl.innerText = "Match Complete!";
+                                statusTextEl.classList.remove("text-primary");
+                                statusTextEl.classList.add("text-[#ab47bc]", "text-[16px]");
+                                statusTextEl.style.opacity = "1";
+                            }, 300);
 
-                        const activeSpins = logContainer.querySelectorAll(".animate-spin");
-                        activeSpins.forEach(spin => {
-                            spin.className = "material-symbols-outlined text-[18px] text-green-500";
-                            spin.innerText = "check_circle";
-                            spin.parentElement.className = "flex items-center justify-between text-on-surface-variant/60 p-2 rounded-lg transition-all";
-                        });
-                        
-                        if(document.getElementById("floatingDataTag")) {
-                            document.getElementById("floatingDataTag").style.display = 'none';
+                            const activeSpins = logContainer.querySelectorAll(".animate-spin");
+                            activeSpins.forEach(spin => {
+                                spin.className = "material-symbols-outlined text-[18px] text-green-500";
+                                spin.innerText = "check_circle";
+                                spin.parentElement.className = "flex items-center justify-between text-on-surface-variant/60 p-2 rounded-lg transition-all";
+                            });
+                            
+                            if (document.getElementById("floatingDataTag")) {
+                                document.getElementById("floatingDataTag").style.display = 'none';
+                            }
+
+                            // Complete after exactly 49 seconds (remaining 1 second showing success screen)
+                            const remainingTime = TOTAL_DURATION - (Date.now() - startTime);
+                            setTimeout(() => {
+                                window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
+                            }, Math.max(0, remainingTime));
+                        } else {
+                            // Display "No Match" in place of the progress text for exactly 94 milliseconds, then redirect
+                            percentageEl.innerText = "No Match";
+                            setTimeout(() => {
+                                window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
+                            }, 94);
                         }
-
-                        // Complete after exactly 49 seconds (remaining 1 second showing success screen)
-                        const remainingTime = TOTAL_DURATION - (Date.now() - startTime);
-                        setTimeout(() => {
-                            window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
-                        }, Math.max(0, remainingTime));
                     } else {
                         progressBarEl.style.width = `${progress}%`;
                         percentageEl.innerText = `${Math.floor(progress)}%`;
                         processSequentialLogs(progress);
                     }
-                }, 100);
+                }, 50);
             }
 
             function handleMatchFound() {
-                // Handled automatically by the 49s sequential timer
+                isVetFound = true;
             }
 
             function handleNoVetFound() {
-                // Handled automatically by the 49s sequential timer
+                isVetFound = false;
             }
-
-            // Start animation on load
-            startAnimation();
 
             // Handle messages from parent React app
             window.addEventListener("message", (event) => {
@@ -395,9 +407,11 @@
 
         // Communication buttons
         function cancelLoading() {
+            isRunning = false;
             window.parent.postMessage({ type: "CANCEL_LOADING" }, "*");
         }
         function closeLoading() {
+            isRunning = false;
             window.parent.postMessage({ type: "CLOSE_LOADING" }, "*");
         }
     </script>

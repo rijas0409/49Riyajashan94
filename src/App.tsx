@@ -207,6 +207,8 @@ const GlobalSmartMatchIframe = () => {
           const result = await response.json();
           console.log("[SmartMatch Frontend] Successfully posted payload to Phase 1 foundation backend. Response:", result);
 
+          let isVetFound = false;
+
           if (result.success && result.veterinarians && result.veterinarians.length > 0) {
             const payload = event.data.payload;
             const petType = payload.pet?.species || "";
@@ -262,6 +264,7 @@ const GlobalSmartMatchIframe = () => {
                 weekly_availability: bestVet.weekly_availability,
               };
               console.log("[SmartMatch Matching] Selected best matched vet:", matchedVetResultRef.current);
+              isVetFound = true;
             } else {
               console.log("[SmartMatch Matching] No matching vet found under strict species/concern filters.");
               matchedVetResultRef.current = null;
@@ -269,9 +272,19 @@ const GlobalSmartMatchIframe = () => {
           } else {
             matchedVetResultRef.current = null;
           }
+
+          // Post MATCH_FOUND or NO_VET_FOUND to the iframe so its loading progress matches the outcome
+          const iframe = document.querySelector('iframe[title="Sruvo - Care Match Loading"]') as HTMLIFrameElement;
+          if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage({ type: isVetFound ? "MATCH_FOUND" : "NO_VET_FOUND" }, "*");
+          }
         } catch (error) {
           console.error("[SmartMatch Frontend] Error posting payload to Phase 1 foundation backend:", error);
           matchedVetResultRef.current = null;
+          const iframe = document.querySelector('iframe[title="Sruvo - Care Match Loading"]') as HTMLIFrameElement;
+          if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage({ type: "NO_VET_FOUND" }, "*");
+          }
         }
       } else if (event.data.type === "NAVIGATE_PARENT") {
         if (event.data.path === "/vet/ai-assistant") {
