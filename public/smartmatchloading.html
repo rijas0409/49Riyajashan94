@@ -154,7 +154,7 @@
                     </div>
                     
                     <div class="w-full h-2.5 bg-surface-container-highest rounded-full overflow-hidden">
-                        <div id="matchProgressFill" class="h-full bg-gradient-to-r from-primary to-[#ab47bc] rounded-full w-0 transition-all duration-[200ms] ease-linear"></div>
+                        <div id="matchProgressFill" class="h-full bg-gradient-to-r from-primary to-[#ab47bc] rounded-full w-0 transition-all duration-[50ms] ease-linear"></div>
                     </div>
                 </div>
                 
@@ -292,8 +292,10 @@
                 statusTextEl.style.opacity = "1";
 
                 progressBarEl.style.width = "1%";
-                progressBarEl.className = "h-full bg-gradient-to-r from-primary to-[#ab47bc] rounded-full w-[1%] transition-all duration-[200ms] ease-linear";
+                progressBarEl.className = "h-full bg-gradient-to-r from-primary to-[#ab47bc] rounded-full w-[1%] transition-all duration-[50ms] ease-linear";
                 percentageEl.innerText = "1%";
+                percentageEl.classList.add("text-primary");
+                percentageEl.classList.remove("text-[#800020]");
 
                 appendActiveLog(0);
                 currentLogIndex = 0;
@@ -325,14 +327,14 @@
                 }, 2000);
 
                 const TOTAL_DURATION = 49000;    // Entire loading screen runs for exactly 49s
+                const PROGRESS_DURATION = 48000; // Progress reaches 100% in exactly 48s
 
                 progressInterval = setInterval(() => {
                     const elapsedTime = Date.now() - startTime;
-                    const limitDuration = isVetFound ? 48000 : 48906;
                     
-                    // Progress from 1% to 100% over limitDuration
-                    let progress = 1 + (elapsedTime / limitDuration) * 99;
-                    if (elapsedTime >= limitDuration) {
+                    // Progress from 1% to 100% over PROGRESS_DURATION (48s)
+                    let progress = 1 + (elapsedTime / PROGRESS_DURATION) * 99;
+                    if (elapsedTime >= PROGRESS_DURATION) {
                         progress = 100;
                         clearInterval(progressInterval);
                         clearInterval(textInterval);
@@ -370,11 +372,16 @@
                                 window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
                             }, Math.max(0, remainingTime));
                         } else {
-                            // Display "No Match" in place of the progress text for exactly 94 milliseconds, then redirect
-                            percentageEl.innerText = "No Match";
+                            // Display "100%" for exactly 906ms, then change to "No Match" in red wine for exactly 94ms
                             setTimeout(() => {
-                                window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
-                            }, 94);
+                                percentageEl.innerText = "No Match";
+                                percentageEl.classList.remove("text-primary");
+                                percentageEl.classList.add("text-[#800020]"); // Premium Red wine color
+
+                                setTimeout(() => {
+                                    window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
+                                }, 94);
+                            }, 906);
                         }
                     } else {
                         progressBarEl.style.width = `${progress}%`;
