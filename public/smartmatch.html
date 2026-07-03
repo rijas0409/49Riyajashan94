@@ -351,7 +351,6 @@
 
     <script>
         function submitSmartMatch() {
-            console.log("STEP 1 reached");
             const buildQA = (idList) => {
                 let qaList = [];
                 idList.forEach(id => {
@@ -617,23 +616,6 @@
             const container = document.getElementById("petAvatarList");
             if (!container) return;
             container.innerHTML = ""; 
-
-            // Ensure Rocky is always present in the list of pets
-            const hasRocky = loggedInUserDatabaseRecords.some(pet => pet.id === "dummy_pet_jira_001");
-            if (!hasRocky) {
-                const dummyRocky = {
-                    id: "dummy_pet_jira_001",
-                    name: "Rocky",
-                    photo: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300",
-                    species: "Dog",
-                    gender: "Male",
-                    breed: "Golden Retriever",
-                    appearance: "Golden Double Coat",
-                    age: "2 Yrs 4 Mos",
-                    weight: "32 kg"
-                };
-                loggedInUserDatabaseRecords.unshift(dummyRocky);
-            }
 
             loggedInUserDatabaseRecords.forEach((pet, index) => {
                 const petWrapper = document.createElement("div");

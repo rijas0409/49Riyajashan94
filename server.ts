@@ -138,470 +138,6 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
     }
   });
 
-  // End Point: Sruvo Smart Match (Phase 2 Backend Candidate Filtering Pipeline)
-  app.post("/api/smart-match", async (req, res) => {
-    console.log("STEP 3 reached");
-    console.log("[Smart Match Backend] Request received at POST /api/smart-match");
-
-    try {
-      const payload = req.body;
-      
-      // Basic structured validation of the complete Smart Match questionnaire payload
-      if (!payload || Object.keys(payload).length === 0) {
-        console.warn("[Smart Match Backend] Payload validated: FAILED (Empty payload)");
-        return res.status(400).json({
-          success: false,
-          error: "Smart Match questionnaire payload is missing or empty"
-        });
-      }
-
-      console.log("[Smart Match Backend] Payload validated: SUCCESS", {
-        hasPetData: !!payload.pet,
-        hasConcerns: !!payload.concerns,
-        hasHealthBackground: !!payload.healthBackground,
-        hasCurrentHealthStatus: !!payload.currentHealthStatus,
-        hasMediaFiles: !!payload.mediaFiles
-      });
-
-      // Extract pet species/type with robust support for various formats
-      let petSpecies = "";
-      if (payload.pet?.species) {
-        petSpecies = payload.pet.species;
-      } else if (payload.pet?.type) {
-        petSpecies = payload.pet.type;
-      } else if (typeof payload.pet === "string") {
-        petSpecies = payload.pet;
-      }
-
-      // Extract main concern with robust support for various formats
-      let mainConcern = "";
-      if (payload.mainConcern) {
-        mainConcern = payload.mainConcern;
-      } else if (payload.concerns?.mainConcern) {
-        mainConcern = payload.concerns.mainConcern;
-      } else if (Array.isArray(payload.concerns)) {
-        const mainConcernItem = payload.concerns.find((c: any) => 
-          c.question?.toLowerCase().includes("main concern") || 
-          c.question?.toLowerCase().includes("primary symptom") ||
-          c.question?.toLowerCase().includes("happening")
-        );
-        if (mainConcernItem) {
-          mainConcern = mainConcernItem.answer;
-        } else if (payload.concerns.length > 0) {
-          mainConcern = payload.concerns[0].answer;
-        }
-      } else if (typeof payload.concerns === "string") {
-        mainConcern = payload.concerns;
-      }
-
-      // Smart Fallback Scanning if still empty
-      if (!petSpecies) {
-        const payloadString = JSON.stringify(payload).toLowerCase();
-        const knownSpecies = ["Dog", "Cat", "Bird", "Hamster"];
-        for (const sp of knownSpecies) {
-          if (payloadString.includes(sp.toLowerCase())) {
-            petSpecies = sp;
-            break;
-          }
-        }
-      }
-
-      if (!mainConcern) {
-        const payloadString = JSON.stringify(payload).toLowerCase();
-        const knownConditions = [
-          "Vomiting", "Diarrhea", "Loss of Appetite", "Itching / Skin Issues", 
-          "Eye Problems", "Ear Problems", "Coughing / Breathing Issues", 
-          "Injury / Wound", "Mobility Issues", "Behavior Changes"
-        ];
-        for (const cond of knownConditions) {
-          if (payloadString.includes(cond.toLowerCase())) {
-            mainConcern = cond;
-            break;
-          }
-        }
-      }
-
-      console.log("[Smart Match Backend] Parsing query parameters:", {
-        extractedPetSpecies: petSpecies,
-        extractedMainConcern: mainConcern
-      });
-
-      console.log("[Smart Match Backend] Connecting to database...");
-      const supabaseAdmin = await getSupabaseAdmin();
-      if (!supabaseAdmin) {
-        console.error("[Smart Match Backend] Database connected: FAILED (Could not obtain Supabase client)");
-        return res.status(500).json({
-          success: false,
-          error: "Database connection failed"
-        });
-      }
-      console.log("[Smart Match Backend] Database connected: SUCCESS");
-
-      console.log("[Smart Match Backend] Querying all veterinarians from database...");
-      const { data: veterinarians, error: fetchError } = await supabaseAdmin
-        .from("vet_profiles")
-        .select("*");
-
-      if (fetchError) {
-        console.error("[Smart Match Backend] Failed to fetch veterinarians from database:", fetchError.message);
-        return res.status(500).json({
-          success: false,
-          error: `Database fetch failed: ${fetchError.message}`
-        });
-      }
-
-      const totalFetched = veterinarians?.length || 0;
-      console.log(`[Smart Match Backend] Number of veterinarians fetched: ${totalFetched}`);
-
-      // Candidate Filtering Pipeline
-      const stage1Active: any[] = [];
-      const stage2Verified: any[] = [];
-      const stage3Available: any[] = [];
-      const stage4Species: any[] = [];
-      const stage5Concern: any[] = [];
-
-      let totalVetsLoaded = totalFetched;
-      let afterCityFilterCount = 0;
-      let afterPetFilterCount = 0;
-      let afterConditionFilterCount = 0;
-
-      for (const vet of (veterinarians || [])) {
-        const vetId = vet.id || vet.user_id || "unknown";
-        const vetName = vet.name || vet.full_name || "Unknown Vet";
-        const vetSpecializations = Array.isArray(vet.specializations) ? vet.specializations : [];
-        const vetExpertise = Array.isArray(vet.clinical_expertise) ? vet.clinical_expertise : [];
-        const vetLanguages = vet.preferred_language || "Not specified";
-        const vetConsultationType = vet.consultation_type || "Not specified";
-        const vetAvailabilityDays = Array.isArray(vet.available_days) ? vet.available_days.join(", ") : "None";
-        const vetWeeklyAvailability = vet.weekly_availability ? JSON.stringify(vet.weekly_availability) : "None";
-        const vetEmergency = vet.emergency_available ? "Yes" : "No";
-
-        // Check if we have any verified active vets at all to use as a strict filter
-        const hasVerifiedVets = (veterinarians || []).some(v => {
-          const status = String(v.verification_status || "").trim().toLowerCase();
-          return (status === "verified" || status === "approved") && v.is_active === true;
-        });
-
-        // Check if we have any available vets at all to use as a strict filter
-        const hasAvailableVets = (veterinarians || []).some(v => {
-          const hasDays = Array.isArray(v.available_days) && v.available_days.length > 0;
-          const hasSlots = v.weekly_availability && typeof v.weekly_availability === "object" && Object.keys(v.weekly_availability).length > 0;
-          const isEmerg = v.emergency_available === true || String(v.emergency_available).toLowerCase() === "yes" || String(v.emergency_available).toLowerCase() === "true";
-          return hasDays || hasSlots || isEmerg;
-        });
-
-        // Stage 1: Active filter
-        const isActive = vet.is_active === true;
-        
-        // Stage 2: Verified filter
-        const verificationStatus = String(vet.verification_status || "").trim().toLowerCase();
-        const isVerified = hasVerifiedVets 
-          ? (verificationStatus === "verified" || verificationStatus === "approved")
-          : true;
-        
-        // Stage 3: Available filter
-        const hasAvailableDays = Array.isArray(vet.available_days) && vet.available_days.length > 0;
-        const hasWeeklyAvailability = vet.weekly_availability && typeof vet.weekly_availability === "object" && Object.keys(vet.weekly_availability).length > 0;
-        const isEmergencyAvailable = vet.emergency_available === true || String(vet.emergency_available).toLowerCase() === "yes" || String(vet.emergency_available).toLowerCase() === "true";
-        const isAvailable = hasAvailableVets 
-          ? (hasAvailableDays || hasWeeklyAvailability || isEmergencyAvailable)
-          : true;
-
-        // Stage 4: Species filter (Robust match)
-        const userPetSpecies = petSpecies.trim().toLowerCase();
-        const speciesTreated = Array.isArray(vet.specializations)
-          ? vet.specializations.map((s: any) => String(s).trim().toLowerCase())
-          : [];
-        const matchesSpecies = speciesTreated.some((s: string) => {
-          const val = s.trim().toLowerCase();
-          const target = userPetSpecies;
-          return val === target || val.includes(target) || target.includes(val) ||
-                 (val + "s") === target || (target + "s") === val ||
-                 (val === "dog" && target === "canine") || (val === "canine" && target === "dog") ||
-                 (val === "cat" && target === "feline") || (val === "feline" && target === "cat");
-        });
-
-        // City Match
-        const userCity = (payload.city || "").trim().toLowerCase();
-        const vetCity = (vet.city || "").trim().toLowerCase();
-        const matchesCity = !userCity || !vetCity || (vetCity === userCity || vetCity.includes(userCity) || userCity.includes(vetCity));
-
-        // Stage 5: Condition Frequently Managed filter (Robust match)
-        const userMainConcern = mainConcern.trim().toLowerCase();
-        const clinicalExpertise = Array.isArray(vet.clinical_expertise)
-          ? vet.clinical_expertise.map((e: any) => String(e).trim().toLowerCase())
-          : [];
-        const matchesConcern = clinicalExpertise.some((e: string) => {
-          const val = e.trim().toLowerCase();
-          const target = userMainConcern;
-          return val === target || val.includes(target) || target.includes(val);
-        });
-
-        // Update pipeline counters
-        if (isActive && isVerified && isAvailable) {
-          if (matchesCity) {
-            afterCityFilterCount++;
-            if (matchesSpecies) {
-              afterPetFilterCount++;
-              if (matchesConcern) {
-                afterConditionFilterCount++;
-              }
-            }
-          }
-        }
-
-        // Detailed console log format for every vet as requested
-        console.log(`\nVet: ${vetName}`);
-        console.log(`Pet types: ${JSON.stringify(vetSpecializations)}`);
-        console.log(`Conditions Frequently Managed: ${JSON.stringify(vetExpertise)}`);
-        console.log(`Languages: ${vetLanguages}`);
-        console.log(`Consultation types: ${vetConsultationType}`);
-        console.log(`Availability: Days: [${vetAvailabilityDays}], Weekly Slots: ${vetWeeklyAvailability}, Emergency: ${vetEmergency}`);
-
-        // 1. Pet type match log
-        if (matchesSpecies) {
-          console.log(`✓ Pet type matched`);
-        } else {
-          console.log(`✗ Pet type failed`);
-          console.log(`  Expected: ${petSpecies}`);
-          console.log(`  Found:`);
-          if (vetSpecializations.length > 0) {
-            vetSpecializations.forEach((s: any) => console.log(`  - ${s}`));
-          } else {
-            console.log(`  - None`);
-          }
-        }
-
-        // 2. City match log
-        if (matchesCity) {
-          console.log(`✓ City matched`);
-        } else {
-          console.log(`✗ City failed`);
-          console.log(`  Expected: ${payload.city || "Any"}`);
-          console.log(`  Found: ${vet.city || "Not specified"}`);
-        }
-
-        // 3. Condition match log
-        if (matchesConcern) {
-          console.log(`✓ Condition matched`);
-        } else {
-          console.log(`✗ Condition failed`);
-          console.log(`  Expected: ${mainConcern}`);
-          console.log(`  Found:`);
-          if (vetExpertise.length > 0) {
-            vetExpertise.forEach((e: any) => console.log(`  - ${e}`));
-          } else {
-            console.log(`  - None`);
-          }
-        }
-
-        // Active, Verified, and Availability checks log
-        let isEliminated = false;
-        let eliminationReason = "";
-        if (!isActive) {
-          isEliminated = true;
-          eliminationReason = `is_active is false or undefined (raw value: ${vet.is_active})`;
-          console.log(`✗ Active check failed (is_active is false or undefined)`);
-        } else if (!isVerified) {
-          isEliminated = true;
-          eliminationReason = `verification_status is not 'verified' or 'approved' (raw value: ${vet.verification_status})`;
-          console.log(`✗ Verification check failed (verification_status is not 'verified' or 'approved')`);
-        } else if (!isAvailable) {
-          isEliminated = true;
-          eliminationReason = `No available days, weekly availability slots, or emergency availability defined`;
-          console.log(`✗ Availability check failed (No available days/weekly slots/emergency slots)`);
-        } else if (!matchesSpecies) {
-          isEliminated = true;
-          eliminationReason = `Species treated does not contain user selected pet '${petSpecies}'`;
-        } else if (!matchesConcern) {
-          isEliminated = true;
-          eliminationReason = `Conditions frequently managed does not contain user selected concern '${mainConcern}'`;
-        }
-
-        if (isEliminated) {
-          console.log(`Eliminated Reason: ${eliminationReason}`);
-          console.log(`Score after each phase: (Not Scored - Eliminated)`);
-        } else {
-          console.log(`Score after each phase: (Not Scored - Pending Scoring Engine)`);
-        }
-
-        // Maintain exact same stage allocation and logic continues
-        if (!isActive) {
-          continue;
-        }
-        stage1Active.push(vet);
-
-        if (!isVerified) {
-          continue;
-        }
-        stage2Verified.push(vet);
-
-        if (!isAvailable) {
-          continue;
-        }
-        stage3Available.push(vet);
-
-        if (!matchesSpecies) {
-          continue;
-        }
-        stage4Species.push(vet);
-
-        if (!matchesConcern) {
-          continue;
-        }
-        stage5Concern.push(vet);
-      }
-
-      // Logging each filtering stage count precisely as requested
-      console.log(`\nAt the end print:`);
-      console.log(`Total vets loaded: ${totalVetsLoaded}`);
-      console.log(`After city filter: ${afterCityFilterCount}`);
-      console.log(`After pet filter: ${afterPetFilterCount}`);
-      console.log(`After condition filter: ${afterConditionFilterCount}`);
-      console.log(`Final candidates: ${stage5Concern.length}\n`);
-
-      // Phase 3 Scoring Engine
-      const scoredCandidates: any[] = [];
-      if (stage5Concern.length > 0) {
-        // Extract raw values for all eligible candidates
-        const rawCandidates = stage5Concern.map((vet: any) => {
-          const rating = typeof vet.average_rating === "number" ? vet.average_rating : 0;
-          const reviewCount = typeof vet.total_consultations === "number" ? vet.total_consultations : 0;
-          const experience = typeof vet.years_of_experience === "number" ? vet.years_of_experience : 0;
-          
-          // Deterministic distance calculation based on vet ID
-          const idStr = String(vet.id || "");
-          let hash = 0;
-          for (let i = 0; i < idStr.length; i++) {
-            hash = idStr.charCodeAt(i) + ((hash << 5) - hash);
-          }
-          const rawDistance = Math.abs(hash % 190) / 10 + 1.0; // range 1.0 to 20.0 km
-          const distance = Math.round(rawDistance * 10) / 10;
-
-          const fee = typeof vet.online_fee === "number" ? vet.online_fee : (typeof vet.offline_fee === "number" ? vet.offline_fee : 500);
-
-          return {
-            vet,
-            rating,
-            reviewCount,
-            experience,
-            distance,
-            fee
-          };
-        });
-
-        // Calculate mins and maxes for normalization
-        let minRating = Infinity, maxRating = -Infinity;
-        let minReviews = Infinity, maxReviews = -Infinity;
-        let minExp = Infinity, maxExp = -Infinity;
-        let minDistance = Infinity, maxDistance = -Infinity;
-        let minFee = Infinity, maxFee = -Infinity;
-
-        for (const item of rawCandidates) {
-          if (item.rating < minRating) minRating = item.rating;
-          if (item.rating > maxRating) maxRating = item.rating;
-
-          if (item.reviewCount < minReviews) minReviews = item.reviewCount;
-          if (item.reviewCount > maxReviews) maxReviews = item.reviewCount;
-
-          if (item.experience < minExp) minExp = item.experience;
-          if (item.experience > maxExp) maxExp = item.experience;
-
-          if (item.distance < minDistance) minDistance = item.distance;
-          if (item.distance > maxDistance) maxDistance = item.distance;
-
-          if (item.fee < minFee) minFee = item.fee;
-          if (item.fee > maxFee) maxFee = item.fee;
-        }
-
-        const normalizeHigherBetter = (val: number, min: number, max: number): number => {
-          if (max === min) {
-            return val > 0 ? 100 : 0;
-          }
-          return ((val - min) / (max - min)) * 100;
-        };
-
-        const normalizeLowerBetter = (val: number, min: number, max: number): number => {
-          if (max === min) {
-            return 100;
-          }
-          return ((max - val) / (max - min)) * 100;
-        };
-
-        console.log("-----------------------------------------");
-        console.log("SMART MATCH SCORING ENGINE CANDIDATE LOGS");
-        console.log("-----------------------------------------");
-
-        for (const item of rawCandidates) {
-          const ratingScore = Math.round(normalizeHigherBetter(item.rating, minRating, maxRating) * 100) / 100;
-          const reviewScore = Math.round(normalizeHigherBetter(item.reviewCount, minReviews, maxReviews) * 100) / 100;
-          const experienceScore = Math.round(normalizeHigherBetter(item.experience, minExp, maxExp) * 100) / 100;
-          const distanceScore = Math.round(normalizeLowerBetter(item.distance, minDistance, maxDistance) * 100) / 100;
-          const feeScore = Math.round(normalizeLowerBetter(item.fee, minFee, maxFee) * 100) / 100;
-
-          const totalScore = Math.round(((ratingScore * 0.3) + (reviewScore * 0.2) + (experienceScore * 0.2) + (distanceScore * 0.2) + (feeScore * 0.1)) * 100) / 100;
-
-          const scored = {
-            id: item.vet.id || item.vet.user_id || "unknown",
-            ratingScore,
-            reviewScore,
-            experienceScore,
-            distanceScore,
-            feeScore,
-            totalScore
-          };
-          scoredCandidates.push(scored);
-
-          const vetName = item.vet.name || item.vet.full_name || "Unknown Vet";
-          const vetSpecializations = Array.isArray(item.vet.specializations) ? item.vet.specializations : [];
-          const vetExpertise = Array.isArray(item.vet.clinical_expertise) ? item.vet.clinical_expertise : [];
-          const vetLanguages = item.vet.preferred_language || "Not specified";
-          const vetConsultationType = item.vet.consultation_type || "Not specified";
-          const vetAvailabilityDays = Array.isArray(item.vet.available_days) ? item.vet.available_days.join(", ") : "None";
-          const vetWeeklyAvailability = item.vet.weekly_availability ? JSON.stringify(item.vet.weekly_availability) : "None";
-          const vetEmergency = item.vet.emergency_available ? "Yes" : "No";
-
-          console.log(`\nVet: ${vetName}`);
-          console.log(`Pet types: ${JSON.stringify(vetSpecializations)}`);
-          console.log(`Conditions Frequently Managed: ${JSON.stringify(vetExpertise)}`);
-          console.log(`Languages: ${vetLanguages}`);
-          console.log(`Consultation types: ${vetConsultationType}`);
-          console.log(`Availability: Days: [${vetAvailabilityDays}], Weekly Slots: ${vetWeeklyAvailability}, Emergency: ${vetEmergency}`);
-          console.log(`✓ Pet type matched`);
-          console.log(`✓ City matched`);
-          console.log(`✓ Condition matched`);
-          console.log(`Score after each phase:`);
-          console.log(`- Phase 1 (Rating Score): ${ratingScore} (Value: ${item.rating})`);
-          console.log(`- Phase 2 (Review Score): ${reviewScore} (Value: ${item.reviewCount})`);
-          console.log(`- Phase 3 (Experience Score): ${experienceScore} (Value: ${item.experience} years)`);
-          console.log(`- Phase 4 (Distance Score): ${distanceScore} (Value: ${item.distance} km)`);
-          console.log(`- Phase 5 (Fee Score): ${feeScore} (Value: ${item.fee})`);
-          console.log(`Final Total Score: ${totalScore}`);
-          console.log("-----------------------------------------");
-        }
-
-        console.log(`Total candidates scored: ${scoredCandidates.length}`);
-      }
-
-      console.log("STEP 4 reached");
-      console.log("[Smart Match Backend] Response sent successfully");
-      return res.json({
-        success: true,
-        totalFetched,
-        eligibleCandidates: stage5Concern.length,
-        candidates: stage5Concern,
-        totalCandidates: stage5Concern.length,
-        scoredCandidates: scoredCandidates
-      });
-    } catch (err: any) {
-      console.error("[Smart Match Backend] Unhandled exception occurred in matching orchestrator:", err);
-      return res.status(500).json({
-        success: false,
-        error: err?.message || "An unexpected error occurred during Phase 2 Smart Match candidate filtering"
-      });
-    }
-  });
-
   // End Point: Pet AI Insights
   app.post("/api/pet-ai-insights", async (req, res) => {
     try {
@@ -665,6 +201,204 @@ Keep descriptions concise (max 2 sentences).`;
       console.error("Error generating pet insights on server:", err);
       const errorMessage = err instanceof Error ? err.message : String(err);
       res.status(500).json({ error: errorMessage });
+    }
+  });
+
+  // End Point: Sruvo Smart Match — Phase 1 Foundation
+  app.post("/api/smart-match", async (req, res) => {
+    console.log("[SmartMatch] ==========================================");
+    console.log("[SmartMatch] [Log 1/8] Request Received");
+
+    try {
+      const payload = req.body;
+      console.log("[SmartMatch] [Log 2/8] Raw Payload Received:", JSON.stringify(payload, null, 2));
+
+      // 1. Validate payload shape
+      if (!payload) {
+        console.warn("[SmartMatch] [Log 3/8] Payload Validation Result: FAILED (Empty payload)");
+        return res.status(400).json({ success: false, error: "Empty payload received" });
+      }
+
+      const { pet, concerns, healthBackground, currentHealthStatus, mediaFiles } = payload;
+
+      if (!pet || !pet.species || !pet.name) {
+        console.warn("[SmartMatch] [Log 3/8] Payload Validation Result: FAILED (Missing basic pet details like species or name)");
+        return res.status(400).json({ success: false, error: "Missing pet details (name, species are required)" });
+      }
+
+      console.log("[SmartMatch] [Log 3/8] Payload Validation Result: SUCCESS");
+
+      // 2. Normalize the request
+      const rawSpecies = pet.species ? String(pet.species).trim() : "";
+      let canonicalSpecies = rawSpecies.charAt(0).toUpperCase() + rawSpecies.slice(1).toLowerCase();
+      if (canonicalSpecies === "Guineapig") canonicalSpecies = "Guineapigs";
+      if (canonicalSpecies === "Rabbit") canonicalSpecies = "Rabbits";
+
+      // Extract main concern from Step 2 QA list
+      const concernQA = concerns?.find((qa: any) => qa.question && qa.question.includes("What is your main concern today?"));
+      const rawConcern = concernQA ? concernQA.answer : "Other";
+
+      // Determine canonical concern enum or freeform keyword
+      const VALID_CONCERN_ENUMS = [
+        "Vomiting",
+        "Diarrhea",
+        "Loss of Appetite",
+        "Itching / Skin Issues",
+        "Eye Problems",
+        "Ear Problems",
+        "Coughing / Breathing Issues",
+        "Injury / Wound",
+        "Mobility Issues",
+        "Behavior Changes",
+        "Other"
+      ];
+
+      let canonicalConcern = "Other";
+      let freeformKeyword = "";
+
+      if (VALID_CONCERN_ENUMS.includes(rawConcern)) {
+        canonicalConcern = rawConcern;
+      } else {
+        canonicalConcern = "Other";
+        freeformKeyword = rawConcern; // 12th option: freeform input text
+      }
+
+      const normalizedRequest = {
+        petDetails: {
+          name: pet.name,
+          species: canonicalSpecies,
+          rawSpecies: rawSpecies,
+          breed: pet.breed || "Unknown",
+          age: pet.age || "Unknown",
+          gender: pet.gender || "Unknown",
+          weight: pet.weight || "Unknown"
+        },
+        mainConcern: canonicalConcern,
+        freeformKeyword: freeformKeyword,
+        followUpAnswers: concerns?.filter((qa: any) => qa.question && !qa.question.includes("What is your main concern today?")) || [],
+        healthBackground: healthBackground || [],
+        currentHealthStatus: currentHealthStatus || [],
+        mediaReferences: mediaFiles || []
+      };
+
+      console.log("[SmartMatch] [Log 4/8] Normalized Payload:", JSON.stringify(normalizedRequest, null, 2));
+
+      // 3. Connect to database
+      console.log("[SmartMatch] [Log 5/8] Connecting to database...");
+      const supabaseAdmin = await getSupabaseAdmin();
+      if (!supabaseAdmin) {
+        console.error("[SmartMatch] Database connection result: FAILED");
+        throw new Error("Failed to connect to database");
+      }
+      console.log("[SmartMatch] Database connection result: SUCCESS");
+
+      // 4. Fetch real veterinarian records from the database
+      const { data: vetProfiles, error: fetchErr } = await supabaseAdmin
+        .from("vet_profiles")
+        .select("*");
+
+      if (fetchErr) {
+        console.error("[SmartMatch] Fetching veterinarians from DB failed:", fetchErr);
+        throw fetchErr;
+      }
+
+      const totalFetched = vetProfiles?.length || 0;
+      console.log(`[SmartMatch] [Log 6/8] Total Veterinarians Fetched: ${totalFetched}`);
+
+      // 5. Build field schema map for logging and debugging
+      const fieldMap = {
+        id: { type: "string", nullable: false },
+        user_id: { type: "string", nullable: false },
+        qualification: { type: "string", nullable: true },
+        years_of_experience: { type: "number", nullable: false },
+        specializations: { type: "string[]", nullable: false },
+        consultation_type: { type: "string", nullable: false },
+        is_active: { type: "boolean", nullable: true },
+        verification_status: { type: "string", nullable: false },
+        total_consultations: { type: "number", nullable: true },
+        average_rating: { type: "number", nullable: true },
+        wallet_balance: { type: "number", nullable: true },
+        created_at: { type: "string", nullable: false },
+        updated_at: { type: "string", nullable: false },
+        profile_photo: { type: "string", nullable: true },
+        state: { type: "string", nullable: true },
+        city: { type: "string", nullable: true },
+        preferred_language: { type: "string", nullable: true },
+        govt_id_file: { type: "string", nullable: true },
+        pan_card_file: { type: "string", nullable: true },
+        passport_photo_file: { type: "string", nullable: true },
+        vet_degree_file: { type: "string", nullable: true },
+        registration_number: { type: "string", nullable: true },
+        education_details: { type: "Json", nullable: true },
+        practice_type: { type: "string", nullable: true },
+        clinic_name: { type: "string", nullable: true },
+        clinic_pincode: { type: "string", nullable: true },
+        clinic_gst: { type: "string", nullable: true },
+        clinic_address: { type: "string", nullable: true },
+        clinic_registration_file: { type: "string", nullable: true },
+        clinic_shop_license_file: { type: "string", nullable: true },
+        cancelled_cheque_file: { type: "string", nullable: true },
+        clinic_photos: { type: "string[]", nullable: true },
+        clinic_videos: { type: "string[]", nullable: true },
+        hospital_name: { type: "string", nullable: true },
+        hospital_role: { type: "string", nullable: true },
+        hospital_address: { type: "string", nullable: true },
+        hospital_pincode: { type: "string", nullable: true },
+        hospital_employee_id: { type: "string", nullable: true },
+        hospital_joining_proof_file: { type: "string", nullable: true },
+        weekly_availability: { type: "Json", nullable: true },
+        morning_slots: { type: "boolean", nullable: true },
+        evening_slots: { type: "boolean", nullable: true },
+        online_fee: { type: "number", nullable: false },
+        offline_fee: { type: "number", nullable: false },
+        emergency_available: { type: "boolean", nullable: true },
+        weekend_availability: { type: "boolean", nullable: true },
+        support_24x7: { type: "boolean", nullable: true },
+        vendor_agreement_accepted: { type: "boolean", nullable: true },
+        telemedicine_consent_accepted: { type: "boolean", nullable: true },
+        rejection_reason: { type: "string", nullable: true },
+        available_days: { type: "string[]", nullable: true },
+        available_time_start: { type: "string", nullable: true },
+        available_time_end: { type: "string", nullable: true },
+        gst_certificate_file: { type: "string", nullable: true },
+        clinic_address_proof_file: { type: "string", nullable: true },
+        bank_account_name: { type: "string", nullable: true },
+        bank_name: { type: "string", nullable: true },
+        bank_account_number: { type: "string", nullable: true },
+        bank_ifsc: { type: "string", nullable: true },
+        unique_vet_id: { type: "string", nullable: true },
+        clinical_expertise: { type: "string[]", nullable: true },
+        other_qualification: { type: "string", nullable: true },
+        medical_specializations: { type: "Json", nullable: true }
+      };
+
+      console.log("[SmartMatch] [Log 7/8] List of field names available on vet profiles:", Object.keys(fieldMap));
+
+      const rawVets = vetProfiles || [];
+      rawVets.forEach((vet: any, idx: number) => {
+        const nullOrMissingFields: string[] = [];
+        Object.keys(fieldMap).forEach((field) => {
+          if (vet[field] === undefined || vet[field] === null || vet[field] === "") {
+            nullOrMissingFields.push(field);
+          }
+        });
+        console.log(`[SmartMatch] Profile #${idx + 1} (${vet.id}): Null/Missing fields count: ${nullOrMissingFields.length}. Fields: ${nullOrMissingFields.join(", ")}`);
+      });
+
+      console.log("[SmartMatch] [Log 8/8] Response Sent");
+      console.log("[SmartMatch] ==========================================");
+
+      return res.json({
+        success: true,
+        normalizedRequest: normalizedRequest,
+        totalFetched: totalFetched,
+        veterinarians: rawVets,
+        fieldMap: fieldMap
+      });
+
+    } catch (err: any) {
+      console.error("[SmartMatch] Endpoint experienced an error:", err);
+      return res.status(500).json({ success: false, error: err.message || String(err) });
     }
   });
 
@@ -896,69 +630,12 @@ Return the response as a single JSON object containing only a "description" key.
       const passportId = req.query.id as string;
       const userId = req.query.userId as string;
 
-      if (passportId === "dummy_pet_jira_001") {
-        return res.json({
-          pet: {
-            id: "dummy_pet_jira_001",
-            passport_id: "dummy_pet_jira_001",
-            user_id: userId || "",
-            pet_name: "Rocky",
-            species: "Dog",
-            gender: "Male",
-            breed: "Golden Retriever",
-            dob: "2024-03-15",
-            approx_years: 2,
-            approx_months: 4,
-            weight: 32,
-            appearance: "Golden Double Coat",
-            photo_url: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300",
-            allergies: "None",
-            blood_group: "DEA 1.1",
-            microchip_number: "981020000123456",
-            color_marking: "Golden",
-            distinguishing_features: "Very playful, friendly"
-          },
-          medical: {
-            id: "dummy_med_jira_001",
-            pet_passport_id: "dummy_pet_jira_001",
-            is_vaccinated: true,
-            is_dewormed: true,
-            is_neutered: true,
-            vaccination_due_date: "2027-01-15",
-            deworming_due_date: "2026-10-15"
-          },
-          conditions: [],
-          healthRecords: [],
-          appointments: []
-        });
-      }
-
       if (!passportId) {
         if (!userId) {
           // Prevent data leak: if no userId is passed, don't return all passports
           return res.json([]);
         }
         
-        let isJiraUser = false;
-        try {
-          const { data: profile } = await supabaseAdmin
-            .from("profiles")
-            .select("email")
-            .eq("id", userId)
-            .maybeSingle();
-          if (
-            !profile || 
-            !profile.email || 
-            profile.email === "jira@rijas.com" || 
-            profile.email === "jashanpabla6691@gmail.com"
-          ) {
-            isJiraUser = true;
-          }
-        } catch (profileErr) {
-          console.error("Error fetching user profile for check:", profileErr);
-          isJiraUser = true; // Fallback to true in development/sandbox errors
-        }
-
         let query = supabaseAdmin.from("pet_passports").select("*").order("created_at", { ascending: false });
         query = query.eq("user_id", userId);
         
@@ -967,85 +644,11 @@ Return the response as a single JSON object containing only a "description" key.
           if (error) {
             // Log it but return empty so frontend can use fallback logic
             console.error("Supabase query error (possibly missing column):", error);
-            if (isJiraUser) {
-              return res.json([{
-                id: "dummy_pet_jira_001",
-                passport_id: "dummy_pet_jira_001",
-                user_id: userId,
-                pet_name: "Rocky",
-                species: "Dog",
-                gender: "Male",
-                breed: "Golden Retriever",
-                dob: "2024-03-15",
-                approx_years: 2,
-                approx_months: 4,
-                weight: 32,
-                appearance: "Golden Double Coat",
-                photo_url: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300",
-                allergies: "None",
-                blood_group: "DEA 1.1",
-                microchip_number: "981020000123456",
-                color_marking: "Golden",
-                distinguishing_features: "Very playful, friendly",
-                created_at: new Date().toISOString()
-              }]);
-            }
             return res.json([]);
           }
-          
-          let list = data || [];
-          if (isJiraUser) {
-            const hasDummy = list.some((p: any) => p.id === "dummy_pet_jira_001" || p.passport_id === "dummy_pet_jira_001");
-            if (!hasDummy) {
-              list = [{
-                id: "dummy_pet_jira_001",
-                passport_id: "dummy_pet_jira_001",
-                user_id: userId,
-                pet_name: "Rocky",
-                species: "Dog",
-                gender: "Male",
-                breed: "Golden Retriever",
-                dob: "2024-03-15",
-                approx_years: 2,
-                approx_months: 4,
-                weight: 32,
-                appearance: "Golden Double Coat",
-                photo_url: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300",
-                allergies: "None",
-                blood_group: "DEA 1.1",
-                microchip_number: "981020000123456",
-                color_marking: "Golden",
-                distinguishing_features: "Very playful, friendly",
-                created_at: new Date().toISOString()
-              }, ...list];
-            }
-          }
-          return res.json(list);
+          return res.json(data || []);
         } catch (queryErr) {
           console.error("Query failed:", queryErr);
-          if (isJiraUser) {
-            return res.json([{
-              id: "dummy_pet_jira_001",
-              passport_id: "dummy_pet_jira_001",
-              user_id: userId,
-              pet_name: "Rocky",
-              species: "Dog",
-              gender: "Male",
-              breed: "Golden Retriever",
-              dob: "2024-03-15",
-              approx_years: 2,
-              approx_months: 4,
-              weight: 32,
-              appearance: "Golden Double Coat",
-              photo_url: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300",
-              allergies: "None",
-              blood_group: "DEA 1.1",
-              microchip_number: "981020000123456",
-              color_marking: "Golden",
-              distinguishing_features: "Very playful, friendly",
-              created_at: new Date().toISOString()
-            }]);
-          }
           return res.json([]);
         }
       }
