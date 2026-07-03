@@ -372,7 +372,7 @@
                                 window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
                             }, Math.max(0, remainingTime));
                         } else {
-                            // Display "100%" for exactly 906ms, then change to "No Match" in red wine for exactly 94ms
+                            // Display "100%" for 200ms, then change to "No Match" in red wine for 800ms
                             setTimeout(() => {
                                 percentageEl.innerText = "No Match";
                                 percentageEl.classList.remove("text-primary");
@@ -380,8 +380,8 @@
 
                                 setTimeout(() => {
                                     window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
-                                }, 94);
-                            }, 906);
+                                }, 800);
+                            }, 200);
                         }
                     } else {
                         progressBarEl.style.width = `${progress}%`;
