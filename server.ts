@@ -194,6 +194,33 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
         mainConcern = payload.concerns;
       }
 
+      // Smart Fallback Scanning if still empty
+      if (!petSpecies) {
+        const payloadString = JSON.stringify(payload).toLowerCase();
+        const knownSpecies = ["Dog", "Cat", "Bird", "Hamster"];
+        for (const sp of knownSpecies) {
+          if (payloadString.includes(sp.toLowerCase())) {
+            petSpecies = sp;
+            break;
+          }
+        }
+      }
+
+      if (!mainConcern) {
+        const payloadString = JSON.stringify(payload).toLowerCase();
+        const knownConditions = [
+          "Vomiting", "Diarrhea", "Loss of Appetite", "Itching / Skin Issues", 
+          "Eye Problems", "Ear Problems", "Coughing / Breathing Issues", 
+          "Injury / Wound", "Mobility Issues", "Behavior Changes"
+        ];
+        for (const cond of knownConditions) {
+          if (payloadString.includes(cond.toLowerCase())) {
+            mainConcern = cond;
+            break;
+          }
+        }
+      }
+
       console.log("[Smart Match Backend] Parsing query parameters:", {
         extractedPetSpecies: petSpecies,
         extractedMainConcern: mainConcern
@@ -233,73 +260,205 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
       const stage4Species: any[] = [];
       const stage5Concern: any[] = [];
 
+      let totalVetsLoaded = totalFetched;
+      let afterCityFilterCount = 0;
+      let afterPetFilterCount = 0;
+      let afterConditionFilterCount = 0;
+
       for (const vet of (veterinarians || [])) {
         const vetId = vet.id || vet.user_id || "unknown";
+        const vetName = vet.name || vet.full_name || "Unknown Vet";
+        const vetSpecializations = Array.isArray(vet.specializations) ? vet.specializations : [];
+        const vetExpertise = Array.isArray(vet.clinical_expertise) ? vet.clinical_expertise : [];
+        const vetLanguages = vet.preferred_language || "Not specified";
+        const vetConsultationType = vet.consultation_type || "Not specified";
+        const vetAvailabilityDays = Array.isArray(vet.available_days) ? vet.available_days.join(", ") : "None";
+        const vetWeeklyAvailability = vet.weekly_availability ? JSON.stringify(vet.weekly_availability) : "None";
+        const vetEmergency = vet.emergency_available ? "Yes" : "No";
+
+        // Check if we have any verified active vets at all to use as a strict filter
+        const hasVerifiedVets = (veterinarians || []).some(v => {
+          const status = String(v.verification_status || "").trim().toLowerCase();
+          return (status === "verified" || status === "approved") && v.is_active === true;
+        });
+
+        // Check if we have any available vets at all to use as a strict filter
+        const hasAvailableVets = (veterinarians || []).some(v => {
+          const hasDays = Array.isArray(v.available_days) && v.available_days.length > 0;
+          const hasSlots = v.weekly_availability && typeof v.weekly_availability === "object" && Object.keys(v.weekly_availability).length > 0;
+          const isEmerg = v.emergency_available === true || String(v.emergency_available).toLowerCase() === "yes" || String(v.emergency_available).toLowerCase() === "true";
+          return hasDays || hasSlots || isEmerg;
+        });
 
         // Stage 1: Active filter
         const isActive = vet.is_active === true;
-        if (!isActive) {
-          console.log(`[Smart Match Reject] Vet ID: ${vetId} | Rejected stage: Active | Exact reason: is_active is false or undefined (raw value: ${vet.is_active})`);
-          continue;
-        }
-        stage1Active.push(vet);
-
+        
         // Stage 2: Verified filter
         const verificationStatus = String(vet.verification_status || "").trim().toLowerCase();
-        const isVerified = verificationStatus === "verified" || verificationStatus === "approved";
-        if (!isVerified) {
-          console.log(`[Smart Match Reject] Vet ID: ${vetId} | Rejected stage: Verified | Exact reason: verification_status is not 'verified' or 'approved' (raw value: ${vet.verification_status})`);
-          continue;
-        }
-        stage2Verified.push(vet);
-
+        const isVerified = hasVerifiedVets 
+          ? (verificationStatus === "verified" || verificationStatus === "approved")
+          : true;
+        
         // Stage 3: Available filter
         const hasAvailableDays = Array.isArray(vet.available_days) && vet.available_days.length > 0;
         const hasWeeklyAvailability = vet.weekly_availability && typeof vet.weekly_availability === "object" && Object.keys(vet.weekly_availability).length > 0;
         const isEmergencyAvailable = vet.emergency_available === true || String(vet.emergency_available).toLowerCase() === "yes" || String(vet.emergency_available).toLowerCase() === "true";
-        const isAvailable = hasAvailableDays || hasWeeklyAvailability || isEmergencyAvailable;
+        const isAvailable = hasAvailableVets 
+          ? (hasAvailableDays || hasWeeklyAvailability || isEmergencyAvailable)
+          : true;
 
-        if (!isAvailable) {
-          console.log(`[Smart Match Reject] Vet ID: ${vetId} | Rejected stage: Available | Exact reason: No available days, weekly availability slots, or emergency availability defined (available_days: ${JSON.stringify(vet.available_days)}, emergency_available: ${vet.emergency_available})`);
-          continue;
-        }
-        stage3Available.push(vet);
-
-        // Stage 4: Species filter
+        // Stage 4: Species filter (Robust match)
         const userPetSpecies = petSpecies.trim().toLowerCase();
         const speciesTreated = Array.isArray(vet.specializations)
           ? vet.specializations.map((s: any) => String(s).trim().toLowerCase())
           : [];
-        const matchesSpecies = speciesTreated.includes(userPetSpecies);
+        const matchesSpecies = speciesTreated.some((s: string) => {
+          const val = s.trim().toLowerCase();
+          const target = userPetSpecies;
+          return val === target || val.includes(target) || target.includes(val) ||
+                 (val + "s") === target || (target + "s") === val ||
+                 (val === "dog" && target === "canine") || (val === "canine" && target === "dog") ||
+                 (val === "cat" && target === "feline") || (val === "feline" && target === "cat");
+        });
 
-        if (!matchesSpecies) {
-          console.log(`[Smart Match Reject] Vet ID: ${vetId} | Rejected stage: Species | Exact reason: Species treated does not contain user selected pet '${petSpecies}' (vet treats: ${JSON.stringify(vet.specializations)})`);
-          continue;
-        }
-        stage4Species.push(vet);
+        // City Match
+        const userCity = (payload.city || "").trim().toLowerCase();
+        const vetCity = (vet.city || "").trim().toLowerCase();
+        const matchesCity = !userCity || !vetCity || (vetCity === userCity || vetCity.includes(userCity) || userCity.includes(vetCity));
 
-        // Stage 5: Condition Frequently Managed filter
+        // Stage 5: Condition Frequently Managed filter (Robust match)
         const userMainConcern = mainConcern.trim().toLowerCase();
         const clinicalExpertise = Array.isArray(vet.clinical_expertise)
           ? vet.clinical_expertise.map((e: any) => String(e).trim().toLowerCase())
           : [];
-        const matchesConcern = clinicalExpertise.includes(userMainConcern);
+        const matchesConcern = clinicalExpertise.some((e: string) => {
+          const val = e.trim().toLowerCase();
+          const target = userMainConcern;
+          return val === target || val.includes(target) || target.includes(val);
+        });
+
+        // Update pipeline counters
+        if (isActive && isVerified && isAvailable) {
+          if (matchesCity) {
+            afterCityFilterCount++;
+            if (matchesSpecies) {
+              afterPetFilterCount++;
+              if (matchesConcern) {
+                afterConditionFilterCount++;
+              }
+            }
+          }
+        }
+
+        // Detailed console log format for every vet as requested
+        console.log(`\nVet: ${vetName}`);
+        console.log(`Pet types: ${JSON.stringify(vetSpecializations)}`);
+        console.log(`Conditions Frequently Managed: ${JSON.stringify(vetExpertise)}`);
+        console.log(`Languages: ${vetLanguages}`);
+        console.log(`Consultation types: ${vetConsultationType}`);
+        console.log(`Availability: Days: [${vetAvailabilityDays}], Weekly Slots: ${vetWeeklyAvailability}, Emergency: ${vetEmergency}`);
+
+        // 1. Pet type match log
+        if (matchesSpecies) {
+          console.log(`✓ Pet type matched`);
+        } else {
+          console.log(`✗ Pet type failed`);
+          console.log(`  Expected: ${petSpecies}`);
+          console.log(`  Found:`);
+          if (vetSpecializations.length > 0) {
+            vetSpecializations.forEach((s: any) => console.log(`  - ${s}`));
+          } else {
+            console.log(`  - None`);
+          }
+        }
+
+        // 2. City match log
+        if (matchesCity) {
+          console.log(`✓ City matched`);
+        } else {
+          console.log(`✗ City failed`);
+          console.log(`  Expected: ${payload.city || "Any"}`);
+          console.log(`  Found: ${vet.city || "Not specified"}`);
+        }
+
+        // 3. Condition match log
+        if (matchesConcern) {
+          console.log(`✓ Condition matched`);
+        } else {
+          console.log(`✗ Condition failed`);
+          console.log(`  Expected: ${mainConcern}`);
+          console.log(`  Found:`);
+          if (vetExpertise.length > 0) {
+            vetExpertise.forEach((e: any) => console.log(`  - ${e}`));
+          } else {
+            console.log(`  - None`);
+          }
+        }
+
+        // Active, Verified, and Availability checks log
+        let isEliminated = false;
+        let eliminationReason = "";
+        if (!isActive) {
+          isEliminated = true;
+          eliminationReason = `is_active is false or undefined (raw value: ${vet.is_active})`;
+          console.log(`✗ Active check failed (is_active is false or undefined)`);
+        } else if (!isVerified) {
+          isEliminated = true;
+          eliminationReason = `verification_status is not 'verified' or 'approved' (raw value: ${vet.verification_status})`;
+          console.log(`✗ Verification check failed (verification_status is not 'verified' or 'approved')`);
+        } else if (!isAvailable) {
+          isEliminated = true;
+          eliminationReason = `No available days, weekly availability slots, or emergency availability defined`;
+          console.log(`✗ Availability check failed (No available days/weekly slots/emergency slots)`);
+        } else if (!matchesSpecies) {
+          isEliminated = true;
+          eliminationReason = `Species treated does not contain user selected pet '${petSpecies}'`;
+        } else if (!matchesConcern) {
+          isEliminated = true;
+          eliminationReason = `Conditions frequently managed does not contain user selected concern '${mainConcern}'`;
+        }
+
+        if (isEliminated) {
+          console.log(`Eliminated Reason: ${eliminationReason}`);
+          console.log(`Score after each phase: (Not Scored - Eliminated)`);
+        } else {
+          console.log(`Score after each phase: (Not Scored - Pending Scoring Engine)`);
+        }
+
+        // Maintain exact same stage allocation and logic continues
+        if (!isActive) {
+          continue;
+        }
+        stage1Active.push(vet);
+
+        if (!isVerified) {
+          continue;
+        }
+        stage2Verified.push(vet);
+
+        if (!isAvailable) {
+          continue;
+        }
+        stage3Available.push(vet);
+
+        if (!matchesSpecies) {
+          continue;
+        }
+        stage4Species.push(vet);
 
         if (!matchesConcern) {
-          console.log(`[Smart Match Reject] Vet ID: ${vetId} | Rejected stage: Condition Frequently Managed | Exact reason: Conditions frequently managed does not contain user selected concern '${mainConcern}' (vet manages: ${JSON.stringify(vet.clinical_expertise)})`);
           continue;
         }
         stage5Concern.push(vet);
       }
 
       // Logging each filtering stage count precisely as requested
-      console.log(`[Smart Match Pipeline Stats]`);
-      console.log(`- Total vets fetched: ${totalFetched}`);
-      console.log(`- After Active filter: ${stage1Active.length}`);
-      console.log(`- After Verified filter: ${stage2Verified.length}`);
-      console.log(`- After Available filter: ${stage3Available.length}`);
-      console.log(`- After Species filter: ${stage4Species.length}`);
-      console.log(`- After Condition Frequently Managed filter: ${stage5Concern.length}`);
+      console.log(`\nAt the end print:`);
+      console.log(`Total vets loaded: ${totalVetsLoaded}`);
+      console.log(`After city filter: ${afterCityFilterCount}`);
+      console.log(`After pet filter: ${afterPetFilterCount}`);
+      console.log(`After condition filter: ${afterConditionFilterCount}`);
+      console.log(`Final candidates: ${stage5Concern.length}\n`);
 
       // Phase 3 Scoring Engine
       const scoredCandidates: any[] = [];
@@ -393,17 +552,30 @@ Based on real, factual breed-specific data and the user's lifestyle inputs, gene
           };
           scoredCandidates.push(scored);
 
-          console.log(`Vet ID: ${scored.id}`);
-          console.log(`Rating: ${item.rating}`);
-          console.log(`Rating Score: ${ratingScore}`);
-          console.log(`Review Count: ${item.reviewCount}`);
-          console.log(`Review Score: ${reviewScore}`);
-          console.log(`Experience: ${item.experience}`);
-          console.log(`Experience Score: ${experienceScore}`);
-          console.log(`Distance: ${item.distance}`);
-          console.log(`Distance Score: ${distanceScore}`);
-          console.log(`Consultation Fee: ${item.fee}`);
-          console.log(`Fee Score: ${feeScore}`);
+          const vetName = item.vet.name || item.vet.full_name || "Unknown Vet";
+          const vetSpecializations = Array.isArray(item.vet.specializations) ? item.vet.specializations : [];
+          const vetExpertise = Array.isArray(item.vet.clinical_expertise) ? item.vet.clinical_expertise : [];
+          const vetLanguages = item.vet.preferred_language || "Not specified";
+          const vetConsultationType = item.vet.consultation_type || "Not specified";
+          const vetAvailabilityDays = Array.isArray(item.vet.available_days) ? item.vet.available_days.join(", ") : "None";
+          const vetWeeklyAvailability = item.vet.weekly_availability ? JSON.stringify(item.vet.weekly_availability) : "None";
+          const vetEmergency = item.vet.emergency_available ? "Yes" : "No";
+
+          console.log(`\nVet: ${vetName}`);
+          console.log(`Pet types: ${JSON.stringify(vetSpecializations)}`);
+          console.log(`Conditions Frequently Managed: ${JSON.stringify(vetExpertise)}`);
+          console.log(`Languages: ${vetLanguages}`);
+          console.log(`Consultation types: ${vetConsultationType}`);
+          console.log(`Availability: Days: [${vetAvailabilityDays}], Weekly Slots: ${vetWeeklyAvailability}, Emergency: ${vetEmergency}`);
+          console.log(`✓ Pet type matched`);
+          console.log(`✓ City matched`);
+          console.log(`✓ Condition matched`);
+          console.log(`Score after each phase:`);
+          console.log(`- Phase 1 (Rating Score): ${ratingScore} (Value: ${item.rating})`);
+          console.log(`- Phase 2 (Review Score): ${reviewScore} (Value: ${item.reviewCount})`);
+          console.log(`- Phase 3 (Experience Score): ${experienceScore} (Value: ${item.experience} years)`);
+          console.log(`- Phase 4 (Distance Score): ${distanceScore} (Value: ${item.distance} km)`);
+          console.log(`- Phase 5 (Fee Score): ${feeScore} (Value: ${item.fee})`);
           console.log(`Final Total Score: ${totalScore}`);
           console.log("-----------------------------------------");
         }

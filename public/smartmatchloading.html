@@ -443,14 +443,12 @@
                         startAnimation();
                     } else if (event.data.type === "MATCH_FOUND") {
                         apiStatus = "MATCH_FOUND";
-                        if (isAt95 && !isAnimatingTo100) {
-                            finishAnimation();
-                        }
+                        isAt95 = true;
+                        finishAnimation();
                     } else if (event.data.type === "NO_VET_FOUND") {
                         apiStatus = "NO_VET_FOUND";
-                        if (isAt95 && !isAnimatingTo100) {
-                            finishAnimation();
-                        }
+                        isAt95 = true;
+                        finishAnimation();
                     }
                 }
             });

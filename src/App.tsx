@@ -233,7 +233,10 @@ const GlobalSmartMatchIframe = () => {
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({
+            ...payload,
+            city: cityRef.current
+          })
         })
         .then(async (res) => {
           if (!res.ok) {
@@ -244,7 +247,10 @@ const GlobalSmartMatchIframe = () => {
           console.log("Complete response JSON:", JSON.stringify(data));
 
           const candidates = Array.isArray(data.candidates) ? data.candidates : [];
-          const scoredCandidates = Array.isArray(data.scoredCandidates) ? data.scoredCandidates : [];
+          let scoredCandidates = Array.isArray(data.scoredCandidates) ? data.scoredCandidates : [];
+
+          // Shuffle the candidates to ensure variety if multiple have identical or close scores ("har baar ek hi vet mat aaye")
+          scoredCandidates = [...scoredCandidates].sort(() => Math.random() - 0.5);
 
           // Implement Phase 4 Winner Selection Logic
           let bestScored: any = null;
