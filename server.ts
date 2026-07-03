@@ -206,29 +206,27 @@ Keep descriptions concise (max 2 sentences).`;
 
   // End Point: Sruvo Smart Match — Phase 1 Foundation
   app.post("/api/smart-match", async (req, res) => {
-    console.log("[SmartMatch Log] Stage 3: Backend execution - event started");
-    console.log("[SmartMatch Log] Stage 3: Backend execution - Whether the backend returned a response: PENDING");
+    console.log("[SmartMatch] ==========================================");
+    console.log("[SmartMatch] [Log 1/8] Request Received");
 
     try {
       const payload = req.body;
-      console.log("[SmartMatch Log] Stage 3: Backend execution - Received payload keys:", Object.keys(payload || {}));
+      console.log("[SmartMatch] [Log 2/8] Raw Payload Received:", JSON.stringify(payload, null, 2));
 
       // 1. Validate payload shape
       if (!payload) {
-        console.warn("[SmartMatch Log] Stage 3: Backend execution - Payload Validation Result: FAILED (Any error: Empty payload)");
-        console.log("[SmartMatch Log] Stage 4: Response returned - event completed (sending status 400)");
+        console.warn("[SmartMatch] [Log 3/8] Payload Validation Result: FAILED (Empty payload)");
         return res.status(400).json({ success: false, error: "Empty payload received" });
       }
 
       const { pet, concerns, healthBackground, currentHealthStatus, mediaFiles } = payload;
 
       if (!pet || !pet.species || !pet.name) {
-        console.warn("[SmartMatch Log] Stage 3: Backend execution - Payload Validation Result: FAILED (Any error: Missing pet species or name)");
-        console.log("[SmartMatch Log] Stage 4: Response returned - event completed (sending status 400)");
+        console.warn("[SmartMatch] [Log 3/8] Payload Validation Result: FAILED (Missing basic pet details like species or name)");
         return res.status(400).json({ success: false, error: "Missing pet details (name, species are required)" });
       }
 
-      console.log("[SmartMatch Log] Stage 3: Backend execution - Payload Validation Result: SUCCESS");
+      console.log("[SmartMatch] [Log 3/8] Payload Validation Result: SUCCESS");
 
       // 2. Normalize the request
       const rawSpecies = pet.species ? String(pet.species).trim() : "";
@@ -283,30 +281,48 @@ Keep descriptions concise (max 2 sentences).`;
         mediaReferences: mediaFiles || []
       };
 
-      console.log("[SmartMatch Log] Stage 3: Backend execution - [Log 4/8] Normalized Payload:", JSON.stringify(normalizedRequest));
+      console.log("[SmartMatch] [Log 4/8] Normalized Payload:", JSON.stringify(normalizedRequest, null, 2));
 
       // 3. Connect to database
-      console.log("[SmartMatch Log] Stage 3: Backend execution - [Log 5/8] Connecting to database... (unresolved Promise created)");
+      console.log("[SmartMatch] [Log 5/8] Connecting to database...");
       const supabaseAdmin = await getSupabaseAdmin();
       if (!supabaseAdmin) {
-        console.error("[SmartMatch Log] Stage 3: Backend execution - Database connection result: FAILED (Any error: No admin client)");
+        console.error("[SmartMatch] Database connection result: FAILED");
         throw new Error("Failed to connect to database");
       }
-      console.log("[SmartMatch Log] Stage 3: Backend execution - Database connection result: SUCCESS (Promise resolved)");
+      console.log("[SmartMatch] Database connection result: SUCCESS");
 
       // 4. Fetch real veterinarian records from the database
-      console.log("[SmartMatch Log] Stage 3: Backend execution - Fetching real veterinarian records... (unresolved Promise created / pending fetch)");
       const { data: vetProfiles, error: fetchErr } = await supabaseAdmin
         .from("vet_profiles")
         .select("*");
 
       if (fetchErr) {
-        console.error("[SmartMatch Log] Stage 3: Backend execution - Fetching veterinarians from DB failed (Any error:", fetchErr, ")");
+        console.error("[SmartMatch] Fetching veterinarians from DB failed:", fetchErr);
         throw fetchErr;
       }
 
-      const totalFetched = vetProfiles?.length || 0;
-      console.log(`[SmartMatch Log] Stage 3: Backend execution - Total Veterinarians Fetched: ${totalFetched} (Promise resolved)`);
+      let rawVets = vetProfiles || [];
+      if (rawVets.length > 0) {
+        const userIds = rawVets.map((v: any) => v.user_id);
+        const { data: profiles, error: profileErr } = await supabaseAdmin
+          .from("profiles")
+          .select("id, name, full_name, profile_photo, is_admin_approved, role")
+          .in("id", userIds);
+
+        if (profileErr) {
+          console.error("[SmartMatch] Fetching profiles failed in SmartMatch endpoint:", profileErr);
+        } else {
+          const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+          rawVets = rawVets.map((v: any) => ({
+            ...v,
+            profile: profileMap.get(v.user_id) || null
+          }));
+        }
+      }
+
+      const totalFetched = rawVets.length;
+      console.log(`[SmartMatch] [Log 6/8] Total Veterinarians Fetched: ${totalFetched}`);
 
       // 5. Build field schema map for logging and debugging
       const fieldMap = {
@@ -375,9 +391,8 @@ Keep descriptions concise (max 2 sentences).`;
         medical_specializations: { type: "Json", nullable: true }
       };
 
-      console.log("[SmartMatch Log] Stage 3: Backend execution - [Log 7/8] List of field names available on vet profiles:", Object.keys(fieldMap));
+      console.log("[SmartMatch] [Log 7/8] List of field names available on vet profiles:", Object.keys(fieldMap));
 
-      const rawVets = vetProfiles || [];
       rawVets.forEach((vet: any, idx: number) => {
         const nullOrMissingFields: string[] = [];
         Object.keys(fieldMap).forEach((field) => {
@@ -385,11 +400,11 @@ Keep descriptions concise (max 2 sentences).`;
             nullOrMissingFields.push(field);
           }
         });
-        console.log(`[SmartMatch Log] Stage 3: Backend execution - Profile #${idx + 1} (${vet.id}): Null/Missing fields count: ${nullOrMissingFields.length}. Fields: ${nullOrMissingFields.join(", ")}`);
+        console.log(`[SmartMatch] Profile #${idx + 1} (${vet.id}): Null/Missing fields count: ${nullOrMissingFields.length}. Fields: ${nullOrMissingFields.join(", ")}`);
       });
 
-      console.log("[SmartMatch Log] Stage 3: Backend execution - event completed");
-      console.log("[SmartMatch Log] Stage 4: Response returned - Whether the backend returned a response: YES");
+      console.log("[SmartMatch] [Log 8/8] Response Sent");
+      console.log("[SmartMatch] ==========================================");
 
       return res.json({
         success: true,
@@ -400,7 +415,7 @@ Keep descriptions concise (max 2 sentences).`;
       });
 
     } catch (err: any) {
-      console.error("[SmartMatch Log] Stage 3/4: Backend execution - Any error:", err.message || String(err));
+      console.error("[SmartMatch] Endpoint experienced an error:", err);
       return res.status(500).json({ success: false, error: err.message || String(err) });
     }
   });

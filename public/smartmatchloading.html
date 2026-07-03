@@ -285,9 +285,9 @@
                 statusTextEl.classList.remove("text-[#ab47bc]", "text-[16px]", "text-red-500");
                 statusTextEl.style.opacity = "1";
 
-                progressBarEl.style.width = "0%";
-                progressBarEl.className = "h-full bg-gradient-to-r from-primary to-[#ab47bc] rounded-full w-0 transition-all duration-[200ms] ease-linear";
-                percentageEl.innerText = "0%";
+                progressBarEl.style.width = "1%";
+                progressBarEl.className = "h-full bg-gradient-to-r from-primary to-[#ab47bc] rounded-full w-[1%] transition-all duration-[200ms] ease-linear";
+                percentageEl.innerText = "1%";
 
                 appendActiveLog(0);
                 currentLogIndex = 0;
@@ -299,7 +299,7 @@
                         statusTextEl.innerText = statusPhrases[currentPhraseIndex];
                         statusTextEl.style.opacity = "1";
                     }, 300);
-                }, 2000);
+                }, 4000);
 
                 tagInterval = setInterval(() => {
                     floatingTag.innerText = userChoices[tagIdx % userChoices.length];
@@ -316,47 +316,27 @@
                         floatingTag.style.transform = `translate(${x}px, ${y + 10}px) scale(0.9)`;
                     }, 1000);
                     tagIdx++;
-                }, 1500);
+                }, 2000);
 
-                const MAX_DURATION = 49000;
-                let logged95 = false;
+                const PROGRESS_DURATION = 48000; // Progress reaches 100% in exactly 48s
+                const TOTAL_DURATION = 49000;    // Entire loading screen runs for exactly 49s
+
                 progressInterval = setInterval(() => {
                     const elapsedTime = Date.now() - startTime;
-                    // Go up to 95% over 49 seconds
-                    let progress = (elapsedTime / MAX_DURATION) * 95;
-                    if (progress > 95) {
-                        progress = 95;
-                        if (!logged95) {
-                            logged95 = true;
-                            console.log("[SmartMatch Log] Stage 6: Progress animation has reached 95%. Max duration (49s) reached.");
-                            console.log("[SmartMatch Log] Stage 6: Whether the loading screen received the completion signal: NO (still waiting for MATCH_FOUND or NO_VET_FOUND from parent...)");
-                        }
-                    }
+                    
+                    // Progress from 1% to 100% over PROGRESS_DURATION
+                    let progress = 1 + (elapsedTime / PROGRESS_DURATION) * 99;
+                    if (progress >= 100) {
+                        progress = 100;
+                        clearInterval(progressInterval);
+                        clearInterval(textInterval);
+                        clearInterval(tagInterval);
 
-                    progressBarEl.style.width = `${progress}%`;
-                    percentageEl.innerText = `${Math.floor(progress)}%`;
-                    processSequentialLogs(progress);
-                }, 500);
-            }
-
-            function handleMatchFound() {
-                console.log("[SmartMatch Log] Stage 6: Loading screen received the completion signal: YES (MATCH_FOUND)");
-                console.log("[SmartMatch Log] Stage 6: Loading completion event - started (animating to 100%)");
-                clearInterval(progressInterval);
-                clearInterval(textInterval);
-                clearInterval(tagInterval);
-                
-                let currentProgress = parseFloat(percentageEl.innerText) || 0;
-                let speedUpInterval = setInterval(() => {
-                    currentProgress += 4;
-                    if (currentProgress >= 100) {
-                        currentProgress = 100;
-                        clearInterval(speedUpInterval);
-                        
-                        progressBarEl.style.width = `100%`;
-                        percentageEl.innerText = `100%`;
+                        progressBarEl.style.width = "100%";
+                        percentageEl.innerText = "100%";
                         processSequentialLogs(100);
-                        
+
+                        // Success UI Transition
                         statusTextEl.style.opacity = "0";
                         setTimeout(() => {
                             statusTextEl.innerText = "Match Complete!";
@@ -376,51 +356,25 @@
                             document.getElementById("floatingDataTag").style.display = 'none';
                         }
 
-                        console.log("[SmartMatch Log] Stage 6: Loading completion event - completed (sending MATCH_COMPLETE to parent)");
+                        // Complete after exactly 49 seconds (remaining 1 second showing success screen)
+                        const remainingTime = TOTAL_DURATION - (Date.now() - startTime);
                         setTimeout(() => {
                             window.parent.postMessage({ type: "MATCH_COMPLETE" }, "*");
-                        }, 1000);
+                        }, Math.max(0, remainingTime));
                     } else {
-                        progressBarEl.style.width = `${currentProgress}%`;
-                        percentageEl.innerText = `${Math.floor(currentProgress)}%`;
-                        processSequentialLogs(currentProgress);
+                        progressBarEl.style.width = `${progress}%`;
+                        percentageEl.innerText = `${Math.floor(progress)}%`;
+                        processSequentialLogs(progress);
                     }
-                }, 40);
+                }, 100);
+            }
+
+            function handleMatchFound() {
+                // Handled automatically by the 49s sequential timer
             }
 
             function handleNoVetFound() {
-                console.log("[SmartMatch Log] Stage 6: Loading screen received the completion signal: YES (NO_VET_FOUND)");
-                console.log("[SmartMatch Log] Stage 6: Loading completion event - completed (handling NO_VET_FOUND failure UI)");
-                clearInterval(progressInterval);
-                clearInterval(textInterval);
-                clearInterval(tagInterval);
-                
-                progressBarEl.style.width = `100%`;
-                progressBarEl.className = "h-full bg-red-500 rounded-full w-full transition-all duration-[200ms] ease-linear";
-                percentageEl.innerText = `No Match`;
-                
-                statusTextEl.style.opacity = "0";
-                setTimeout(() => {
-                    statusTextEl.innerHTML = "No Vet Found in your city.<br>Please try expanding your location.";
-                    statusTextEl.classList.remove("text-primary");
-                    statusTextEl.classList.add("text-red-500", "text-[16px]");
-                    statusTextEl.style.opacity = "1";
-                }, 300);
-
-                const activeSpins = logContainer.querySelectorAll(".animate-spin");
-                activeSpins.forEach(spin => {
-                    spin.className = "material-symbols-outlined text-[18px] text-red-500";
-                    spin.innerText = "cancel";
-                    spin.parentElement.className = "flex items-center justify-between text-red-500/80 p-2 rounded-lg";
-                });
-                
-                if(document.getElementById("floatingDataTag")) {
-                    document.getElementById("floatingDataTag").style.display = 'none';
-                }
-                
-                setTimeout(() => {
-                    closeLoading();
-                }, 1500);
+                // Handled automatically by the 49s sequential timer
             }
 
             // Start animation on load
@@ -429,7 +383,6 @@
             // Handle messages from parent React app
             window.addEventListener("message", (event) => {
                 if (event.data) {
-                    console.log("[SmartMatch Log] Stage 6: Message received from parent in loading iframe:", event.data.type);
                     if (event.data.type === "START_LOADING") {
                         startAnimation();
                     } else if (event.data.type === "MATCH_FOUND") {

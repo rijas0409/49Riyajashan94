@@ -195,10 +195,6 @@ const GlobalSmartMatchIframe = () => {
       if (!event.data) return;
 
       if (event.data.type === "SUBMIT_SMART_MATCH") {
-        console.log("[SmartMatch Log] Stage 1: Step 6 Submit - received on parent window (event completed)");
-        console.log("[SmartMatch Log] Stage 2: POST /api/smart-match - event started");
-        console.log("[SmartMatch Log] Stage 2: POST /api/smart-match - Any pending fetch: YES (active fetch initialized)");
-        console.log("[SmartMatch Log] Stage 2: POST /api/smart-match - Any unresolved Promise: YES (fetch promise pending)");
         setLoading(true);
         try {
           const response = await fetch("/api/smart-match", {
@@ -208,50 +204,95 @@ const GlobalSmartMatchIframe = () => {
             },
             body: JSON.stringify(event.data.payload),
           });
-          console.log(`[SmartMatch Log] Stage 2: POST /api/smart-match - Any pending fetch: NO (fetch completed with HTTP ${response.status})`);
-          console.log("[SmartMatch Log] Stage 2: POST /api/smart-match - Any unresolved Promise: NO (fetch promise resolved)");
-          console.log("[SmartMatch Log] Stage 5: Frontend receives response - event started");
-          console.log("[SmartMatch Log] Stage 5: Frontend receives response - Whether the frontend received it: YES");
-          
           const result = await response.json();
-          console.log("[SmartMatch Log] Stage 5: Frontend receives response - parsed JSON result:", result);
-          console.log("[SmartMatch Log] Stage 5: Frontend receives response - Checking if loading screen received the completion signal: NO");
-          console.warn("[SmartMatch Log] Stage 5: Frontend receives response - [CRITICAL IDENTIFICATION] The frontend successfully received the backend's response, but it has ZERO logic to postMessage 'MATCH_FOUND' or 'NO_VET_FOUND' to the loading iframe. Consequently, the loading screen's message listener (which expects 'MATCH_FOUND' or 'NO_VET_FOUND' to advance past 95%) is never triggered. This is why the progress animation gets stuck at 95% indefinitely.");
-          console.log("[SmartMatch Log] Stage 5: Frontend receives response - event completed");
+          console.log("[SmartMatch Frontend] Successfully posted payload to Phase 1 foundation backend. Response:", result);
+
+          if (result.success && result.veterinarians && result.veterinarians.length > 0) {
+            const payload = event.data.payload;
+            const petType = payload.pet?.species || "";
+            // Find main concern
+            const mainConcernQA = payload.concerns?.find((qa: any) => 
+              qa.question && qa.question.includes("What is your main concern today?")
+            );
+            const mainConcern = mainConcernQA ? mainConcernQA.answer : "";
+
+            console.log("[SmartMatch Matching] Filtering vets for:", { petType, mainConcern });
+
+            // Hard filtering logic
+            const matchedVets = result.veterinarians.filter((vet: any) => {
+              // 1. Species match:
+              // If vet has specializations, check if petType exists inside it (case-insensitive).
+              // If specializations is empty, assume they are general (match everything).
+              const specList = vet.specializations || [];
+              const speciesMatch = specList.length === 0 || specList.some((s: string) => 
+                s.toLowerCase().includes(petType.toLowerCase()) || 
+                petType.toLowerCase().includes(s.toLowerCase())
+              );
+
+              // 2. Concern match:
+              // Check if mainConcern is inside vet's clinical_expertise or clinical_expertise is empty
+              const expertiseList = vet.clinical_expertise || [];
+              const concernMatch = expertiseList.length === 0 || expertiseList.some((e: string) => 
+                e.toLowerCase().includes(mainConcern.toLowerCase()) || 
+                mainConcern.toLowerCase().includes(e.toLowerCase())
+              );
+
+              return speciesMatch && concernMatch;
+            });
+
+            console.log("[SmartMatch Matching] Filter result count:", matchedVets.length);
+
+            const bestVet = matchedVets.length > 0 ? matchedVets[0] : null;
+
+            if (bestVet) {
+              const rawName = bestVet.profile?.full_name || bestVet.profile?.name || (bestVet.user_id === "f9834ef6-778d-4384-8d17-6316fffa03b6" ? "Jashan Pabla" : "Veterinarian");
+              const realName = rawName.startsWith("Dr. ") ? rawName : `Dr. ${rawName}`;
+              
+              matchedVetResultRef.current = {
+                id: bestVet.id,
+                userId: bestVet.user_id,
+                name: realName,
+                specialization: bestVet.specializations?.[0] || "General Veterinarian",
+                image: bestVet.profile_photo || bestVet.profile?.profile_photo || "",
+                rating: bestVet.average_rating || 0,
+                experience: bestVet.years_of_experience || 0,
+                fee: bestVet.online_fee || 499,
+                onlineFee: bestVet.online_fee || 500,
+                offlineFee: bestVet.offline_fee || 800,
+                weekly_availability: bestVet.weekly_availability,
+              };
+              console.log("[SmartMatch Matching] Selected best matched vet:", matchedVetResultRef.current);
+            } else {
+              console.log("[SmartMatch Matching] No matching vet found under strict species/concern filters.");
+              matchedVetResultRef.current = null;
+            }
+          } else {
+            matchedVetResultRef.current = null;
+          }
         } catch (error) {
-          console.error("[SmartMatch Log] Stage 2/5: POST /api/smart-match - Any error:", error);
+          console.error("[SmartMatch Frontend] Error posting payload to Phase 1 foundation backend:", error);
+          matchedVetResultRef.current = null;
         }
       } else if (event.data.type === "NAVIGATE_PARENT") {
-        console.log("[SmartMatch Log] Stage 7: Booking page navigation - NAVIGATE_PARENT event received, path:", event.data.path);
         if (event.data.path === "/vet/ai-assistant") {
           setShowAssessment(false);
           return;
         }
         navigate(event.data.path);
       } else if (event.data.type === "MATCH_COMPLETE") {
-        console.log("[SmartMatch Log] Stage 6: Loading completion event - MATCH_COMPLETE received from loading iframe");
-        console.log("[SmartMatch Log] Stage 6: Loading completion event - Whether the loading screen received the completion signal: YES");
-        console.log("[SmartMatch Log] Stage 7: Booking page navigation - event started");
-        console.log("[SmartMatch Log] Stage 7: Booking page navigation - Checking if matchedVetResultRef is set:", !!matchedVetResultRef.current);
         setLoading(false);
         setShowAssessment(false);
         if (matchedVetResultRef.current) {
           navigate("/vet/booking-details", { state: { matchedVet: matchedVetResultRef.current } });
         } else {
-          console.log("[SmartMatch Log] Stage 7: Booking page navigation - matchedVetResultRef is null/empty, redirecting to no-vet-found");
           navigate("/vet/no-vet-found");
         }
-        console.log("[SmartMatch Log] Stage 7: Booking page navigation - event completed");
       } else if (event.data.type === "CANCEL_LOADING") {
-        console.log("[SmartMatch Log] Stage 6: Loading completion event - CANCEL_LOADING received");
         setLoading(false);
       } else if (event.data.type === "CLOSE_LOADING") {
-        console.log("[SmartMatch Log] Stage 6: Loading completion event - CLOSE_LOADING received");
-        console.log("[SmartMatch Log] Stage 7: Booking page navigation - event started");
         setLoading(false);
         setShowAssessment(false);
         navigate("/vet/no-vet-found");
-        console.log("[SmartMatch Log] Stage 7: Booking page navigation - event completed (navigated to /vet/no-vet-found)");
       }
     };
     window.addEventListener("message", handleMessage);
