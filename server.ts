@@ -476,66 +476,114 @@ Keep descriptions concise (max 2 sentences).`;
         return res.json({ success: true, message: "Pet passport not found, skipping database persistence" });
       }
 
-      // Try dedicated table 'smart_matches' first
+      // 3. Save Cascade: Try 'care_match_assessments' first, then 'smart_matches', then fallback 'pet_health_records_documents'
       let saveSuccess = false;
       let savedData = null;
+      let errorDetails: string[] = [];
 
+      // A. Try 'care_match_assessments' (Your existing preferred table!)
       try {
-        const { data: dedicatedData, error: dedicatedErr } = await supabaseAdmin
-          .from("smart_matches")
+        console.log("[SmartMatch Save] Attempting to insert into 'care_match_assessments' table...");
+        const { data: assessmentData, error: assessmentErr } = await supabaseAdmin
+          .from("care_match_assessments")
           .insert({
             user_id: userId || null,
-            pet_id: petPassportId,
-            pet_name: petName || null,
-            payload: payload,
-            created_at: new Date().toISOString()
+            pet_passport_id: petPassportId,
+            responses: payload,
+            status: "completed",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           })
           .select()
           .single();
 
-        if (!dedicatedErr) {
-          console.log("[SmartMatch Save] Successfully saved to dedicated 'smart_matches' table!");
+        if (!assessmentErr) {
+          console.log("[SmartMatch Save] Successfully saved to 'care_match_assessments'!");
           saveSuccess = true;
-          savedData = dedicatedData;
+          savedData = assessmentData;
         } else {
-          console.log("[SmartMatch Save] Could not insert into 'smart_matches' (might be missing table):", dedicatedErr.message);
+          console.warn("[SmartMatch Save] 'care_match_assessments' insert failed:", assessmentErr.message);
+          errorDetails.push(`care_match_assessments: ${assessmentErr.message}`);
         }
-      } catch (dedErr) {
-        console.log("[SmartMatch Save] Error attempting dedicated 'smart_matches' insert:", dedErr);
+      } catch (err: any) {
+        console.warn("[SmartMatch Save] Error inside 'care_match_assessments' handler:", err.message || err);
+        errorDetails.push(`care_match_assessments exception: ${err.message || String(err)}`);
       }
 
-      // If we couldn't save to 'smart_matches' table, try 'pet_health_records_documents'
+      // B. Try 'smart_matches' if preferred failed
       if (!saveSuccess) {
-        console.log("[SmartMatch Save] Falling back to 'pet_health_records_documents' table...");
-        const { data: docData, error: docErr } = await supabaseAdmin
-          .from("pet_health_records_documents")
-          .insert({
-            pet_passport_id: petPassportId,
-            record_type: "SmartMatch",
-            certificate_title: "AI Care Match Assessment",
-            record_description: JSON.stringify(payload),
-            created_at: new Date().toISOString()
-          })
-          .select()
-          .single();
+        try {
+          console.log("[SmartMatch Save] Falling back/trying 'smart_matches' table...");
+          const { data: dedicatedData, error: dedicatedErr } = await supabaseAdmin
+            .from("smart_matches")
+            .insert({
+              user_id: userId || null,
+              pet_id: petPassportId,
+              pet_name: petName || null,
+              payload: payload,
+              created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
 
-        if (docErr) {
-          console.error("[SmartMatch Save] Fallback to 'pet_health_records_documents' failed:", docErr);
-          // Return success true with warning, never block the user from proceeding
-          return res.json({ 
-            success: true, 
-            warning: "Could not persist to database, but proceeding: " + docErr.message 
-          });
+          if (!dedicatedErr) {
+            console.log("[SmartMatch Save] Successfully saved to 'smart_matches'!");
+            saveSuccess = true;
+            savedData = dedicatedData;
+          } else {
+            console.warn("[SmartMatch Save] 'smart_matches' insert failed:", dedicatedErr.message);
+            errorDetails.push(`smart_matches: ${dedicatedErr.message}`);
+          }
+        } catch (dedErr: any) {
+          console.warn("[SmartMatch Save] Error inside 'smart_matches' handler:", dedErr.message || dedErr);
+          errorDetails.push(`smart_matches exception: ${dedErr.message || String(dedErr)}`);
         }
-        savedData = docData;
-        console.log("[SmartMatch Save] Successfully saved to 'pet_health_records_documents' fallback.");
+      }
+
+      // C. Try 'pet_health_records_documents' if others failed
+      if (!saveSuccess) {
+        try {
+          console.log("[SmartMatch Save] Falling back/trying 'pet_health_records_documents' table...");
+          const { data: docData, error: docErr } = await supabaseAdmin
+            .from("pet_health_records_documents")
+            .insert({
+              pet_passport_id: petPassportId,
+              record_type: "SmartMatch",
+              certificate_title: "AI Care Match Assessment",
+              record_description: JSON.stringify(payload),
+              created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+          if (!docErr) {
+            console.log("[SmartMatch Save] Successfully saved to 'pet_health_records_documents'!");
+            saveSuccess = true;
+            savedData = docData;
+          } else {
+            console.warn("[SmartMatch Save] 'pet_health_records_documents' insert failed:", docErr.message);
+            errorDetails.push(`pet_health_records_documents: ${docErr.message}`);
+          }
+        } catch (docErr: any) {
+          console.warn("[SmartMatch Save] Error inside 'pet_health_records_documents' handler:", docErr.message || docErr);
+          errorDetails.push(`pet_health_records_documents exception: ${docErr.message || String(docErr)}`);
+        }
+      }
+
+      // If all save attempts failed, return a strict error with precise diagnostic details
+      if (!saveSuccess) {
+        const aggregatedError = "Failed to save smart match assessment to Supabase database. Errors: \n" + errorDetails.join("\n");
+        console.error("[SmartMatch Save] All persistence attempts failed:", aggregatedError);
+        return res.status(500).json({
+          success: false,
+          error: aggregatedError
+        });
       }
 
       return res.json({ success: true, data: savedData });
     } catch (err: any) {
-      console.error("[SmartMatch Save] Error in save-smart-match:", err);
-      // Return success true anyway, so the user is never blocked from getting their smart match!
-      return res.json({ success: true, warning: err.message || String(err) });
+      console.error("[SmartMatch Save] Critical route error in save-smart-match:", err);
+      return res.status(500).json({ success: false, error: err.message || String(err) });
     }
   });
 

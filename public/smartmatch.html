@@ -436,11 +436,8 @@
                 button.disabled = false;
                 button.innerHTML = originalHTML;
 
-                // Show the error inside a beautiful notification toast
+                // Show the error inside a beautiful notification toast once
                 showToast(err.message || String(err), "error");
-                
-                // Also trigger notification on parent just in case
-                window.parent.postMessage({ type: "SHOW_TOAST", toastType: "error", message: err.message || String(err) }, "*");
             });
         }
 
