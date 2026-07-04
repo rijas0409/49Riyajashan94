@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
@@ -292,6 +293,15 @@ const GlobalSmartMatchIframe = () => {
           return;
         }
         navigate(event.data.path);
+      } else if (event.data.type === "SHOW_TOAST") {
+        const { toastType, message } = event.data;
+        if (toastType === "error") {
+          toast.error(message);
+        } else if (toastType === "success") {
+          toast.success(message);
+        } else {
+          toast(message);
+        }
       } else if (event.data.type === "MATCH_COMPLETE") {
         setLoading(false);
         setShowAssessment(false);

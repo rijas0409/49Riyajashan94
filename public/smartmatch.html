@@ -351,56 +351,7 @@
 
     <script>
         function showToast(message, type = "error") {
-            const existingToast = document.getElementById("sruvoToast");
-            if (existingToast) {
-                existingToast.remove();
-            }
-
-            const toast = document.createElement("div");
-            toast.id = "sruvoToast";
-            toast.className = "fixed top-5 left-1/2 -translate-x-1/2 z-[9999] w-[90%] max-w-[400px] bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md shadow-premium border rounded-[24px] p-4 flex items-center gap-3 transition-all duration-300 transform -translate-y-10 opacity-0 pointer-events-none";
-
-            let iconColor = "text-primary";
-            let iconName = "info";
-            if (type === "error") {
-                iconColor = "text-[#dc2626]";
-                iconName = "error";
-                toast.classList.add("border-red-100", "bg-red-50/80");
-            } else if (type === "success") {
-                iconColor = "text-[#16a34a]";
-                iconName = "check_circle";
-                toast.classList.add("border-green-100", "bg-green-50/80");
-            } else {
-                toast.classList.add("border-gray-100", "bg-white/80");
-            }
-
-            toast.innerHTML = `
-                <span class="material-symbols-outlined ${iconColor} text-[24px] shrink-0">${iconName}</span>
-                <div class="flex-1 min-w-0">
-                    <p class="text-[14px] font-bold text-on-surface leading-tight">${type === "error" ? "System Message" : "Success"}</p>
-                    <p class="text-[12px] text-on-surface-variant leading-normal mt-0.5 whitespace-pre-wrap">${message}</p>
-                </div>
-                <button onclick="document.getElementById('sruvoToast').remove()" class="text-on-surface-variant hover:text-on-surface active:scale-95 shrink-0 ml-1">
-                    <span class="material-symbols-outlined text-[18px]">close</span>
-                </button>
-            `;
-
-            document.body.appendChild(toast);
-
-            setTimeout(() => {
-                toast.classList.remove("-translate-y-10", "opacity-0", "pointer-events-none");
-                toast.classList.add("translate-y-0", "opacity-100", "pointer-events-auto");
-            }, 50);
-
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.classList.remove("translate-y-0", "opacity-100", "pointer-events-auto");
-                    toast.classList.add("-translate-y-10", "opacity-0", "pointer-events-none");
-                    setTimeout(() => {
-                        if (toast.parentNode) toast.remove();
-                    }, 300);
-                }
-            }, 5000);
+            window.parent.postMessage({ type: "SHOW_TOAST", toastType: type, message: message }, "*");
         }
 
         function submitSmartMatch() {
@@ -423,12 +374,6 @@
                 currentHealthStatus: buildQA(step4AnsweredQuestions),
                 mediaFiles: step5MediaFiles
             };
-
-            // Remove any previous error alerts first
-            const existingAlert = document.getElementById("sruvoToast");
-            if (existingAlert) {
-                existingAlert.remove();
-            }
 
             // Target the Smart Match button to show loading state
             const button = document.querySelector("#step6ContinueWrapper button:last-child");
