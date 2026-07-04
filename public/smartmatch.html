@@ -363,6 +363,7 @@
             };
 
             const payload = {
+                userId: userId,
                 pet: currentPet,
                 concerns: buildQA(answeredQuestions),
                 healthBackground: buildQA(step3AnsweredQuestions),
@@ -370,7 +371,80 @@
                 mediaFiles: step5MediaFiles
             };
 
-            window.parent.postMessage({ type: "SUBMIT_SMART_MATCH", payload: payload }, "*");
+            // Remove any previous error alerts first
+            const existingAlert = document.getElementById("saveErrorAlert");
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+
+            // Target the Smart Match button to show loading state
+            const button = document.querySelector("#step6ContinueWrapper button:last-child");
+            if (!button) {
+                // fallback if button is not found
+                window.parent.postMessage({ type: "SUBMIT_SMART_MATCH", payload: payload }, "*");
+                return;
+            }
+
+            const originalHTML = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = `
+                <svg class="animate-spin h-5 w-5 text-white inline-block mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="animation: spin 1s linear infinite;">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Saving...
+            `;
+
+            // Style for spin animation if not already declared
+            if (!document.getElementById("spinStyle")) {
+                const style = document.createElement("style");
+                style.id = "spinStyle";
+                style.innerHTML = "@keyframes spin { to { transform: rotate(360deg); } }";
+                document.head.appendChild(style);
+            }
+
+            fetch("/api/save-smart-match", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(res => {
+                if (res.success) {
+                    // Restore button and proceed to loading screen
+                    button.disabled = false;
+                    button.innerHTML = originalHTML;
+                    window.parent.postMessage({ type: "SUBMIT_SMART_MATCH", payload: payload }, "*");
+                } else {
+                    throw new Error(res.error || "Unknown database error");
+                }
+            })
+            .catch(err => {
+                console.error("Failed to save smart match in database:", err);
+                button.disabled = false;
+                button.innerHTML = originalHTML;
+
+                // Create and display the error on Step 6
+                const errorEl = document.createElement("div");
+                errorEl.id = "saveErrorAlert";
+                errorEl.className = "w-full bg-[#fef2f2] text-[#991b1b] rounded-[24px] p-5 shadow-sm border border-red-200 flex flex-col gap-2 mt-4 transition-all duration-300";
+                
+                errorEl.innerHTML = `
+                    <div class="flex items-center gap-2 text-[#991b1b] font-bold text-[15px]">
+                        <span class="material-symbols-outlined text-[20px]">error</span>
+                        Database Save Failed
+                    </div>
+                    <div class="text-[13px] text-[#991b1b]/80 font-medium whitespace-pre-wrap leading-relaxed">
+                        ${err.message || String(err)}
+                    </div>
+                `;
+                
+                const container = document.getElementById("step6Section");
+                container.appendChild(errorEl);
+                errorEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
         }
 
         function navigateParent(path) {
@@ -1186,6 +1260,19 @@
             block.innerHTML = titleHTML + contentHTML;
             container.appendChild(block);
 
+            // Auto-restore vaccination answer for S3_Q1 if it exists in localStorage
+            if (nodeId === "S3_Q1" && !step3AnsweredQuestions.includes("S3_Q1")) {
+                const savedVaccination = localStorage.getItem("sruvo_vaccinated_" + (currentPet.id || currentPet.name));
+                if (savedVaccination) {
+                    const savedIdx = node.options.findIndex(opt => opt.t === savedVaccination);
+                    if (savedIdx !== -1) {
+                        setTimeout(() => {
+                            handleStep3OptionSelect("S3_Q1", savedIdx, node.options[savedIdx].next);
+                        }, 100);
+                    }
+                }
+            }
+
             setTimeout(() => {
                 block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 100);
@@ -1220,6 +1307,15 @@
             
             const selectedBtn = document.getElementById(`btn_${nodeId}_${optIdx}`);
             selectedBtn.classList.add('selected');
+
+            // Save vaccination status selection permanently
+            if (nodeId === "S3_Q1") {
+                const node = STEP3_TREE[nodeId];
+                if (node && node.options && node.options[optIdx]) {
+                    const answerText = node.options[optIdx].t;
+                    localStorage.setItem("sruvo_vaccinated_" + (currentPet.id || currentPet.name), answerText);
+                }
+            }
 
             if (nextNodeId === "END") {
                 step3Completed = true;

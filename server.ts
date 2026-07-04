@@ -420,6 +420,46 @@ Keep descriptions concise (max 2 sentences).`;
     }
   });
 
+  // End Point: Sruvo Save Smart Match - Persist entries to Supabase first
+  app.post("/api/save-smart-match", async (req, res) => {
+    console.log("[SmartMatch Save] Request received to save smart match data.");
+    try {
+      const payload = req.body;
+      const supabaseAdmin = await getSupabaseAdmin();
+      if (!supabaseAdmin) {
+        throw new Error("Failed to connect to database (Supabase client not initialized)");
+      }
+
+      // Explicitly try inserting to 'smart_matches' table.
+      // If table is missing, Supabase will fail and return the error message.
+      const { data, error } = await supabaseAdmin
+        .from("smart_matches")
+        .insert({
+          user_id: payload.userId || null,
+          pet_id: payload.pet?.id || null,
+          pet_name: payload.pet?.name || null,
+          payload: payload,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("[SmartMatch Save] Supabase returned error while saving:", error);
+        return res.status(500).json({ 
+          success: false, 
+          error: error.message || String(error)
+        });
+      }
+
+      console.log("[SmartMatch Save] Successfully saved smart match data:", data);
+      return res.json({ success: true, data });
+    } catch (err: any) {
+      console.error("[SmartMatch Save] Error in save-smart-match:", err);
+      return res.status(500).json({ success: false, error: err.message || String(err) });
+    }
+  });
+
   // End Point: Product Insights
   app.post("/api/product-insights", async (req, res) => {
     try {
