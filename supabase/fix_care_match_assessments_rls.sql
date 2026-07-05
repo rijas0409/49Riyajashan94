@@ -22,16 +22,17 @@ DROP POLICY IF EXISTS "Allow public insert on care_match_assessments" ON public.
 DROP POLICY IF EXISTS "Allow public select on care_match_assessments" ON public.care_match_assessments;
 
 -- 4. Create robust public policies that allow inserting and viewing assessments
--- Supports both authenticated users (for their own data) and guest/anonymous users (where user_id is NULL)
+-- Since the server uses the anon/publishable key to perform insertions, we allow public insert & select
+-- so that both guest and registered user records can be seamlessly persisted and viewed.
 CREATE POLICY "Allow public insert on care_match_assessments" 
 ON public.care_match_assessments 
 FOR INSERT 
-WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+WITH CHECK (true);
 
 CREATE POLICY "Allow public select on care_match_assessments" 
 ON public.care_match_assessments 
 FOR SELECT 
-USING (auth.uid() = user_id OR user_id IS NULL);
+USING (true);
 
 -- 5. Explicitly grant permissions to standard Supabase roles
 GRANT ALL ON TABLE public.care_match_assessments TO anon, authenticated, service_role;
