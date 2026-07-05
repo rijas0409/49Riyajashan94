@@ -483,34 +483,32 @@ Keep descriptions concise (max 2 sentences).`;
 
       // A. Try 'care_match_assessments' (Your existing preferred table!)
       try {
-        console.log("[SmartMatch Save] Attempting to insert into 'care_match_assessments' table...");
+        console.log("[SmartMatch Save] Attempting to insert into 'care_match_assessments' table with status 'draft'...");
         let { data: assessmentData, error: assessmentErr } = await supabaseAdmin
           .from("care_match_assessments")
           .insert({
             user_id: userId || null,
             pet_passport_id: petPassportId,
             responses: payload,
-            status: "completed",
+            status: "draft", // Solves: Violates check constraint "care_match_assessments_status_check"
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
-          .select()
-          .single();
+          .select();
 
         if (assessmentErr && userId) {
-          console.warn("[SmartMatch Save] 'care_match_assessments' insert with user_id failed, retrying with user_id: null to satisfy RLS...", assessmentErr.message);
+          console.warn("[SmartMatch Save] 'care_match_assessments' insert with user_id failed, retrying with user_id: null and status 'draft'...", assessmentErr.message);
           const retryResult = await supabaseAdmin
             .from("care_match_assessments")
             .insert({
               user_id: null,
               pet_passport_id: petPassportId,
               responses: payload,
-              status: "completed",
+              status: "draft",
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
-            .select()
-            .single();
+            .select();
           assessmentData = retryResult.data;
           assessmentErr = retryResult.error;
         }
@@ -518,7 +516,7 @@ Keep descriptions concise (max 2 sentences).`;
         if (!assessmentErr) {
           console.log("[SmartMatch Save] Successfully saved to 'care_match_assessments'!");
           saveSuccess = true;
-          savedData = assessmentData;
+          savedData = assessmentData && assessmentData.length > 0 ? assessmentData[0] : null;
         } else {
           console.warn("[SmartMatch Save] 'care_match_assessments' insert failed:", assessmentErr.message);
           errorDetails.push(`care_match_assessments: ${assessmentErr.message}`);
@@ -541,8 +539,7 @@ Keep descriptions concise (max 2 sentences).`;
               payload: payload,
               created_at: new Date().toISOString()
             })
-            .select()
-            .single();
+            .select();
 
           if (dedicatedErr && userId) {
             console.warn("[SmartMatch Save] 'smart_matches' insert with user_id failed, retrying with user_id: null to satisfy RLS...", dedicatedErr.message);
@@ -555,8 +552,7 @@ Keep descriptions concise (max 2 sentences).`;
                 payload: payload,
                 created_at: new Date().toISOString()
               })
-              .select()
-              .single();
+              .select();
             dedicatedData = retryResult.data;
             dedicatedErr = retryResult.error;
           }
@@ -564,7 +560,7 @@ Keep descriptions concise (max 2 sentences).`;
           if (!dedicatedErr) {
             console.log("[SmartMatch Save] Successfully saved to 'smart_matches'!");
             saveSuccess = true;
-            savedData = dedicatedData;
+            savedData = dedicatedData && dedicatedData.length > 0 ? dedicatedData[0] : null;
           } else {
             console.warn("[SmartMatch Save] 'smart_matches' insert failed:", dedicatedErr.message);
             errorDetails.push(`smart_matches: ${dedicatedErr.message}`);
@@ -588,13 +584,12 @@ Keep descriptions concise (max 2 sentences).`;
               record_description: JSON.stringify(payload),
               created_at: new Date().toISOString()
             })
-            .select()
-            .single();
+            .select();
 
           if (!docErr) {
             console.log("[SmartMatch Save] Successfully saved to 'pet_health_records_documents'!");
             saveSuccess = true;
-            savedData = docData;
+            savedData = docData && docData.length > 0 ? docData[0] : null;
           } else {
             console.warn("[SmartMatch Save] 'pet_health_records_documents' insert failed:", docErr.message);
             errorDetails.push(`pet_health_records_documents: ${docErr.message}`);
@@ -605,14 +600,13 @@ Keep descriptions concise (max 2 sentences).`;
         }
       }
 
-      // If all save attempts failed, return a resilient warning rather than 500 error so the user can still proceed
+      // If all save attempts failed, return a 400 error containing exact details of the issue so we block progression
       if (!saveSuccess) {
-        const aggregatedError = "Database persistence failed, but proceeding to avoid blocking. Errors: \n" + errorDetails.join("\n");
-        console.warn("[SmartMatch Save] All persistence attempts failed. Returning graceful success status:", aggregatedError);
-        return res.json({
-          success: true,
-          warning: aggregatedError,
-          data: { id: "mock_saved_" + Date.now(), isMock: true }
+        const aggregatedError = "All database persistence options failed!\nDetails of errors:\n" + errorDetails.join("\n");
+        console.warn("[SmartMatch Save] Strict save enforcement: returning error to client:", aggregatedError);
+        return res.status(400).json({
+          success: false,
+          error: aggregatedError
         });
       }
 
