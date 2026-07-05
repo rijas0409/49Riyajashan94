@@ -453,12 +453,7 @@
             window.parent.postMessage({ type: "NAVIGATE_PARENT", path: path }, "*");
         }
 
-        let loggedInUserDatabaseRecords = [
-            { id: "srv_pet_001", name: "Gabru", photo: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300", species: "Dog", gender: "Male", breed: "Golden Retriever", appearance: "Golden Double Coat", age: "2 Yrs 4 Mos", weight: "32 kg" },
-            { id: "srv_pet_002", name: "Bella", photo: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=300", species: "Cat", gender: "Female", breed: "Persian", appearance: "White Fluffy Coat", age: "1 Yr 2 Mos", weight: "4.5 kg" },
-            { id: "srv_pet_003", name: "Rio", photo: "https://images.unsplash.com/photo-1552728089-57168d658b10?auto=format&fit=crop&q=80&w=300", species: "Bird", gender: "Male", breed: "Macaw", appearance: "Blue and Gold Feathers", age: "4 Yrs 1 Mo", weight: "1.2 kg" },
-            { id: "srv_pet_004", name: "Chintu", photo: "https://images.unsplash.com/photo-1425082661705-1834bfd09dca?auto=format&fit=crop&q=80&w=300", species: "Hamster", gender: "Male", breed: "Syrian", appearance: "Golden Brown", age: "8 Mos", weight: "150 g" }
-        ];
+        let loggedInUserDatabaseRecords = [];
 
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get("userId") || "";
