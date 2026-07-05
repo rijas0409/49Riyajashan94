@@ -434,10 +434,20 @@ Keep descriptions concise (max 2 sentences).`;
       const petName = payload.pet?.name;
       const userId = payload.userId;
 
-      if (!userId || !petId || String(petId).startsWith("srv_pet_")) {
-        // Guest mode or mock pet - don't fail, return success so user can proceed
-        console.log("[SmartMatch Save] Guest/Guest-mock pet mode. Returning success without database insert.");
-        return res.json({ success: true, message: "Saved in guest mode (no DB record created)" });
+      if (!userId) {
+        console.warn("[SmartMatch Save] Validation failed: userId is missing.");
+        return res.status(400).json({
+          success: false,
+          error: "Smart Match is a login-only feature. Please sign in or register to continue."
+        });
+      }
+
+      if (!petId || String(petId).startsWith("srv_pet_")) {
+        console.warn("[SmartMatch Save] Validation failed: petId is missing or is a mock pet.", { petId });
+        return res.status(400).json({
+          success: false,
+          error: "A valid, registered Pet Passport is mandatory to proceed with Smart Match. If no valid Pet Passport exists, you must first create one."
+        });
       }
 
       // Try to find the pet_passport by database ID (UUID) or by pet_name + user_id
@@ -471,9 +481,11 @@ Keep descriptions concise (max 2 sentences).`;
       }
 
       if (!petPassportId) {
-        // If we still can't find a real pet passport, return success instead of failing the user
-        console.warn("[SmartMatch Save] Real pet passport not found. Returning success so flow is uninterrupted.");
-        return res.json({ success: true, message: "Pet passport not found, skipping database persistence" });
+        console.warn("[SmartMatch Save] Validation failed: Real pet passport not found for petId:", petId);
+        return res.status(400).json({
+          success: false,
+          error: "Pet Passport ID is missing or invalid. Please select a registered pet, or click 'Add Pet' to create a new Pet Passport."
+        });
       }
 
       // 3. Save Cascade: Try 'care_match_assessments' first, then 'smart_matches', then fallback 'pet_health_records_documents'
