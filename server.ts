@@ -422,7 +422,6 @@ Keep descriptions concise (max 2 sentences).`;
 
   // End Point: Sruvo Save Smart Match - Persist entries to Supabase first
   app.post("/api/save-smart-match", async (req, res) => {
-    console.log("[SmartMatch Save] Request received to save smart match data.");
     try {
       const payload = req.body;
       const supabaseAdmin = await getSupabaseAdmin();
@@ -435,214 +434,93 @@ Keep descriptions concise (max 2 sentences).`;
       const userId = payload.userId;
 
       if (!userId) {
-        console.warn("[SmartMatch Save] Validation failed: userId is missing.");
-        return res.status(400).json({
-          success: false,
-          error: "Smart Match is a login-only feature. Please sign in or register to continue."
-        });
+        return res.status(400).json({ success: false, error: "Smart Match is a login-only feature. Please sign in or register to continue." });
       }
 
       if (!petId || String(petId).startsWith("srv_pet_")) {
-        console.warn("[SmartMatch Save] Validation failed: petId is missing or is a mock pet.", { petId });
-        return res.status(400).json({
-          success: false,
-          error: "A valid, registered Pet Passport is mandatory to proceed with Smart Match. If no valid Pet Passport exists, you must first create one."
-        });
+        return res.status(400).json({ success: false, error: "A valid, registered Pet Passport is mandatory." });
       }
 
-      // Try to find the pet_passport by database ID (UUID), by passport_id, or by pet_name + user_id
       let petPassportId = null;
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       
-      // 1. Check if petId is a valid UUID
       if (uuidRegex.test(petId)) {
-        const { data: pet, error: petErr } = await supabaseAdmin
-          .from("pet_passports")
-          .select("id")
-          .eq("id", petId)
-          .maybeSingle();
-        if (pet && !petErr) {
-          petPassportId = pet.id;
-        }
+        const { data: pet } = await supabaseAdmin.from("pet_passports").select("id").eq("id", petId).maybeSingle();
+        if (pet) petPassportId = pet.id;
       }
-
-      // 1.5. If not a UUID, query pet_passports by passport_id (e.g. "SRV-RY0-IA4")
+      
       if (!petPassportId && petId) {
-        const { data: pet, error: petErr } = await supabaseAdmin
-          .from("pet_passports")
-          .select("id")
-          .eq("passport_id", petId)
-          .maybeSingle();
-        if (pet && !petErr) {
-          petPassportId = pet.id;
-        }
+        const { data: pet } = await supabaseAdmin.from("pet_passports").select("id").eq("passport_id", petId).maybeSingle();
+        if (pet) petPassportId = pet.id;
       }
 
-      // 2. Fallback to lookup by name and user_id if needed
       if (!petPassportId && petName) {
         let query = supabaseAdmin.from("pet_passports").select("id").eq("pet_name", petName);
-        if (userId && uuidRegex.test(userId)) {
-          query = query.eq("user_id", userId);
-        }
-        const { data: pet, error: petErr } = await query.limit(1).maybeSingle();
-        if (pet && !petErr) {
-          petPassportId = pet.id;
-        }
+        if (userId && uuidRegex.test(userId)) query = query.eq("user_id", userId);
+        const { data: pet } = await query.limit(1).maybeSingle();
+        if (pet) petPassportId = pet.id;
       }
 
       if (!petPassportId) {
-        console.warn("[SmartMatch Save] Validation failed: Real pet passport not found for petId:", petId);
-        return res.status(400).json({
-          success: false,
-          error: "Pet Passport ID is missing or invalid. Please select a registered pet, or click 'Add Pet' to create a new Pet Passport."
-        });
+        return res.status(400).json({ success: false, error: "Pet Passport ID is missing or invalid." });
       }
 
-      // Ensure dbUserId is either a valid UUID or null to prevent database syntax/foreign key errors
       const dbUserId = (userId && uuidRegex.test(userId)) ? userId : null;
 
-      // 3. Save Cascade: Try 'care_match_assessments' first, then 'smart_matches', then fallback 'pet_health_records_documents'
-      let saveSuccess = false;
-      let savedData = null;
-      let errorDetails: string[] = [];
+      const structuredResponses = {
+        pet_details: {
+           id: payload.pet?.id,
+           name: payload.pet?.name,
+           species: payload.pet?.species
+        },
+        step2_concerns: payload.concerns || [],
+        step3_health_background: payload.healthBackground || [],
+        step4_current_health_status: payload.currentHealthStatus || [],
+        step5_media_files: payload.mediaFiles || [],
+        meta: { submitted_at: new Date().toISOString() }
+      };
 
-      // A. Try 'care_match_assessments' (Your existing preferred table!)
-      try {
-        console.log("[SmartMatch Save] Attempting to insert into 'care_match_assessments' table with status 'draft'...");
-        let { data: assessmentData, error: assessmentErr } = await supabaseAdmin
+      let { data: assessmentData, error: assessmentErr } = await supabaseAdmin
+        .from("care_match_assessments")
+        .insert({
+          user_id: dbUserId,
+          pet_passport_id: petPassportId,
+          responses: structuredResponses,
+          status: "draft",
+          current_step: 6
+        })
+        .select()
+        .single();
+
+      if (assessmentErr && dbUserId) {
+         console.warn("Insert failed with user_id, retrying with null...", assessmentErr.message);
+         const retry = await supabaseAdmin
           .from("care_match_assessments")
           .insert({
-            user_id: dbUserId,
+            user_id: null,
             pet_passport_id: petPassportId,
-            responses: payload,
-            status: "draft", // Solves: Violates check constraint "care_match_assessments_status_check"
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            responses: structuredResponses,
+            status: "draft",
+            current_step: 6
           })
-          .select();
-
-        if (assessmentErr && dbUserId) {
-          console.warn("[SmartMatch Save] 'care_match_assessments' insert with user_id failed, retrying with user_id: null and status 'draft'...", assessmentErr.message);
-          const retryResult = await supabaseAdmin
-            .from("care_match_assessments")
-            .insert({
-              user_id: null,
-              pet_passport_id: petPassportId,
-              responses: payload,
-              status: "draft",
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .select();
-          assessmentData = retryResult.data;
-          assessmentErr = retryResult.error;
-        }
-
-        if (!assessmentErr) {
-          console.log("[SmartMatch Save] Successfully saved to 'care_match_assessments'!");
-          saveSuccess = true;
-          savedData = assessmentData && assessmentData.length > 0 ? assessmentData[0] : null;
-        } else {
-          console.warn("[SmartMatch Save] 'care_match_assessments' insert failed:", assessmentErr.message);
-          errorDetails.push(`care_match_assessments: ${assessmentErr.message}`);
-        }
-      } catch (err: any) {
-        console.warn("[SmartMatch Save] Error inside 'care_match_assessments' handler:", err.message || err);
-        errorDetails.push(`care_match_assessments exception: ${err.message || String(err)}`);
+          .select()
+          .single();
+          
+          assessmentData = retry.data;
+          assessmentErr = retry.error;
       }
 
-      // B. Try 'smart_matches' if preferred failed
-      if (!saveSuccess) {
-        try {
-          console.log("[SmartMatch Save] Falling back/trying 'smart_matches' table...");
-          let { data: dedicatedData, error: dedicatedErr } = await supabaseAdmin
-            .from("smart_matches")
-            .insert({
-              user_id: dbUserId,
-              pet_id: petPassportId,
-              pet_name: petName || null,
-              payload: payload,
-              created_at: new Date().toISOString()
-            })
-            .select();
-
-          if (dedicatedErr && dbUserId) {
-            console.warn("[SmartMatch Save] 'smart_matches' insert with user_id failed, retrying with user_id: null to satisfy RLS...", dedicatedErr.message);
-            const retryResult = await supabaseAdmin
-              .from("smart_matches")
-              .insert({
-                user_id: null,
-                pet_id: petPassportId,
-                pet_name: petName || null,
-                payload: payload,
-                created_at: new Date().toISOString()
-              })
-              .select();
-            dedicatedData = retryResult.data;
-            dedicatedErr = retryResult.error;
-          }
-
-          if (!dedicatedErr) {
-            console.log("[SmartMatch Save] Successfully saved to 'smart_matches'!");
-            saveSuccess = true;
-            savedData = dedicatedData && dedicatedData.length > 0 ? dedicatedData[0] : null;
-          } else {
-            console.warn("[SmartMatch Save] 'smart_matches' insert failed:", dedicatedErr.message);
-            errorDetails.push(`smart_matches: ${dedicatedErr.message}`);
-          }
-        } catch (dedErr: any) {
-          console.warn("[SmartMatch Save] Error inside 'smart_matches' handler:", dedErr.message || dedErr);
-          errorDetails.push(`smart_matches exception: ${dedErr.message || String(dedErr)}`);
-        }
+      if (assessmentErr) {
+        return res.status(400).json({ success: false, error: "Database error: " + assessmentErr.message });
       }
 
-      // C. Try 'pet_health_records_documents' if others failed
-      if (!saveSuccess) {
-        try {
-          console.log("[SmartMatch Save] Falling back/trying 'pet_health_records_documents' table...");
-          const { data: docData, error: docErr } = await supabaseAdmin
-            .from("pet_health_records_documents")
-            .insert({
-              pet_passport_id: petPassportId,
-              record_type: "SmartMatch",
-              certificate_title: "AI Care Match Assessment",
-              record_description: JSON.stringify(payload),
-              created_at: new Date().toISOString()
-            })
-            .select();
-
-          if (!docErr) {
-            console.log("[SmartMatch Save] Successfully saved to 'pet_health_records_documents'!");
-            saveSuccess = true;
-            savedData = docData && docData.length > 0 ? docData[0] : null;
-          } else {
-            console.warn("[SmartMatch Save] 'pet_health_records_documents' insert failed:", docErr.message);
-            errorDetails.push(`pet_health_records_documents: ${docErr.message}`);
-          }
-        } catch (docErr: any) {
-          console.warn("[SmartMatch Save] Error inside 'pet_health_records_documents' handler:", docErr.message || docErr);
-          errorDetails.push(`pet_health_records_documents exception: ${docErr.message || String(docErr)}`);
-        }
-      }
-
-      // If all save attempts failed, return a 400 error containing exact details of the issue so we block progression
-      if (!saveSuccess) {
-        const aggregatedError = "All database persistence options failed!\nDetails of errors:\n" + errorDetails.join("\n");
-        console.warn("[SmartMatch Save] Strict save enforcement: returning error to client:", aggregatedError);
-        return res.status(400).json({
-          success: false,
-          error: aggregatedError
-        });
-      }
-
-      return res.json({ success: true, data: savedData });
+      return res.json({ success: true, data: assessmentData });
     } catch (err: any) {
-      console.error("[SmartMatch Save] Critical route error in save-smart-match:", err);
+      console.error("[SmartMatch Save] Route error:", err);
       return res.status(500).json({ success: false, error: err.message || String(err) });
     }
   });
 
-  // End Point: Product Insights
   app.post("/api/product-insights", async (req, res) => {
     try {
       const { name, brand, pet_type, category, ingredients, highlights } = req.body;
