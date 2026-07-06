@@ -354,6 +354,62 @@
             window.parent.postMessage({ type: "SHOW_TOAST", toastType: type, message: message }, "*");
         }
 
+        function saveDraftAssessment(currentStep) {
+            if (!userId) return Promise.resolve();
+            if (!currentPet || !currentPet.id || String(currentPet.id).startsWith("srv_pet_")) {
+                return Promise.resolve();
+            }
+
+            const buildQA = (idList) => {
+                let qaList = [];
+                idList.forEach(id => {
+                    const qa = extractQA(`block_${id}`);
+                    if(qa && qa.a !== "Skipped") {
+                        qaList.push({ question: qa.q, answer: qa.a });
+                    }
+                });
+                return qaList;
+            };
+
+            const activeIdKey = "active_assessment_id_" + (currentPet.id || currentPet.name);
+            const activeAssessmentId = localStorage.getItem(activeIdKey);
+
+            const payload = {
+                userId: userId,
+                pet: currentPet,
+                assessmentId: activeAssessmentId,
+                currentStep: currentStep,
+                concerns: buildQA(answeredQuestions),
+                healthBackground: buildQA(step3AnsweredQuestions),
+                currentHealthStatus: buildQA(step4AnsweredQuestions),
+                mediaFiles: step5MediaFiles
+            };
+
+            return fetch("/api/save-smart-match", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Failed to save draft progress");
+                }
+                return response.json();
+            })
+            .then(res => {
+                if (res.success && res.id) {
+                    localStorage.setItem(activeIdKey, res.id);
+                    console.log(`[Draft Save] Step ${currentStep} progress saved. Assessment ID:`, res.id);
+                }
+                return res;
+            })
+            .catch(err => {
+                console.error(`[Draft Save] Error saving progress at step ${currentStep}:`, err);
+            });
+        }
+
         function submitSmartMatch() {
             if (!userId) {
                 showToast("Smart Match is a login-only feature. Please sign in or register to continue.", "error");
@@ -374,9 +430,13 @@
                 return qaList;
             };
 
+            const activeIdKey = "active_assessment_id_" + (currentPet.id || currentPet.name);
+            const activeAssessmentId = localStorage.getItem(activeIdKey);
+
             const payload = {
                 userId: userId,
                 pet: currentPet,
+                assessmentId: activeAssessmentId,
                 concerns: buildQA(answeredQuestions),
                 healthBackground: buildQA(step3AnsweredQuestions),
                 currentHealthStatus: buildQA(step4AnsweredQuestions),
@@ -434,6 +494,10 @@
                     // Restore button and proceed to loading screen
                     button.disabled = false;
                     button.innerHTML = originalHTML;
+
+                    // Clear active assessment ID upon successful final submission
+                    localStorage.removeItem(activeIdKey);
+
                     window.parent.postMessage({ type: "SUBMIT_SMART_MATCH", payload: payload }, "*");
                 } else {
                     throw new Error(res.error || "Unknown database error");
@@ -879,6 +943,10 @@
                 showToast("A valid Pet Passport is required to use Smart Match. Please select a registered pet, or click 'Add Pet' to create a new Pet Passport.", "error");
                 return;
             }
+            
+            // Save initial draft assessment progress
+            saveDraftAssessment(1);
+
             const detailsSection = document.getElementById("petDetailsSection");
             const step2Section = document.getElementById("step2Section");
             
@@ -1357,6 +1425,9 @@
         };
 
         function goToStep3() {
+            // Save draft progress for Step 2
+            saveDraftAssessment(2);
+
             const step2Section = document.getElementById("step2Section");
             const step2ContinueWrapper = document.getElementById("step2ContinueWrapper");
             const step3Section = document.getElementById("step3Section");
@@ -1567,6 +1638,9 @@
         };
 
         function goToStep4() {
+            // Save draft progress for Step 3
+            saveDraftAssessment(3);
+
             const step3Section = document.getElementById("step3Section");
             const step3ContinueWrapper = document.getElementById("step3ContinueWrapper");
             const step4Section = document.getElementById("step4Section");
@@ -1614,6 +1688,9 @@
         }
 
         function goToStep5() {
+            // Save draft progress for Step 4
+            saveDraftAssessment(4);
+
             const step4Section = document.getElementById("step4Section");
             const step4ContinueWrapper = document.getElementById("step4ContinueWrapper");
             const step5Section = document.getElementById("step5Section");
@@ -1776,6 +1853,9 @@
         }
 
         window.goToStep6 = function() {
+            // Save draft progress for Step 5
+            saveDraftAssessment(5);
+
             const step5Section = document.getElementById("step5Section");
             const step5ContinueWrapper = document.getElementById("step5ContinueWrapper");
             const step6Section = document.getElementById("step6Section");

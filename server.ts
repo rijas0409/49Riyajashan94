@@ -432,6 +432,7 @@ Keep descriptions concise (max 2 sentences).`;
       const petId = payload.pet?.id;
       const petName = payload.pet?.name;
       const userId = payload.userId;
+      const currentStep = payload.currentStep || 6;
 
       if (!userId) {
         return res.status(400).json({ success: false, error: "Smart Match is a login-only feature. Please sign in or register to continue." });
@@ -482,7 +483,7 @@ Keep descriptions concise (max 2 sentences).`;
 
       const dbUserId = (userId && uuidRegex.test(userId)) ? userId : null;
 
-      const structuredResponses = {
+      let structuredResponses: any = {
         pet_details: {
            id: payload.pet?.id,
            name: payload.pet?.name,
@@ -495,41 +496,143 @@ Keep descriptions concise (max 2 sentences).`;
         meta: { submitted_at: new Date().toISOString() }
       };
 
-      let { data: assessmentData, error: assessmentErr } = await supabaseAdmin
-        .from("care_match_assessments")
-        .insert({
-          user_id: dbUserId,
-          pet_passport_id: petPassportId,
-          responses: structuredResponses,
-          status: "draft",
-          current_step: 6
-        })
-        .select()
-        .single();
+      let assessmentId = payload.assessmentId;
 
-      if (assessmentErr && dbUserId) {
-         console.warn("Insert failed with user_id, retrying with null...", assessmentErr.message);
-         const retry = await supabaseAdmin
+      // Try to find existing draft by pet_passport_id and user_id if assessmentId not sent
+      if (!assessmentId || !uuidRegex.test(assessmentId)) {
+        const { data: existingDrafts } = await supabaseAdmin
+          .from("care_match_assessments")
+          .select("id, responses")
+          .eq("pet_passport_id", petPassportId)
+          .eq("status", "draft")
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (existingDrafts && existingDrafts.length > 0) {
+          assessmentId = existingDrafts[0].id;
+          const oldResponses = existingDrafts[0].responses as any;
+          if (oldResponses) {
+            structuredResponses = {
+              ...oldResponses,
+              pet_details: {
+                 id: payload.pet?.id || oldResponses.pet_details?.id,
+                 name: payload.pet?.name || oldResponses.pet_details?.name,
+                 species: payload.pet?.species || oldResponses.pet_details?.species
+              },
+              meta: {
+                submitted_at: oldResponses.meta?.submitted_at || new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }
+            };
+
+            if (payload.concerns !== undefined && payload.concerns !== null) {
+              structuredResponses.step2_concerns = payload.concerns;
+            }
+            if (payload.healthBackground !== undefined && payload.healthBackground !== null) {
+              structuredResponses.step3_health_background = payload.healthBackground;
+            }
+            if (payload.currentHealthStatus !== undefined && payload.currentHealthStatus !== null) {
+              structuredResponses.step4_current_health_status = payload.currentHealthStatus;
+            }
+            if (payload.mediaFiles !== undefined && payload.mediaFiles !== null) {
+              structuredResponses.step5_media_files = payload.mediaFiles;
+            }
+          }
+        }
+      } else {
+        // If assessmentId was provided, fetch old response to merge
+        const { data: existingRow } = await supabaseAdmin
+          .from("care_match_assessments")
+          .select("responses")
+          .eq("id", assessmentId)
+          .maybeSingle();
+
+        if (existingRow && existingRow.responses) {
+          const oldResponses = existingRow.responses as any;
+          structuredResponses = {
+            ...oldResponses,
+            pet_details: {
+               id: payload.pet?.id || oldResponses.pet_details?.id,
+               name: payload.pet?.name || oldResponses.pet_details?.name,
+               species: payload.pet?.species || oldResponses.pet_details?.species
+            },
+            meta: {
+              submitted_at: oldResponses.meta?.submitted_at || new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          };
+
+          if (payload.concerns !== undefined && payload.concerns !== null) {
+            structuredResponses.step2_concerns = payload.concerns;
+          }
+          if (payload.healthBackground !== undefined && payload.healthBackground !== null) {
+            structuredResponses.step3_health_background = payload.healthBackground;
+          }
+          if (payload.currentHealthStatus !== undefined && payload.currentHealthStatus !== null) {
+            structuredResponses.step4_current_health_status = payload.currentHealthStatus;
+          }
+          if (payload.mediaFiles !== undefined && payload.mediaFiles !== null) {
+            structuredResponses.step5_media_files = payload.mediaFiles;
+          }
+        }
+      }
+
+      let saveSuccess = false;
+      let finalAssessmentId = assessmentId;
+
+      if (finalAssessmentId && uuidRegex.test(finalAssessmentId)) {
+        // Direct UPDATE
+        const { error: updateErr } = await supabaseAdmin
+          .from("care_match_assessments")
+          .update({
+            responses: structuredResponses,
+            current_step: currentStep,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", finalAssessmentId);
+
+        if (!updateErr) {
+          saveSuccess = true;
+        } else {
+          console.warn(`[SmartMatch Save] Direct update failed for ${finalAssessmentId}: ${updateErr.message}. Trying insert.`);
+        }
+      }
+
+      if (!saveSuccess) {
+        // Direct INSERT (Generate UUID to bypass select RLS post-insert issues)
+        finalAssessmentId = crypto.randomUUID();
+        let { error: insertErr } = await supabaseAdmin
           .from("care_match_assessments")
           .insert({
-            user_id: null,
+            id: finalAssessmentId,
+            user_id: dbUserId,
             pet_passport_id: petPassportId,
             responses: structuredResponses,
             status: "draft",
-            current_step: 6
-          })
-          .select()
-          .single();
-          
-          assessmentData = retry.data;
-          assessmentErr = retry.error;
+            current_step: currentStep
+          });
+
+        if (insertErr && dbUserId) {
+          console.warn("[SmartMatch Save] Insert failed with user_id, retrying with null user_id...", insertErr.message);
+          const { error: retryErr } = await supabaseAdmin
+            .from("care_match_assessments")
+            .insert({
+              id: finalAssessmentId,
+              user_id: null,
+              pet_passport_id: petPassportId,
+              responses: structuredResponses,
+              status: "draft",
+              current_step: currentStep
+            });
+          insertErr = retryErr;
+        }
+
+        if (insertErr) {
+          return res.status(400).json({ success: false, error: "Database error: " + insertErr.message });
+        }
       }
 
-      if (assessmentErr) {
-        return res.status(400).json({ success: false, error: "Database error: " + assessmentErr.message });
-      }
-
-      return res.json({ success: true, data: assessmentData });
+      return res.json({ success: true, id: finalAssessmentId });
     } catch (err: any) {
       console.error("[SmartMatch Save] Route error:", err);
       return res.status(500).json({ success: false, error: err.message || String(err) });
