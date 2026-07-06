@@ -374,12 +374,6 @@
             const activeIdKey = "active_assessment_id_" + (currentPet.id || currentPet.name);
             const activeAssessmentId = localStorage.getItem(activeIdKey);
 
-            const cleanMediaFiles = step5MediaFiles.map(m => ({
-                id: m.id,
-                isVideo: m.isVideo,
-                base64: m.base64
-            }));
-
             const payload = {
                 userId: userId,
                 pet: currentPet,
@@ -388,7 +382,7 @@
                 concerns: buildQA(answeredQuestions),
                 healthBackground: buildQA(step3AnsweredQuestions),
                 currentHealthStatus: buildQA(step4AnsweredQuestions),
-                mediaFiles: cleanMediaFiles
+                mediaFiles: step5MediaFiles
             };
 
             return fetch("/api/save-smart-match", {
@@ -439,22 +433,14 @@
             const activeIdKey = "active_assessment_id_" + (currentPet.id || currentPet.name);
             const activeAssessmentId = localStorage.getItem(activeIdKey);
 
-            const cleanMediaFiles = step5MediaFiles.map(m => ({
-                id: m.id,
-                isVideo: m.isVideo,
-                base64: m.base64
-            }));
-
             const payload = {
                 userId: userId,
                 pet: currentPet,
                 assessmentId: activeAssessmentId,
-                status: "submitted",
-                currentStep: 6,
                 concerns: buildQA(answeredQuestions),
                 healthBackground: buildQA(step3AnsweredQuestions),
                 currentHealthStatus: buildQA(step4AnsweredQuestions),
-                mediaFiles: cleanMediaFiles
+                mediaFiles: step5MediaFiles
             };
 
             // Target the Smart Match button to show loading state
@@ -523,10 +509,8 @@
                 button.innerHTML = originalHTML;
 
                 let displayMessage = err.message || String(err);
-                if (displayMessage.includes("<!DOCTYPE html>") || displayMessage.includes("<html")) {
-                    displayMessage = "Payload too large. Please upload smaller images.";
-                } else if (displayMessage === "[object Object]") {
-                    displayMessage = "An unknown database validation error occurred.";
+                if (displayMessage === "Error" || !displayMessage || displayMessage === "[object Object]") {
+                    displayMessage = "A network or validation error occurred. Please try again.";
                 }
 
                 // Show the error inside a beautiful notification toast once
@@ -1771,30 +1755,7 @@
                 if (!isVideo) {
                     const reader = new FileReader();
                     reader.onload = (e) => {
-                        const img = new Image();
-                        img.onload = () => {
-                            const canvas = document.createElement("canvas");
-                            const maxDim = 800;
-                            let width = img.width;
-                            let height = img.height;
-                            if (width > height) {
-                                if (width > maxDim) {
-                                    height *= maxDim / width;
-                                    width = maxDim;
-                                }
-                            } else {
-                                if (height > maxDim) {
-                                    width *= maxDim / height;
-                                    height = maxDim;
-                                }
-                            }
-                            canvas.width = width;
-                            canvas.height = height;
-                            const ctx = canvas.getContext("2d");
-                            ctx.drawImage(img, 0, 0, width, height);
-                            mediaObject.base64 = canvas.toDataURL("image/jpeg", 0.7);
-                        };
-                        img.src = e.target.result;
+                        mediaObject.base64 = e.target.result;
                     };
                     reader.readAsDataURL(file);
                 }
@@ -1860,12 +1821,12 @@
             const block = document.getElementById(blockId);
             if (!block) return null;
             const qEl = block.querySelector("h3");
-            const q = qEl ? qEl.innerText : "Question";
+            const q = qEl ? qEl.textContent.trim() : "Question";
 
             let a = "Not answered";
             const selectedBtn = block.querySelector(".qa-option.selected span");
             if (selectedBtn) {
-                a = selectedBtn.innerText;
+                a = selectedBtn.textContent.trim();
             } else {
                 const inputEl = block.querySelector("input[type='text'], textarea");
                 if (inputEl && inputEl.value.trim() !== "") {
