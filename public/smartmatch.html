@@ -508,8 +508,13 @@
                 button.disabled = false;
                 button.innerHTML = originalHTML;
 
+                let displayMessage = err.message || String(err);
+                if (displayMessage === "Error" || !displayMessage) {
+                    displayMessage = "An error occurred while saving the Smart Match. Please ensure your pet is fully registered and try again.";
+                }
+
                 // Show the error inside a beautiful notification toast once
-                showToast(err.message || String(err), "error");
+                showToast(displayMessage, "error");
             });
         }
 

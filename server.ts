@@ -453,11 +453,11 @@ Keep descriptions concise (max 2 sentences).`;
       }
       
       if (!petPassportId && cleanPetId) {
-        // Look up by passport_id using a highly case-insensitive and case-variant robust query
+        // Look up by passport_id using a highly case-insensitive and safe query
         const { data: pet } = await supabaseAdmin
           .from("pet_passports")
           .select("id")
-          .or(`passport_id.ilike.${cleanPetId},passport_id.eq.${cleanPetId.toUpperCase()},passport_id.eq.${cleanPetId.toLowerCase()}`)
+          .ilike("passport_id", cleanPetId)
           .maybeSingle();
         if (pet) petPassportId = pet.id;
       }
@@ -582,19 +582,20 @@ Keep descriptions concise (max 2 sentences).`;
 
       if (finalAssessmentId && uuidRegex.test(finalAssessmentId)) {
         // Direct UPDATE
-        const { error: updateErr } = await supabaseAdmin
+        const { data: updateData, error: updateErr } = await supabaseAdmin
           .from("care_match_assessments")
           .update({
             responses: structuredResponses,
             current_step: currentStep,
             updated_at: new Date().toISOString()
           })
-          .eq("id", finalAssessmentId);
+          .eq("id", finalAssessmentId)
+          .select("id");
 
-        if (!updateErr) {
+        if (!updateErr && updateData && updateData.length > 0) {
           saveSuccess = true;
         } else {
-          console.warn(`[SmartMatch Save] Direct update failed for ${finalAssessmentId}: ${updateErr.message}. Trying insert.`);
+          console.warn(`[SmartMatch Save] Direct update failed or updated 0 rows for ${finalAssessmentId}. Trying insert.`);
         }
       }
 
