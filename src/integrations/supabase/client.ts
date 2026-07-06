@@ -46,8 +46,8 @@ if (!VITE_SUPABASE_PUBLISHABLE_KEY) console.warn("VITE_SUPABASE_PUBLISHABLE_KEY 
 
 let supabaseInstance;
 try {
-  const rawUrl = VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co";
-  const rawKey = VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2eW5zbHhvdGdscmFjZmdhY2duIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1NDMwNjUsImV4cCI6MjA4MDExOTA2NX0.i9-bXgL2891ji3AK-mS4wLp6HDl4DIStrcJeONNEKP0";
+  const rawUrl = VITE_SUPABASE_URL || "https://lnxzkusbhidaqhhsxjtk.supabase.co";
+  const rawKey = VITE_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_3RZcGzoDXliNivNsbgGHjw_1rmQgGFf";
   
   // Robust URL Cleaning: 
   // 1. Trim whitespace

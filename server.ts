@@ -12,7 +12,7 @@ async function startServer() {
     if (_cachedSupabaseAdmin) return _cachedSupabaseAdmin;
     try {
       const { createClient } = await import("@supabase/supabase-js");
-      let supabaseUrl = (process.env.VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co").trim();
+      let supabaseUrl = (process.env.VITE_SUPABASE_URL || "https://lnxzkusbhidaqhhsxjtk.supabase.co").trim();
       try {
         const urlObj = new URL(supabaseUrl);
         supabaseUrl = urlObj.origin;
@@ -40,7 +40,7 @@ async function startServer() {
   // End Point: Get public config for Supabase Realtime client
   app.get("/api/config", (req, res) => {
     res.json({
-      supabaseUrl: process.env.VITE_SUPABASE_URL || "https://kvynslxotglracfgacgn.supabase.co",
+      supabaseUrl: process.env.VITE_SUPABASE_URL || "https://lnxzkusbhidaqhhsxjtk.supabase.co",
       supabaseAnonKey: process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || ""
     });
   });
@@ -444,21 +444,36 @@ Keep descriptions concise (max 2 sentences).`;
       let petPassportId = null;
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       
-      if (uuidRegex.test(petId)) {
-        const { data: pet } = await supabaseAdmin.from("pet_passports").select("id").eq("id", petId).maybeSingle();
+      const cleanPetId = String(petId).trim();
+
+      if (uuidRegex.test(cleanPetId)) {
+        const { data: pet } = await supabaseAdmin.from("pet_passports").select("id").eq("id", cleanPetId).maybeSingle();
         if (pet) petPassportId = pet.id;
       }
       
-      if (!petPassportId && petId) {
-        const { data: pet } = await supabaseAdmin.from("pet_passports").select("id").eq("passport_id", petId).maybeSingle();
+      if (!petPassportId && cleanPetId) {
+        // Look up by passport_id using a highly case-insensitive and case-variant robust query
+        const { data: pet } = await supabaseAdmin
+          .from("pet_passports")
+          .select("id")
+          .or(`passport_id.ilike.${cleanPetId},passport_id.eq.${cleanPetId.toUpperCase()},passport_id.eq.${cleanPetId.toLowerCase()}`)
+          .maybeSingle();
         if (pet) petPassportId = pet.id;
       }
 
       if (!petPassportId && petName) {
-        let query = supabaseAdmin.from("pet_passports").select("id").eq("pet_name", petName);
-        if (userId && uuidRegex.test(userId)) query = query.eq("user_id", userId);
-        const { data: pet } = await query.limit(1).maybeSingle();
-        if (pet) petPassportId = pet.id;
+        const cleanPetName = String(petName).trim();
+        // 1. First search for a passport matching name and user_id (if valid) case-insensitively
+        let query = supabaseAdmin.from("pet_passports").select("id").ilike("pet_name", cleanPetName);
+        if (userId && uuidRegex.test(userId)) {
+          const { data: pet } = await query.eq("user_id", userId).limit(1).maybeSingle();
+          if (pet) petPassportId = pet.id;
+        }
+        // 2. Fallback to a global search by pet name case-insensitively if not resolved
+        if (!petPassportId) {
+          const { data: pet } = await supabaseAdmin.from("pet_passports").select("id").ilike("pet_name", cleanPetName).limit(1).maybeSingle();
+          if (pet) petPassportId = pet.id;
+        }
       }
 
       if (!petPassportId) {
