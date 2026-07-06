@@ -582,10 +582,12 @@ Keep descriptions concise (max 2 sentences).`;
 
       if (finalAssessmentId && uuidRegex.test(finalAssessmentId)) {
         // Direct UPDATE
+        const statusVal = payload.status || "draft";
         const { data: updateData, error: updateErr } = await supabaseAdmin
           .from("care_match_assessments")
           .update({
             responses: structuredResponses,
+            status: statusVal,
             current_step: currentStep,
             updated_at: new Date().toISOString()
           })
@@ -602,6 +604,7 @@ Keep descriptions concise (max 2 sentences).`;
       if (!saveSuccess) {
         // Direct INSERT (Generate UUID to bypass select RLS post-insert issues)
         finalAssessmentId = crypto.randomUUID();
+        const statusVal = payload.status || "draft";
         let { error: insertErr } = await supabaseAdmin
           .from("care_match_assessments")
           .insert({
@@ -609,7 +612,7 @@ Keep descriptions concise (max 2 sentences).`;
             user_id: dbUserId,
             pet_passport_id: petPassportId,
             responses: structuredResponses,
-            status: "draft",
+            status: statusVal,
             current_step: currentStep
           });
 
@@ -622,7 +625,7 @@ Keep descriptions concise (max 2 sentences).`;
               user_id: null,
               pet_passport_id: petPassportId,
               responses: structuredResponses,
-              status: "draft",
+              status: statusVal,
               current_step: currentStep
             });
           insertErr = retryErr;
@@ -636,7 +639,8 @@ Keep descriptions concise (max 2 sentences).`;
       return res.json({ success: true, id: finalAssessmentId });
     } catch (err: any) {
       console.error("[SmartMatch Save] Route error:", err);
-      return res.status(500).json({ success: false, error: err.message || String(err) });
+      const errorMessage = err?.message || (typeof err === "string" ? err : "Unknown internal server error");
+      return res.status(500).json({ success: false, error: errorMessage });
     }
   });
 

@@ -374,6 +374,12 @@
             const activeIdKey = "active_assessment_id_" + (currentPet.id || currentPet.name);
             const activeAssessmentId = localStorage.getItem(activeIdKey);
 
+            const cleanMediaFiles = step5MediaFiles.map(m => ({
+                id: m.id,
+                isVideo: m.isVideo,
+                base64: m.base64
+            }));
+
             const payload = {
                 userId: userId,
                 pet: currentPet,
@@ -382,7 +388,7 @@
                 concerns: buildQA(answeredQuestions),
                 healthBackground: buildQA(step3AnsweredQuestions),
                 currentHealthStatus: buildQA(step4AnsweredQuestions),
-                mediaFiles: step5MediaFiles
+                mediaFiles: cleanMediaFiles
             };
 
             return fetch("/api/save-smart-match", {
@@ -433,14 +439,22 @@
             const activeIdKey = "active_assessment_id_" + (currentPet.id || currentPet.name);
             const activeAssessmentId = localStorage.getItem(activeIdKey);
 
+            const cleanMediaFiles = step5MediaFiles.map(m => ({
+                id: m.id,
+                isVideo: m.isVideo,
+                base64: m.base64
+            }));
+
             const payload = {
                 userId: userId,
                 pet: currentPet,
                 assessmentId: activeAssessmentId,
+                status: "submitted",
+                currentStep: 6,
                 concerns: buildQA(answeredQuestions),
                 healthBackground: buildQA(step3AnsweredQuestions),
                 currentHealthStatus: buildQA(step4AnsweredQuestions),
-                mediaFiles: step5MediaFiles
+                mediaFiles: cleanMediaFiles
             };
 
             // Target the Smart Match button to show loading state
@@ -509,8 +523,10 @@
                 button.innerHTML = originalHTML;
 
                 let displayMessage = err.message || String(err);
-                if (displayMessage === "Error" || !displayMessage || displayMessage === "[object Object]") {
-                    displayMessage = "A network or validation error occurred. Please try again.";
+                if (displayMessage.includes("<!DOCTYPE html>") || displayMessage.includes("<html")) {
+                    displayMessage = "Payload too large. Please upload smaller images.";
+                } else if (displayMessage === "[object Object]") {
+                    displayMessage = "An unknown database validation error occurred.";
                 }
 
                 // Show the error inside a beautiful notification toast once
@@ -1755,7 +1771,30 @@
                 if (!isVideo) {
                     const reader = new FileReader();
                     reader.onload = (e) => {
-                        mediaObject.base64 = e.target.result;
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement("canvas");
+                            const maxDim = 800;
+                            let width = img.width;
+                            let height = img.height;
+                            if (width > height) {
+                                if (width > maxDim) {
+                                    height *= maxDim / width;
+                                    width = maxDim;
+                                }
+                            } else {
+                                if (height > maxDim) {
+                                    width *= maxDim / height;
+                                    height = maxDim;
+                                }
+                            }
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext("2d");
+                            ctx.drawImage(img, 0, 0, width, height);
+                            mediaObject.base64 = canvas.toDataURL("image/jpeg", 0.7);
+                        };
+                        img.src = e.target.result;
                     };
                     reader.readAsDataURL(file);
                 }
