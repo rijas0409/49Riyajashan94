@@ -433,14 +433,27 @@
             const activeIdKey = "active_assessment_id_" + (currentPet.id || currentPet.name);
             const activeAssessmentId = localStorage.getItem(activeIdKey);
 
+                        const reviewData = {
+                "Pet Profile": {
+                    "Name": currentPet.name || "",
+                    "Type": currentPet.species || "",
+                    "Breed": currentPet.breed || "",
+                    "Age": currentPet.age || "",
+                    "Gender": currentPet.gender || "",
+                    "Weight": currentPet.weight || ""
+                },
+                "Current Concern": buildQA(answeredQuestions),
+                "Health Background": buildQA(step3AnsweredQuestions),
+                "Current Health Status": buildQA(step4AnsweredQuestions),
+                "Photos & Videos": step5MediaFiles.map(f => typeof f === 'string' ? f : 'Media File')
+            };
+
             const payload = {
                 userId: userId,
                 pet: currentPet,
                 assessmentId: activeAssessmentId,
-                concerns: buildQA(answeredQuestions),
-                healthBackground: buildQA(step3AnsweredQuestions),
-                currentHealthStatus: buildQA(step4AnsweredQuestions),
-                mediaFiles: step5MediaFiles
+                currentStep: 6,
+                reviewData: reviewData
             };
 
             // Target the Smart Match button to show loading state
@@ -950,7 +963,7 @@
             }
             
             // Save initial draft assessment progress
-            saveDraftAssessment(1);
+            
 
             const detailsSection = document.getElementById("petDetailsSection");
             const step2Section = document.getElementById("step2Section");
@@ -1431,7 +1444,7 @@
 
         function goToStep3() {
             // Save draft progress for Step 2
-            saveDraftAssessment(2);
+            
 
             const step2Section = document.getElementById("step2Section");
             const step2ContinueWrapper = document.getElementById("step2ContinueWrapper");
@@ -1644,7 +1657,7 @@
 
         function goToStep4() {
             // Save draft progress for Step 3
-            saveDraftAssessment(3);
+            
 
             const step3Section = document.getElementById("step3Section");
             const step3ContinueWrapper = document.getElementById("step3ContinueWrapper");
@@ -1694,7 +1707,7 @@
 
         function goToStep5() {
             // Save draft progress for Step 4
-            saveDraftAssessment(4);
+            
 
             const step4Section = document.getElementById("step4Section");
             const step4ContinueWrapper = document.getElementById("step4ContinueWrapper");
@@ -1859,7 +1872,7 @@
 
         window.goToStep6 = function() {
             // Save draft progress for Step 5
-            saveDraftAssessment(5);
+            
 
             const step5Section = document.getElementById("step5Section");
             const step5ContinueWrapper = document.getElementById("step5ContinueWrapper");

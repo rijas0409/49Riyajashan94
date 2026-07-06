@@ -1,59 +1,12 @@
 const fs = require('fs');
-const codeLines = fs.readFileSync('server.ts', 'utf8').split('\n');
-const start = 423; // line 424
-const end = 645; // before line 646
+let server = fs.readFileSync('server.ts', 'utf8');
 
-const newEndpoint = `  app.post("/api/save-smart-match", async (req, res) => {
-    try {
-      const payload = req.body;
-      const supabaseAdmin = await getSupabaseAdmin();
-      if (!supabaseAdmin) {
-        throw new Error("Failed to connect to database (Supabase client not initialized)");
-      }
-
-      const petId = payload.pet?.id;
-      const petName = payload.pet?.name;
-      const userId = payload.userId;
-
-      if (!userId) {
-        return res.status(400).json({ success: false, error: "Smart Match is a login-only feature. Please sign in or register to continue." });
-      }
-
-      if (!petId || String(petId).startsWith("srv_pet_")) {
-        return res.status(400).json({ success: false, error: "A valid, registered Pet Passport is mandatory." });
-      }
-
-      let petPassportId = null;
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      
-      if (uuidRegex.test(petId)) {
-        const { data: pet } = await supabaseAdmin.from("pet_passports").select("id").eq("id", petId).maybeSingle();
-        if (pet) petPassportId = pet.id;
-      }
-      
-      if (!petPassportId && petId) {
-        const { data: pet } = await supabaseAdmin.from("pet_passports").select("id").eq("passport_id", petId).maybeSingle();
-        if (pet) petPassportId = pet.id;
-      }
-
-      if (!petPassportId && petName) {
-        let query = supabaseAdmin.from("pet_passports").select("id").eq("pet_name", petName);
-        if (userId && uuidRegex.test(userId)) query = query.eq("user_id", userId);
-        const { data: pet } = await query.limit(1).maybeSingle();
-        if (pet) petPassportId = pet.id;
-      }
-
-      if (!petPassportId) {
-        return res.status(400).json({ success: false, error: "Pet Passport ID is missing or invalid." });
-      }
-
-      const dbUserId = (userId && uuidRegex.test(userId)) ? userId : null;
-
-      const structuredResponses = {
-        pet_details: {
-           id: payload.pet?.id,
-           name: payload.pet?.name,
-           species: payload.pet?.species
+// Replace the response building logic in /api/save-smart-match
+const target = `      let structuredResponses: any = {
+        pet_details: { 
+           id: payload.pet?.id, 
+           name: payload.pet?.name, 
+           species: payload.pet?.species 
         },
         step2_concerns: payload.concerns || [],
         step3_health_background: payload.healthBackground || [],
@@ -62,47 +15,92 @@ const newEndpoint = `  app.post("/api/save-smart-match", async (req, res) => {
         meta: { submitted_at: new Date().toISOString() }
       };
 
-      let { data: assessmentData, error: assessmentErr } = await supabaseAdmin
-        .from("care_match_assessments")
-        .insert({
-          user_id: dbUserId,
-          pet_passport_id: petPassportId,
-          responses: structuredResponses,
-          status: "draft",
-          current_step: 6
-        })
-        .select()
-        .single();
+      let assessmentId = payload.assessmentId;
 
-      if (assessmentErr && dbUserId) {
-         console.warn("Insert failed with user_id, retrying with null...", assessmentErr.message);
-         const retry = await supabaseAdmin
+      // Try to find existing draft by pet_passport_id and user_id if assessmentId not sent
+      if (!assessmentId || !uuidRegex.test(assessmentId)) {
+        const { data: existingDrafts } = await supabaseAdmin
           .from("care_match_assessments")
-          .insert({
-            user_id: null,
-            pet_passport_id: petPassportId,
-            responses: structuredResponses,
-            status: "draft",
-            current_step: 6
-          })
-          .select()
-          .single();
-          
-          assessmentData = retry.data;
-          assessmentErr = retry.error;
-      }
+          .select("id, responses")
+          .eq("pet_passport_id", petPassportId)
+          .eq("status", "draft")
+          .order("created_at", { ascending: false })
+          .limit(1);
 
-      if (assessmentErr) {
-        return res.status(400).json({ success: false, error: "Database error: " + assessmentErr.message });
-      }
+        if (existingDrafts && existingDrafts.length > 0) {
+          assessmentId = existingDrafts[0].id;
+          const oldResponses = existingDrafts[0].responses as any;
+          if (oldResponses) {
+            structuredResponses = {
+              ...oldResponses,
+              pet_details: { 
+                 id: payload.pet?.id || oldResponses.pet_details?.id, 
+                 name: payload.pet?.name || oldResponses.pet_details?.name, 
+                 species: payload.pet?.species || oldResponses.pet_details?.species 
+              },
+              meta: {
+                submitted_at: oldResponses.meta?.submitted_at || new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }
+            };
+            if (payload.concerns !== undefined && payload.concerns !== null) {
+              structuredResponses.step2_concerns = payload.concerns;
+            }
+            if (payload.healthBackground !== undefined && payload.healthBackground !== null) {
+              structuredResponses.step3_health_background = payload.healthBackground;
+            }
+            if (payload.currentHealthStatus !== undefined && payload.currentHealthStatus !== null) {
+              structuredResponses.step4_current_health_status = payload.currentHealthStatus;
+            }
+            if (payload.mediaFiles !== undefined && payload.mediaFiles !== null) {
+              structuredResponses.step5_media_files = payload.mediaFiles;
+            }
+          }
+        }
+      } else {
+        // If assessmentId was provided, fetch old response to merge
+        const { data: existingRow } = await supabaseAdmin
+          .from("care_match_assessments")
+          .select("responses")
+          .eq("id", assessmentId)
+          .maybeSingle();
 
-      return res.json({ success: true, data: assessmentData });
-    } catch (err: any) {
-      console.error("[SmartMatch Save] Route error:", err);
-      return res.status(500).json({ success: false, error: err.message || String(err) });
-    }
-  });
-`;
+        if (existingRow && existingRow.responses) {
+          const oldResponses = existingRow.responses as any;
+          structuredResponses = {
+            ...oldResponses,
+            pet_details: { 
+               id: payload.pet?.id || oldResponses.pet_details?.id, 
+               name: payload.pet?.name || oldResponses.pet_details?.name, 
+               species: payload.pet?.species || oldResponses.pet_details?.species 
+            },
+            meta: {
+              submitted_at: oldResponses.meta?.submitted_at || new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          };
+          if (payload.concerns !== undefined && payload.concerns !== null) {
+            structuredResponses.step2_concerns = payload.concerns;
+          }
+          if (payload.healthBackground !== undefined && payload.healthBackground !== null) {
+            structuredResponses.step3_health_background = payload.healthBackground;
+          }
+          if (payload.currentHealthStatus !== undefined && payload.currentHealthStatus !== null) {
+            structuredResponses.step4_current_health_status = payload.currentHealthStatus;
+          }
+          if (payload.mediaFiles !== undefined && payload.mediaFiles !== null) {
+            structuredResponses.step5_media_files = payload.mediaFiles;
+          }
+        }
+      }`;
 
-codeLines.splice(start, end - start, newEndpoint);
-fs.writeFileSync('server.ts', codeLines.join('\n'));
+const replacement = `      let structuredResponses = payload.reviewData || {
+        meta: { submitted_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+      };
+
+      let assessmentId = payload.assessmentId;`;
+
+// Use regex just in case there are whitespace differences
+server = server.replace(/      let structuredResponses: any = \{[\s\S]*?        \}[\s\S]*?      \}/, replacement);
+fs.writeFileSync('server.ts', server);
+console.log("Updated server.ts");
