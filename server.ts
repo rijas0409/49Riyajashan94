@@ -450,11 +450,11 @@ Keep descriptions concise (max 2 sentences).`;
         });
       }
 
-      // Try to find the pet_passport by database ID (UUID) or by pet_name + user_id
+      // Try to find the pet_passport by database ID (UUID), by passport_id, or by pet_name + user_id
       let petPassportId = null;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       
       // 1. Check if petId is a valid UUID
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (uuidRegex.test(petId)) {
         const { data: pet, error: petErr } = await supabaseAdmin
           .from("pet_passports")
@@ -466,15 +466,25 @@ Keep descriptions concise (max 2 sentences).`;
         }
       }
 
-      // 2. Fallback to lookup by name and user_id if needed
-      if (!petPassportId && petName && userId) {
+      // 1.5. If not a UUID, query pet_passports by passport_id (e.g. "SRV-RY0-IA4")
+      if (!petPassportId && petId) {
         const { data: pet, error: petErr } = await supabaseAdmin
           .from("pet_passports")
           .select("id")
-          .eq("user_id", userId)
-          .eq("pet_name", petName)
-          .limit(1)
+          .eq("passport_id", petId)
           .maybeSingle();
+        if (pet && !petErr) {
+          petPassportId = pet.id;
+        }
+      }
+
+      // 2. Fallback to lookup by name and user_id if needed
+      if (!petPassportId && petName) {
+        let query = supabaseAdmin.from("pet_passports").select("id").eq("pet_name", petName);
+        if (userId && uuidRegex.test(userId)) {
+          query = query.eq("user_id", userId);
+        }
+        const { data: pet, error: petErr } = await query.limit(1).maybeSingle();
         if (pet && !petErr) {
           petPassportId = pet.id;
         }
@@ -488,6 +498,9 @@ Keep descriptions concise (max 2 sentences).`;
         });
       }
 
+      // Ensure dbUserId is either a valid UUID or null to prevent database syntax/foreign key errors
+      const dbUserId = (userId && uuidRegex.test(userId)) ? userId : null;
+
       // 3. Save Cascade: Try 'care_match_assessments' first, then 'smart_matches', then fallback 'pet_health_records_documents'
       let saveSuccess = false;
       let savedData = null;
@@ -499,7 +512,7 @@ Keep descriptions concise (max 2 sentences).`;
         let { data: assessmentData, error: assessmentErr } = await supabaseAdmin
           .from("care_match_assessments")
           .insert({
-            user_id: userId || null,
+            user_id: dbUserId,
             pet_passport_id: petPassportId,
             responses: payload,
             status: "draft", // Solves: Violates check constraint "care_match_assessments_status_check"
@@ -508,7 +521,7 @@ Keep descriptions concise (max 2 sentences).`;
           })
           .select();
 
-        if (assessmentErr && userId) {
+        if (assessmentErr && dbUserId) {
           console.warn("[SmartMatch Save] 'care_match_assessments' insert with user_id failed, retrying with user_id: null and status 'draft'...", assessmentErr.message);
           const retryResult = await supabaseAdmin
             .from("care_match_assessments")
@@ -545,7 +558,7 @@ Keep descriptions concise (max 2 sentences).`;
           let { data: dedicatedData, error: dedicatedErr } = await supabaseAdmin
             .from("smart_matches")
             .insert({
-              user_id: userId || null,
+              user_id: dbUserId,
               pet_id: petPassportId,
               pet_name: petName || null,
               payload: payload,
@@ -553,7 +566,7 @@ Keep descriptions concise (max 2 sentences).`;
             })
             .select();
 
-          if (dedicatedErr && userId) {
+          if (dedicatedErr && dbUserId) {
             console.warn("[SmartMatch Save] 'smart_matches' insert with user_id failed, retrying with user_id: null to satisfy RLS...", dedicatedErr.message);
             const retryResult = await supabaseAdmin
               .from("smart_matches")
