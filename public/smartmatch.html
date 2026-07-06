@@ -509,8 +509,8 @@
                 button.innerHTML = originalHTML;
 
                 let displayMessage = err.message || String(err);
-                if (displayMessage === "Error" || !displayMessage) {
-                    displayMessage = "An error occurred while saving the Smart Match. Please ensure your pet is fully registered and try again.";
+                if (displayMessage === "Error" || !displayMessage || displayMessage === "[object Object]") {
+                    displayMessage = "A network or validation error occurred. Please try again.";
                 }
 
                 // Show the error inside a beautiful notification toast once
