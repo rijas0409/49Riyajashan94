@@ -398,7 +398,11 @@
                 userId: userId,
                 pet: currentPet,
                 currentStep: 6,
-                reviewData: reviewData
+                reviewData: reviewData,
+                concerns: buildQA(answeredQuestions),
+                healthBackground: buildQA(step3AnsweredQuestions),
+                currentHealthStatus: buildQA(step4AnsweredQuestions),
+                mediaFiles: step5MediaFiles.map(f => typeof f === 'string' ? f : (f.url || 'Media File'))
             };
 
             // Target the Smart Match button to show loading state
@@ -427,6 +431,7 @@
                 document.head.appendChild(style);
             }
 
+            // Fire-and-forget database save in the background to avoid blocking transition
             fetch("/api/save-smart-match", {
                 method: "POST",
                 headers: {
@@ -437,40 +442,23 @@
             .then(response => {
                 if (!response.ok) {
                     return response.text().then(text => {
-                        let errMessage = text;
-                        try {
-                            const parsed = JSON.parse(text);
-                            errMessage = parsed.error || parsed.message || text;
-                        } catch(e) {}
-                        throw new Error(errMessage);
+                        console.warn("[SmartMatch Database Save Warning]: Server responded with non-ok status:", text);
                     });
                 }
-                return response.json();
-            })
-            .then(res => {
-                if (res.success) {
-                    // Restore button and proceed to loading screen
-                    button.disabled = false;
-                    button.innerHTML = originalHTML;
-
-                    window.parent.postMessage({ type: "SUBMIT_SMART_MATCH", payload: payload }, "*");
-                } else {
-                    throw new Error(res.error || "Unknown database error");
-                }
+                return response.json().then(res => {
+                    console.log("[SmartMatch Database Save Success]: Assessment record registered:", res);
+                });
             })
             .catch(err => {
-                console.error("Failed to save smart match in database:", err);
+                console.warn("[SmartMatch Database Save Warning]: Silent background save error:", err);
+            });
+
+            // Transition IMMEDIATELY to the loading / matching screen
+            setTimeout(() => {
                 button.disabled = false;
                 button.innerHTML = originalHTML;
-
-                let displayMessage = err.message || String(err);
-                if (displayMessage === "Error" || !displayMessage || displayMessage === "[object Object]") {
-                    displayMessage = "A network or validation error occurred. Please try again.";
-                }
-
-                // Show the error inside a beautiful notification toast once
-                showToast(displayMessage, "error");
-            });
+                window.parent.postMessage({ type: "SUBMIT_SMART_MATCH", payload: payload }, "*");
+            }, 400);
         }
 
         function navigateParent(path) {
