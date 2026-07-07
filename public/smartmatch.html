@@ -146,7 +146,7 @@
         
         <header class="w-full z-50 bg-surface flex flex-col pt-6 pb-2 px-6 shrink-0 sticky top-0">
             <div class="flex items-center justify-between mb-5">
-                <button onclick="navigateParent('/vet/ai-assistant')" class="w-8 h-8 flex items-center justify-start text-on-surface-variant active:scale-90 transition-transform">
+                <button onclick="handleHeaderBack()" class="w-8 h-8 flex items-center justify-start text-on-surface-variant active:scale-90 transition-transform">
                     <span class="material-symbols-outlined font-medium text-[26px]">arrow_back</span>
                 </button>
                 
@@ -431,7 +431,7 @@
                 document.head.appendChild(style);
             }
 
-            // Fire-and-forget database save in the background to avoid blocking transition
+            // Real-time Database Save - Awaiting completion for 100% data integrity before transition
             fetch("/api/save-smart-match", {
                 method: "POST",
                 headers: {
@@ -442,23 +442,35 @@
             .then(response => {
                 if (!response.ok) {
                     return response.text().then(text => {
-                        console.warn("[SmartMatch Database Save Warning]: Server responded with non-ok status:", text);
+                        let errMsg = "Database save failed: " + text;
+                        try {
+                            const parsed = JSON.parse(text);
+                            errMsg = parsed.error || parsed.message || errMsg;
+                        } catch(e) {}
+                        throw new Error(errMsg);
                     });
                 }
-                return response.json().then(res => {
+                return response.json();
+            })
+            .then(res => {
+                if (res && res.success) {
                     console.log("[SmartMatch Database Save Success]: Assessment record registered:", res);
-                });
+                    payload.assessmentId = res.id;
+                    
+                    // Restore button and transition ONLY after successful save
+                    button.disabled = false;
+                    button.innerHTML = originalHTML;
+                    window.parent.postMessage({ type: "SUBMIT_SMART_MATCH", payload: payload }, "*");
+                } else {
+                    throw new Error(res.error || "Failed to save smart match session.");
+                }
             })
             .catch(err => {
-                console.warn("[SmartMatch Database Save Warning]: Silent background save error:", err);
-            });
-
-            // Transition IMMEDIATELY to the loading / matching screen
-            setTimeout(() => {
+                console.error("[SmartMatch Database Save Error]:", err);
                 button.disabled = false;
                 button.innerHTML = originalHTML;
-                window.parent.postMessage({ type: "SUBMIT_SMART_MATCH", payload: payload }, "*");
-            }, 400);
+                showToast(err.message || "A network or validation error occurred. Please try again.", "error");
+            });
         }
 
         function navigateParent(path) {
@@ -595,6 +607,31 @@
         let currentPet = null;
         let sessionId = sessionStorage.getItem("smart_match_session_id") || ("sms_" + Date.now() + "_" + Math.random().toString(36).substring(2, 11));
         sessionStorage.setItem("smart_match_session_id", sessionId);
+
+        window.handleHeaderBack = function() {
+            const petDetailsSection = document.getElementById("petDetailsSection");
+            const step2Section = document.getElementById("step2Section");
+            const step3Section = document.getElementById("step3Section");
+            const step4Section = document.getElementById("step4Section");
+            const step5Section = document.getElementById("step5Section");
+            const step6Section = document.getElementById("step6Section");
+
+            if (step6Section && !step6Section.classList.contains("hidden")) {
+                goBackToStep5();
+            } else if (step5Section && !step5Section.classList.contains("hidden")) {
+                goBackToStep4();
+            } else if (step4Section && !step4Section.classList.contains("hidden")) {
+                goBackToStep3();
+            } else if (step3Section && !step3Section.classList.contains("hidden")) {
+                goBackToStep2();
+            } else if (step2Section && !step2Section.classList.contains("hidden")) {
+                goBackToStep1();
+            } else if (petDetailsSection && !petDetailsSection.classList.contains("hidden")) {
+                resetSelection();
+            } else {
+                navigateParent('/buyer/vet');
+            }
+        };
 
         function saveRealtimeResponse(data) {
             if (!currentPet || !currentPet.id || String(currentPet.id).startsWith("srv_pet_")) {

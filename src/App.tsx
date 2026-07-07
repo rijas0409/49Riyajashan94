@@ -184,10 +184,15 @@ const GlobalSmartMatchIframe = () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const matchedVetResultRef = useRef<any>(null);
 
+  const [assessmentKey, setAssessmentKey] = useState(0);
+
   useEffect(() => {
-    if (!isMatch) {
+    if (isMatch) {
+      setAssessmentKey(prev => prev + 1);
+    } else {
       setLoading(false);
       setShowAssessment(false);
+      sessionStorage.removeItem("smart_match_session_id");
     }
   }, [isMatch]);
 
@@ -353,7 +358,11 @@ const GlobalSmartMatchIframe = () => {
         }}
       >
         <AIVetAssistant
-          onStartAssessment={() => setShowAssessment(true)}
+          onStartAssessment={() => {
+            sessionStorage.removeItem("smart_match_session_id");
+            setAssessmentKey(prev => prev + 1);
+            setShowAssessment(true);
+          }}
           onClose={() => navigate("/buyer/vet")}
         />
       </div>
@@ -366,6 +375,7 @@ const GlobalSmartMatchIframe = () => {
         }}
       >
         <iframe
+          key={assessmentKey}
           src={mainIframeSrc}
           title="Sruvo - Care Match"
           className="absolute inset-0 w-full h-full border-none m-0 p-0 transition-opacity duration-300"
