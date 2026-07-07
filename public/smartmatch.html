@@ -605,6 +605,43 @@
         }
 
         let currentPet = null;
+        let sessionId = sessionStorage.getItem("smart_match_session_id") || ("sms_" + Date.now() + "_" + Math.random().toString(36).substring(2, 11));
+        sessionStorage.setItem("smart_match_session_id", sessionId);
+
+        function saveRealtimeResponse(data) {
+            if (!currentPet || !currentPet.id || String(currentPet.id).startsWith("srv_pet_")) {
+                return;
+            }
+
+            const payload = {
+                session_id: sessionId,
+                user_id: userId || null,
+                pet_id: currentPet.id || null,
+                step: data.step,
+                question_id: data.questionId,
+                question_text: data.questionText,
+                question_type: data.questionType,
+                raw_answer: data.rawAnswer || "",
+                normalized_answer: data.normalizedAnswer || "",
+                status: data.status || "saved"
+            };
+
+            fetch("/api/save-smart-match-response", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(json => {
+                console.log("[Realtime Save Success]:", json);
+            })
+            .catch(err => {
+                console.error("[Realtime Save Error]:", err);
+            });
+        }
+
         let answeredQuestions = [];
         let selectedMainConcernText = "";
         let step5MediaFiles = [];
@@ -766,6 +803,9 @@
 
         function handlePetSelection(selectedPet) {
             currentPet = selectedPet;
+            sessionId = "sms_" + Date.now() + "_" + Math.random().toString(36).substring(2, 11);
+            sessionStorage.setItem("smart_match_session_id", sessionId);
+
             const wrapper = document.getElementById("dynamicContentWrapper");
             const avatarList = document.getElementById("petAvatarList");
             const detailsSection = document.getElementById("petDetailsSection");
@@ -1044,6 +1084,28 @@
             const selectedBtn = document.getElementById(`btn_${nodeId}_${optIdx}`);
             selectedBtn.classList.add('selected');
 
+            // Save Response to Database in Real-time
+            const node = QA_TREE[nodeId];
+            if (node) {
+                let validOptions = node.options;
+                if (nodeId === "MAIN") {
+                    validOptions = node.options.filter(opt => {
+                        const speciesLower = currentPet.species ? currentPet.species.trim().toLowerCase() : "";
+                        return opt.s.some(s => s.trim().toLowerCase() === speciesLower);
+                    });
+                }
+                const answerText = validOptions[optIdx].t;
+                saveRealtimeResponse({
+                    step: 2,
+                    questionId: nodeId,
+                    questionText: node.q.replace(/{pet}/g, currentPet.name),
+                    questionType: "single_choice",
+                    rawAnswer: answerText,
+                    normalizedAnswer: answerText,
+                    status: "saved"
+                });
+            }
+
             if (nextNodeId === "END") {
                 step2Completed = true;
                 document.getElementById("step2ContinueBtn").disabled = false;
@@ -1066,6 +1128,20 @@
                 answeredQuestions.push(nodeId);
             }
             clearQuestionsAfter(nodeId);
+
+            // Save Response to Database in Real-time
+            const node = QA_TREE[nodeId];
+            if (node) {
+                saveRealtimeResponse({
+                    step: 2,
+                    questionId: nodeId,
+                    questionText: node.q.replace(/{pet}/g, currentPet.name),
+                    questionType: "text",
+                    rawAnswer: inputVal,
+                    normalizedAnswer: inputVal,
+                    status: "saved"
+                });
+            }
 
             if (nextNodeId === "END") {
                 step2Completed = true;
@@ -1293,19 +1369,6 @@
             block.innerHTML = titleHTML + contentHTML;
             container.appendChild(block);
 
-            // Auto-restore vaccination answer for S3_Q1 if it exists in localStorage
-            if (nodeId === "S3_Q1" && !step3AnsweredQuestions.includes("S3_Q1")) {
-                const savedVaccination = localStorage.getItem("sruvo_vaccinated_" + (currentPet.id || currentPet.name));
-                if (savedVaccination) {
-                    const savedIdx = node.options.findIndex(opt => opt.t === savedVaccination);
-                    if (savedIdx !== -1) {
-                        setTimeout(() => {
-                            handleStep3OptionSelect("S3_Q1", savedIdx, node.options[savedIdx].next);
-                        }, 100);
-                    }
-                }
-            }
-
             setTimeout(() => {
                 block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 100);
@@ -1341,13 +1404,19 @@
             const selectedBtn = document.getElementById(`btn_${nodeId}_${optIdx}`);
             selectedBtn.classList.add('selected');
 
-            // Save vaccination status selection permanently
-            if (nodeId === "S3_Q1") {
-                const node = STEP3_TREE[nodeId];
-                if (node && node.options && node.options[optIdx]) {
-                    const answerText = node.options[optIdx].t;
-                    localStorage.setItem("sruvo_vaccinated_" + (currentPet.id || currentPet.name), answerText);
-                }
+            // Save Response to Database in Real-time
+            const node = STEP3_TREE[nodeId];
+            if (node && node.options && node.options[optIdx]) {
+                const answerText = node.options[optIdx].t;
+                saveRealtimeResponse({
+                    step: 3,
+                    questionId: nodeId,
+                    questionText: node.q.replace(/{pet}/g, currentPet.name),
+                    questionType: "single_choice",
+                    rawAnswer: answerText,
+                    normalizedAnswer: answerText,
+                    status: "saved"
+                });
             }
 
             if (nextNodeId === "END") {
@@ -1372,6 +1441,21 @@
                 step3AnsweredQuestions.push(nodeId);
             }
             clearStep3QuestionsAfter(nodeId);
+
+            // Save Response to Database in Real-time
+            const node = STEP3_TREE[nodeId];
+            if (node) {
+                const isSkipped = !inputVal && isOptional;
+                saveRealtimeResponse({
+                    step: 3,
+                    questionId: nodeId,
+                    questionText: node.q.replace(/{pet}/g, currentPet.name),
+                    questionType: "text",
+                    rawAnswer: isSkipped ? "" : inputVal,
+                    normalizedAnswer: isSkipped ? "Skipped" : inputVal,
+                    status: isSkipped ? "skipped" : "saved"
+                });
+            }
 
             if (nextNodeId === "END") {
                 step3Completed = true;
@@ -1563,6 +1647,21 @@
             const selectedBtn = document.getElementById(`btn_${nodeId}_${optIdx}`);
             selectedBtn.classList.add('selected');
 
+            // Save Response to Database in Real-time
+            const node = STEP4_TREE[nodeId];
+            if (node && node.options && node.options[optIdx]) {
+                const answerText = node.options[optIdx].t;
+                saveRealtimeResponse({
+                    step: 4,
+                    questionId: nodeId,
+                    questionText: node.q.replace(/{pet}/g, currentPet.name),
+                    questionType: "single_choice",
+                    rawAnswer: answerText,
+                    normalizedAnswer: answerText,
+                    status: "saved"
+                });
+            }
+
             if (nextNodeId === "END") {
                 step4Completed = true;
                 document.getElementById("step4ContinueBtn").disabled = false;
@@ -1585,6 +1684,21 @@
                 step4AnsweredQuestions.push(nodeId);
             }
             clearStep4QuestionsAfter(nodeId);
+
+            // Save Response to Database in Real-time
+            const node = STEP4_TREE[nodeId];
+            if (node) {
+                const isSkipped = !inputVal && isOptional;
+                saveRealtimeResponse({
+                    step: 4,
+                    questionId: nodeId,
+                    questionText: node.q.replace(/{pet}/g, currentPet.name),
+                    questionType: "text",
+                    rawAnswer: isSkipped ? "" : inputVal,
+                    normalizedAnswer: isSkipped ? "Skipped" : inputVal,
+                    status: isSkipped ? "skipped" : "saved"
+                });
+            }
 
             if (nextNodeId === "END") {
                 step4Completed = true;
@@ -1688,6 +1802,19 @@
             }, 400);
         }
 
+        function saveStep5MediaRealtime() {
+            const urls = step5MediaFiles.map(f => typeof f === 'string' ? f : (f.url || 'Media File'));
+            saveRealtimeResponse({
+                step: 5,
+                questionId: "S5_MEDIA",
+                questionText: "Uploaded Photos & Videos",
+                questionType: "media",
+                rawAnswer: JSON.stringify(urls),
+                normalizedAnswer: urls.length > 0 ? `${urls.length} media file(s) uploaded` : "No photos or videos uploaded",
+                status: urls.length > 0 ? "saved" : "skipped"
+            });
+        }
+
         window.handleStep5Media = function(event) {
             const files = Array.from(event.target.files);
             const grid = document.getElementById("step5PreviewGrid");
@@ -1720,6 +1847,7 @@
             
             updateStep5ButtonState();
             renderStep5Thumbnails();
+            saveStep5MediaRealtime();
         };
 
         function renderStep5Thumbnails() {
@@ -1762,6 +1890,7 @@
                     step5MediaFiles = step5MediaFiles.filter(f => f.id !== item.id);
                     updateStep5ButtonState();
                     renderStep5Thumbnails();
+                    saveStep5MediaRealtime();
                 };
                 
                 thumbWrapper.appendChild(deleteBtn);
@@ -1813,8 +1942,8 @@
         }
 
         window.goToStep6 = function() {
-            // Save draft progress for Step 5
-            
+            // Save draft progress for Step 5 in real-time
+            saveStep5MediaRealtime();
 
             const step5Section = document.getElementById("step5Section");
             const step5ContinueWrapper = document.getElementById("step5ContinueWrapper");
@@ -1856,7 +1985,15 @@
 
         function buildReviewContent() {
             const container = document.getElementById("step6Section");
-            container.innerHTML = "";
+            container.innerHTML = `
+                <div class="w-full flex flex-col items-center justify-center py-12 gap-3" id="reviewLoadingSpinner">
+                    <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="animation: spin 1s linear infinite;">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-[14px] font-medium text-on-surface-variant">Loading stored records...</span>
+                </div>
+            `;
 
             // 1. Pet Profile
             const petContent = `
@@ -1869,61 +2006,103 @@
                     <div><span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Weight</span><br><span class="text-[14px] font-bold text-on-surface">${currentPet.weight}</span></div>
                 </div>
             `;
-            container.innerHTML += generateReviewSectionHTML("Pet Profile", 1, petContent);
 
-            // Helper for Q&A loops
-            const buildQAContent = (idList) => {
-                let html = "";
-                idList.forEach(id => {
-                    const qa = extractQA(`block_${id}`);
-                    if(qa) {
-                        html += `
-                            <div class="bg-surface-container-low p-3 rounded-xl border border-surface-container-highest/50 flex flex-col justify-between">
-                                <span class="text-[12px] text-on-surface-variant font-bold block mb-1 leading-tight">${qa.q}</span>
-                                <span class="text-[14px] font-bold text-primary">${qa.a}</span>
-                            </div>
-                        `;
+            fetch(`/api/get-smart-match-responses?sessionId=${sessionId}`)
+                .then(res => {
+                    if (!res.ok) throw new Error("Failed to load records");
+                    return res.json();
+                })
+                .then(data => {
+                    const spinner = document.getElementById("reviewLoadingSpinner");
+                    if (spinner) spinner.remove();
+
+                    const responses = data.responses || [];
+
+                    // Group responses by step
+                    const step2Responses = responses.filter(r => r.step === 2);
+                    const step3Responses = responses.filter(r => r.step === 3);
+                    const step4Responses = responses.filter(r => r.step === 4);
+                    const step5Responses = responses.find(r => r.step === 5 && r.question_id === "S5_MEDIA");
+
+                    // Render Step 1 Pet Profile
+                    container.innerHTML = generateReviewSectionHTML("Pet Profile", 1, petContent);
+
+                    // Helper for dynamic database record Q&A loops
+                    const buildQAFromRecords = (records) => {
+                        let html = "";
+                        records.forEach(rec => {
+                            if (rec.raw_answer !== "Skipped" && rec.normalized_answer !== "Skipped") {
+                                html += `
+                                    <div class="bg-surface-container-low p-3 rounded-xl border border-surface-container-highest/50 flex flex-col justify-between">
+                                        <span class="text-[12px] text-on-surface-variant font-bold block mb-1 leading-tight">${rec.question_text}</span>
+                                        <span class="text-[14px] font-bold text-primary">${rec.normalized_answer || rec.raw_answer}</span>
+                                    </div>
+                                `;
+                            }
+                        });
+                        return html ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">${html}</div>` : `<span class="text-[14px] font-medium text-on-surface-variant">No data provided or skipped.</span>`;
+                    };
+
+                    // 2. Current Concern
+                    container.innerHTML += generateReviewSectionHTML("Current Concern", 2, buildQAFromRecords(step2Responses));
+
+                    // 3. Health Background
+                    container.innerHTML += generateReviewSectionHTML("Health Background", 3, buildQAFromRecords(step3Responses));
+
+                    // 4. Current Health Status
+                    container.innerHTML += generateReviewSectionHTML("Current Health Status", 4, buildQAFromRecords(step4Responses));
+
+                    // 5. Photos & Videos
+                    let mediaContent = "";
+                    let parsedUrls = [];
+                    if (step5Responses && step5Responses.raw_answer) {
+                        try {
+                            parsedUrls = JSON.parse(step5Responses.raw_answer);
+                        } catch (e) {
+                            parsedUrls = [];
+                        }
                     }
-                });
-                return html ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">${html}</div>` : `<span class="text-[14px] font-medium text-on-surface-variant">No data provided.</span>`;
-            };
 
-            // 2. Current Concern
-            container.innerHTML += generateReviewSectionHTML("Current Concern", 2, buildQAContent(answeredQuestions));
+                    if (parsedUrls.length === 0) {
+                        mediaContent = `<span class="text-[14px] font-medium text-on-surface-variant">No photos or videos uploaded.</span>`;
+                    } else {
+                        mediaContent = `<div class="grid grid-cols-4 gap-2">`;
+                        parsedUrls.forEach((url, idx) => {
+                            const isVideo = url.toLowerCase().endsWith(".mp4") || url.toLowerCase().endsWith(".mov") || url.toLowerCase().endsWith(".webm");
+                            let badge = isVideo ? `<div class="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg"><span class="material-symbols-outlined text-white text-[20px]">play_circle</span></div>` : "";
+                            let tag = isVideo ? `<video src="${url}" class="w-full h-full object-cover rounded-lg"></video>` : `<img src="${url}" class="w-full h-full object-cover rounded-lg">`;
+                            
+                            mediaContent += `
+                                <div class="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 bg-cover bg-center">
+                                    ${tag}
+                                    ${badge}
+                                </div>
+                            `;
+                        });
+                        mediaContent += `</div>`;
+                    }
+                    container.innerHTML += generateReviewSectionHTML("Photos & Videos", 5, mediaContent);
 
-            // 3. Health Background
-            container.innerHTML += generateReviewSectionHTML("Health Background", 3, buildQAContent(step3AnsweredQuestions));
-
-            // 4. Current Health Status
-            container.innerHTML += generateReviewSectionHTML("Current Health Status", 4, buildQAContent(step4AnsweredQuestions));
-
-            // 5. Photos & Videos
-            let mediaContent = "";
-            if(step5MediaFiles.length === 0) {
-                mediaContent = `<span class="text-[14px] font-medium text-on-surface-variant">No photos or videos uploaded.</span>`;
-            } else {
-                mediaContent = `<div class="grid grid-cols-4 gap-2">`;
-                step5MediaFiles.forEach(item => {
-                    let badge = item.isVideo ? `<div class="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg"><span class="material-symbols-outlined text-white text-[20px]">play_circle</span></div>` : "";
-                    let tag = item.isVideo ? `<video src="${item.url}" class="w-full h-full object-cover rounded-lg"></video>` : `<img src="${item.url}" class="w-full h-full object-cover rounded-lg">`;
-                    
-                    mediaContent += `
-                        <div class="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
-                            ${tag}
-                            ${badge}
+                    // Render final disclaimer notes
+                    container.innerHTML += `
+                        <div class="mt-4 p-4 rounded-[20px] bg-primary/5 border border-primary/10 flex items-start gap-3 w-full">
+                            <span class="material-symbols-outlined text-primary text-[20px] mt-0.5">info</span>
+                            <p class="text-[13px] text-on-surface-variant font-medium leading-relaxed">
+                                Our intelligent system will analyze this information to find the most qualified veterinarian specialized in <span class="font-bold text-primary">${currentPet.breed || currentPet.species}s</span> with relevant expertise.
+                            </p>
+                        </div>
+                    `;
+                })
+                .catch(err => {
+                    console.error("[Review Load Error]:", err);
+                    const spinner = document.getElementById("reviewLoadingSpinner");
+                    if (spinner) spinner.remove();
+                    container.innerHTML = `
+                        <div class="p-6 text-center text-error font-medium w-full">
+                            Failed to load assessment summary from the server. Please try refreshing or go back to previous steps.
                         </div>
                     `;
                 });
-                mediaContent += `</div>`;
-            }
-            container.innerHTML += generateReviewSectionHTML("Photos & Videos", 5, mediaContent);
-
-            // Important Note
-            container.innerHTML += `
-                <div class="mt-2 text-center px-1">
-                    <p class="text-[13px] text-on-surface-variant leading-relaxed font-medium">Please review the information above. Accurate details help us match you with the most suitable veterinarian and provide better consultation recommendations.</p>
-                </div>
-            `;
         }
 
         // Edit Step Routing Logic

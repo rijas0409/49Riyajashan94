@@ -526,6 +526,118 @@ Keep descriptions concise (max 2 sentences).`;
     }
   });
 
+  // End Point: Save individual Smart Match Response in Real-time (Zero-loss)
+  app.post("/api/save-smart-match-response", async (req, res) => {
+    try {
+      const payload = req.body;
+      const supabaseAdmin = await getSupabaseAdmin();
+      if (!supabaseAdmin) {
+        throw new Error("Failed to connect to database (Supabase client not initialized)");
+      }
+
+      const {
+        session_id,
+        user_id,
+        pet_id,
+        step,
+        question_id,
+        question_text,
+        question_type,
+        raw_answer,
+        normalized_answer,
+        status
+      } = payload;
+
+      if (!session_id || !question_id) {
+        return res.status(400).json({ success: false, error: "session_id and question_id are required" });
+      }
+
+      const dbUserId = (user_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user_id)) ? user_id : null;
+
+      const record = {
+        session_id,
+        user_id: dbUserId,
+        pet_id: pet_id || null,
+        step: step || 1,
+        question_id,
+        question_text,
+        question_type,
+        raw_answer: raw_answer || null,
+        normalized_answer: normalized_answer || null,
+        status: status || "saved",
+        updated_at: new Date().toISOString()
+      };
+
+      // Perform UPSERT on (session_id, question_id)
+      const { data, error } = await supabaseAdmin
+        .from("smart_match_responses")
+        .upsert(record, { onConflict: "session_id,question_id" });
+
+      if (error) {
+        console.error("[Save SmartMatch Response] Upsert error:", error.message);
+        return res.status(400).json({ success: false, error: error.message });
+      }
+
+      return res.json({
+        success: true,
+        session_id,
+        user_id: dbUserId,
+        pet_id,
+        step,
+        event_type: "answer_saved",
+        question: {
+          question_id,
+          question_text,
+          question_type
+        },
+        answer: {
+          raw_answer,
+          normalized_answer,
+          status
+        },
+        storage_payload: {
+          table: "smart_match_responses",
+          action: "upsert",
+          record: {
+            ...record,
+            created_at: new Date().toISOString()
+          }
+        },
+        next_action: step === 5 ? "show_review" : "generate_next_question"
+      });
+    } catch (err: any) {
+      console.error("[Save SmartMatch Response] Error:", err);
+      return res.status(500).json({ success: false, error: err?.message || "Unknown internal error" });
+    }
+  });
+
+  // End Point: Get all saved responses for a given Smart Match Session
+  app.get("/api/get-smart-match-responses", async (req, res) => {
+    try {
+      const sessionId = req.query.sessionId as string;
+      if (!sessionId) {
+        return res.status(400).json({ success: false, error: "sessionId is required" });
+      }
+      const supabaseAdmin = await getSupabaseAdmin();
+      if (!supabaseAdmin) {
+        throw new Error("Failed to connect to database (Supabase client not initialized)");
+      }
+      const { data, error } = await supabaseAdmin
+        .from("smart_match_responses")
+        .select("*")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        return res.status(400).json({ success: false, error: error.message });
+      }
+      return res.json({ success: true, responses: data });
+    } catch (err: any) {
+      console.error("[Get SmartMatch Responses] Error:", err);
+      return res.status(500).json({ success: false, error: err?.message || "Unknown internal error" });
+    }
+  });
+
   app.post("/api/product-insights", async (req, res) => {
     try {
       const { name, brand, pet_type, category, ingredients, highlights } = req.body;
