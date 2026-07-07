@@ -565,7 +565,7 @@ Keep descriptions concise (max 2 sentences).`;
         raw_answer: raw_answer || null,
         normalized_answer: normalized_answer || null,
         status: status || "saved",
-        updated_at: new Date().toISOString()
+        created_at: new Date().toISOString()
       };
 
       // Perform UPSERT on (session_id, question_id)

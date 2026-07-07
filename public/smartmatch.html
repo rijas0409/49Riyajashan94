@@ -2094,12 +2094,67 @@
                     `;
                 })
                 .catch(err => {
-                    console.error("[Review Load Error]:", err);
+                    console.warn("[Review Load Server Error, falling back to local memory]:", err);
                     const spinner = document.getElementById("reviewLoadingSpinner");
                     if (spinner) spinner.remove();
-                    container.innerHTML = `
-                        <div class="p-6 text-center text-error font-medium w-full">
-                            Failed to load assessment summary from the server. Please try refreshing or go back to previous steps.
+
+                    // Render Step 1 Pet Profile
+                    container.innerHTML = generateReviewSectionHTML("Pet Profile", 1, petContent);
+
+                    // Helper for dynamic local Q&A loops
+                    const buildQAFromMemory = (idList) => {
+                        let html = "";
+                        idList.forEach(id => {
+                            const qa = extractQA(`block_${id}`);
+                            if (qa && qa.a && qa.a !== "Skipped" && qa.a !== "Skipped Details" && qa.a !== "Not answered") {
+                                html += `
+                                    <div class="bg-surface-container-low p-3 rounded-xl border border-surface-container-highest/50 flex flex-col justify-between">
+                                        <span class="text-[12px] text-on-surface-variant font-bold block mb-1 leading-tight">${qa.q}</span>
+                                        <span class="text-[14px] font-bold text-primary">${qa.a}</span>
+                                    </div>
+                                `;
+                            }
+                        });
+                        return html ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">${html}</div>` : `<span class="text-[14px] font-medium text-on-surface-variant">No data provided or skipped.</span>`;
+                    };
+
+                    // 2. Current Concern
+                    container.innerHTML += generateReviewSectionHTML("Current Concern", 2, buildQAFromMemory(answeredQuestions));
+
+                    // 3. Health Background
+                    container.innerHTML += generateReviewSectionHTML("Health Background", 3, buildQAFromMemory(step3AnsweredQuestions));
+
+                    // 4. Current Health Status
+                    container.innerHTML += generateReviewSectionHTML("Current Health Status", 4, buildQAFromMemory(step4AnsweredQuestions));
+
+                    // 5. Photos & Videos
+                    let mediaContent = "";
+                    if (step5MediaFiles.length === 0) {
+                        mediaContent = `<span class="text-[14px] font-medium text-on-surface-variant">No photos or videos uploaded.</span>`;
+                    } else {
+                        mediaContent = `<div class="grid grid-cols-4 gap-2">`;
+                        step5MediaFiles.forEach(item => {
+                            let badge = item.isVideo ? `<div class="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg"><span class="material-symbols-outlined text-white text-[20px]">play_circle</span></div>` : "";
+                            let tag = item.isVideo ? `<video src="${item.url}" class="w-full h-full object-cover rounded-lg"></video>` : `<img src="${item.url}" class="w-full h-full object-cover rounded-lg">`;
+                            
+                            mediaContent += `
+                                <div class="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 bg-cover bg-center">
+                                    ${tag}
+                                    ${badge}
+                                </div>
+                            `;
+                        });
+                        mediaContent += `</div>`;
+                    }
+                    container.innerHTML += generateReviewSectionHTML("Photos & Videos", 5, mediaContent);
+
+                    // Render final disclaimer notes
+                    container.innerHTML += `
+                        <div class="mt-4 p-4 rounded-[20px] bg-primary/5 border border-primary/10 flex items-start gap-3 w-full">
+                            <span class="material-symbols-outlined text-primary text-[20px] mt-0.5">info</span>
+                            <p class="text-[13px] text-on-surface-variant font-medium leading-relaxed">
+                                Our intelligent system will analyze this information to find the most qualified veterinarian specialized in <span class="font-bold text-primary">${currentPet.breed || currentPet.species}s</span> with relevant expertise.
+                            </p>
                         </div>
                     `;
                 });
