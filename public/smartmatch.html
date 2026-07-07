@@ -355,62 +355,11 @@
         }
 
         function saveDraftAssessment(currentStep) {
-            if (!userId) return Promise.resolve();
-            if (!currentPet || !currentPet.id || String(currentPet.id).startsWith("srv_pet_")) {
-                return Promise.resolve();
-            }
-
-            const buildQA = (idList) => {
-                let qaList = [];
-                idList.forEach(id => {
-                    const qa = extractQA(`block_${id}`);
-                    if(qa && qa.a !== "Skipped") {
-                        qaList.push({ question: qa.q, answer: qa.a });
-                    }
-                });
-                return qaList;
-            };
-
-            const activeIdKey = "active_assessment_id_" + (currentPet.id || currentPet.name);
-            const activeAssessmentId = localStorage.getItem(activeIdKey);
-
-            const payload = {
-                userId: userId,
-                pet: currentPet,
-                assessmentId: activeAssessmentId,
-                currentStep: currentStep,
-                concerns: buildQA(answeredQuestions),
-                healthBackground: buildQA(step3AnsweredQuestions),
-                currentHealthStatus: buildQA(step4AnsweredQuestions),
-                mediaFiles: step5MediaFiles
-            };
-
-            return fetch("/api/save-smart-match", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error("Failed to save draft progress");
-                }
-                return response.json();
-            })
-            .then(res => {
-                if (res.success && res.id) {
-                    localStorage.setItem(activeIdKey, res.id);
-                    console.log(`[Draft Save] Step ${currentStep} progress saved. Assessment ID:`, res.id);
-                }
-                return res;
-            })
-            .catch(err => {
-                console.error(`[Draft Save] Error saving progress at step ${currentStep}:`, err);
-            });
+            // Disabled: Incremental draft saving removed by user request.
+            return Promise.resolve();
         }
 
-        function submitSmartMatch() {
+                function submitSmartMatch() {
             if (!userId) {
                 showToast("Smart Match is a login-only feature. Please sign in or register to continue.", "error");
                 return;
@@ -423,17 +372,14 @@
                 let qaList = [];
                 idList.forEach(id => {
                     const qa = extractQA(`block_${id}`);
-                    if(qa && qa.a !== "Skipped") {
+                    if(qa) {
                         qaList.push({ question: qa.q, answer: qa.a });
                     }
                 });
                 return qaList;
             };
 
-            const activeIdKey = "active_assessment_id_" + (currentPet.id || currentPet.name);
-            const activeAssessmentId = localStorage.getItem(activeIdKey);
-
-                        const reviewData = {
+            const reviewData = {
                 "Pet Profile": {
                     "Name": currentPet.name || "",
                     "Type": currentPet.species || "",
@@ -445,13 +391,12 @@
                 "Current Concern": buildQA(answeredQuestions),
                 "Health Background": buildQA(step3AnsweredQuestions),
                 "Current Health Status": buildQA(step4AnsweredQuestions),
-                "Photos & Videos": step5MediaFiles.map(f => typeof f === 'string' ? f : 'Media File')
+                "Photos & Videos": step5MediaFiles.map(f => typeof f === 'string' ? f : (f.url || 'Media File'))
             };
 
             const payload = {
                 userId: userId,
                 pet: currentPet,
-                assessmentId: activeAssessmentId,
                 currentStep: 6,
                 reviewData: reviewData
             };
@@ -507,9 +452,6 @@
                     // Restore button and proceed to loading screen
                     button.disabled = false;
                     button.innerHTML = originalHTML;
-
-                    // Clear active assessment ID upon successful final submission
-                    localStorage.removeItem(activeIdKey);
 
                     window.parent.postMessage({ type: "SUBMIT_SMART_MATCH", payload: payload }, "*");
                 } else {
@@ -1934,7 +1876,7 @@
                 let html = "";
                 idList.forEach(id => {
                     const qa = extractQA(`block_${id}`);
-                    if(qa && qa.a !== "Skipped") {
+                    if(qa) {
                         html += `
                             <div class="bg-surface-container-low p-3 rounded-xl border border-surface-container-highest/50 flex flex-col justify-between">
                                 <span class="text-[12px] text-on-surface-variant font-bold block mb-1 leading-tight">${qa.q}</span>

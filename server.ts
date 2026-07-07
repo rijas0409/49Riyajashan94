@@ -486,63 +486,36 @@ Keep descriptions concise (max 2 sentences).`;
         meta: { submitted_at: new Date().toISOString(), updated_at: new Date().toISOString() }
       };
 
-      let assessmentId = payload.assessmentId;
-      
-      let saveSuccess = false;
-      let finalAssessmentId = assessmentId;
+      // Always perform a clean INSERT for final submission
+      const finalAssessmentId = crypto.randomUUID();
+      let { error: insertErr } = await supabaseAdmin
+        .from("care_match_assessments")
+        .insert({
+          id: finalAssessmentId,
+          user_id: dbUserId,
+          pet_passport_id: petPassportId,
+          responses: structuredResponses,
+          status: "submitted",
+          current_step: 6
+        });
 
-      if (finalAssessmentId && uuidRegex.test(finalAssessmentId)) {
-        // Direct UPDATE
-        const { data: updateData, error: updateErr } = await supabaseAdmin
-          .from("care_match_assessments")
-          .update({
-            responses: structuredResponses,
-            current_step: currentStep,
-            status: currentStep === 6 ? "submitted" : "draft",
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", finalAssessmentId)
-          .select("id");
-
-        if (!updateErr && updateData && updateData.length > 0) {
-          saveSuccess = true;
-        } else {
-          console.warn(`[SmartMatch Save] Direct update failed or updated 0 rows for ${finalAssessmentId}. Trying insert.`);
-        }
-      }
-
-      if (!saveSuccess) {
-        // Direct INSERT (Generate UUID to bypass select RLS post-insert issues)
-        finalAssessmentId = crypto.randomUUID();
-        let { error: insertErr } = await supabaseAdmin
+      if (insertErr && dbUserId) {
+        console.warn("[SmartMatch Save] Insert failed with user_id, retrying with null user_id...", insertErr.message);
+        const { error: retryErr } = await supabaseAdmin
           .from("care_match_assessments")
           .insert({
             id: finalAssessmentId,
-            user_id: dbUserId,
+            user_id: null,
             pet_passport_id: petPassportId,
             responses: structuredResponses,
-            status: currentStep === 6 ? "submitted" : "draft",
-            current_step: currentStep
+            status: "submitted",
+            current_step: 6
           });
+        insertErr = retryErr;
+      }
 
-        if (insertErr && dbUserId) {
-          console.warn("[SmartMatch Save] Insert failed with user_id, retrying with null user_id...", insertErr.message);
-          const { error: retryErr } = await supabaseAdmin
-            .from("care_match_assessments")
-            .insert({
-              id: finalAssessmentId,
-              user_id: null,
-              pet_passport_id: petPassportId,
-              responses: structuredResponses,
-              status: currentStep === 6 ? "submitted" : "draft",
-              current_step: currentStep
-            });
-          insertErr = retryErr;
-        }
-
-        if (insertErr) {
-          return res.status(400).json({ success: false, error: "Database error: " + insertErr.message });
-        }
+      if (insertErr) {
+        return res.status(400).json({ success: false, error: "Database error: " + insertErr.message });
       }
 
       return res.json({ success: true, id: finalAssessmentId });
