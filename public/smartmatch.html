@@ -442,12 +442,14 @@
             .then(response => {
                 if (!response.ok) {
                     return response.text().then(text => {
-                        let errMsg = "Database save failed: " + text;
+                        let errMsg = text;
                         try {
                             const parsed = JSON.parse(text);
-                            errMsg = parsed.error || parsed.message || errMsg;
-                        } catch(e) {}
-                        console.error(errMsg);
+                            errMsg = parsed.error || parsed.message || JSON.stringify(parsed);
+                        } catch(e) {
+                            errMsg = "System Error: " + text.substring(0, 100);
+                        }
+                        console.error("Save Error Response:", errMsg);
                         return { success: false, error: errMsg };
                     });
                 }
@@ -637,37 +639,7 @@
         };
 
         function saveRealtimeResponse(data) {
-            if (!currentPet || !currentPet.id || String(currentPet.id).startsWith("srv_pet_")) {
-                return;
-            }
-
-            const payload = {
-                session_id: sessionId,
-                user_id: userId || null,
-                pet_id: currentPet.id || null,
-                step: data.step,
-                question_id: data.questionId,
-                question_text: data.questionText,
-                question_type: data.questionType,
-                raw_answer: data.rawAnswer || "",
-                normalized_answer: data.normalizedAnswer || "",
-                status: data.status || "saved"
-            };
-
-            fetch("/api/save-smart-match-response", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
-            })
-            .then(res => res.json())
-            .then(json => {
-                console.log("[Realtime Save Success]:", json);
-            })
-            .catch(err => {
-                console.error("[Realtime Save Error]:", err);
-            });
+            // Real-time save disabled as requested. All data will be saved at Step 6.
         }
 
         let answeredQuestions = [];
