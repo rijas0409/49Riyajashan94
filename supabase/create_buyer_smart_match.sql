@@ -48,3 +48,13 @@ CREATE POLICY "Allow public delete on buyer_smart_match" ON public.buyer_smart_m
 
 -- Grant full access privileges to anon, authenticated, and service_role
 GRANT ALL ON TABLE public.buyer_smart_match TO anon, authenticated, service_role;
+
+-- ==========================================================
+-- ENABLE SUPABASE REALTIME REPLICATION (Real-time Status: Enabled)
+-- ==========================================================
+-- This command adds the table to Supabase's publication list, turning the
+-- 'Realtime' column status in Supabase Dashboard from 'Disabled' to 'Enabled'.
+BEGIN;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.buyer_smart_match;
+COMMIT;
+
