@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
+import crypto from "crypto";
 
 async function startServer() {
   const app = express();
@@ -457,7 +458,8 @@ Keep descriptions concise (max 2 sentences).`;
           }
       }
 
-      const finalAssessmentId = payload.sessionId || crypto.randomUUID();
+      // Safe randomUUID fallback
+      const finalAssessmentId = payload.sessionId || (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : "sms_" + Date.now() + "_" + Math.random().toString(36).substring(2, 11));
 
       // We attempt to save into the requested 'buyer_smart_match' table first.
       const smartMatchRecord = {

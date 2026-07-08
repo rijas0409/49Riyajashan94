@@ -448,7 +448,8 @@
                             const parsed = JSON.parse(text);
                             errMsg = parsed.error || parsed.message || JSON.stringify(parsed);
                         } catch(e) {
-                            errMsg = "System Error: " + text.substring(0, 100);
+                            // If response is HTML or text, show status code and sanitized preview of the error response body
+                            errMsg = `Server Error (Status ${response.status} ${response.statusText || "Error"}): ` + (text.substring(0, 120).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() || "No response details");
                         }
                         console.error("Save Error Response:", errMsg);
                         return { success: false, error: errMsg };
@@ -456,7 +457,7 @@
                 }
                 return response.json();
             })
-.then(res => {
+            .then(res => {
                 if (res && res.success) {
                     console.log("[SmartMatch Database Save Success]: Assessment record registered:", res);
                     payload.assessmentId = res.id;
