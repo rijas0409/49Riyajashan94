@@ -1849,6 +1849,12 @@
             const grid = document.getElementById("step5PreviewGrid");
             
             files.forEach(file => {
+                // Enforce strict 10MB size limit per file
+                if (file.size > 10 * 1024 * 1024) {
+                    showToast(`"${file.name}" exceeds the 10MB size limit. Please select a file under 10MB.`, "error");
+                    return;
+                }
+
                 const isVideo = file.type.startsWith("video/");
                 if (isVideo && step5MediaFiles.some(f => f.isVideo)) {
                     alert("Only one video is allowed.");
@@ -1874,6 +1880,9 @@
                 step5MediaFiles.push(mediaObject);
             });
             
+            // Reset input value so the change event can fire again if the same file is selected later
+            event.target.value = "";
+
             updateStep5ButtonState();
             renderStep5Thumbnails();
             saveStep5MediaRealtime();
