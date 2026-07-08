@@ -457,71 +457,35 @@ Keep descriptions concise (max 2 sentences).`;
           }
       }
 
-      const finalAssessmentId = crypto.randomUUID();
+      const finalAssessmentId = payload.sessionId || crypto.randomUUID();
 
-      // We attempt to save into the requested 'smart_match_consultations' table first.
+      // We attempt to save into the requested 'buyer_smart_match' table first.
       const smartMatchRecord = {
           id: finalAssessmentId,
           user_id: dbUserId,
           pet_passport_id: petPassportId,
+          pet_name: petName || null,
           step1_pet_details: payload.pet || {},
           step2_concerns: payload.concerns || [],
           step3_health_background: payload.healthBackground || [],
           step4_current_health_status: payload.currentHealthStatus || [],
           step5_photos_videos: payload.mediaFiles || [],
           step6_review_data: payload.reviewData || {},
-          status: "submitted"
+          status: "submitted",
+          updated_at: new Date().toISOString()
       };
 
       let { error: insertErr } = await supabaseAdmin
-        .from("smart_match_consultations")
-        .insert(smartMatchRecord);
+        .from("buyer_smart_match")
+        .upsert(smartMatchRecord, { onConflict: "id" });
 
-      // Handle user_id FK constraint violation if user_id is passed but doesn't exist in auth.users
-      if (insertErr && dbUserId) {
-         console.warn("[SmartMatch Save] Insert failed with user_id on smart_match_consultations, retrying with null user_id...", insertErr.message);
+      // Handle user_id or pet_passport_id FK constraint violation by falling back to null IDs
+      if (insertErr && (insertErr.code === '23503' || insertErr.message?.includes('foreign key'))) {
+         console.warn("[SmartMatch Save] Upsert failed on buyer_smart_match with foreign key constraint, retrying with null FK IDs...", insertErr.message);
          smartMatchRecord.user_id = null;
-         const { error: retryErr } = await supabaseAdmin.from("smart_match_consultations").insert(smartMatchRecord);
+         smartMatchRecord.pet_passport_id = null;
+         const { error: retryErr } = await supabaseAdmin.from("buyer_smart_match").upsert(smartMatchRecord, { onConflict: "id" });
          insertErr = retryErr;
-      }
-
-      // If 'smart_match_consultations' table does not exist yet, fallback to the existing 'care_match_assessments'
-      if (insertErr && insertErr.code === '42P01') {
-          console.log("[SmartMatch Save] Table smart_match_consultations does not exist. Falling back to care_match_assessments.");
-          
-          let fallbackResponses = {
-              meta: { submitted_at: new Date().toISOString() },
-              pet_details: payload.pet || {},
-              concerns: payload.concerns || [],
-              health_background: payload.healthBackground || [],
-              current_health_status: payload.currentHealthStatus || [],
-              media_files: payload.mediaFiles || [],
-              review_data: payload.reviewData || {}
-          };
-
-          const fallbackRecord = {
-              id: finalAssessmentId,
-              user_id: dbUserId,
-              pet_passport_id: petPassportId,
-              responses: fallbackResponses,
-              status: "submitted",
-              current_step: 6
-          };
-
-          let { error: fallbackErr } = await supabaseAdmin.from("care_match_assessments").insert(fallbackRecord);
-          
-          if (fallbackErr && dbUserId) {
-              fallbackRecord.user_id = null;
-              const { error: retryFallbackErr } = await supabaseAdmin.from("care_match_assessments").insert(fallbackRecord);
-              fallbackErr = retryFallbackErr;
-          }
-          
-          if (fallbackErr) {
-             console.error("Supabase fallback insert error details:", fallbackErr);
-             return res.status(400).json({ success: false, error: "Database error during fallback: " + (fallbackErr.message || JSON.stringify(fallbackErr)) });
-          }
-
-          return res.json({ success: true, id: finalAssessmentId, fallback: true });
       }
 
       if (insertErr) {
@@ -564,8 +528,29 @@ Keep descriptions concise (max 2 sentences).`;
       }
 
       const dbUserId = (user_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user_id)) ? user_id : null;
+      const petPassportId = (pet_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pet_id)) ? pet_id : null;
 
-      const record = {
+      // Try reading existing buyer_smart_match responses
+      let responsesArray: any[] = [];
+
+      const { data: existingRecord, error: selectError } = await supabaseAdmin
+        .from("buyer_smart_match")
+        .select("responses")
+        .eq("id", session_id)
+        .maybeSingle();
+
+      if (selectError) {
+        console.warn("[Save SmartMatch Response] Select error:", selectError.message);
+      }
+
+      if (existingRecord && Array.isArray(existingRecord.responses)) {
+        responsesArray = existingRecord.responses;
+      }
+      
+      // Remove any existing response with the same question_id to handle backtracking/updates without duplicates
+      responsesArray = responsesArray.filter((r: any) => r.question_id !== question_id);
+
+      const newResponse = {
         session_id,
         user_id: dbUserId,
         pet_id: pet_id || null,
@@ -579,14 +564,45 @@ Keep descriptions concise (max 2 sentences).`;
         created_at: new Date().toISOString()
       };
 
-      // Perform UPSERT on (session_id, question_id)
-      const { data, error } = await supabaseAdmin
-        .from("smart_match_responses")
-        .upsert(record, { onConflict: "session_id,question_id" });
+      responsesArray.push(newResponse);
 
-      if (error) {
-        console.error("[Save SmartMatch Response] Upsert error:", error.message);
-        return res.status(400).json({ success: false, error: error.message });
+      // Map responses to distinct steps
+      const step2_concerns = responsesArray.filter((r: any) => r.step === 2).map((r: any) => ({ question: r.question_text, answer: r.normalized_answer || r.raw_answer }));
+      const step3_health_background = responsesArray.filter((r: any) => r.step === 3).map((r: any) => ({ question: r.question_text, answer: r.normalized_answer || r.raw_answer }));
+      const step4_current_health_status = responsesArray.filter((r: any) => r.step === 4).map((r: any) => ({ question: r.question_text, answer: r.normalized_answer || r.raw_answer }));
+      
+      // Handle photo/video special mapping if uploaded in step 5
+      let step5_photos_videos = [];
+      if (step === 5 && question_id === "S5_MEDIA" && raw_answer) {
+        try {
+          step5_photos_videos = JSON.parse(raw_answer);
+        } catch(e) {
+          step5_photos_videos = [raw_answer];
+        }
+      }
+
+      const upsertRecord: any = {
+        id: session_id,
+        user_id: dbUserId,
+        pet_passport_id: petPassportId,
+        responses: responsesArray,
+        step2_concerns,
+        step3_health_background,
+        step4_current_health_status,
+        updated_at: new Date().toISOString()
+      };
+
+      if (step5_photos_videos.length > 0) {
+        upsertRecord.step5_photos_videos = step5_photos_videos;
+      }
+
+      const { error: upsertErr } = await supabaseAdmin
+        .from("buyer_smart_match")
+        .upsert(upsertRecord, { onConflict: "id" });
+
+      if (upsertErr) {
+        console.error("[Save SmartMatch Response] Upsert buyer_smart_match error:", upsertErr.message);
+        return res.status(400).json({ success: false, error: upsertErr.message });
       }
 
       return res.json({
@@ -595,26 +611,7 @@ Keep descriptions concise (max 2 sentences).`;
         user_id: dbUserId,
         pet_id,
         step,
-        event_type: "answer_saved",
-        question: {
-          question_id,
-          question_text,
-          question_type
-        },
-        answer: {
-          raw_answer,
-          normalized_answer,
-          status
-        },
-        storage_payload: {
-          table: "smart_match_responses",
-          action: "upsert",
-          record: {
-            ...record,
-            created_at: new Date().toISOString()
-          }
-        },
-        next_action: step === 5 ? "show_review" : "generate_next_question"
+        event_type: "answer_saved"
       });
     } catch (err: any) {
       console.error("[Save SmartMatch Response] Error:", err);
@@ -633,16 +630,20 @@ Keep descriptions concise (max 2 sentences).`;
       if (!supabaseAdmin) {
         throw new Error("Failed to connect to database (Supabase client not initialized)");
       }
-      const { data, error } = await supabaseAdmin
-        .from("smart_match_responses")
-        .select("*")
-        .eq("session_id", sessionId)
-        .order("created_at", { ascending: true });
 
-      if (error) {
-        return res.status(400).json({ success: false, error: error.message });
+      // Try selecting from buyer_smart_match first
+      const { data: record, error: selectErr } = await supabaseAdmin
+        .from("buyer_smart_match")
+        .select("responses")
+        .eq("id", sessionId)
+        .maybeSingle();
+
+      if (selectErr) {
+        console.error("Failed to query responses from buyer_smart_match:", selectErr);
+        return res.status(400).json({ success: false, error: selectErr.message });
       }
-      return res.json({ success: true, responses: data });
+
+      return res.json({ success: true, responses: record?.responses || [] });
     } catch (err: any) {
       console.error("[Get SmartMatch Responses] Error:", err);
       return res.status(500).json({ success: false, error: err?.message || "Unknown internal error" });
