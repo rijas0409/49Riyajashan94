@@ -447,28 +447,31 @@
                             const parsed = JSON.parse(text);
                             errMsg = parsed.error || parsed.message || errMsg;
                         } catch(e) {}
-                        throw new Error(errMsg);
+                        console.error(errMsg);
+                        return { success: false, error: errMsg };
                     });
                 }
                 return response.json();
             })
-            .then(res => {
+.then(res => {
                 if (res && res.success) {
                     console.log("[SmartMatch Database Save Success]: Assessment record registered:", res);
                     payload.assessmentId = res.id;
                     
-                    // Restore button and transition ONLY after successful save
+                    // Only transition on SUCCESS
                     button.disabled = false;
                     button.innerHTML = originalHTML;
                     window.parent.postMessage({ type: "SUBMIT_SMART_MATCH", payload: payload }, "*");
                 } else {
-                    throw new Error(res.error || "Failed to save smart match session.");
+                    throw new Error(res?.error || "Failed to save smart match session.");
                 }
             })
             .catch(err => {
                 console.error("[SmartMatch Database Save Error]:", err);
                 button.disabled = false;
                 button.innerHTML = originalHTML;
+                
+                // Show the error on screen and remain on Step 6
                 showToast(err.message || "A network or validation error occurred. Please try again.", "error");
             });
         }
@@ -1120,7 +1123,7 @@
                     });
                 }
                 const answerText = validOptions[optIdx].t;
-                saveRealtimeResponse({
+                console.log("Realtime save disabled as requested", {
                     step: 2,
                     questionId: nodeId,
                     questionText: node.q.replace(/{pet}/g, currentPet.name),
@@ -1157,7 +1160,7 @@
             // Save Response to Database in Real-time
             const node = QA_TREE[nodeId];
             if (node) {
-                saveRealtimeResponse({
+                console.log("Realtime save disabled as requested", {
                     step: 2,
                     questionId: nodeId,
                     questionText: node.q.replace(/{pet}/g, currentPet.name),
@@ -1433,7 +1436,7 @@
             const node = STEP3_TREE[nodeId];
             if (node && node.options && node.options[optIdx]) {
                 const answerText = node.options[optIdx].t;
-                saveRealtimeResponse({
+                console.log("Realtime save disabled as requested", {
                     step: 3,
                     questionId: nodeId,
                     questionText: node.q.replace(/{pet}/g, currentPet.name),
@@ -1471,7 +1474,7 @@
             const node = STEP3_TREE[nodeId];
             if (node) {
                 const isSkipped = !inputVal && isOptional;
-                saveRealtimeResponse({
+                console.log("Realtime save disabled as requested", {
                     step: 3,
                     questionId: nodeId,
                     questionText: node.q.replace(/{pet}/g, currentPet.name),
@@ -1676,7 +1679,7 @@
             const node = STEP4_TREE[nodeId];
             if (node && node.options && node.options[optIdx]) {
                 const answerText = node.options[optIdx].t;
-                saveRealtimeResponse({
+                console.log("Realtime save disabled as requested", {
                     step: 4,
                     questionId: nodeId,
                     questionText: node.q.replace(/{pet}/g, currentPet.name),
@@ -1714,7 +1717,7 @@
             const node = STEP4_TREE[nodeId];
             if (node) {
                 const isSkipped = !inputVal && isOptional;
-                saveRealtimeResponse({
+                console.log("Realtime save disabled as requested", {
                     step: 4,
                     questionId: nodeId,
                     questionText: node.q.replace(/{pet}/g, currentPet.name),
@@ -1829,7 +1832,7 @@
 
         function saveStep5MediaRealtime() {
             const urls = step5MediaFiles.map(f => typeof f === 'string' ? f : (f.url || 'Media File'));
-            saveRealtimeResponse({
+            console.log("Realtime save disabled as requested", {
                 step: 5,
                 questionId: "S5_MEDIA",
                 questionText: "Uploaded Photos & Videos",

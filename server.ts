@@ -432,90 +432,101 @@ Keep descriptions concise (max 2 sentences).`;
       const petId = payload.pet?.id;
       const petName = payload.pet?.name;
       const userId = payload.userId;
-      const currentStep = payload.currentStep || 6;
 
-      if (!userId) {
-        return res.status(400).json({ success: false, error: "Smart Match is a login-only feature. Please sign in or register to continue." });
-      }
-
-      if (!petId || String(petId).startsWith("srv_pet_")) {
-        return res.status(400).json({ success: false, error: "A valid, registered Pet Passport is mandatory." });
-      }
-
+      // Prepare IDs for DB - allow nulls if they don't map to real Supabase entities to avoid FK errors
       let petPassportId = null;
+      let dbUserId = null;
+
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       
-      const cleanPetId = String(petId).trim();
-
-      if (uuidRegex.test(cleanPetId)) {
-        const { data: pet } = await supabaseAdmin.from("pet_passports").select("id").eq("id", cleanPetId).maybeSingle();
-        if (pet) petPassportId = pet.id;
-      }
-      
-      if (!petPassportId && cleanPetId) {
-        // Look up by passport_id using a highly case-insensitive and safe query
-        const { data: pet } = await supabaseAdmin
-          .from("pet_passports")
-          .select("id")
-          .ilike("passport_id", cleanPetId)
-          .maybeSingle();
-        if (pet) petPassportId = pet.id;
+      // Attempt to resolve real UUID for User
+      if (userId && uuidRegex.test(String(userId).trim())) {
+          dbUserId = String(userId).trim();
       }
 
-      if (!petPassportId && petName) {
-        const cleanPetName = String(petName).trim();
-        // 1. First search for a passport matching name and user_id (if valid) case-insensitively
-        let query = supabaseAdmin.from("pet_passports").select("id").ilike("pet_name", cleanPetName);
-        if (userId && uuidRegex.test(userId)) {
-          const { data: pet } = await query.eq("user_id", userId).limit(1).maybeSingle();
-          if (pet) petPassportId = pet.id;
-        }
-        // 2. Fallback to a global search by pet name case-insensitively if not resolved
-        if (!petPassportId) {
-          const { data: pet } = await supabaseAdmin.from("pet_passports").select("id").ilike("pet_name", cleanPetName).limit(1).maybeSingle();
-          if (pet) petPassportId = pet.id;
-        }
+      // Attempt to resolve real UUID for Pet Passport
+      if (petId && !String(petId).startsWith("srv_pet_")) {
+          const cleanPetId = String(petId).trim();
+          if (uuidRegex.test(cleanPetId)) {
+            const { data: pet } = await supabaseAdmin.from("pet_passports").select("id").eq("id", cleanPetId).maybeSingle();
+            if (pet) petPassportId = pet.id;
+          }
+          if (!petPassportId) {
+            const { data: pet } = await supabaseAdmin.from("pet_passports").select("id").ilike("passport_id", cleanPetId).maybeSingle();
+            if (pet) petPassportId = pet.id;
+          }
       }
 
-      if (!petPassportId) {
-        return res.status(400).json({ success: false, error: "Pet Passport ID is missing or invalid." });
-      }
-
-      const dbUserId = (userId && uuidRegex.test(userId)) ? userId : null;
-      let structuredResponses = payload.reviewData || {
-        meta: { submitted_at: new Date().toISOString(), updated_at: new Date().toISOString() }
-      };
-
-      // Always perform a clean INSERT for final submission
       const finalAssessmentId = crypto.randomUUID();
-      let { error: insertErr } = await supabaseAdmin
-        .from("care_match_assessments")
-        .insert({
+
+      // We attempt to save into the requested 'smart_match_consultations' table first.
+      const smartMatchRecord = {
           id: finalAssessmentId,
           user_id: dbUserId,
           pet_passport_id: petPassportId,
-          responses: structuredResponses,
-          status: "submitted",
-          current_step: 6
-        });
+          step1_pet_details: payload.pet || {},
+          step2_concerns: payload.concerns || [],
+          step3_health_background: payload.healthBackground || [],
+          step4_current_health_status: payload.currentHealthStatus || [],
+          step5_photos_videos: payload.mediaFiles || [],
+          step6_review_data: payload.reviewData || {},
+          status: "submitted"
+      };
 
+      let { error: insertErr } = await supabaseAdmin
+        .from("smart_match_consultations")
+        .insert(smartMatchRecord);
+
+      // Handle user_id FK constraint violation if user_id is passed but doesn't exist in auth.users
       if (insertErr && dbUserId) {
-        console.warn("[SmartMatch Save] Insert failed with user_id, retrying with null user_id...", insertErr.message);
-        const { error: retryErr } = await supabaseAdmin
-          .from("care_match_assessments")
-          .insert({
-            id: finalAssessmentId,
-            user_id: null,
-            pet_passport_id: petPassportId,
-            responses: structuredResponses,
-            status: "submitted",
-            current_step: 6
-          });
-        insertErr = retryErr;
+         console.warn("[SmartMatch Save] Insert failed with user_id on smart_match_consultations, retrying with null user_id...", insertErr.message);
+         smartMatchRecord.user_id = null;
+         const { error: retryErr } = await supabaseAdmin.from("smart_match_consultations").insert(smartMatchRecord);
+         insertErr = retryErr;
+      }
+
+      // If 'smart_match_consultations' table does not exist yet, fallback to the existing 'care_match_assessments'
+      if (insertErr && insertErr.code === '42P01') {
+          console.log("[SmartMatch Save] Table smart_match_consultations does not exist. Falling back to care_match_assessments.");
+          
+          let fallbackResponses = {
+              meta: { submitted_at: new Date().toISOString() },
+              pet_details: payload.pet || {},
+              concerns: payload.concerns || [],
+              health_background: payload.healthBackground || [],
+              current_health_status: payload.currentHealthStatus || [],
+              media_files: payload.mediaFiles || [],
+              review_data: payload.reviewData || {}
+          };
+
+          const fallbackRecord = {
+              id: finalAssessmentId,
+              user_id: dbUserId,
+              pet_passport_id: petPassportId,
+              responses: fallbackResponses,
+              status: "submitted",
+              current_step: 6
+          };
+
+          let { error: fallbackErr } = await supabaseAdmin.from("care_match_assessments").insert(fallbackRecord);
+          
+          if (fallbackErr && dbUserId) {
+              fallbackRecord.user_id = null;
+              const { error: retryFallbackErr } = await supabaseAdmin.from("care_match_assessments").insert(fallbackRecord);
+              fallbackErr = retryFallbackErr;
+          }
+          
+          if (fallbackErr) {
+             console.error("Supabase fallback insert error details:", fallbackErr);
+             return res.status(400).json({ success: false, error: "Database error during fallback: " + (fallbackErr.message || JSON.stringify(fallbackErr)) });
+          }
+
+          return res.json({ success: true, id: finalAssessmentId, fallback: true });
       }
 
       if (insertErr) {
-        return res.status(400).json({ success: false, error: "Database error: " + insertErr.message });
+        console.error("Supabase insert error details:", insertErr);
+        return res.status(400).json({ success: false, error: "Database error: " + (insertErr.message || JSON.stringify(insertErr)) });
       }
 
       return res.json({ success: true, id: finalAssessmentId });

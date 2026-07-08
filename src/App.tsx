@@ -336,7 +336,7 @@ const GlobalSmartMatchIframe = () => {
     }
   }, [loading]);
 
-  const mainIframeSrc = user ? `/smartmatch.html?userId=${user.id}` : "/smartmatch.html";
+  const mainIframeSrc = user ? `/smartmatch.html?v=3&userId=${user.id}` : "/smartmatch.html?v=3";
   const loadingIframeSrc = "/smartmatchloading.html";
 
   return (
