@@ -52,9 +52,17 @@ GRANT ALL ON TABLE public.buyer_smart_match TO anon, authenticated, service_role
 -- ==========================================================
 -- ENABLE SUPABASE REALTIME REPLICATION (Real-time Status: Enabled)
 -- ==========================================================
--- This command adds the table to Supabase's publication list, turning the
--- 'Realtime' column status in Supabase Dashboard from 'Disabled' to 'Enabled'.
-BEGIN;
-  ALTER PUBLICATION supabase_realtime ADD TABLE public.buyer_smart_match;
-COMMIT;
+-- This block safely adds the table to Supabase's publication list without syntax errors,
+-- turning the 'Realtime' column status in Supabase Dashboard from 'Disabled' to 'Enabled'.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+      AND schemaname = 'public' 
+      AND tablename = 'buyer_smart_match'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.buyer_smart_match;
+  END IF;
+END $$;
 
