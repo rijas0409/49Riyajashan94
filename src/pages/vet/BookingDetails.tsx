@@ -1891,11 +1891,39 @@ const BookingDetails = () => {
                                 "insert_payload": insertPayload
                               });
 
-                              const { data: insertResult, error: insertError } = await supabase
+                              // Check if there is an existing lock (pending_payment) for this slot & vet
+                              const { data: existingLock } = await supabase
                                 .from("vet_appointments")
-                                .insert(insertPayload)
-                                .select()
-                                .single();
+                                .select("id")
+                                .eq("vet_id", vetUserId)
+                                .eq("appointment_date", appointmentDate)
+                                .eq("appointment_time", appointmentTime)
+                                .eq("status", "pending_payment")
+                                .maybeSingle();
+
+                              let insertResult = null;
+                              let insertError = null;
+
+                              if (existingLock) {
+                                console.log("Found existing pending_payment lock. Updating instead of inserting:", existingLock.id);
+                                const { data: updateData, error: updateError } = await supabase
+                                  .from("vet_appointments")
+                                  .update(insertPayload)
+                                  .eq("id", existingLock.id)
+                                  .select()
+                                  .single();
+                                insertResult = updateData;
+                                insertError = updateError;
+                              } else {
+                                console.log("No pending_payment lock found. Proceeding with standard insert.");
+                                const { data: insertData, error: insertErr } = await supabase
+                                  .from("vet_appointments")
+                                  .insert(insertPayload)
+                                  .select()
+                                  .single();
+                                insertResult = insertData;
+                                insertError = insertErr;
+                              }
 
                               console.log("CRITICAL PIPELINE AUDIT LOG [AFTER INSERT]:", {
                                 "insert_response_data": insertResult,
