@@ -338,8 +338,8 @@ Keep descriptions concise (max 2 sentences).`;
           p_limit: 100
         });
 
-      if (fetchErr) {
-        console.warn("[SmartMatch] get_candidate_vets RPC not found or failed, falling back to direct query:", fetchErr.message);
+      if (fetchErr || !vetProfiles || vetProfiles.length === 0) {
+        console.warn("[SmartMatch] get_candidate_vets RPC failed or returned 0 rows. Running lenient fallback query...");
         // Fallback: direct select on vet_profiles with active & verified filters
         const fallbackQuery = supabaseAdmin
           .from("vet_profiles")
