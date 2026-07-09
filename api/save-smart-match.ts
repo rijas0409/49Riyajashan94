@@ -49,14 +49,8 @@ export default async function handler(req: any, res: any) {
         }
     }
 
-    const generateFallbackUUID = () => {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-    };
-    // Safe fallback using standard UUID
-    const finalAssessmentId = payload.sessionId || generateFallbackUUID();
+    // Safe randomUUID fallback
+    const finalAssessmentId = payload.sessionId || (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : "sms_" + Date.now() + "_" + Math.random().toString(36).substring(2, 11));
 
     // We attempt to save into the requested 'buyer_smart_match' table first.
     const smartMatchRecord = {

@@ -583,8 +583,7 @@
                     if (Array.isArray(rawData)) {
                         loggedInUserDatabaseRecords = rawData.map(pet => {
                             return {
-                                id: pet.id,
-                                passport_id: pet.passport_id,
+                                id: pet.passport_id || pet.id,
                                 name: pet.pet_name || "Unnamed Pet",
                                 photo: pet.photo_url || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300",
                                 species: pet.species || "N/A",
@@ -612,20 +611,8 @@
             }
         }
 
-        function generateUUID() {
-            try {
-                if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-                    return crypto.randomUUID();
-                }
-            } catch (e) {}
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
-
         let currentPet = null;
-        let sessionId = sessionStorage.getItem("smart_match_session_id") || generateUUID();
+        let sessionId = sessionStorage.getItem("smart_match_session_id") || ("sms_" + Date.now() + "_" + Math.random().toString(36).substring(2, 11));
         sessionStorage.setItem("smart_match_session_id", sessionId);
 
         window.handleHeaderBack = function() {
@@ -846,7 +833,7 @@
 
         function handlePetSelection(selectedPet) {
             currentPet = selectedPet;
-            sessionId = generateUUID();
+            sessionId = "sms_" + Date.now() + "_" + Math.random().toString(36).substring(2, 11);
             sessionStorage.setItem("smart_match_session_id", sessionId);
 
             const wrapper = document.getElementById("dynamicContentWrapper");

@@ -229,20 +229,11 @@ const BookingDetails = () => {
   }, []);
 
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    if (matchedVet?.suggestedSlot?.date) {
-      const parsedDate = new Date(matchedVet.suggestedSlot.date);
-      if (!isNaN(parsedDate.getTime())) {
-        parsedDate.setHours(0, 0, 0, 0);
-        return parsedDate;
-      }
-    }
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d;
   });
-  const [selectedSlot, setSelectedSlot] = useState(() => {
-    return matchedVet?.suggestedSlot?.time || "";
-  });
+  const [selectedSlot, setSelectedSlot] = useState("");
   const [disabledSlots, setDisabledSlots] = useState<string[]>([]);
   const [selectedCoupon, setSelectedCoupon] = useState<any | null>(null);
   const [showCoupons, setShowCoupons] = useState(false);
@@ -359,9 +350,9 @@ const BookingDetails = () => {
           .eq("appointment_date", dateStr);
 
         if (!error && data && active) {
-          const inactiveStatuses = ["cancelled", "completed", "rejected", "done", "canceled"];
+          const acceptedTypes = ["confirmed", "approved", "analyzing", "accepted", "rescheduled", "in_progress", "completed"];
           const booked = data
-            .filter((d: any) => !inactiveStatuses.includes((d.status || "").toLowerCase()))
+            .filter((d: any) => acceptedTypes.includes(d.status?.toLowerCase()))
             .map((d: any) => d.appointment_time);
           setDisabledSlots(booked);
         }
@@ -383,8 +374,8 @@ const BookingDetails = () => {
             if (!active) return;
             if (payload.new && payload.new.appointment_date === dateStr) {
               const status = payload.new.status;
-              const inactiveStatuses = ["cancelled", "completed", "rejected", "done", "canceled"];
-              const isBooked = !inactiveStatuses.includes((status || "").toLowerCase());
+              const acceptedTypes = ["confirmed", "approved", "analyzing", "accepted", "rescheduled", "in_progress", "completed"];
+              const isBooked = acceptedTypes.includes(status?.toLowerCase());
               
               setDisabledSlots(prev => {
                 const time = payload.new.appointment_time;
@@ -1771,9 +1762,8 @@ const BookingDetails = () => {
                             .eq("appointment_date", appointmentDate)
                             .eq("appointment_time", selectedSlot);
                             
-                        const inactiveStatuses = ["cancelled", "completed", "rejected", "done", "canceled"];
                         const activeBookings = existingAppts ? existingAppts.filter(
-                          (appt: any) => !inactiveStatuses.includes((appt.status || "").toLowerCase())
+                          (appt: any) => ["confirmed", "approved", "analyzing", "accepted", "rescheduled", "in_progress", "completed"].includes((appt.status || "").toLowerCase())
                         ) : [];
 
                         if (activeBookings.length > 0) {
@@ -1892,44 +1882,11 @@ const BookingDetails = () => {
                                 "insert_payload": insertPayload
                               });
 
-                              // Check if there is an existing active appointment or lock for this slot & vet
-                              const { data: existingActive } = await supabase
+                              const { data: insertResult, error: insertError } = await supabase
                                 .from("vet_appointments")
-                                .select("id, user_id, status")
-                                .eq("vet_id", vetUserId)
-                                .eq("appointment_date", appointmentDate)
-                                .eq("appointment_time", appointmentTime)
-                                .not("status", "in", '("cancelled", "completed", "rejected", "done", "canceled", "Completed", "Cancelled")')
-                                .maybeSingle();
-
-                              let insertResult = null;
-                              let insertError = null;
-
-                              if (existingActive) {
-                                if (existingActive.user_id === userId) {
-                                  console.log("Found existing active appointment belonging to same user. Updating instead of inserting:", existingActive.id);
-                                  const { data: updateData, error: updateError } = await supabase
-                                    .from("vet_appointments")
-                                    .update(insertPayload)
-                                    .eq("id", existingActive.id)
-                                    .select()
-                                    .single();
-                                  insertResult = updateData;
-                                  insertError = updateError;
-                                } else {
-                                  console.warn("Slot is active and belongs to a different user:", existingActive);
-                                  throw new Error("This slot has already been booked by another user. Please select a different slot.");
-                                }
-                              } else {
-                                console.log("No existing active appointment found. Proceeding with standard insert.");
-                                const { data: insertData, error: insertErr } = await supabase
-                                  .from("vet_appointments")
-                                  .insert(insertPayload)
-                                  .select()
-                                  .single();
-                                insertResult = insertData;
-                                insertError = insertErr;
-                              }
+                                .insert(insertPayload)
+                                .select()
+                                .single();
 
                               console.log("CRITICAL PIPELINE AUDIT LOG [AFTER INSERT]:", {
                                 "insert_response_data": insertResult,
@@ -2094,9 +2051,9 @@ const BookingDetails = () => {
                   <div>
                     <h4 className="font-extrabold text-green-600 text-lg">Payment Done ✓</h4>
                     <div className="mt-2.5 bg-green-50 text-green-700 text-xs font-bold py-2 px-4 rounded-xl border border-green-100 inline-block">
-                      Booking Request Sent to Dr. {vetName}!
+                      Dr. Anaya Accepted Request!
                     </div>
-                    <p className="text-xs text-slate-400 mt-3 font-semibold blinking-anim text-center">Redirecting you to visit details...</p>
+                    <p className="text-xs text-slate-400 mt-3 font-semibold blinking-anim text-center">Redirecting you to Springfield visit details...</p>
                   </div>
                 </div>
               )}
