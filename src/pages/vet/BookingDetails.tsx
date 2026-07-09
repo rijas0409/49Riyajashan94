@@ -229,11 +229,20 @@ const BookingDetails = () => {
   }, []);
 
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    if (matchedVet?.suggestedSlot?.date) {
+      const parsedDate = new Date(matchedVet.suggestedSlot.date);
+      if (!isNaN(parsedDate.getTime())) {
+        parsedDate.setHours(0, 0, 0, 0);
+        return parsedDate;
+      }
+    }
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d;
   });
-  const [selectedSlot, setSelectedSlot] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState(() => {
+    return matchedVet?.suggestedSlot?.time || "";
+  });
   const [disabledSlots, setDisabledSlots] = useState<string[]>([]);
   const [selectedCoupon, setSelectedCoupon] = useState<any | null>(null);
   const [showCoupons, setShowCoupons] = useState(false);
@@ -2051,9 +2060,9 @@ const BookingDetails = () => {
                   <div>
                     <h4 className="font-extrabold text-green-600 text-lg">Payment Done ✓</h4>
                     <div className="mt-2.5 bg-green-50 text-green-700 text-xs font-bold py-2 px-4 rounded-xl border border-green-100 inline-block">
-                      Dr. Anaya Accepted Request!
+                      Booking Request Sent to Dr. {vetName}!
                     </div>
-                    <p className="text-xs text-slate-400 mt-3 font-semibold blinking-anim text-center">Redirecting you to Springfield visit details...</p>
+                    <p className="text-xs text-slate-400 mt-3 font-semibold blinking-anim text-center">Redirecting you to visit details...</p>
                   </div>
                 </div>
               )}

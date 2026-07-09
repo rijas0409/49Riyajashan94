@@ -215,67 +215,31 @@ const GlobalSmartMatchIframe = () => {
 
           let isVetFound = false;
 
-          if (result.success && result.veterinarians && result.veterinarians.length > 0) {
-            const payload = event.data.payload;
-            const petType = payload.pet?.species || "";
-            // Find main concern
-            const mainConcernQA = payload.concerns?.find((qa: any) => 
-              qa.question && qa.question.includes("What is your main concern today?")
-            );
-            const mainConcern = mainConcernQA ? mainConcernQA.answer : "";
+          if (result.success && result.matchResult && result.matchResult.bestVet) {
+            const bestVet = result.matchResult.bestVet;
+            console.log("[SmartMatch Matching] Backend selected best vet:", bestVet.id, "Score:", result.matchResult.score, "Reason:", result.matchResult.matchReason);
 
-            console.log("[SmartMatch Matching] Filtering vets for:", { petType, mainConcern });
-
-            // Hard filtering logic
-            const matchedVets = result.veterinarians.filter((vet: any) => {
-              // 1. Species match:
-              // If vet has specializations, check if petType exists inside it (case-insensitive).
-              // If specializations is empty, assume they are general (match everything).
-              const specList = vet.specializations || [];
-              const speciesMatch = specList.length === 0 || specList.some((s: string) => 
-                s.toLowerCase().includes(petType.toLowerCase()) || 
-                petType.toLowerCase().includes(s.toLowerCase())
-              );
-
-              // 2. Concern match:
-              // Check if mainConcern is inside vet's clinical_expertise or clinical_expertise is empty
-              const expertiseList = vet.clinical_expertise || [];
-              const concernMatch = expertiseList.length === 0 || expertiseList.some((e: string) => 
-                e.toLowerCase().includes(mainConcern.toLowerCase()) || 
-                mainConcern.toLowerCase().includes(e.toLowerCase())
-              );
-
-              return speciesMatch && concernMatch;
-            });
-
-            console.log("[SmartMatch Matching] Filter result count:", matchedVets.length);
-
-            const bestVet = matchedVets.length > 0 ? matchedVets[0] : null;
-
-            if (bestVet) {
-              const rawName = bestVet.profile?.full_name || bestVet.profile?.name || (bestVet.user_id === "f9834ef6-778d-4384-8d17-6316fffa03b6" ? "Jashan Pabla" : "Veterinarian");
-              const realName = rawName.startsWith("Dr. ") ? rawName : `Dr. ${rawName}`;
-              
-              matchedVetResultRef.current = {
-                id: bestVet.id,
-                userId: bestVet.user_id,
-                name: realName,
-                specialization: bestVet.specializations?.[0] || "General Veterinarian",
-                image: bestVet.profile_photo || bestVet.profile?.profile_photo || "",
-                rating: bestVet.average_rating || 0,
-                experience: bestVet.years_of_experience || 0,
-                fee: bestVet.online_fee || 499,
-                onlineFee: bestVet.online_fee || 500,
-                offlineFee: bestVet.offline_fee || 800,
-                weekly_availability: bestVet.weekly_availability,
-              };
-              console.log("[SmartMatch Matching] Selected best matched vet:", matchedVetResultRef.current);
-              isVetFound = true;
-            } else {
-              console.log("[SmartMatch Matching] No matching vet found under strict species/concern filters.");
-              matchedVetResultRef.current = null;
-            }
+            const rawName = bestVet.profile?.full_name || bestVet.profile?.name || (bestVet.user_id === "f9834ef6-778d-4384-8d17-6316fffa03b6" ? "Jashan Pabla" : "Veterinarian");
+            const realName = rawName.startsWith("Dr. ") ? rawName : `Dr. ${rawName}`;
+            
+            matchedVetResultRef.current = {
+              id: bestVet.id,
+              userId: bestVet.user_id,
+              name: realName,
+              specialization: bestVet.specializations?.[0] || "General Veterinarian",
+              image: bestVet.profile_photo || bestVet.profile?.profile_photo || "",
+              rating: bestVet.average_rating || 0,
+              experience: bestVet.years_of_experience || 0,
+              fee: bestVet.online_fee || 499,
+              onlineFee: bestVet.online_fee || 500,
+              offlineFee: bestVet.offline_fee || 800,
+              weekly_availability: bestVet.weekly_availability,
+              matchScore: result.matchResult.score,
+              matchReason: result.matchResult.matchReason
+            };
+            isVetFound = true;
           } else {
+            console.log("[SmartMatch Matching] No matching vet found by backend algorithm.");
             matchedVetResultRef.current = null;
           }
 

@@ -22,8 +22,20 @@ const getShortBookingId = (id: string | undefined): string => {
   return id;
 };
 
-const PendingTimer = ({ onExpire }: { onExpire: () => void }) => {
-  const [timeLeft, setTimeLeft] = useState(94);
+const PendingTimer = ({ createdAt, onExpire }: { createdAt?: string; onExpire: () => void }) => {
+  const calculateTimeLeft = useCallback(() => {
+    if (!createdAt) return 94;
+    const createdTime = new Date(createdAt).getTime();
+    const elapsedSeconds = Math.floor((Date.now() - createdTime) / 1000);
+    const left = 94 - elapsedSeconds;
+    return left > 0 ? left : 0;
+  }, [createdAt]);
+
+  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft);
+
+  useEffect(() => {
+    setTimeLeft(calculateTimeLeft());
+  }, [createdAt, calculateTimeLeft]);
 
   useEffect(() => {
     if (timeLeft <= 0) {
@@ -31,10 +43,10 @@ const PendingTimer = ({ onExpire }: { onExpire: () => void }) => {
       return;
     }
     const timerId = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
+      setTimeLeft(calculateTimeLeft());
     }, 1000);
     return () => clearInterval(timerId);
-  }, [timeLeft, onExpire]);
+  }, [timeLeft, onExpire, calculateTimeLeft]);
 
   const formattedTime = `EXPIRES IN ${timeLeft}s`;
 
@@ -60,6 +72,7 @@ interface ScheduleAppointment {
   medicines?: string | null;
   consultation_notes?: string | null;
   care_instructions?: string | null;
+  createdAt?: string;
 }
 
 interface DbAppointmentRaw {
@@ -326,7 +339,8 @@ const VetSchedule = () => {
             diagnosis: apt.diagnosis,
             medicines: apt.medicines,
             consultation_notes: apt.consultation_notes,
-            care_instructions: apt.care_instructions
+            care_instructions: apt.care_instructions,
+            createdAt: apt.created_at
           };
         });
         setAppointments(mapped);
@@ -347,7 +361,11 @@ const VetSchedule = () => {
 
       if (error) throw error;
       
-      toast.success(`Appointment ${newStatus === "confirmed" ? "accepted" : "declined"}!`);
+      if (newStatus === "cancelled") {
+        toast.info("Appointment request has expired.");
+      } else {
+        toast.success(`Appointment ${newStatus === "confirmed" ? "accepted" : "declined"}!`);
+      }
       fetchAppointments();
     } catch (e) {
       console.error("Error updating appointment status:", e);
@@ -678,7 +696,7 @@ const VetSchedule = () => {
                 </div>
               ) : null}
               {apt.status === 'pending' && activeTab === 'Upcoming' && (
-                <PendingTimer onExpire={() => updateAppointmentStatus(apt.id, "cancelled")} />
+                <PendingTimer createdAt={apt.createdAt} onExpire={() => updateAppointmentStatus(apt.id, "cancelled")} />
               )}
 
               <div className="flex gap-4 mt-3">

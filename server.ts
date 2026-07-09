@@ -3,6 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import crypto from "crypto";
+import { runSmartMatch } from "./src/utils/smartMatchEngine.js";
 
 async function startServer() {
   const app = express();
@@ -293,17 +294,101 @@ Keep descriptions concise (max 2 sentences).`;
       }
       console.log("[SmartMatch] Database connection result: SUCCESS");
 
-      // 4. Fetch real veterinarian records from the database
-      const { data: vetProfiles, error: fetchErr } = await supabaseAdmin
-        .from("vet_profiles")
-        .select("*");
+      // 3.1 Fetch user pincode and geographic coordinates
+      let userPincode = "";
+      let userLat: number | null = null;
+      let userLon: number | null = null;
+      const dbUserId = (payload.userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.userId)) ? payload.userId : null;
+      if (dbUserId) {
+        const { data: addrData } = await supabaseAdmin
+          .from("addresses")
+          .select("pincode, latitude, longitude")
+          .eq("user_id", dbUserId)
+          .eq("is_default", true)
+          .maybeSingle();
+        if (addrData) {
+          if (addrData.pincode) userPincode = addrData.pincode;
+          if (addrData.latitude !== undefined && addrData.latitude !== null) userLat = Number(addrData.latitude);
+          if (addrData.longitude !== undefined && addrData.longitude !== null) userLon = Number(addrData.longitude);
+        } else {
+          const { data: anyAddr } = await supabaseAdmin
+            .from("addresses")
+            .select("pincode, latitude, longitude")
+            .eq("user_id", dbUserId)
+            .limit(1)
+            .maybeSingle();
+          if (anyAddr) {
+            if (anyAddr.pincode) userPincode = anyAddr.pincode;
+            if (anyAddr.latitude !== undefined && anyAddr.latitude !== null) userLat = Number(anyAddr.latitude);
+            if (anyAddr.longitude !== undefined && anyAddr.longitude !== null) userLon = Number(anyAddr.longitude);
+          }
+        }
+      }
+      console.log(`[SmartMatch] User resolved Pincode: ${userPincode || "NONE"}, Lat: ${userLat || "NONE"}, Lon: ${userLon || "NONE"}`);
+
+      // 3.2 Fetch only candidate veterinarians using database-level filtering
+      console.log(`[SmartMatch] Fetching filtered veterinarians with species: ${canonicalSpecies}, lat: ${userLat}, lon: ${userLon}`);
+      let { data: vetProfiles, error: fetchErr } = await supabaseAdmin
+        .rpc("get_candidate_vets", {
+          p_species: canonicalSpecies,
+          p_consultation_type: payload.consultationType || "instant",
+          p_user_lat: userLat,
+          p_user_lon: userLon,
+          p_user_pincode: userPincode,
+          p_limit: 100
+        });
 
       if (fetchErr) {
-        console.error("[SmartMatch] Fetching veterinarians from DB failed:", fetchErr);
-        throw fetchErr;
+        console.warn("[SmartMatch] get_candidate_vets RPC not found or failed, falling back to direct query:", fetchErr.message);
+        // Fallback: direct select on vet_profiles with active & verified filters
+        const fallbackQuery = supabaseAdmin
+          .from("vet_profiles")
+          .select("*")
+          .eq("is_active", true)
+          .in("verification_status", ["verified", "approved"]);
+        
+        const { data: fallbackVets, error: fallbackErr } = await fallbackQuery;
+        if (fallbackErr) {
+          console.error("[SmartMatch] Fallback query failed:", fallbackErr);
+          throw fallbackErr;
+        }
+        vetProfiles = fallbackVets;
       }
 
       let rawVets = vetProfiles || [];
+      const shortlistedVetUserIds = rawVets.map((v: any) => v.user_id);
+
+      // 3.3 Fetch active/non-cancelled booked appointments ONLY for the shortlisted veterinarians and required range
+      let activeAppointments: any[] = [];
+      if (shortlistedVetUserIds.length > 0) {
+        const todayStr = new Date().toISOString().split("T")[0];
+        const requestedDateStr = payload.requestedDate || todayStr;
+        const startDate = requestedDateStr < todayStr ? requestedDateStr : todayStr;
+        
+        // End date is 8 days after requestedDate or today, whichever is later
+        const baseDate = new Date(requestedDateStr > todayStr ? requestedDateStr : todayStr);
+        baseDate.setDate(baseDate.getDate() + 8);
+        const endDate = baseDate.toISOString().split("T")[0];
+
+        console.log(`[SmartMatch] Fetching booked appointments between ${startDate} and ${endDate} for ${shortlistedVetUserIds.length} vets.`);
+
+        const { data: bookedAppointments, error: apptErr } = await supabaseAdmin
+          .from("vet_appointments")
+          .select("*")
+          .in("vet_id", shortlistedVetUserIds)
+          .gte("appointment_date", startDate)
+          .lte("appointment_date", endDate)
+          .not("status", "in", '("cancelled", "completed", "rejected", "done", "Canceled", "Cancelled", "Completed")');
+
+        if (apptErr) {
+          console.error("[SmartMatch] Fetching filtered appointments failed:", apptErr);
+        } else {
+          activeAppointments = bookedAppointments || [];
+        }
+      }
+      console.log(`[SmartMatch] Fetched ${activeAppointments.length} relevant active bookings to prevent overlaps.`);
+
+      // 4. Fetch corresponding user profiles for the shortlisted veterinarians
       if (rawVets.length > 0) {
         const userIds = rawVets.map((v: any) => v.user_id);
         const { data: profiles, error: profileErr } = await supabaseAdmin
@@ -325,94 +410,98 @@ Keep descriptions concise (max 2 sentences).`;
       const totalFetched = rawVets.length;
       console.log(`[SmartMatch] [Log 6/8] Total Veterinarians Fetched: ${totalFetched}`);
 
-      // 5. Build field schema map for logging and debugging
-      const fieldMap = {
-        id: { type: "string", nullable: false },
-        user_id: { type: "string", nullable: false },
-        qualification: { type: "string", nullable: true },
-        years_of_experience: { type: "number", nullable: false },
-        specializations: { type: "string[]", nullable: false },
-        consultation_type: { type: "string", nullable: false },
-        is_active: { type: "boolean", nullable: true },
-        verification_status: { type: "string", nullable: false },
-        total_consultations: { type: "number", nullable: true },
-        average_rating: { type: "number", nullable: true },
-        wallet_balance: { type: "number", nullable: true },
-        created_at: { type: "string", nullable: false },
-        updated_at: { type: "string", nullable: false },
-        profile_photo: { type: "string", nullable: true },
-        state: { type: "string", nullable: true },
-        city: { type: "string", nullable: true },
-        preferred_language: { type: "string", nullable: true },
-        govt_id_file: { type: "string", nullable: true },
-        pan_card_file: { type: "string", nullable: true },
-        passport_photo_file: { type: "string", nullable: true },
-        vet_degree_file: { type: "string", nullable: true },
-        registration_number: { type: "string", nullable: true },
-        education_details: { type: "Json", nullable: true },
-        practice_type: { type: "string", nullable: true },
-        clinic_name: { type: "string", nullable: true },
-        clinic_pincode: { type: "string", nullable: true },
-        clinic_gst: { type: "string", nullable: true },
-        clinic_address: { type: "string", nullable: true },
-        clinic_registration_file: { type: "string", nullable: true },
-        clinic_shop_license_file: { type: "string", nullable: true },
-        cancelled_cheque_file: { type: "string", nullable: true },
-        clinic_photos: { type: "string[]", nullable: true },
-        clinic_videos: { type: "string[]", nullable: true },
-        hospital_name: { type: "string", nullable: true },
-        hospital_role: { type: "string", nullable: true },
-        hospital_address: { type: "string", nullable: true },
-        hospital_pincode: { type: "string", nullable: true },
-        hospital_employee_id: { type: "string", nullable: true },
-        hospital_joining_proof_file: { type: "string", nullable: true },
-        weekly_availability: { type: "Json", nullable: true },
-        morning_slots: { type: "boolean", nullable: true },
-        evening_slots: { type: "boolean", nullable: true },
-        online_fee: { type: "number", nullable: false },
-        offline_fee: { type: "number", nullable: false },
-        emergency_available: { type: "boolean", nullable: true },
-        weekend_availability: { type: "boolean", nullable: true },
-        support_24x7: { type: "boolean", nullable: true },
-        vendor_agreement_accepted: { type: "boolean", nullable: true },
-        telemedicine_consent_accepted: { type: "boolean", nullable: true },
-        rejection_reason: { type: "string", nullable: true },
-        available_days: { type: "string[]", nullable: true },
-        available_time_start: { type: "string", nullable: true },
-        available_time_end: { type: "string", nullable: true },
-        gst_certificate_file: { type: "string", nullable: true },
-        clinic_address_proof_file: { type: "string", nullable: true },
-        bank_account_name: { type: "string", nullable: true },
-        bank_name: { type: "string", nullable: true },
-        bank_account_number: { type: "string", nullable: true },
-        bank_ifsc: { type: "string", nullable: true },
-        unique_vet_id: { type: "string", nullable: true },
-        clinical_expertise: { type: "string[]", nullable: true },
-        other_qualification: { type: "string", nullable: true },
-        medical_specializations: { type: "Json", nullable: true }
+      const enrichedRequest = {
+        ...normalizedRequest,
+        consultationType: payload.consultationType || "instant",
+        requestedDate: payload.requestedDate || "",
+        requestedTime: payload.requestedTime || "",
+        userPincode: userPincode,
+        activeAppointments: activeAppointments,
+        userLat: userLat,
+        userLon: userLon
       };
 
-      console.log("[SmartMatch] [Log 7/8] List of field names available on vet profiles:", Object.keys(fieldMap));
+      let matchResult: any = null;
+      let lockSucceeded = false;
+      let attemptVets = [...rawVets];
+      let maxAttempts = 5;
+      let attempts = 0;
 
-      rawVets.forEach((vet: any, idx: number) => {
-        const nullOrMissingFields: string[] = [];
-        Object.keys(fieldMap).forEach((field) => {
-          if (vet[field] === undefined || vet[field] === null || vet[field] === "") {
-            nullOrMissingFields.push(field);
-          }
-        });
-        console.log(`[SmartMatch] Profile #${idx + 1} (${vet.id}): Null/Missing fields count: ${nullOrMissingFields.length}. Fields: ${nullOrMissingFields.join(", ")}`);
-      });
+      while (attempts < maxAttempts && attemptVets.length > 0) {
+        attempts++;
+        matchResult = runSmartMatch(enrichedRequest, attemptVets);
+        
+        if (!matchResult.bestVet || !matchResult.bestVet.suggestedSlot) {
+          // No more suitable vets or no slots left
+          break;
+        }
 
-      console.log("[SmartMatch] [Log 8/8] Response Sent");
-      console.log("[SmartMatch] ==========================================");
+        const slot = matchResult.bestVet.suggestedSlot;
+        
+        // Release expired slot locks (pending_payment older than 10 minutes)
+        const tenMinsAgoISO = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+        const { error: deleteErr } = await supabaseAdmin
+          .from("vet_appointments")
+          .delete()
+          .eq("status", "pending_payment")
+          .lt("created_at", tenMinsAgoISO);
+
+        if (deleteErr) {
+          console.warn("[SmartMatch Lock] Failed to release expired slot locks:", deleteErr.message);
+        }
+
+        // Pre-check if slot is still free (Check -> Lock -> Reserve flow)
+        const { data: existingAppt } = await supabaseAdmin
+          .from("vet_appointments")
+          .select("id")
+          .eq("vet_id", matchResult.bestVet.user_id)
+          .eq("appointment_date", slot.date)
+          .eq("appointment_time", slot.time)
+          .not("status", "in", '("cancelled", "completed", "rejected", "done", "Canceled", "Cancelled", "Completed")')
+          .maybeSingle();
+
+        if (existingAppt) {
+          console.warn(`[SmartMatch Lock] Slot already booked on pre-check. Retrying with next highest-ranked vet...`);
+          const failedVetId = matchResult.bestVet.user_id;
+          attemptVets = attemptVets.filter((v: any) => v.user_id !== failedVetId);
+          continue;
+        }
+
+        const lockPayload = {
+          vet_id: matchResult.bestVet.user_id,
+          user_id: dbUserId || "f9834ef6-778d-4384-8d17-6316fffa03b6",
+          appointment_date: slot.date,
+          appointment_time: slot.time,
+          appointment_type: payload.consultationType === "future" ? "Scheduled Consultation" : "Instant Consultation",
+          amount: matchResult.bestVet.online_fee || 500,
+          status: "pending_payment",
+          pet_name: normalizedRequest.petDetails.name || "Pet",
+          pet_type: normalizedRequest.petDetails.species || "Dog",
+          pet_breed: normalizedRequest.petDetails.breed || "Unknown"
+        };
+
+        // Insert new slot lock. Rely on PostgreSQL's uq_active_vet_appointments unique index for atomic concurrency protection.
+        const { error: lockErr } = await supabaseAdmin
+          .from("vet_appointments")
+          .insert(lockPayload);
+
+        if (lockErr) {
+          console.warn(`[SmartMatch Lock] DB level conflict (double-booking protection): ${lockErr.message}. Retrying with next highest-ranked vet...`);
+          const failedVetId = matchResult.bestVet.user_id;
+          attemptVets = attemptVets.filter((v: any) => v.user_id !== failedVetId);
+        } else {
+          console.log("[SmartMatch Lock] Slot successfully reserved in vet_appointments database:", lockPayload);
+          lockSucceeded = true;
+          break;
+        }
+      }
 
       return res.json({
         success: true,
         normalizedRequest: normalizedRequest,
         totalFetched: totalFetched,
         veterinarians: rawVets,
-        fieldMap: fieldMap
+        matchResult: matchResult
       });
 
     } catch (err: any) {
@@ -458,11 +547,113 @@ Keep descriptions concise (max 2 sentences).`;
           }
       }
 
-      // Safe randomUUID fallback
-      const finalAssessmentId = payload.sessionId || (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : "sms_" + Date.now() + "_" + Math.random().toString(36).substring(2, 11));
+      // Fetch vet profiles to run the match and build Audit Log
+      const { data: vetProfiles } = await supabaseAdmin.from("vet_profiles").select("*");
+      let auditLog: any = null;
+      let matchedVetId: string | null = null;
+      let matchScore: number | null = null;
+
+      if (vetProfiles && vetProfiles.length > 0) {
+        // Resolve user pincode
+        let userPincode = "";
+        if (dbUserId) {
+          const { data: addrData } = await supabaseAdmin
+            .from("addresses")
+            .select("pincode")
+            .eq("user_id", dbUserId)
+            .eq("is_default", true)
+            .maybeSingle();
+          if (addrData && addrData.pincode) {
+            userPincode = addrData.pincode;
+          }
+        }
+
+        // Fetch active appointments
+        const { data: bookedAppointments } = await supabaseAdmin
+          .from("vet_appointments")
+          .select("*")
+          .not("status", "in", '("cancelled", "completed", "rejected", "done", "Canceled", "Cancelled", "Completed")');
+
+        const activeAppointments = bookedAppointments || [];
+
+        // Build mock profiles user_id map for matching profiles
+        const userIds = vetProfiles.map((v: any) => v.user_id);
+        const { data: profiles } = await supabaseAdmin
+          .from("profiles")
+          .select("id, name, full_name, profile_photo, is_admin_approved, role")
+          .in("id", userIds);
+
+        const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+        const rawVets = vetProfiles.map((v: any) => ({
+          ...v,
+          profile: profileMap.get(v.user_id) || null
+        }));
+
+        const rawSpecies = payload.pet?.species ? String(payload.pet.species).trim() : "";
+        let canonicalSpecies = rawSpecies.charAt(0).toUpperCase() + rawSpecies.slice(1).toLowerCase();
+        if (canonicalSpecies === "Guineapig") canonicalSpecies = "Guineapigs";
+        if (canonicalSpecies === "Rabbit") canonicalSpecies = "Rabbits";
+
+        const concernQA = payload.concerns?.find((qa: any) => qa.question && qa.question.includes("What is your main concern today?"));
+        const rawConcern = concernQA ? concernQA.answer : "Other";
+
+        const VALID_CONCERN_ENUMS = [
+          "Vomiting", "Diarrhea", "Loss of Appetite", "Itching / Skin Issues",
+          "Eye Problems", "Ear Problems", "Coughing / Breathing Issues",
+          "Injury / Wound", "Mobility Issues", "Behavior Changes", "Other"
+        ];
+
+        let canonicalConcern = "Other";
+        let freeformKeyword = "";
+        if (VALID_CONCERN_ENUMS.includes(rawConcern)) {
+          canonicalConcern = rawConcern;
+        } else {
+          canonicalConcern = "Other";
+          freeformKeyword = rawConcern;
+        }
+
+        const normalizedRequest = {
+          petDetails: {
+            name: payload.pet?.name || "",
+            species: canonicalSpecies,
+            rawSpecies: rawSpecies,
+            breed: payload.pet?.breed || "Unknown",
+            age: payload.pet?.age || "Unknown",
+            gender: payload.pet?.gender || "Unknown",
+            weight: payload.pet?.weight || "Unknown"
+          },
+          mainConcern: canonicalConcern,
+          freeformKeyword: freeformKeyword,
+          followUpAnswers: payload.concerns?.filter((qa: any) => qa.question && !qa.question.includes("What is your main concern today?")) || [],
+          healthBackground: payload.healthBackground || [],
+          currentHealthStatus: payload.currentHealthStatus || [],
+          mediaReferences: payload.mediaFiles || [],
+          consultationType: payload.consultationType || "instant",
+          requestedDate: payload.requestedDate || "",
+          requestedTime: payload.requestedTime || "",
+          userPincode: userPincode,
+          activeAppointments: activeAppointments
+        };
+
+        const matchResult = runSmartMatch(normalizedRequest, rawVets);
+        if (matchResult && matchResult.bestVet) {
+          auditLog = matchResult.auditLog;
+          matchedVetId = matchResult.bestVet.id;
+          matchScore = matchResult.score;
+        }
+      }
+
+      const generateFallbackUUID = () => {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      };
+      // Safe fallback using standard UUID
+      const finalAssessmentId = payload.sessionId || generateFallbackUUID();
 
       // We attempt to save into the requested 'buyer_smart_match' table first.
-      const smartMatchRecord = {
+      const smartMatchRecord: any = {
           id: finalAssessmentId,
           user_id: dbUserId,
           pet_passport_id: petPassportId,
@@ -472,22 +663,41 @@ Keep descriptions concise (max 2 sentences).`;
           step3_health_background: payload.healthBackground || [],
           step4_current_health_status: payload.currentHealthStatus || [],
           step5_photos_videos: payload.mediaFiles || [],
-          step6_review_data: payload.reviewData || {},
+          step6_review_data: {
+             ...(payload.reviewData || {}),
+             auditLog: auditLog
+          },
           status: "submitted",
           updated_at: new Date().toISOString()
       };
 
+      // Add audit log fields directly if custom columns exist
+      const smartMatchRecordWithColumns = {
+          ...smartMatchRecord,
+          matched_vet_id: matchedVetId,
+          match_score: matchScore,
+          audit_log: auditLog
+      };
+
       let { error: insertErr } = await supabaseAdmin
         .from("buyer_smart_match")
-        .upsert(smartMatchRecord, { onConflict: "id" });
+        .upsert(smartMatchRecordWithColumns, { onConflict: "id" });
+
+      if (insertErr && (insertErr.code === '42703' || insertErr.message?.includes('column'))) {
+         console.warn("[SmartMatch Save] Column does not exist, retrying with fallback schema...", insertErr.message);
+         const { error: fallbackErr } = await supabaseAdmin
+           .from("buyer_smart_match")
+           .upsert(smartMatchRecord, { onConflict: "id" });
+         insertErr = fallbackErr;
+      }
 
       // Handle user_id or pet_passport_id FK constraint violation by falling back to null IDs
       if (insertErr && (insertErr.code === '23503' || insertErr.message?.includes('foreign key'))) {
-         console.warn("[SmartMatch Save] Upsert failed on buyer_smart_match with foreign key constraint, retrying with null FK IDs...", insertErr.message);
-         smartMatchRecord.user_id = null;
-         smartMatchRecord.pet_passport_id = null;
-         const { error: retryErr } = await supabaseAdmin.from("buyer_smart_match").upsert(smartMatchRecord, { onConflict: "id" });
-         insertErr = retryErr;
+          console.warn("[SmartMatch Save] Upsert failed on buyer_smart_match with foreign key constraint, retrying with null FK IDs...", insertErr.message);
+          smartMatchRecord.user_id = null;
+          smartMatchRecord.pet_passport_id = null;
+          const { error: retryErr } = await supabaseAdmin.from("buyer_smart_match").upsert(smartMatchRecord, { onConflict: "id" });
+          insertErr = retryErr;
       }
 
       if (insertErr) {
