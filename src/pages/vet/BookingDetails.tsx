@@ -359,9 +359,9 @@ const BookingDetails = () => {
           .eq("appointment_date", dateStr);
 
         if (!error && data && active) {
-          const acceptedTypes = ["confirmed", "approved", "analyzing", "accepted", "rescheduled", "in_progress", "completed"];
+          const inactiveStatuses = ["cancelled", "completed", "rejected", "done", "canceled"];
           const booked = data
-            .filter((d: any) => acceptedTypes.includes(d.status?.toLowerCase()))
+            .filter((d: any) => !inactiveStatuses.includes((d.status || "").toLowerCase()))
             .map((d: any) => d.appointment_time);
           setDisabledSlots(booked);
         }
@@ -383,8 +383,8 @@ const BookingDetails = () => {
             if (!active) return;
             if (payload.new && payload.new.appointment_date === dateStr) {
               const status = payload.new.status;
-              const acceptedTypes = ["confirmed", "approved", "analyzing", "accepted", "rescheduled", "in_progress", "completed"];
-              const isBooked = acceptedTypes.includes(status?.toLowerCase());
+              const inactiveStatuses = ["cancelled", "completed", "rejected", "done", "canceled"];
+              const isBooked = !inactiveStatuses.includes((status || "").toLowerCase());
               
               setDisabledSlots(prev => {
                 const time = payload.new.appointment_time;
@@ -1771,8 +1771,9 @@ const BookingDetails = () => {
                             .eq("appointment_date", appointmentDate)
                             .eq("appointment_time", selectedSlot);
                             
+                        const inactiveStatuses = ["cancelled", "completed", "rejected", "done", "canceled"];
                         const activeBookings = existingAppts ? existingAppts.filter(
-                          (appt: any) => ["confirmed", "approved", "analyzing", "accepted", "rescheduled", "in_progress", "completed"].includes((appt.status || "").toLowerCase())
+                          (appt: any) => !inactiveStatuses.includes((appt.status || "").toLowerCase())
                         ) : [];
 
                         if (activeBookings.length > 0) {
@@ -1891,31 +1892,36 @@ const BookingDetails = () => {
                                 "insert_payload": insertPayload
                               });
 
-                              // Check if there is an existing lock (pending_payment) for this slot & vet
-                              const { data: existingLock } = await supabase
+                              // Check if there is an existing active appointment or lock for this slot & vet
+                              const { data: existingActive } = await supabase
                                 .from("vet_appointments")
-                                .select("id")
+                                .select("id, user_id, status")
                                 .eq("vet_id", vetUserId)
                                 .eq("appointment_date", appointmentDate)
                                 .eq("appointment_time", appointmentTime)
-                                .eq("status", "pending_payment")
+                                .not("status", "in", '("cancelled", "completed", "rejected", "done", "canceled", "Completed", "Cancelled")')
                                 .maybeSingle();
 
                               let insertResult = null;
                               let insertError = null;
 
-                              if (existingLock) {
-                                console.log("Found existing pending_payment lock. Updating instead of inserting:", existingLock.id);
-                                const { data: updateData, error: updateError } = await supabase
-                                  .from("vet_appointments")
-                                  .update(insertPayload)
-                                  .eq("id", existingLock.id)
-                                  .select()
-                                  .single();
-                                insertResult = updateData;
-                                insertError = updateError;
+                              if (existingActive) {
+                                if (existingActive.user_id === userId) {
+                                  console.log("Found existing active appointment belonging to same user. Updating instead of inserting:", existingActive.id);
+                                  const { data: updateData, error: updateError } = await supabase
+                                    .from("vet_appointments")
+                                    .update(insertPayload)
+                                    .eq("id", existingActive.id)
+                                    .select()
+                                    .single();
+                                  insertResult = updateData;
+                                  insertError = updateError;
+                                } else {
+                                  console.warn("Slot is active and belongs to a different user:", existingActive);
+                                  throw new Error("This slot has already been booked by another user. Please select a different slot.");
+                                }
                               } else {
-                                console.log("No pending_payment lock found. Proceeding with standard insert.");
+                                console.log("No existing active appointment found. Proceeding with standard insert.");
                                 const { data: insertData, error: insertErr } = await supabase
                                   .from("vet_appointments")
                                   .insert(insertPayload)
