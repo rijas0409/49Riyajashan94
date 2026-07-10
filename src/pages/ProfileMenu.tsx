@@ -17,7 +17,7 @@ const MENU_ITEMS = [
     icon: User,
     title: "Profile",
     description: "Manage your personal information",
-    path: "/profile-settings",
+    path: "/buyer/profile/settings",
   },
   {
     id: "addresses",
@@ -90,7 +90,6 @@ const ProfileMenu = () => {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex items-center gap-1 flex-1">
-            <img src={SRUVO_LOGO_URL} alt="Sruvo" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
             <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
               My Profile
             </span>
@@ -142,7 +141,7 @@ const ProfileMenu = () => {
                 </div>
                 
                 <div className="flex-1">
-                  <h2 className="text-2xl font-bold">{profile?.name}</h2>
+                  <h2 className="text-2xl font-bold">{profile?.full_name || profile?.name}</h2>
                   <p className="text-white/80 text-sm">{profile?.role === 'seller' ? 'Pet Seller' : 'Pet Lover'}</p>
                   <div className="flex items-center gap-3 mt-3">
                     <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">

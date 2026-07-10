@@ -154,12 +154,17 @@ const RouteTracker = () => {
       "/buyer/profile-settings",
       "/buyer/pet-passport",
       "/passport",
+      "/buyer/addresses",
       "/addresses",
+      "/buyer/wallet",
       "/wallet",
       "/buyer/bookings",
       "/bookings",
+      "/buyer/orders",
       "/product-orders",
+      "/buyer/notifications",
       "/notifications",
+      "/buyer/privacy",
       "/privacy"
     ].some(path => currentPath.startsWith(path));
 
@@ -416,7 +421,8 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/add-pet" element={<AddPet />} />
                 <Route path="/add-product" element={<AddProduct />} />
-                <Route path="/addresses" element={<Addresses />} />
+                <Route path="/buyer/addresses" element={<Addresses />} />
+                <Route path="/addresses" element={<Navigate to="/buyer/addresses" replace />} />
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/auth/admin" element={<AuthAdmin />} />
@@ -436,12 +442,15 @@ const App = () => (
                 <Route path="/chats" element={<Chats />} />
                 <Route path="/delivery" element={<DeliveryDashboard />} />
                 <Route path="/edit-pet/:id" element={<EditPet />} />
-                <Route path="/notifications" element={<Notifications />} />
+                <Route path="/buyer/notifications" element={<Notifications />} />
+                <Route path="/notifications" element={<Navigate to="/buyer/notifications" replace />} />
                 <Route path="/pet/:id" element={<Navigate to="/buyer/home/pet/:id" replace />} />
                 <Route path="/pet-profile/:id" element={<Navigate to="/buyer/home/pet/:id" replace />} />
                 <Route path="/buyer/home/pet/:id" element={<PetDetails />} />
-                <Route path="/privacy" element={<PrivacySecurity />} />
-                <Route path="/product-orders" element={<ProductOrders />} />
+                <Route path="/buyer/privacy" element={<PrivacySecurity />} />
+                <Route path="/privacy" element={<Navigate to="/buyer/privacy" replace />} />
+                <Route path="/buyer/orders" element={<ProductOrders />} />
+                <Route path="/product-orders" element={<Navigate to="/buyer/orders" replace />} />
                 <Route path="/product/:id" element={<Navigate to="/buyer/shop/product/:id" replace />} />
                 <Route path="/buyer/shop/product/:id" element={<ProductProfile />} />
                 <Route path="/products-dashboard" element={<ProductsDashboard />} />
@@ -450,6 +459,7 @@ const App = () => (
                 <Route path="/buyer/profile" element={<ProfileMenu />} />
                 <Route path="/buyer/profile-menu" element={<ProfileMenu />} />
                 <Route path="/buyer/profile-settings" element={<ProfileSettings />} />
+                <Route path="/buyer/profile/settings" element={<ProfileSettings />} />
                 <Route path="/buyer/pet-passport" element={<EmptyPetPassport />} />
                 <Route path="/passport/:id" element={<PublicPetPassport />} />
                 <Route path="/seller-dashboard" element={<SellerDashboard />} />
@@ -500,7 +510,8 @@ const App = () => (
                   </VetProtectionWrapper>
                 } />
                 <Route path="/vet-pending-approval" element={<Navigate to="/vet/account-review" replace />} />
-                <Route path="/wallet" element={<WalletPage />} />
+                <Route path="/buyer/wallet" element={<WalletPage />} />
+                <Route path="/wallet" element={<Navigate to="/buyer/wallet" replace />} />
                 <Route path="/wishlist" element={<Wishlist />} />
 
                 {/* Care Plan Routes */}

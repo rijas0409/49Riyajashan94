@@ -2051,9 +2051,9 @@ const BookingDetails = () => {
                   <div>
                     <h4 className="font-extrabold text-green-600 text-lg">Payment Done ✓</h4>
                     <div className="mt-2.5 bg-green-50 text-green-700 text-xs font-bold py-2 px-4 rounded-xl border border-green-100 inline-block">
-                      Dr. Anaya Accepted Request!
+                      Request Sent to {vetName}!
                     </div>
-                    <p className="text-xs text-slate-400 mt-3 font-semibold blinking-anim text-center">Redirecting you to Springfield visit details...</p>
+                    <p className="text-xs text-slate-400 mt-3 font-semibold blinking-anim text-center">Redirecting you to status page...</p>
                   </div>
                 </div>
               )}

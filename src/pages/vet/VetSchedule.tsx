@@ -22,8 +22,21 @@ const getShortBookingId = (id: string | undefined): string => {
   return id;
 };
 
-const PendingTimer = ({ onExpire }: { onExpire: () => void }) => {
-  const [timeLeft, setTimeLeft] = useState(94);
+const PendingTimer = ({ createdAt, onExpire }: { createdAt?: string; onExpire: () => void }) => {
+  const calculateTimeLeft = useCallback(() => {
+    if (!createdAt) return 94;
+    const createdTime = new Date(createdAt).getTime();
+    const now = Date.now();
+    const elapsedSeconds = Math.floor((now - createdTime) / 1000);
+    const remaining = 94 - elapsedSeconds;
+    return Math.max(0, remaining);
+  }, [createdAt]);
+
+  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft);
+
+  useEffect(() => {
+    setTimeLeft(calculateTimeLeft());
+  }, [createdAt, calculateTimeLeft]);
 
   useEffect(() => {
     if (timeLeft <= 0) {
@@ -31,7 +44,14 @@ const PendingTimer = ({ onExpire }: { onExpire: () => void }) => {
       return;
     }
     const timerId = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timerId);
+          onExpire();
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
     return () => clearInterval(timerId);
   }, [timeLeft, onExpire]);
@@ -60,6 +80,7 @@ interface ScheduleAppointment {
   medicines?: string | null;
   consultation_notes?: string | null;
   care_instructions?: string | null;
+  created_at?: string;
 }
 
 interface DbAppointmentRaw {
@@ -289,6 +310,41 @@ const VetSchedule = () => {
         console.error("CRITICAL ERROR fetching real appointments:", error);
       } else if (data) {
         console.log("CRITICAL INFO real appointments data:", data);
+
+        // Auto-expire pending appointments that are older than 94 seconds
+        const now = Date.now();
+        const expiredIds: string[] = [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data.forEach((apt: any) => {
+          if (apt.status === "pending" && apt.created_at) {
+            const createdTime = new Date(apt.created_at).getTime();
+            const elapsedSeconds = Math.floor((now - createdTime) / 1000);
+            if (elapsedSeconds >= 94) {
+              expiredIds.push(apt.id);
+            }
+          }
+        });
+
+        if (expiredIds.length > 0) {
+          // Perform database update in the background
+          supabase
+            .from("vet_appointments")
+            .update({ status: "cancelled" })
+            .in("id", expiredIds)
+            .then(({ error: updateErr }) => {
+              if (!updateErr) {
+                console.log("Successfully auto-cancelled expired appointments:", expiredIds);
+              }
+            });
+
+          // Reflect locally immediately
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          data.forEach((apt: any) => {
+            if (expiredIds.includes(apt.id)) {
+              apt.status = "cancelled";
+            }
+          });
+        }
         
         // Fetch users manually to avoid foreign key relation errors with PostgREST
         const userIds = [...new Set(data.map(apt => apt.user_id))];
@@ -326,7 +382,8 @@ const VetSchedule = () => {
             diagnosis: apt.diagnosis,
             medicines: apt.medicines,
             consultation_notes: apt.consultation_notes,
-            care_instructions: apt.care_instructions
+            care_instructions: apt.care_instructions,
+            created_at: apt.created_at
           };
         });
         setAppointments(mapped);
@@ -678,7 +735,7 @@ const VetSchedule = () => {
                 </div>
               ) : null}
               {apt.status === 'pending' && activeTab === 'Upcoming' && (
-                <PendingTimer onExpire={() => updateAppointmentStatus(apt.id, "cancelled")} />
+                <PendingTimer createdAt={apt.created_at} onExpire={() => updateAppointmentStatus(apt.id, "cancelled")} />
               )}
 
               <div className="flex gap-4 mt-3">

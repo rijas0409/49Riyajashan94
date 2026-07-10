@@ -4,10 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   ArrowLeft, Loader2, Clock, CheckCircle2, Truck, Package,
-  XCircle, ShoppingBag, RotateCcw
+  XCircle, ShoppingBag, RotateCcw, ShieldCheck, Sparkles
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import BottomNavigation from "@/components/BottomNavigation";
 
 interface ProductOrder {
   id: string;
@@ -22,13 +21,13 @@ interface ProductOrder {
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: any; bg: string }> = {
-  pending: { label: "Order Placed", color: "text-amber-700", icon: Clock, bg: "bg-amber-50" },
-  confirmed: { label: "Confirmed", color: "text-blue-700", icon: CheckCircle2, bg: "bg-blue-50" },
-  processing: { label: "Processing", color: "text-purple-700", icon: Package, bg: "bg-purple-50" },
-  shipped: { label: "Shipped", color: "text-orange-700", icon: Truck, bg: "bg-orange-50" },
-  delivered: { label: "Delivered", color: "text-green-700", icon: CheckCircle2, bg: "bg-green-50" },
-  cancelled: { label: "Cancelled", color: "text-red-600", icon: XCircle, bg: "bg-red-50" },
-  returned: { label: "Returned", color: "text-muted-foreground", icon: RotateCcw, bg: "bg-muted" },
+  pending: { label: "Order Placed", color: "text-amber-700 bg-amber-50/80 border-amber-100", icon: Clock, bg: "bg-amber-50" },
+  confirmed: { label: "Confirmed", color: "text-blue-700 bg-blue-50/80 border-blue-100", icon: CheckCircle2, bg: "bg-blue-50" },
+  processing: { label: "Processing", color: "text-purple-700 bg-purple-50/80 border-purple-100", icon: Package, bg: "bg-purple-50" },
+  shipped: { label: "Shipped", color: "text-orange-700 bg-orange-50/80 border-orange-100", icon: Truck, bg: "bg-orange-50" },
+  delivered: { label: "Delivered", color: "text-emerald-700 bg-emerald-50/80 border-emerald-100", icon: CheckCircle2, bg: "bg-emerald-50" },
+  cancelled: { label: "Cancelled", color: "text-red-600 bg-red-50/80 border-red-100", icon: XCircle, bg: "bg-red-50" },
+  returned: { label: "Returned", color: "text-muted-foreground bg-muted border-gray-200", icon: RotateCcw, bg: "bg-muted" },
 };
 
 const statusSteps = ["pending", "confirmed", "processing", "shipped", "delivered"];
@@ -70,111 +69,136 @@ const ProductOrders = () => {
     return idx >= 0 ? idx : 0;
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-[#F5F5F7] pb-24">
-      <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-lg border-b border-border">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigate(-1)}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <h1 className="text-xl font-bold text-foreground">My Orders</h1>
+    <div className="min-h-screen bg-[#faf8fc] pb-12 relative overflow-x-hidden">
+      {/* Decorative Blur Blobs */}
+      <div className="absolute top-0 right-0 w-[350px] h-[350px] bg-primary/5 rounded-full blur-[80px] pointer-events-none" />
+      <div className="absolute top-40 left-0 w-[250px] h-[250px] bg-indigo-500/5 rounded-full blur-[60px] pointer-events-none" />
+
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-purple-100/60 shadow-[0_2px_15px_-3px_rgba(155,81,224,0.03)]">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between max-w-4xl">
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="rounded-full hover:bg-purple-50 transition-colors" 
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-700" />
+            </Button>
+            <div>
+              <h1 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">My Product Orders</h1>
+              <p className="text-[10px] text-muted-foreground font-medium">Track your premium pet essentials & accessories</p>
+            </div>
+          </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 max-w-lg space-y-4">
-        {orders.length === 0 ? (
-          <div className="flex flex-col items-center py-20 text-center">
-            <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-4">
-              <ShoppingBag className="w-10 h-10 text-muted-foreground" />
+      <main className="container mx-auto px-4 py-6 max-w-lg space-y-5 relative">
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="flex flex-col items-center py-16 text-center bg-white rounded-3xl border border-purple-100/60 p-6 shadow-sm">
+            <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mb-4 border border-purple-100/40">
+              <ShoppingBag className="w-7 h-7 text-primary" />
             </div>
-            <h2 className="text-lg font-semibold mb-2 text-foreground">No orders yet</h2>
-            <p className="text-muted-foreground text-sm mb-6">Your product orders will appear here</p>
-            <Button onClick={() => navigate("/buyer/shop")} className="rounded-2xl">
-              Browse Shop
+            <h2 className="text-base font-bold text-gray-800">No orders placed yet</h2>
+            <p className="text-xs text-muted-foreground mt-1.5 mb-6 max-w-xs">
+              Explore our premium marketplace to find organic kibble, comfortable bedding, and elite toys for your pet.
+            </p>
+            <Button 
+              onClick={() => navigate("/buyer/shop")} 
+              className="rounded-full bg-gradient-primary hover:opacity-95 text-white text-xs font-bold px-6 shadow-md shadow-primary/20 h-10"
+            >
+              Browse Sruvo Shop
             </Button>
           </div>
         ) : (
-          orders.map((order) => {
-            const config = statusConfig[order.status] || statusConfig.pending;
-            const StatusIcon = config.icon;
-            const currentStep = getStepIndex(order.status);
-            const isCancelled = order.status === "cancelled";
-            const isReturned = order.status === "returned";
-            const isDelivered = order.status === "delivered";
+          <div className="space-y-4">
+            {orders.map((order) => {
+              const config = statusConfig[order.status] || statusConfig.pending;
+              const StatusIcon = config.icon;
+              const currentStep = getStepIndex(order.status);
+              const isCancelled = order.status === "cancelled";
+              const isReturned = order.status === "returned";
+              const isDelivered = order.status === "delivered";
 
-            return (
-              <Card
-                key={order.id}
-                className="rounded-2xl border-0 shadow-sm overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
-                onClick={() => navigate(`/buyer/shop/product/${order.product_id}`)}
-              >
-                <div className="p-4 flex gap-3">
-                  <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
-                    <img
-                      src={order.product_image || "/placeholder.svg"}
-                      alt={order.product_name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between">
-                      <h3 className="font-bold text-[15px] text-foreground truncate pr-2">
-                        {order.product_name}
-                      </h3>
-                      <p className="font-bold text-primary text-sm flex-shrink-0">
-                        ₹{order.total_amount.toLocaleString("en-IN")}
-                      </p>
+              return (
+                <Card
+                  key={order.id}
+                  className="rounded-[24px] border border-purple-50 bg-white shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer active:scale-[0.99]"
+                  onClick={() => navigate(`/buyer/shop/product/${order.product_id}`)}
+                >
+                  <div className="p-4 flex gap-4">
+                    <div className="w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0 bg-purple-50 border border-purple-100/50">
+                      <img
+                        src={order.product_image || "/placeholder.svg"}
+                        alt={order.product_name}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Qty: {order.quantity} × ₹{order.product_price.toLocaleString("en-IN")}
-                    </p>
-
-                    <div className="flex items-center justify-between mt-2">
-                      <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${config.bg}`}>
-                        <StatusIcon className={`w-3 h-3 ${config.color}`} />
-                        <span className={`text-[11px] font-semibold ${config.color}`}>{config.label}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-bold text-sm text-gray-800 truncate pr-1">
+                          {order.product_name}
+                        </h3>
+                        <p className="font-extrabold text-primary text-sm flex-shrink-0 leading-none">
+                          ₹{order.total_amount.toLocaleString("en-IN")}
+                        </p>
                       </div>
-                      <span className="text-[10px] text-muted-foreground">{formatDate(order.created_at)}</span>
-                    </div>
-                  </div>
-                </div>
+                      <p className="text-[11px] text-muted-foreground mt-1 font-semibold">
+                        Qty: {order.quantity} × ₹{order.product_price.toLocaleString("en-IN")}
+                      </p>
 
-                {/* Progress tracker */}
-                {!isCancelled && !isReturned && (
-                  <div className="px-4 pb-4">
-                    <div className="flex items-center gap-1">
-                      {statusSteps.map((_, i) => (
-                        <div key={i} className="flex-1">
-                          <div
-                            className={`h-1.5 w-full rounded-full transition-colors ${
-                              i <= currentStep
-                                ? isDelivered ? "bg-green-500" : "bg-primary"
-                                : "bg-muted"
-                            }`}
-                          />
+                      <div className="flex items-center justify-between mt-3">
+                        <div className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full border ${config.color.includes("emerald") ? "border-emerald-100" : "border-purple-100/60"} ${config.bg}`}>
+                          <StatusIcon className={`w-3.5 h-3.5 ${tx => tx.color}`} />
+                          <span className={`text-[10px] font-bold ${config.color.split(" ")[0]}`}>{config.label}</span>
                         </div>
-                      ))}
-                    </div>
-                    <div className="flex justify-between mt-1.5">
-                      <span className="text-[9px] text-muted-foreground">Ordered</span>
-                      <span className="text-[9px] text-muted-foreground">Delivered</span>
+                        <span className="text-[10px] text-gray-400 font-semibold">{formatDate(order.created_at)}</span>
+                      </div>
                     </div>
                   </div>
-                )}
-              </Card>
-            );
-          })
+
+                  {/* Elegant step tracker */}
+                  {!isCancelled && !isReturned && (
+                    <div className="px-4 pb-4 pt-1">
+                      <div className="flex items-center gap-1.5">
+                        {statusSteps.map((_, i) => (
+                          <div key={i} className="flex-1">
+                            <div
+                              className={`h-1.5 w-full rounded-full transition-all duration-300 ${
+                                i <= currentStep
+                                  ? isDelivered ? "bg-emerald-500" : "bg-primary"
+                                  : "bg-purple-100/50"
+                              }`}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-between mt-1.5 px-0.5">
+                        <span className="text-[9px] text-gray-400 font-semibold">Placed</span>
+                        <span className="text-[9px] text-gray-400 font-semibold">Delivered</span>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
         )}
+
+        {/* Support note */}
+        <div className="text-center pt-2">
+          <p className="text-[11px] text-muted-foreground font-semibold flex items-center justify-center gap-1.5">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            All Sruvo orders are fully tracked and support hassle-free returns.
+          </p>
+        </div>
       </main>
-      <BottomNavigation variant="buyer" />
     </div>
   );
 };

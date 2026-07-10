@@ -7,7 +7,6 @@ import {
   Clock, XCircle, ShoppingBag, Stethoscope, Video, Building2, Home as HomeIcon, Calendar as CalendarIcon
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import BottomNavigation from "@/components/BottomNavigation";
 
 interface OrderWithPet {
   id: string;
@@ -232,61 +231,77 @@ const Bookings = () => {
   };
 
   const tabs: { id: TabType; label: string; count: number }[] = [
-    { id: "all", label: "All", count: allBookings.length },
+    { id: "all", label: "All Bookings", count: allBookings.length },
     { id: "pets", label: "Pet Orders", count: orders.length },
     { id: "vet", label: "Vet Visits", count: appointments.length },
   ];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-[#faf8fc] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F7] pb-24">
-      <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-lg border-b border-border">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigate(-1)}>
-            <ArrowLeft className="w-5 h-5" />
+    <div className="min-h-screen bg-[#faf8fc] pb-12 relative overflow-x-hidden">
+      {/* Decorative Blob Backgrounds */}
+      <div className="absolute top-0 right-0 w-[350px] h-[350px] bg-primary/5 rounded-full blur-[80px] pointer-events-none" />
+      <div className="absolute top-40 left-0 w-[250px] h-[250px] bg-indigo-500/5 rounded-full blur-[60px] pointer-events-none" />
+
+      {/* Modern Header */}
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-purple-100/60 shadow-[0_2px_15px_-3px_rgba(155,81,224,0.03)]">
+        <div className="container mx-auto px-4 py-3 flex items-center gap-4 max-w-4xl">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full hover:bg-purple-50 transition-colors" 
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-700" />
           </Button>
-          <h1 className="text-xl font-bold text-foreground">My Bookings</h1>
+          <div>
+            <h1 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">My Bookings</h1>
+            <p className="text-[10px] text-muted-foreground font-medium font-sans">Track your premium pet acquisitions and professional vet consultations</p>
+          </div>
         </div>
       </header>
 
-      {/* Tabs */}
-      <div className="sticky top-[65px] z-40 bg-[#F5F5F7] px-4 pt-3 pb-1">
-        <div className="flex gap-2">
+      {/* Modern Styled Sub Header / Filter Tabs */}
+      <div className="sticky top-[61px] z-40 bg-[#faf8fc]/90 backdrop-blur-md px-4 py-3 border-b border-purple-100/30">
+        <div className="container mx-auto max-w-lg flex gap-2">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+              className={`flex-1 py-2 rounded-full text-xs font-bold transition-all ${
                 activeTab === tab.id
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-card text-muted-foreground border border-border"
+                  ? "bg-gradient-primary text-white shadow-md shadow-primary/10"
+                  : "bg-white text-gray-500 border border-purple-100/60 hover:text-gray-700"
               }`}
             >
-              {tab.label} {tab.count > 0 && <span className="ml-1">({tab.count})</span>}
+              {tab.label} {tab.count > 0 && <span className="ml-0.5 opacity-90">({tab.count})</span>}
             </button>
           ))}
         </div>
       </div>
 
-      <main className="container mx-auto px-4 py-4 max-w-lg space-y-4">
+      <main className="container mx-auto px-4 py-5 max-w-lg space-y-4 relative">
         {filteredBookings.length === 0 ? (
-          <div className="flex flex-col items-center py-20 text-center">
-            <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-4">
-              <ShoppingBag className="w-10 h-10 text-muted-foreground" />
+          <div className="flex flex-col items-center py-16 text-center bg-white rounded-3xl border border-purple-100/60 p-6 shadow-sm">
+            <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mb-4 border border-purple-100/40">
+              <ShoppingBag className="w-7 h-7 text-primary" />
             </div>
-            <h2 className="text-lg font-semibold mb-2 text-foreground">No bookings yet</h2>
-            <p className="text-muted-foreground text-sm mb-6">
+            <h2 className="text-base font-bold text-gray-800">No bookings yet</h2>
+            <p className="text-xs text-muted-foreground mt-1.5 mb-6 max-w-xs">
               {activeTab === "vet" ? "Your vet appointments will appear here" : "Your orders & appointments will appear here"}
             </p>
-            <Button onClick={() => navigate(activeTab === "vet" ? "/buyer/vet" : "/buyer/home")} className="rounded-2xl">
-              {activeTab === "vet" ? "Book a Vet" : "Browse Pets"}
+            <Button 
+              onClick={() => navigate(activeTab === "vet" ? "/buyer/vet" : "/buyer/home")} 
+              className="rounded-full bg-gradient-primary hover:opacity-95 text-white text-xs font-bold px-6 shadow-md shadow-primary/20 h-10"
+            >
+              {activeTab === "vet" ? "Book a Vet" : "Browse Adorable Pets"}
             </Button>
           </div>
         ) : (
@@ -299,7 +314,6 @@ const Bookings = () => {
           )
         )}
       </main>
-      <BottomNavigation variant="buyer" />
     </div>
   );
 };
