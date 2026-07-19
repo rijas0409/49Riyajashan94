@@ -118,7 +118,12 @@ const AdminProfileSettings = ({ user, onBack, onProfileUpdate }: Props) => {
           <div className="relative">
             <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-[hsl(220,80%,55%)] to-[hsl(250,70%,55%)] flex items-center justify-center shadow-lg">
               {profile.profile_photo ? (
-                <SafeImage src={profile.profile_photo} alt="Profile" className="w-full h-full" />
+                <SafeImage 
+                  src={profile.profile_photo} 
+                  alt="Profile" 
+                  className="w-full h-full" 
+                  fallback={<span className="text-white font-bold text-3xl">{initial}</span>}
+                />
               ) : (
                 <span className="text-white font-bold text-3xl">{initial}</span>
               )}

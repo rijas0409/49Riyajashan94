@@ -136,13 +136,18 @@ const WalletPage = () => {
             variant="ghost" 
             size="icon" 
             className="rounded-full hover:bg-purple-50 transition-colors" 
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate("/buyer/profile");
+              }
+            }}
           >
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </Button>
           <div>
-            <h1 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">Sruvo Wallet</h1>
-            <p className="text-[10px] text-muted-foreground font-medium">Quick checkout, instant refunds & seamless payments</p>
+            <h1 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">Wallet</h1>
           </div>
         </div>
       </header>

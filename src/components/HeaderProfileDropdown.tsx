@@ -27,7 +27,7 @@ const HeaderProfileDropdown = ({ trigger }: HeaderProfileDropdownProps) => {
   };
 
   const getInitial = () => {
-    return profile?.name?.[0]?.toUpperCase() || "U";
+    return (profile?.full_name || profile?.name)?.[0]?.toUpperCase() || "U";
   };
 
   return (
@@ -44,7 +44,7 @@ const HeaderProfileDropdown = ({ trigger }: HeaderProfileDropdownProps) => {
             ) : profile?.photo ? (
               <img 
                 src={profile.photo} 
-                alt={profile.name} 
+                alt={profile.full_name || profile.name} 
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -76,7 +76,7 @@ const HeaderProfileDropdown = ({ trigger }: HeaderProfileDropdownProps) => {
                 {profile?.photo ? (
                   <img 
                     src={profile.photo} 
-                    alt={profile?.name} 
+                    alt={profile?.full_name || profile?.name || "User"} 
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -86,7 +86,7 @@ const HeaderProfileDropdown = ({ trigger }: HeaderProfileDropdownProps) => {
                 )}
               </div>
               <div className="min-w-0">
-                <p className="font-semibold truncate">{profile?.name || "User"}</p>
+                <p className="font-semibold truncate">{profile?.full_name || profile?.name || "User"}</p>
                 <p className="text-sm text-muted-foreground truncate">{profile?.email}</p>
               </div>
             </div>

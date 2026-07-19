@@ -1,3 +1,4 @@
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { SRUVO_LOGO_URL } from "@/constants/branding";
 import { supabase } from "@/integrations/supabase/client";
@@ -65,7 +66,66 @@ const MENU_ITEMS = [
 
 const ProfileMenu = () => {
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload a valid image file");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image file is too large. Max size is 5MB");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${session.user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `profiles/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('seller-documents')
+        .upload(filePath, file, { cacheControl: '3600', upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('seller-documents')
+        .getPublicUrl(filePath);
+
+      // Save to Database instantly
+      const { error: dbError } = await supabase
+        .from("profiles")
+        .update({ profile_photo: filePath })
+        .eq("id", session.user.id);
+
+      if (dbError) {
+        // Fallback storing absolute URL
+        await supabase
+          .from("profiles")
+          .update({ profile_photo: publicUrl })
+          .eq("id", session.user.id);
+      }
+
+      await refreshProfile();
+      toast.success("Profile photo updated successfully!");
+    } catch (error: any) {
+      console.error("Error uploading profile photo:", error);
+      toast.error(error.message || "Failed to upload photo");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -129,15 +189,30 @@ const ProfileMenu = () => {
               <div className="flex items-center gap-5 relative z-10">
                 <div className="relative">
                   <div className="w-20 h-20 rounded-full border-4 border-white/30 overflow-hidden bg-white/20 backdrop-blur-md flex items-center justify-center">
-                    {profile?.profile_photo ? (
-                      <img src={profile.profile_photo} alt={profile.name} className="w-full h-full object-cover" />
+                    {uploading ? (
+                      <span className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : profile?.photo || profile?.profile_photo ? (
+                      <img src={profile?.photo || profile?.profile_photo || ""} alt={profile?.full_name || profile?.name || "User"} className="w-full h-full object-cover" />
                     ) : (
                       <User className="w-10 h-10 text-white" />
                     )}
                   </div>
-                  <button className="absolute bottom-0 right-0 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md">
+                  <button 
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="absolute bottom-0 right-0 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform"
+                    title="Change Profile Photo"
+                  >
                     <Camera className="w-4 h-4 text-primary" />
                   </button>
+                  <input 
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept="image/*"
+                    className="hidden"
+                  />
                 </div>
                 
                 <div className="flex-1">

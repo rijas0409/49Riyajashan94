@@ -54,6 +54,7 @@ import VetOnboarding from "./pages/VetOnboarding";
 import VetPendingApproval from "./pages/VetPendingApproval";
 import WalletPage from "./pages/WalletPage";
 import Wishlist from "./pages/Wishlist";
+import Rj from "./pages/Rj";
 
 // Care Plan
 import CarePlanForm from "./pages/care-plan/CarePlanForm";
@@ -419,6 +420,7 @@ const App = () => (
               <ErrorBoundary>
                 <Routes>
                 <Route path="/" element={<Index />} />
+                <Route path="/rj" element={<Rj />} />
                 <Route path="/add-pet" element={<AddPet />} />
                 <Route path="/add-product" element={<AddProduct />} />
                 <Route path="/buyer/addresses" element={<Addresses />} />

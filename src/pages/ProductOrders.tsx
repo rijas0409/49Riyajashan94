@@ -83,13 +83,18 @@ const ProductOrders = () => {
               variant="ghost" 
               size="icon" 
               className="rounded-full hover:bg-purple-50 transition-colors" 
-              onClick={() => navigate(-1)}
+              onClick={() => {
+                if (window.history.length > 1) {
+                  navigate(-1);
+                } else {
+                  navigate("/buyer/profile");
+                }
+              }}
             >
               <ArrowLeft className="w-5 h-5 text-gray-700" />
             </Button>
             <div>
-              <h1 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">My Product Orders</h1>
-              <p className="text-[10px] text-muted-foreground font-medium">Track your premium pet essentials & accessories</p>
+              <h1 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">My Orders</h1>
             </div>
           </div>
         </div>
@@ -192,9 +197,9 @@ const ProductOrders = () => {
         )}
 
         {/* Support note */}
-        <div className="text-center pt-2">
-          <p className="text-[11px] text-muted-foreground font-semibold flex items-center justify-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+        <div className="text-center pt-2 px-4 flex justify-center items-center">
+          <p className="text-[11px] text-muted-foreground font-semibold leading-relaxed max-w-sm">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 inline-block mr-1 align-text-bottom flex-shrink-0" />
             All Sruvo orders are fully tracked and support hassle-free returns.
           </p>
         </div>

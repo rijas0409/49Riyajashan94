@@ -70,7 +70,12 @@ const AdminTopBar = ({ user, profilePhoto, onLogout, onMenuToggle, onProfileSett
                 className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-[hsl(220,80%,55%)] to-[hsl(250,70%,55%)] flex items-center justify-center text-white font-bold text-sm shadow-md hover:shadow-lg transition-all"
               >
                 {profilePhoto ? (
-                  <SafeImage src={profilePhoto} alt="Admin" className="w-full h-full" />
+                  <SafeImage 
+                    src={profilePhoto} 
+                    alt="Admin" 
+                    className="w-full h-full" 
+                    fallback={<span className="text-white font-bold text-sm">{initial}</span>}
+                  />
                 ) : (
                   initial
                 )}
@@ -82,7 +87,12 @@ const AdminTopBar = ({ user, profilePhoto, onLogout, onMenuToggle, onProfileSett
                 <div className="px-4 py-3 border-b border-[hsl(220,20%,94%)] bg-[hsl(220,20%,98%)] flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-[hsl(220,80%,55%)] to-[hsl(250,70%,55%)] flex items-center justify-center shrink-0">
                     {profilePhoto ? (
-                      <SafeImage src={profilePhoto} alt="Admin" className="w-full h-full" />
+                      <SafeImage 
+                        src={profilePhoto} 
+                        alt="Admin" 
+                        className="w-full h-full" 
+                        fallback={<span className="text-white font-bold text-sm">{initial}</span>}
+                      />
                     ) : (
                       <span className="text-white font-bold text-sm">{initial}</span>
                     )}

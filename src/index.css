@@ -96,3 +96,17 @@
   50% { transform: scale(1.18); }
   100% { transform: scale(1); opacity: 1; }
 }
+
+/* Hide Google Maps default controls, branding, copyright and shortcuts */
+.gm-style-cc,
+.gmnoprint,
+.gm-style-bbt,
+.gpi-parent,
+a[href*="google.com/maps"],
+a[href*="google.com/intl"],
+button[title*="shortcuts"],
+button[aria-label*="shortcuts"],
+button[title*="Shortcuts"],
+.gm-style-cc {
+  display: none !important;
+}

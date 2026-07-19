@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Camera, AlertCircle } from 'lucide-react';
 
 interface SafeImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
@@ -9,8 +9,18 @@ export const SafeImage: React.FC<SafeImageProps> = ({ fallback, className, src, 
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Reset state when source image changes to allow reloading new images
+  useEffect(() => {
+    setError(false);
+    setLoading(true);
+  }, [src]);
+
   if (!src) {
-    return <div className={`flex items-center justify-center bg-gray-100 ${className}`}>{fallback || <Camera className="w-1/4 h-1/4 text-gray-400" />}</div>;
+    return (
+      <div className={`flex items-center justify-center bg-gray-100 ${className}`}>
+        {fallback || <Camera className="w-1/4 h-1/4 text-gray-400" />}
+      </div>
+    );
   }
 
   return (
@@ -21,10 +31,12 @@ export const SafeImage: React.FC<SafeImageProps> = ({ fallback, className, src, 
         </div>
       )}
       {error ? (
-        <div className="flex flex-col items-center justify-center h-full w-full bg-gray-100 text-gray-500 p-2">
-          <AlertCircle className="w-6 h-6 mb-1" />
-          <p className="text-xs">Error loading</p>
-        </div>
+        fallback || (
+          <div className="flex flex-col items-center justify-center h-full w-full bg-gray-100 text-gray-400 p-2 text-center">
+            <Camera className="w-1/3 h-1/3 opacity-60 mb-1" />
+            <span className="text-[10px] font-medium">Not Available</span>
+          </div>
+        )
       ) : (
         <img
           src={src}

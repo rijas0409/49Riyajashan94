@@ -46,12 +46,13 @@ const FAVORITE_PETS = [
 
 const ProfileSettings = () => {
   const navigate = useNavigate();
-  const { refreshProfile } = useAuth();
+  const { profile: authProfile, refreshProfile } = useAuth();
   const { city, setCity, cities } = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<"details" | "preferences">("details");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -60,14 +61,14 @@ const ProfileSettings = () => {
   const initialUserState = cities.find(c => c.name === city)?.state || "";
   const [selectedState, setSelectedState] = useState(initialUserState);
 
-  const [profile, setProfile] = useState({
-    username: "",
-    name: "",
-    email: "",
+  const [profile, setProfile] = useState(() => ({
+    username: authProfile?.name || "",
+    name: authProfile?.name || "",
+    email: authProfile?.email || "",
     phone: "",
-    full_name: "",
-    profile_photo: "",
-  });
+    full_name: authProfile?.full_name || "",
+    profile_photo: authProfile?.photo || "",
+  }));
 
   const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
 
@@ -227,7 +228,7 @@ const ProfileSettings = () => {
 
       if (data) {
         let photoUrl = data.profile_photo || "";
-        if (photoUrl && !photoUrl.startsWith("http")) {
+        if (photoUrl && !photoUrl.startsWith("http") && !photoUrl.startsWith("/") && !photoUrl.startsWith("data:") && !photoUrl.startsWith("blob:") && !photoUrl.includes("/assets/")) {
           const { data: pubData } = supabase.storage.from("seller-documents").getPublicUrl(photoUrl);
           photoUrl = pubData?.publicUrl || "";
         }
@@ -271,6 +272,17 @@ const ProfileSettings = () => {
   };
 
   const handleSave = async () => {
+    if (!profile.username || !profile.full_name || !profile.phone || !selectedState || !city) {
+      toast.error("Please fill in all mandatory fields (Username, Full Name, Phone, State, City).");
+      return;
+    }
+
+    if (preferences.favPets.length === 0) {
+      toast.error("Please select at least one Favorite Pet Type under Pet Preferences.");
+      setActiveTab("preferences");
+      return;
+    }
+    
     setSaving(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -304,6 +316,7 @@ const ProfileSettings = () => {
         description: "Your Sruvo dashboard is now updated.",
         duration: 3500,
       });
+      setIsEditing(false);
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Failed to update profile settings.");
@@ -428,8 +441,15 @@ const ProfileSettings = () => {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="rounded-full hover:bg-purple-50 transition-colors" 
-              onClick={() => navigate(-1)}
+              type="button"
+              className="rounded-full hover:bg-purple-50 transition-colors z-50 relative" 
+              onClick={() => {
+                if (window.history.length > 1) {
+                  navigate(-1);
+                } else {
+                  navigate("/buyer/profile");
+                }
+              }}
             >
               <ArrowLeft className="w-5 h-5 text-gray-700" />
             </Button>
@@ -437,24 +457,34 @@ const ProfileSettings = () => {
               <h1 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">Profile Settings</h1>
             </div>
           </div>
-          <Button 
-            onClick={handleSave} 
-            disabled={saving} 
-            size="sm"
-            className="rounded-full bg-gradient-primary hover:opacity-95 text-white font-semibold text-xs px-4 h-9 shadow-md shadow-primary/20 active:scale-95 transition-all"
-          >
-            {saving ? (
-              <span className="flex items-center gap-1.5">
-                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Saving...
-              </span>
-            ) : (
-              <span className="flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" />
-                Save Changes
-              </span>
-            )}
-          </Button>
+          {isEditing ? (
+            <Button 
+              onClick={handleSave} 
+              disabled={saving} 
+              size="sm"
+              className="rounded-full bg-gradient-primary hover:opacity-95 text-white font-semibold text-xs px-4 h-9 shadow-md shadow-primary/20 active:scale-95 transition-all"
+            >
+              {saving ? (
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Saving...
+                </span>
+              ) : (
+                <span className="flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Save Changes
+                </span>
+              )}
+            </Button>
+          ) : (
+            <Button 
+              onClick={() => setIsEditing(true)} 
+              size="sm"
+              className="rounded-full bg-purple-100 hover:bg-purple-200 text-purple-900 font-semibold text-xs px-4 h-9 transition-all"
+            >
+              Edit Profile
+            </Button>
+          )}
         </div>
       </header>
 
@@ -506,12 +536,23 @@ const ProfileSettings = () => {
 
                 <div className="flex flex-col items-center justify-center py-4 bg-purple-50/25 rounded-2xl border border-dashed border-purple-100/80">
                   <div 
-                    className="relative cursor-pointer group"
-                    onClick={() => fileInputRef.current?.click()}
+                    className={`relative group ${isEditing ? 'cursor-pointer' : 'cursor-default'}`}
+                    onClick={() => {
+                      if (isEditing) fileInputRef.current?.click();
+                    }}
                   >
-                    <div className="w-24 h-24 rounded-full overflow-hidden bg-purple-50 border-4 border-white flex items-center justify-center shadow-lg relative transition-all group-hover:scale-105">
+                    <div className={`w-24 h-24 rounded-full overflow-hidden bg-purple-50 border-4 border-white flex items-center justify-center shadow-lg relative transition-all ${isEditing ? 'group-hover:scale-105' : ''}`}>
                       {profile.profile_photo ? (
-                        <SafeImage src={profile.profile_photo} alt="Profile" className="w-full h-full object-cover" />
+                        <SafeImage 
+                          src={profile.profile_photo} 
+                          alt="Profile" 
+                          className="w-full h-full object-cover" 
+                          fallback={
+                            <div className="w-full h-full bg-gradient-primary flex items-center justify-center text-white text-3xl font-bold">
+                              {getInitial()}
+                            </div>
+                          }
+                        />
                       ) : (
                         <div className="w-full h-full bg-gradient-primary flex items-center justify-center text-white text-3xl font-bold">
                           {getInitial()}
@@ -519,10 +560,12 @@ const ProfileSettings = () => {
                       )}
 
                       {/* Hover Overlay */}
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-semibold">
-                        <Camera className="w-5 h-5 mb-1" />
-                        Change
-                      </div>
+                      {isEditing && (
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-semibold">
+                          <Camera className="w-5 h-5 mb-1" />
+                          Change
+                        </div>
+                      )}
 
                       {/* Upload Loading Spinner */}
                       {uploading && (
@@ -558,10 +601,11 @@ const ProfileSettings = () => {
                         <button
                           key={avatar.id}
                           type="button"
+                          disabled={!isEditing}
                           onClick={() => selectPresetAvatar(avatar.url)}
-                          className="relative rounded-xl overflow-hidden border-2 transition-all hover:scale-105 active:scale-95 flex items-center justify-center group bg-purple-50 shadow-sm w-[49px] h-[49px] flex-shrink-0 snap-center"
+                          className={`relative rounded-xl overflow-hidden border-2 transition-all flex items-center justify-center group bg-purple-50 shadow-sm w-[49px] h-[49px] flex-shrink-0 snap-center outline-none focus:outline-none focus:ring-2 focus:ring-[#f22c83] ${isEditing ? 'hover:scale-105 active:scale-95' : 'opacity-70 cursor-not-allowed'}`}
                           style={{
-                            borderColor: isSelected ? "#a428f0" : "transparent"
+                            borderColor: isSelected ? "#f22c83" : "transparent"
                           }}
                           title={avatar.label}
                         >
@@ -592,7 +636,6 @@ const ProfileSettings = () => {
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center justify-between">
                       <span className="flex items-center gap-1">
                         Username
-                        <span className="text-red-500">*</span>
                       </span>
                       {usernameStatus === "checking" && <span className="text-[10px] text-muted-foreground animate-pulse">Checking...</span>}
                       {usernameStatus === "available" && <span className="text-[10px] text-green-600 font-bold">Available</span>}
@@ -604,9 +647,11 @@ const ProfileSettings = () => {
                       </div>
                       <Input
                         value={profile.username}
+                        disabled={!isEditing}
                         onChange={(e) => setProfile({ ...profile, username: e.target.value })}
                         placeholder="e.g. rijaspabla"
                         className={`rounded-xl pl-9 h-11 text-gray-800 font-medium transition-colors ${
+                          !isEditing ? "bg-gray-50 text-gray-500 cursor-not-allowed" :
                           usernameStatus === "taken" ? "border-red-400 focus-visible:ring-red-400" : "border-purple-100 focus-visible:ring-primary focus-visible:border-primary"
                         }`}
                       />
@@ -622,9 +667,10 @@ const ProfileSettings = () => {
                       </div>
                       <Input
                         value={profile.full_name}
+                        disabled={!isEditing}
                         onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
                         placeholder="e.g. Rijas Pabla"
-                        className="rounded-xl pl-9 border-purple-100 focus-visible:ring-primary focus-visible:border-primary text-gray-800 h-11"
+                        className={`rounded-xl pl-9 border-purple-100 focus-visible:ring-primary focus-visible:border-primary text-gray-800 h-11 ${!isEditing && "bg-gray-50 text-gray-500 cursor-not-allowed"}`}
                       />
                     </div>
                   </div>
@@ -661,9 +707,10 @@ const ProfileSettings = () => {
                       </div>
                       <Input
                         value={profile.phone}
+                        disabled={!isEditing}
                         onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
                         placeholder="+91 XXXXX XXXXX"
-                        className="rounded-xl pl-9 border-purple-100 focus-visible:ring-primary focus-visible:border-primary text-gray-800 h-11"
+                        className={`rounded-xl pl-9 border-purple-100 focus-visible:ring-primary focus-visible:border-primary text-gray-800 h-11 ${!isEditing && "bg-gray-50 text-gray-500 cursor-not-allowed"}`}
                       />
                     </div>
                   </div>
@@ -675,8 +722,9 @@ const ProfileSettings = () => {
                       <div className="relative">
                         <select
                           value={selectedState}
+                          disabled={!isEditing}
                           onChange={(e) => setSelectedState(e.target.value)}
-                          className="w-full rounded-xl border border-purple-100 bg-white h-11 px-3 text-xs focus:ring-2 focus:ring-primary focus:border-transparent appearance-none font-medium cursor-pointer"
+                          className={`w-full rounded-xl border border-purple-100 bg-white h-11 px-3 text-xs focus:ring-2 focus:ring-primary focus:border-transparent appearance-none font-medium ${!isEditing ? "bg-gray-50 text-gray-500 cursor-not-allowed" : "cursor-pointer"}`}
                         >
                           <option value="">Select State</option>
                           {uniqueStates.map((st) => (
@@ -698,7 +746,7 @@ const ProfileSettings = () => {
                       <div className="relative">
                         <select
                           value={city}
-                          disabled={!selectedState}
+                          disabled={!selectedState || !isEditing}
                           onChange={(e) => {
                             setCity(e.target.value);
                             toast.success(`Location synchronized to ${e.target.value}`);
@@ -742,6 +790,7 @@ const ProfileSettings = () => {
                   <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
                     <Heart className="w-4 h-4 text-primary animate-pulse" />
                     My Favorite Pet Types
+                    <span className="text-red-500 font-bold ml-1">*</span>
                   </h3>
                   <p className="text-[11px] text-muted-foreground mt-0.5">Select the pets you love. We customize your Sruvo shop & vet listings based on this.</p>
                 </div>
@@ -755,8 +804,11 @@ const ProfileSettings = () => {
                       <button
                         key={pet.id}
                         type="button"
+                        disabled={!isEditing}
                         onClick={() => toggleFavoritePet(pet.id)}
-                        className={`py-4 px-3 rounded-2xl border text-xs font-bold transition-all text-center flex flex-col items-center justify-center gap-2 active:scale-95 relative ${
+                        className={`py-4 px-3 rounded-2xl border text-xs font-bold transition-all text-center flex flex-col items-center justify-center gap-2 relative ${
+                          !isEditing ? 'opacity-75 cursor-not-allowed' : 'active:scale-95'
+                        } ${
                           isSelected
                             ? "bg-purple-50 border-primary text-primary shadow-sm"
                             : "bg-white border-purple-100/60 text-gray-600 hover:bg-purple-50/20"
@@ -779,10 +831,11 @@ const ProfileSettings = () => {
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Pet Parent Bio / Story</label>
                   <textarea
                     value={preferences.bio}
+                    disabled={!isEditing}
                     onChange={(e) => setPreferences({ ...preferences, bio: e.target.value })}
                     placeholder="Tell us about yourself and your furry friends! For example: Proud Husky dad who loves weekend hikes."
                     rows={4}
-                    className="w-full rounded-xl border border-purple-100 p-3 text-sm text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent placeholder:text-gray-400"
+                    className={`w-full rounded-xl border border-purple-100 p-3 text-sm text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent placeholder:text-gray-400 ${!isEditing && "bg-gray-50 text-gray-500 cursor-not-allowed"}`}
                   />
                 </div>
               </Card>
@@ -803,8 +856,9 @@ const ProfileSettings = () => {
                     </div>
                     <button 
                       type="button"
+                      disabled={!isEditing}
                       onClick={() => setPreferences(prev => ({ ...prev, receiveReminders: !prev.receiveReminders }))}
-                      className={`w-10 h-6 rounded-full transition-colors relative flex items-center flex-shrink-0 ${
+                      className={`w-10 h-6 rounded-full transition-colors relative flex items-center flex-shrink-0 ${!isEditing && 'opacity-60 cursor-not-allowed'} ${
                         preferences.receiveReminders ? "bg-primary" : "bg-gray-200"
                       }`}
                     >
@@ -822,8 +876,9 @@ const ProfileSettings = () => {
                     </div>
                     <button 
                       type="button"
+                      disabled={!isEditing}
                       onClick={() => setPreferences(prev => ({ ...prev, whatsappUpdates: !prev.whatsappUpdates }))}
-                      className={`w-10 h-6 rounded-full transition-colors relative flex items-center flex-shrink-0 ${
+                      className={`w-10 h-6 rounded-full transition-colors relative flex items-center flex-shrink-0 ${!isEditing && 'opacity-60 cursor-not-allowed'} ${
                         preferences.whatsappUpdates ? "bg-primary" : "bg-gray-200"
                       }`}
                     >
@@ -839,30 +894,32 @@ const ProfileSettings = () => {
         </AnimatePresence>
 
         {/* Action Button at bottom */}
-        <div className="flex justify-center mt-6">
-          <Button 
-            onClick={handleSave} 
-            disabled={saving || usernameStatus === "taken"} 
-            className="w-full max-w-xs rounded-[20px] h-13 text-base font-bold bg-gradient-primary hover:opacity-95 text-white shadow-lg shadow-purple-500/10 active:scale-[0.99] transition-all"
-          >
-            {saving ? (
-              <span className="flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Applying settings...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5" />
-                Save Profile & Preferences
-              </span>
-            )}
-          </Button>
-        </div>
+        {isEditing && (
+          <div className="flex justify-center mt-6">
+            <Button 
+              onClick={handleSave} 
+              disabled={saving || usernameStatus === "taken"} 
+              className="w-full max-w-xs rounded-[20px] h-13 text-base font-bold bg-gradient-primary hover:opacity-95 text-white shadow-lg shadow-purple-500/10 active:scale-[0.99] transition-all"
+            >
+              {saving ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Applying settings...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  Save Profile & Preferences
+                </span>
+              )}
+            </Button>
+          </div>
+        )}
         
         {/* Support note */}
-        <div className="text-center pt-3">
-          <p className="text-xs text-muted-foreground font-medium flex items-center justify-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+        <div className="text-center pt-3 px-4 flex justify-center items-center">
+          <p className="text-xs text-muted-foreground font-medium leading-relaxed max-w-sm">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 inline-block mr-1 align-text-bottom flex-shrink-0" />
             Your account data is secure and protected in Sruvo ecosystem.
           </p>
         </div>

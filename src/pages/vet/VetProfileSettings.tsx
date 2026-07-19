@@ -210,7 +210,12 @@ const VetProfileSettings = () => {
             <label htmlFor="profile-photo-upload" className="cursor-pointer group flex flex-col items-center">
               <div className="w-[100px] h-[100px] rounded-full overflow-hidden bg-purple-50 ring-4 ring-purple-50 flex items-center justify-center relative shadow-sm transition-all group-hover:ring-purple-100">
                 {profile.profile_photo ? (
-                  <SafeImage src={profile.profile_photo} alt="Profile" className="w-full h-full object-cover" />
+                  <SafeImage 
+                    src={profile.profile_photo} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover" 
+                    fallback={<User className="w-10 h-10 text-[#9A3EF8]" />}
+                  />
                 ) : (
                   <User className="w-10 h-10 text-[#9A3EF8]" />
                 )}

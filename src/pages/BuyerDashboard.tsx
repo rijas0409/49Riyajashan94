@@ -263,9 +263,13 @@ const BuyerDashboard = () => {
       }));
 
       setPets(enrichedPets);
-    } catch (e) {
+    } catch (e: any) {
       console.error("fetchPets error:", e);
-      toast.error("Failed to load pets");
+      if (e && e.code === "PGRST205") {
+        console.warn("Pets table not yet created in Supabase database schema.");
+      } else {
+        toast.error("Failed to load pets");
+      }
     } finally {
       setLoading(false);
     }

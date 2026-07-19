@@ -1607,6 +1607,14 @@ Return the response as a single JSON object containing only a "description" key.
     }
   });
 
+  // Serve RjRollout.html on the /rj route directly with 100% visual and functional parity
+  app.get("/rj", (req, res) => {
+    const targetPath = process.env.NODE_ENV === "production"
+      ? path.join(process.cwd(), "dist", "RjRollout.html")
+      : path.join(process.cwd(), "public", "RjRollout.html");
+    res.sendFile(targetPath);
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

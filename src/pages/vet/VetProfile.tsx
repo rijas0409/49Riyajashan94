@@ -214,6 +214,11 @@ const VetProfile = () => {
                   src={vetData.photo}
                   alt={vetData.name}
                   className="w-full h-full" 
+                  fallback={
+                    <div className="w-full h-full flex items-center justify-center bg-purple-100 text-purple-400">
+                       <User size={64} weight="fill" />
+                    </div>
+                  }
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-purple-100 text-purple-400">

@@ -4,6 +4,7 @@ import type { User, Session } from "@supabase/supabase-js";
 
 interface UserProfile {
   name: string;
+  full_name: string | null;
   email: string;
   photo: string | null;
   role: string | null;
@@ -34,13 +35,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [authReady, setAuthReady] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(() => {
+    try {
+      const cached = localStorage.getItem("sruvo_user_profile");
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const updateProfile = (newProfile: UserProfile | null) => {
+    setProfile(newProfile);
+    if (newProfile) {
+      try {
+        localStorage.setItem("sruvo_user_profile", JSON.stringify(newProfile));
+      } catch (e) {
+        console.error("Error setting sruvo_user_profile:", e);
+      }
+    } else {
+      localStorage.removeItem("sruvo_user_profile");
+    }
+  };
 
   const fetchProfile = async (userId: string, userEmail: string, metaName: string, metaRole?: string | null) => {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("name, email, profile_photo, role, is_onboarding_complete, is_admin_approved")
+        .select("name, full_name, email, profile_photo, role, is_onboarding_complete, is_admin_approved")
         .eq("id", userId)
         .maybeSingle();
 
@@ -64,14 +85,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Gucci bypass
         if (userEmail === 'gucci@123.com' || userEmail === 'rijas@lv.com') {
            vetStatus = 'approved';
-        }
+         }
       }
 
       if (data) {
-        setProfile({
+        let photoUrl = data.profile_photo || "";
+        if (photoUrl && !photoUrl.startsWith("http") && !photoUrl.startsWith("/") && !photoUrl.startsWith("data:") && !photoUrl.startsWith("blob:") && !photoUrl.includes("/assets/")) {
+          const { data: pubData } = supabase.storage.from("seller-documents").getPublicUrl(photoUrl);
+          photoUrl = pubData?.publicUrl || "";
+        }
+        updateProfile({
           name: data.name || metaName || "User",
+          full_name: data.full_name || "",
           email: data.email || userEmail || "",
-          photo: data.profile_photo,
+          photo: photoUrl || null,
           role: data.role || metaRole || null,
           vetStatus,
           is_onboarding_complete: data.is_onboarding_complete ?? false,
@@ -81,8 +108,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         else if (metaRole) localStorage.setItem("sruvo_user_role", metaRole);
         localStorage.setItem("sruvo_admin_approved", String(!!data.is_admin_approved));
       } else {
-        setProfile({
+        updateProfile({
           name: metaName || "User",
+          full_name: "",
           email: userEmail || "",
           photo: null,
           role: metaRole || null,
@@ -93,8 +121,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (metaRole) localStorage.setItem("sruvo_user_role", metaRole);
       }
     } catch {
-      setProfile({
+      updateProfile({
         name: metaName || "User",
+        full_name: "",
         email: userEmail || "",
         photo: null,
         role: metaRole || null,
@@ -125,16 +154,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const metaName = meta?.name || meta?.full_name || "";
             const metaRole = meta?.role || null;
 
-            // Set immediate profile from metadata to avoid "U" flash
-            setProfile(prev => ({
-              name: prev?.name || metaName || "User",
-              email: prev?.email || currentSession.user.email || "",
-              photo: prev?.photo || null,
-              role: prev?.role || metaRole,
-              vetStatus: prev?.vetStatus || null,
-              is_onboarding_complete: prev?.is_onboarding_complete,
-              is_admin_approved: prev?.is_admin_approved,
-            }));
+            // Set immediate profile from metadata to avoid "U" flash, but don't overwrite richer cached attributes with null
+            setProfile(prev => {
+              const updated = {
+                name: prev?.name || metaName || "User",
+                full_name: prev?.full_name || "",
+                email: prev?.email || currentSession.user.email || "",
+                photo: prev?.photo || null,
+                role: prev?.role || metaRole,
+                vetStatus: prev?.vetStatus || null,
+                is_onboarding_complete: prev?.is_onboarding_complete,
+                is_admin_approved: prev?.is_admin_approved,
+              };
+              try {
+                localStorage.setItem("sruvo_user_profile", JSON.stringify(updated));
+              } catch (e) {}
+              return updated;
+            });
 
             // Then fetch full profile from DB (deferred to avoid deadlock with Supabase auth)
             setTimeout(() => {
@@ -143,7 +179,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               }
             }, 0);
           } else {
-            setProfile(null);
+            updateProfile(null);
           }
 
           if (!authReady) {
@@ -166,12 +202,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const meta = initialSession.user.user_metadata as Record<string, any>;
           const metaName = meta?.name || meta?.full_name || "";
           const metaRole = meta?.role || null;
-          setProfile({
-            name: metaName || "User",
-            email: initialSession.user.email || "",
-            photo: null,
-            role: metaRole,
-          });
+
+          const cached = localStorage.getItem("sruvo_user_profile");
+          if (!cached) {
+            updateProfile({
+              name: metaName || "User",
+              full_name: "",
+              email: initialSession.user.email || "",
+              photo: null,
+              role: metaRole,
+            });
+          }
           fetchProfile(initialSession.user.id, initialSession.user.email || "", metaName, metaRole);
         }
         setAuthReady(true);

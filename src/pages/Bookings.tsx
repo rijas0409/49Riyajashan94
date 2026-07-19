@@ -87,7 +87,7 @@ const Bookings = () => {
   const [orders, setOrders] = useState<OrderWithPet[]>([]);
   const [appointments, setAppointments] = useState<VetAppointment[]>([]);
   const [prescIdMap, setPrescIdMap] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("all");
 
   useEffect(() => {
@@ -236,14 +236,6 @@ const Bookings = () => {
     { id: "vet", label: "Vet Visits", count: appointments.length },
   ];
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#faf8fc] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[#faf8fc] pb-12 relative overflow-x-hidden">
       {/* Decorative Blob Backgrounds */}
@@ -257,31 +249,47 @@ const Bookings = () => {
             variant="ghost" 
             size="icon" 
             className="rounded-full hover:bg-purple-50 transition-colors" 
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate("/buyer/profile");
+              }
+            }}
           >
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </Button>
           <div>
             <h1 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">My Bookings</h1>
-            <p className="text-[10px] text-muted-foreground font-medium font-sans">Track your premium pet acquisitions and professional vet consultations</p>
           </div>
         </div>
       </header>
 
       {/* Modern Styled Sub Header / Filter Tabs */}
       <div className="sticky top-[61px] z-40 bg-[#faf8fc]/90 backdrop-blur-md px-4 py-3 border-b border-purple-100/30">
-        <div className="container mx-auto max-w-lg flex gap-2">
+        <div className="container mx-auto max-w-lg flex gap-2.5 overflow-x-auto no-scrollbar flex-nowrap">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-2 rounded-full text-xs font-bold transition-all ${
+              className={`py-2 px-4 rounded-full text-xs font-bold transition-all whitespace-nowrap flex-shrink-0 ${
                 activeTab === tab.id
                   ? "bg-gradient-primary text-white shadow-md shadow-primary/10"
                   : "bg-white text-gray-500 border border-purple-100/60 hover:text-gray-700"
               }`}
             >
-              {tab.label} {tab.count > 0 && <span className="ml-0.5 opacity-90">({tab.count})</span>}
+              <span className="flex items-center justify-center gap-1.5">
+                <span>{tab.label}</span>
+                {tab.count > 0 && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+                    activeTab === tab.id
+                      ? "bg-white/20 text-white"
+                      : "bg-purple-50 text-primary border border-purple-100/20"
+                  }`}>
+                    {tab.count}
+                  </span>
+                )}
+              </span>
             </button>
           ))}
         </div>
