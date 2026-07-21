@@ -41,6 +41,7 @@ import ProductsOnboarding from "./pages/ProductsOnboarding";
 import ProductsPendingApproval from "./pages/ProductsPendingApproval";
 import ProfileMenu from "./pages/ProfileMenu";
 import ProfileSettings from "./pages/ProfileSettings";
+import SupportChat from "./pages/SupportChat";
 import EmptyPetPassport from "./pages/EmptyPetPassport";
 import PublicPetPassport from "./pages/PublicPetPassport";
 import SellerDashboard from "./pages/SellerDashboard";
@@ -214,74 +215,22 @@ const GlobalSmartMatchIframe = () => {
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify(event.data.payload),
+            body: JSON.stringify({
+              ...event.data.payload,
+              selectedCity: city || "Gurgaon"
+            }),
           });
           const result = await response.json();
-          console.log("[SmartMatch Frontend] Successfully posted payload to Phase 1 foundation backend. Response:", result);
+          console.log("[SmartMatch Frontend] Backend Response:", result);
 
           let isVetFound = false;
 
-          if (result.success && result.veterinarians && result.veterinarians.length > 0) {
-            const payload = event.data.payload;
-            const petType = payload.pet?.species || "";
-            // Find main concern
-            const mainConcernQA = payload.concerns?.find((qa: any) => 
-              qa.question && qa.question.includes("What is your main concern today?")
-            );
-            const mainConcern = mainConcernQA ? mainConcernQA.answer : "";
-
-            console.log("[SmartMatch Matching] Filtering vets for:", { petType, mainConcern });
-
-            // Hard filtering logic
-            const matchedVets = result.veterinarians.filter((vet: any) => {
-              // 1. Species match:
-              // If vet has specializations, check if petType exists inside it (case-insensitive).
-              // If specializations is empty, assume they are general (match everything).
-              const specList = vet.specializations || [];
-              const speciesMatch = specList.length === 0 || specList.some((s: string) => 
-                s.toLowerCase().includes(petType.toLowerCase()) || 
-                petType.toLowerCase().includes(s.toLowerCase())
-              );
-
-              // 2. Concern match:
-              // Check if mainConcern is inside vet's clinical_expertise or clinical_expertise is empty
-              const expertiseList = vet.clinical_expertise || [];
-              const concernMatch = expertiseList.length === 0 || expertiseList.some((e: string) => 
-                e.toLowerCase().includes(mainConcern.toLowerCase()) || 
-                mainConcern.toLowerCase().includes(e.toLowerCase())
-              );
-
-              return speciesMatch && concernMatch;
-            });
-
-            console.log("[SmartMatch Matching] Filter result count:", matchedVets.length);
-
-            const bestVet = matchedVets.length > 0 ? matchedVets[0] : null;
-
-            if (bestVet) {
-              const rawName = bestVet.profile?.full_name || bestVet.profile?.name || (bestVet.user_id === "f9834ef6-778d-4384-8d17-6316fffa03b6" ? "Jashan Pabla" : "Veterinarian");
-              const realName = rawName.startsWith("Dr. ") ? rawName : `Dr. ${rawName}`;
-              
-              matchedVetResultRef.current = {
-                id: bestVet.id,
-                userId: bestVet.user_id,
-                name: realName,
-                specialization: bestVet.specializations?.[0] || "General Veterinarian",
-                image: bestVet.profile_photo || bestVet.profile?.profile_photo || "",
-                rating: bestVet.average_rating || 0,
-                experience: bestVet.years_of_experience || 0,
-                fee: bestVet.online_fee || 499,
-                onlineFee: bestVet.online_fee || 500,
-                offlineFee: bestVet.offline_fee || 800,
-                weekly_availability: bestVet.weekly_availability,
-              };
-              console.log("[SmartMatch Matching] Selected best matched vet:", matchedVetResultRef.current);
-              isVetFound = true;
-            } else {
-              console.log("[SmartMatch Matching] No matching vet found under strict species/concern filters.");
-              matchedVetResultRef.current = null;
-            }
+          if (result.success && result.matchedVet) {
+            matchedVetResultRef.current = result.matchedVet;
+            console.log("[SmartMatch Frontend] Matched Vet selected:", matchedVetResultRef.current);
+            isVetFound = true;
           } else {
+            console.log("[SmartMatch Frontend] No veterinarian matched from engine.");
             matchedVetResultRef.current = null;
           }
 
@@ -291,7 +240,7 @@ const GlobalSmartMatchIframe = () => {
             iframe.contentWindow.postMessage({ type: isVetFound ? "MATCH_FOUND" : "NO_VET_FOUND" }, "*");
           }
         } catch (error) {
-          console.error("[SmartMatch Frontend] Error posting payload to Phase 1 foundation backend:", error);
+          console.error("[SmartMatch Frontend] Error in Smart Match endpoint call:", error);
           matchedVetResultRef.current = null;
           const iframe = document.querySelector('iframe[title="Sruvo - Care Match Loading"]') as HTMLIFrameElement;
           if (iframe && iframe.contentWindow) {
@@ -462,6 +411,7 @@ const App = () => (
                 <Route path="/buyer/profile-menu" element={<ProfileMenu />} />
                 <Route path="/buyer/profile-settings" element={<ProfileSettings />} />
                 <Route path="/buyer/profile/settings" element={<ProfileSettings />} />
+                <Route path="/buyer/support" element={<SupportChat />} />
                 <Route path="/buyer/pet-passport" element={<EmptyPetPassport />} />
                 <Route path="/passport/:id" element={<PublicPetPassport />} />
                 <Route path="/seller-dashboard" element={<SellerDashboard />} />

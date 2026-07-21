@@ -2,6 +2,63 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
+import dogAvatar1 from '@/assets/images/dog_avatar_1_1783701749330.jpg';
+import dogAvatar2 from '@/assets/images/dog_avatar_2_1783701760930.jpg';
+import dogAvatar3 from '@/assets/images/dog_avatar_3_1783701771466.jpg';
+import catAvatar1 from '@/assets/images/cat_avatar_1_1783701781407.jpg';
+import catAvatar2 from '@/assets/images/cat_avatar_2_1783701792687.jpg';
+import birdAvatar1 from '@/assets/images/bird_avatar_1_1783701806124.jpg';
+import birdAvatar2 from '@/assets/images/bird_avatar_2_1783701816738.jpg';
+import hamsterAvatar1 from '@/assets/images/hamster_avatar_1_1783701827694.jpg';
+import hamsterAvatar2 from '@/assets/images/hamster_avatar_2_1783701840456.jpg';
+
+const AVATAR_MAP: Record<string, string> = {
+  dog1: dogAvatar1,
+  dog2: dogAvatar2,
+  dog3: dogAvatar3,
+  cat1: catAvatar1,
+  cat2: catAvatar2,
+  bird1: birdAvatar1,
+  bird2: birdAvatar2,
+  hamster1: hamsterAvatar1,
+  hamster2: hamsterAvatar2,
+};
+
+export const resolveProfilePhoto = (photo: string | null | undefined): string | null => {
+  if (!photo) return null;
+  
+  // 1. Check if it matches a direct preset key
+  if (AVATAR_MAP[photo]) {
+    return AVATAR_MAP[photo];
+  }
+  
+  // 2. Match legacy paths stored in DB (case-insensitive checks)
+  const normalized = photo.toLowerCase();
+  if (normalized.includes("dog_avatar_1") || normalized.includes("dog1")) return dogAvatar1;
+  if (normalized.includes("dog_avatar_2") || normalized.includes("dog2")) return dogAvatar2;
+  if (normalized.includes("dog_avatar_3") || normalized.includes("dog3")) return dogAvatar3;
+  if (normalized.includes("cat_avatar_1") || normalized.includes("cat1")) return catAvatar1;
+  if (normalized.includes("cat_avatar_2") || normalized.includes("cat2")) return catAvatar2;
+  if (normalized.includes("bird_avatar_1") || normalized.includes("bird1")) return birdAvatar1;
+  if (normalized.includes("bird_avatar_2") || normalized.includes("bird2")) return birdAvatar2;
+  if (normalized.includes("hamster_avatar_1") || normalized.includes("hamster1")) return hamsterAvatar1;
+  if (normalized.includes("hamster_avatar_2") || normalized.includes("hamster2")) return hamsterAvatar2;
+
+  // 3. If it's a relative path in Supabase storage, get the public URL
+  if (
+    !photo.startsWith("http") && 
+    !photo.startsWith("/") && 
+    !photo.startsWith("data:") && 
+    !photo.startsWith("blob:") && 
+    !photo.includes("/assets/")
+  ) {
+    const { data: pubData } = supabase.storage.from("seller-documents").getPublicUrl(photo);
+    return pubData?.publicUrl || null;
+  }
+  
+  return photo;
+};
+
 interface UserProfile {
   name: string;
   full_name: string | null;
@@ -89,16 +146,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (data) {
-        let photoUrl = data.profile_photo || "";
-        if (photoUrl && !photoUrl.startsWith("http") && !photoUrl.startsWith("/") && !photoUrl.startsWith("data:") && !photoUrl.startsWith("blob:") && !photoUrl.includes("/assets/")) {
-          const { data: pubData } = supabase.storage.from("seller-documents").getPublicUrl(photoUrl);
-          photoUrl = pubData?.publicUrl || "";
-        }
+        const photoUrl = resolveProfilePhoto(data.profile_photo);
         updateProfile({
           name: data.name || metaName || "User",
           full_name: data.full_name || "",
           email: data.email || userEmail || "",
-          photo: photoUrl || null,
+          photo: photoUrl,
           role: data.role || metaRole || null,
           vetStatus,
           is_onboarding_complete: data.is_onboarding_complete ?? false,
@@ -156,15 +209,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             // Set immediate profile from metadata to avoid "U" flash, but don't overwrite richer cached attributes with null
             setProfile(prev => {
+              let cachedProfile: UserProfile | null = null;
+              try {
+                const cached = localStorage.getItem("sruvo_user_profile");
+                if (cached) cachedProfile = JSON.parse(cached);
+              } catch (e) {}
+
+              const active = prev || cachedProfile;
               const updated = {
-                name: prev?.name || metaName || "User",
-                full_name: prev?.full_name || "",
-                email: prev?.email || currentSession.user.email || "",
-                photo: prev?.photo || null,
-                role: prev?.role || metaRole,
-                vetStatus: prev?.vetStatus || null,
-                is_onboarding_complete: prev?.is_onboarding_complete,
-                is_admin_approved: prev?.is_admin_approved,
+                name: active?.name || metaName || "User",
+                full_name: active?.full_name || "",
+                email: active?.email || currentSession.user.email || "",
+                photo: active?.photo || null,
+                role: active?.role || metaRole,
+                vetStatus: active?.vetStatus || null,
+                is_onboarding_complete: active?.is_onboarding_complete,
+                is_admin_approved: active?.is_admin_approved,
               };
               try {
                 localStorage.setItem("sruvo_user_profile", JSON.stringify(updated));
@@ -204,7 +264,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const metaRole = meta?.role || null;
 
           const cached = localStorage.getItem("sruvo_user_profile");
-          if (!cached) {
+          if (cached) {
+            try {
+              updateProfile(JSON.parse(cached));
+            } catch (e) {}
+          } else {
             updateProfile({
               name: metaName || "User",
               full_name: "",
@@ -255,6 +319,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       localStorage.removeItem("sruvo_user_role");
       localStorage.removeItem("sruvo_admin_approved");
+      localStorage.removeItem("sruvo_user_profile"); // Clear cached profile on signout
       setSession(null);
       setUser(null);
       setProfile(null);

@@ -305,7 +305,8 @@ const Addresses = () => {
       return;
     }
 
-    const options = { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 };
+    // Increased timeout to 10s and maximumAge: 0 to force a clean, highly accurate real-time read from GPS
+    const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -319,7 +320,7 @@ const Addresses = () => {
           mapRef.current.setZoom(16);
         }
         setLocationEnabled(true);
-        toast.success("Device location access granted!");
+        toast.success("Exact live location detected!");
 
         const result = await reverseGeocode(lat, lng);
         setGeocoding(false);
@@ -348,7 +349,7 @@ const Addresses = () => {
               mapRef.current.setZoom(16);
             }
             setLocationEnabled(true);
-            toast.success("Device location access granted!");
+            toast.success("Live location detected!");
 
             const result = await reverseGeocode(lat, lng);
             setGeocoding(false);
@@ -417,7 +418,7 @@ const Addresses = () => {
             }
             toast.info("Using default location. You can search or drag the map to select your address.");
           },
-          { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+          { enableHighAccuracy: false, timeout: 5000, maximumAge: 0 }
         );
       },
       options
@@ -425,29 +426,9 @@ const Addresses = () => {
   };
 
   const snapToCurrentLocation = async () => {
-    if (!gpsLocation) {
-      requestLocation();
-      return;
-    }
-    setGeocoding(true);
-    setMapCenter(gpsLocation);
-    setMapZoom(16);
-    if (mapRef.current) {
-      skipNextGeocodeRef.current = true;
-      mapRef.current.panTo(gpsLocation);
-      mapRef.current.setZoom(16);
-    }
-    const result = await reverseGeocode(gpsLocation.lat, gpsLocation.lng);
-    setGeocoding(false);
-    if (result) {
-      const matched = matchCityAndState(result.city, result.state);
-      setForm({
-        address_line: result.address_line,
-        city: matched.city || result.city,
-        state: matched.state || result.state,
-        pincode: result.pincode
-      });
-    }
+    // Force a clean, direct lookup from the device GPS to prevent caching of outdated/wrong locations
+    toast.info("Accessing live GPS of your device...", { duration: 2500 });
+    requestLocation();
   };
 
   const fetchAddresses = async () => {
@@ -993,48 +974,48 @@ const Addresses = () => {
               return (
                 <Card 
                   key={addr.id} 
-                  className={`p-4.5 rounded-2xl border transition-all duration-200 flex flex-col gap-3.5 ${
+                  className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col gap-4 ${
                     addr.is_default 
-                      ? "border-primary bg-primary/[0.02] shadow-sm" 
-                      : "border-border bg-white hover:border-muted-foreground/20 hover:shadow-sm"
+                      ? "border-primary/40 bg-primary/[0.01] shadow-[0_4px_20px_rgba(155,81,224,0.05)]" 
+                      : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
                   }`}
                 >
                   <div className="flex justify-between items-start gap-3">
-                    <div className="flex gap-3.5 items-start min-w-0">
+                    <div className="flex gap-4 items-start min-w-0">
                       {/* Elegant Clean MapPin Icon Wrapper */}
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border transition-all ${
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border transition-all ${
                         addr.is_default 
                           ? "bg-primary/10 border-primary/20 text-primary" 
-                          : "bg-muted border-border text-muted-foreground"
+                          : "bg-gray-50 border-gray-100 text-gray-500"
                       }`}>
-                        <MapPin className="w-4.5 h-4.5" />
+                        <MapPin className="w-5 h-5" />
                       </div>
                       
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                        <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                          <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                             isHome 
                               ? "bg-blue-50 text-blue-600 border border-blue-100" 
                               : isWork 
                                 ? "bg-amber-50 text-amber-600 border border-amber-100" 
-                                : "bg-gray-100 text-gray-600 border border-gray-200"
+                                : "bg-purple-50 text-primary border border-purple-100"
                           }`}>
                             {isHome ? "Home" : isWork ? "Work" : "Address"}
                           </span>
 
                           {addr.is_default && (
-                            <span className="text-[10px] bg-primary text-white font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                            <span className="text-[9px] bg-primary/10 text-primary border border-primary/20 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
                               <Star className="w-2.5 h-2.5 fill-current" />
                               Default
                             </span>
                           )}
                         </div>
                         
-                        <h4 className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">
+                        <h4 className="font-bold text-gray-800 text-sm leading-snug line-clamp-2">
                           {addr.address_line}
                         </h4>
                         
-                        <p className="text-xs text-muted-foreground mt-0.5">
+                        <p className="text-xs text-gray-500 font-medium mt-1">
                           {addr.city}, {addr.state} - {addr.pincode}
                         </p>
                       </div>
@@ -1042,31 +1023,31 @@ const Addresses = () => {
                   </div>
 
                   {/* Action buttons at the bottom of the card with simple separator */}
-                  <div className="border-t border-border pt-3 flex items-center justify-between gap-2">
+                  <div className="border-t border-gray-100/80 pt-3.5 flex items-center justify-between gap-2">
                     <div>
                       {!addr.is_default ? (
                         <button 
                           onClick={() => setDefault(addr.id)}
-                          className="text-xs text-primary hover:text-primary/90 font-semibold transition-all hover:underline"
+                          className="text-xs text-primary hover:text-primary/90 font-bold transition-all hover:underline"
                         >
                           Set as Default
                         </button>
                       ) : (
-                        <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+                        <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
                           <ShieldCheck className="w-4 h-4" />
                           Default Delivery Address
                         </span>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-0.5">
+                    <div className="flex items-center gap-1.5">
                       {/* Edit Button */}
                       <Button 
                         variant="ghost" 
                         size="icon" 
                         onClick={() => startEdit(addr)}
                         title="Edit Address"
-                        className="text-muted-foreground hover:text-primary hover:bg-muted rounded-lg w-8 h-8 transition-colors"
+                        className="text-gray-400 hover:text-primary hover:bg-purple-50 hover:border-purple-100 border border-transparent rounded-full w-8 h-8 transition-all active:scale-90"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </Button>
@@ -1077,7 +1058,7 @@ const Addresses = () => {
                         size="icon" 
                         onClick={() => handleDelete(addr.id)}
                         title="Delete Address"
-                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg w-8 h-8 transition-colors"
+                        className="text-gray-400 hover:text-destructive hover:bg-red-50 hover:border-red-100 border border-transparent rounded-full w-8 h-8 transition-all active:scale-90"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>

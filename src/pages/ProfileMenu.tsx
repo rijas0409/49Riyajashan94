@@ -2,13 +2,13 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { SRUVO_LOGO_URL } from "@/constants/branding";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, resolveProfilePhoto } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { 
   User, MapPin, Wallet, Calendar, CreditCard, Bell, 
   Shield, LogOut, ArrowLeft, ChevronRight, Heart, ShoppingBag,
-  Camera, PawPrint, Check, QrCode, ShieldCheck
+  Camera, PawPrint, Check, QrCode, ShieldCheck, HelpCircle
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -154,6 +154,14 @@ const ProfileMenu = () => {
               My Profile
             </span>
           </div>
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/buyer/support")}
+            className="flex items-center gap-1.5 text-primary font-bold hover:bg-primary/10 px-3 py-1.5 rounded-full transition-all border border-primary/20 bg-primary/5 shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <HelpCircle className="w-4 h-4 text-primary animate-pulse" />
+            <span className="text-xs">Help</span>
+          </Button>
         </div>
       </header>
 
@@ -191,8 +199,8 @@ const ProfileMenu = () => {
                   <div className="w-20 h-20 rounded-full border-4 border-white/30 overflow-hidden bg-white/20 backdrop-blur-md flex items-center justify-center">
                     {uploading ? (
                       <span className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : profile?.photo || profile?.profile_photo ? (
-                      <img src={profile?.photo || profile?.profile_photo || ""} alt={profile?.full_name || profile?.name || "User"} className="w-full h-full object-cover" />
+                    ) : (profile?.photo || profile?.profile_photo) ? (
+                      <img src={resolveProfilePhoto(profile?.photo || profile?.profile_photo) || ""} alt={profile?.full_name || profile?.name || "User"} className="w-full h-full object-cover" />
                     ) : (
                       <User className="w-10 h-10 text-white" />
                     )}

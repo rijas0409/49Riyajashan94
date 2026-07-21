@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, resolveProfilePhoto } from "@/contexts/AuthContext";
 import { useLocation } from "@/contexts/LocationContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -227,11 +227,7 @@ const ProfileSettings = () => {
       }
 
       if (data) {
-        let photoUrl = data.profile_photo || "";
-        if (photoUrl && !photoUrl.startsWith("http") && !photoUrl.startsWith("/") && !photoUrl.startsWith("data:") && !photoUrl.startsWith("blob:") && !photoUrl.includes("/assets/")) {
-          const { data: pubData } = supabase.storage.from("seller-documents").getPublicUrl(photoUrl);
-          photoUrl = pubData?.publicUrl || "";
-        }
+        const photoUrl = resolveProfilePhoto(data.profile_photo) || "";
         setProfile({
           username: data.username || data.name || "",
           name: data.name || "",
@@ -394,15 +390,15 @@ const ProfileSettings = () => {
     }
   };
 
-  const selectPresetAvatar = async (avatarUrl: string) => {
+  const selectPresetAvatar = async (avatarId: string, avatarUrl: string) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // Update in profiles database
+      // Update in profiles database using the clean preset ID!
       const { error: dbError } = await supabase
         .from("profiles")
-        .update({ profile_photo: avatarUrl })
+        .update({ profile_photo: avatarId })
         .eq("id", session.user.id);
 
       if (dbError) throw dbError;
@@ -596,13 +592,13 @@ const ProfileSettings = () => {
                   </p>
                   <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x">
                     {PRESET_AVATARS.map((avatar) => {
-                      const isSelected = profile.profile_photo === avatar.url;
+                      const isSelected = profile.profile_photo === avatar.url || profile.profile_photo === avatar.id;
                       return (
                         <button
                           key={avatar.id}
                           type="button"
                           disabled={!isEditing}
-                          onClick={() => selectPresetAvatar(avatar.url)}
+                          onClick={() => selectPresetAvatar(avatar.id, avatar.url)}
                           className={`relative rounded-xl overflow-hidden border-2 transition-all flex items-center justify-center group bg-purple-50 shadow-sm w-[49px] h-[49px] flex-shrink-0 snap-center outline-none focus:outline-none focus:ring-2 focus:ring-[#f22c83] ${isEditing ? 'hover:scale-105 active:scale-95' : 'opacity-70 cursor-not-allowed'}`}
                           style={{
                             borderColor: isSelected ? "#f22c83" : "transparent"

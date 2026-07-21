@@ -39,7 +39,7 @@ const Wishlist = () => {
 
   useEffect(() => {
     fetchWishlist();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchWishlist = async () => {
     try {
@@ -60,13 +60,21 @@ const Wishlist = () => {
           .eq("user_id", session.user.id)
       ]);
 
-      if (petsRes.error) throw petsRes.error;
-      if (productsRes.error) throw productsRes.error;
+      const petsError = petsRes.error;
+      const productsError = productsRes.error;
 
-      setWishlistPets(petsRes.data || []);
-      setWishlistProducts(productsRes.data || []);
+      // Handle table not found (42P01 or PGRST205) gracefully
+      const isPetsMissing = petsError && (petsError.code === "42P01" || petsError.code === "PGRST205");
+      const isProductsMissing = productsError && (productsError.code === "42P01" || productsError.code === "PGRST205");
+
+      if (petsError && !isPetsMissing) throw petsError;
+      if (productsError && !isProductsMissing) throw productsError;
+
+      setWishlistPets(isPetsMissing ? [] : (petsRes.data || []));
+      setWishlistProducts(isProductsMissing ? [] : (productsRes.data || []));
     } catch (error) {
-      toast.error("Failed to load wishlist");
+      console.warn("Failed to load wishlist from database:", error);
+      // Fallback silently without throwing user-visible toast error if it's a structural or connection issue
     } finally {
       setLoading(false);
     }

@@ -49,13 +49,20 @@ export const useWishlist = () => {
         supabase.from("wishlist_products").select("*").eq("user_id", uid)
       ]);
 
-      if (petsRes.error) throw petsRes.error;
-      if (productsRes.error) throw productsRes.error;
+      const petsError = petsRes.error;
+      const productsError = productsRes.error;
 
-      setWishlistPets(petsRes.data || []);
-      setWishlistProducts(productsRes.data || []);
+      // Handle table not found (42P01 or PGRST205) gracefully
+      const isPetsMissing = petsError && (petsError.code === "42P01" || petsError.code === "PGRST205");
+      const isProductsMissing = productsError && (productsError.code === "42P01" || productsError.code === "PGRST205");
+
+      if (petsError && !isPetsMissing) throw petsError;
+      if (productsError && !isProductsMissing) throw productsError;
+
+      setWishlistPets(isPetsMissing ? [] : (petsRes.data || []));
+      setWishlistProducts(isProductsMissing ? [] : (productsRes.data || []));
     } catch (error) {
-      console.error("Failed to fetch wishlist:", error);
+      console.warn("Failed to fetch wishlist:", error);
     } finally {
       setLoading(false);
     }

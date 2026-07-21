@@ -251,7 +251,14 @@ const BuyerDashboard = () => {
         .eq("verification_status", "verified")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === "42P01" || error.code === "PGRST205") {
+          console.warn("Pets table not yet created in Supabase database schema.");
+          setPets([]);
+          return;
+        }
+        throw error;
+      }
 
       const rows = petsData || [];
       const ownerIds = Array.from(new Set(rows.map((pet: any) => pet.owner_id).filter(Boolean)));
@@ -264,12 +271,8 @@ const BuyerDashboard = () => {
 
       setPets(enrichedPets);
     } catch (e: any) {
-      console.error("fetchPets error:", e);
-      if (e && e.code === "PGRST205") {
-        console.warn("Pets table not yet created in Supabase database schema.");
-      } else {
-        toast.error("Failed to load pets");
-      }
+      console.warn("fetchPets warning/error:", e);
+      // Fail silently or with log rather than disruptive toast to end user
     } finally {
       setLoading(false);
     }

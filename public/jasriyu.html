@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sruvo — Pet Care App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Preloaded so the closing promo image is ready the instant the user scrolls to it, instead of only starting to fetch when it enters the viewport. -->
+<link rel="preload" as="image" href="https://i.ibb.co/Zp9737VH/file-0000000092f87207a6a365d04c8c90db.jpg" fetchpriority="high">
+<style>
+/* =========================================================
+   ROOT VARIABLES — single source of truth for the whole page
+========================================================= */
+:root {
+    --text-dark: #12143a;
+    --text-body: #4b4f66;
+    --text-light: #7b7f95;
+    --text-gray: #8a8ea3;
+    --purple-link: #7b3dff;
+    --pink: #ff3377;
+    --pink-btn: #f0287a;
+    --star-gold: #ffb400;
+    --border-light: #f0f0f5;
+    --radius-lg: 20px;
+    --radius-md: 16px;
+    --shadow-card: 0 2px 14px rgba(15, 17, 58, 0.06);
+
+    --page-pad-x: 24px;
+    --page-pad-x-mobile: 16px;
+    --section-gap: 36px;
+    --section-gap-mobile: 24px;
+
+    --heading-size: 22px;
+    --heading-size-mobile: 18px;
+    --subtitle-size: 13.5px;
+    --subtitle-size-mobile: 12.5px;
+}
+
+/* =========================================================
+   RESET — one reset, no duplicates
+========================================================= */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+    background-color: #ffffff;
+    color: var(--text-dark);
+}
+
+a { color: inherit; }
+button { font: inherit; }
+img { max-width: 100%; display: block; }
+
+/* =========================================================
+   PAGE WRAPPER — one flex column, ONE consistent gap between
+   every section (this is what fixes the uneven spacing).
+========================================================= */
+.page-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px var(--page-pad-x) 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--section-gap);
+}
+
+.hero-block {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* =========================================================
+   SHARED HORIZONTAL SCROLL TRACK
+   (used by every carousel-style section on the page)
+========================================================= */
+.scroll-track {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+}
+.scroll-track::-webkit-scrollbar { display: none; }
+
+/* =========================================================
+   SHARED SECTION HEADER — identical heading size + subtitle
+   pattern for every section on the page
+========================================================= */
+.section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.section-head .titles h2 {
+    font-size: var(--heading-size);
+    font-weight: 700;
+    color: var(--text-dark);
+    line-height: 1.25;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-head .title-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.section-head .titles p.section-subtitle {
+    font-size: var(--subtitle-size);
+    color: var(--text-light);
+    font-weight: 500;
+    margin-top: 4px;
+}
+
+.view-all {
+    color: var(--purple-link);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding-top: 2px;
+}
+.view-all svg { width: 15px; height: 15px; stroke: var(--purple-link); fill: none; stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round; }
+
+.timer-badge {
+    background-color: #fff0f5;
+    color: var(--pink);
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12.5px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+/* =========================================================
+   SHARED "SEE ALL" CARD — one component, reused (as the last
+   item inside the scroll track) by every carousel section, so
+   it behaves identically at every breakpoint instead of being
+   a mobile-only extra.
+========================================================= */
+.see-all-card {
+    flex: 0 0 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-align: center;
+    background: linear-gradient(135deg, #f7f3ff 0%, #ffffff 100%);
+    border: 1.5px dashed #cbb0ff;
+    border-radius: var(--radius-md);
+    color: var(--purple-link);
+    font-weight: 700;
+    font-size: 13px;
+    text-decoration: none;
+    scroll-snap-align: start;
+    padding: 16px 10px;
+}
+.see-all-card .see-all-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--purple-link);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(123, 61, 255, 0.3);
+}
+.see-all-card .see-all-icon svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Desktop-only variant of the in-row "See All" card — used by
+   Deals of the Day, Recommended for Buddy, Top Picks for You,
+   and Pet Parent Essentials, which show the vertical
+   .see-all-below bar instead on tablet and mobile. */
+.see-all-card.desktop-only {
+    display: none;
+}
+@media (min-width: 1025px) {
+    .see-all-card.desktop-only {
+        display: flex;
+    }
+}
+
+/* "See All" bar shown BELOW the carousel (Deals of the Day,
+   Recommended for Buddy, Top Picks for You, Pet Parent
+   Essentials) instead of inline in the row. Mobile only —
+   matches the original claude.html reference exactly. */
+.see-all-below {
+    display: none;
+}
+
+/* =========================================================
+   HEADER
+========================================================= */
+.site-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 14px var(--page-pad-x);
+}
+
+.header-left { display: flex; align-items: center; gap: 12px; }
+.logo { width: 48px; height: auto; object-fit: contain; }
+.brand-details { display: flex; flex-direction: column; justify-content: center; }
+.brand-title { color: #ce7cb6; font-size: 24px; font-weight: 700; line-height: 1.1; letter-spacing: -0.3px; }
+
+.location-selector { display: flex; align-items: center; gap: 4px; margin-top: 3px; cursor: pointer; transition: opacity 0.2s; }
+.location-selector:hover { opacity: 0.8; }
+.icon-pin, .icon-chevron { width: 14px; height: 14px; stroke: var(--text-light); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.location-text { color: var(--text-light); font-size: 14px; font-weight: 500; }
+
+.header-right { display: flex; align-items: center; gap: 18px; }
+
+.notification-btn {
+    position: relative;
+    width: 38px; height: 38px;
+    background-color: #fdf1f6;
+    border: 1px solid #fae4f0;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.notification-btn:hover { background-color: #fae4f0; }
+.icon-bell { width: 19px; height: 19px; stroke: #1f2739; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.notification-badge { position: absolute; top: 5px; right: 5px; width: 9px; height: 9px; background-color: #ee6b9d; border-radius: 50%; }
+
+.profile-btn { position: relative; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s; }
+.profile-btn:hover { transform: scale(1.03); }
+.profile-ring { width: 46px; height: 46px; border-radius: 50%; border: 2px solid #f1c9dd; padding: 2px; display: flex; align-items: center; justify-content: center; }
+.profile-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.crown-badge { position: absolute; top: -4px; right: -6px; width: 22px; height: 22px; background-color: #fbeedb; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+.icon-crown { width: 13px; height: 13px; fill: #f0a448; }
+
+/* =========================================================
+   SEARCH BAR
+========================================================= */
+.search-bar-container {
+    width: 100%;
+    background: #FFFFFF;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 30px;
+    padding: 11px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.3s ease;
+}
+.search-bar-container:focus-within { border-color: #6236FF; box-shadow: 0 4px 12px rgba(98, 54, 255, 0.08); }
+.search-input-wrapper { display: flex; align-items: center; gap: 12px; flex-grow: 1; min-width: 0; }
+.search-icon { display: flex; flex-shrink: 0; }
+.search-input { border: none; outline: none; width: 100%; font-size: 15px; color: #1A1824; font-weight: 500; background: transparent; }
+.search-input::placeholder { color: #7D8597; }
+.filter-btn { background: none; border: none; cursor: pointer; display: flex; padding: 4px; color: #4A5568; transition: transform 0.2s ease; flex-shrink: 0; }
+.filter-btn:hover { transform: scale(1.05); }
+
+/* =========================================================
+   HERO CAROUSEL
+========================================================= */
+.carousel-wrapper { position: relative; width: 100%; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 30px rgba(98, 54, 255, 0.06); }
+.carousel-track { display: flex; width: 100%; transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1); }
+.slide { min-width: 100%; position: relative; }
+.custom-image-slide { width: 100%; height: 360px; object-fit: cover; }
+.carousel-dots { position: absolute; bottom: 18px; left: 24px; display: flex; gap: 7px; z-index: 5; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background-color: #D3C2FF; cursor: pointer; transition: all 0.3s cubic-bezier(0.4,0,0.2,1); }
+.dot.active { width: 28px; border-radius: 10px; background-color: #6236FF; }
+
+/* =========================================================
+   SHOP BY PET
+========================================================= */
+.pets-container { align-items: flex-start; }
+.pet-item { display: flex; flex-direction: column; align-items: center; text-align: center; width: 88px; flex: 0 0 auto; scroll-snap-align: start; }
+.pet-img-wrapper { width: 84px; height: 84px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; padding: 3px; box-shadow: 0 8px 15px rgba(0,0,0,0.05); }
+.pet-item:nth-child(1) .pet-img-wrapper { background: linear-gradient(45deg, #ff9a9e, #fecfef); box-shadow: 0 10px 20px rgba(255,154,158,0.3); }
+.pet-item:nth-child(2) .pet-img-wrapper { background: linear-gradient(45deg, #a18cd1, #fbc2eb); box-shadow: 0 10px 20px rgba(161,140,209,0.3); }
+.pet-item:nth-child(3) .pet-img-wrapper { background: linear-gradient(45deg, #84fab0, #8fd3f4); box-shadow: 0 10px 20px rgba(132,250,176,0.3); }
+.pet-item:nth-child(4) .pet-img-wrapper { background: linear-gradient(45deg, #fccb90, #d57eeb); box-shadow: 0 10px 20px rgba(252,203,144,0.3); }
+.pet-img-inner { width: 100%; height: 100%; background-color: #fff; border-radius: 50%; overflow: hidden; border: 2px solid #fff; }
+.pet-img-inner img { width: 100%; height: 100%; object-fit: cover; }
+.pet-item p { font-weight: 600; font-size: 13.5px; color: var(--text-dark); }
+
+/* =========================================================
+   TRUSTED BRANDS / FEATURES STRIP
+========================================================= */
+.features-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 20px 12px;
+    box-shadow: 0 4px 25px rgba(0,0,0,0.03);
+    width: 100%;
+    gap: 6px;
+}
+.feature-item { display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1 1 0; min-width: 0; border-right: 1px solid var(--border-light); padding: 0 6px; }
+.feature-item:last-child { border-right: none; }
+.feature-icon-circle { width: 48px; height: 48px; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-bottom: 10px; flex-shrink: 0; }
+.bg-purple { background-color: #f7f3ff; }
+.bg-pink { background-color: #fff0f5; }
+.bg-blue { background-color: #f0f6ff; }
+.bg-green { background-color: #f0fff4; }
+.bg-orange { background-color: #fff6f0; }
+.bg-peach { background-color: #fdf5eb; }
+.feature-icon-circle img { width: 149px; height: 149px; object-fit: contain; }
+.feature-item h4 {
+    font-size: clamp(10.5px, 2.4vw, 13px);
+    font-weight: 700;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    color: var(--text-dark);
+}
+.feature-item p {
+    font-size: clamp(9px, 2vw, 11.5px);
+    color: var(--text-light);
+    white-space: nowrap;
+}
+
+/* =========================================================
+   DEALS OF THE DAY — deal-card
+========================================================= */
+.deal-card {
+    background: #ffffff;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    flex: 0 0 320px;
+    padding: 18px 16px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: var(--shadow-card);
+    scroll-snap-align: start;
+    transition: box-shadow 0.2s ease;
+}
+.deal-card:hover { box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
+
+.discount-badge {
+    position: absolute; top: 12px; left: 12px;
+    background: var(--pink); color: #fff;
+    font-size: 11px; font-weight: 700;
+    padding: 4px 8px; border-radius: 12px; z-index: 3;
+}
+
+/* ONE wishlist heart icon used everywhere: Deals of the Day,
+   Recommended for Buddy, Top Picks, Recently Viewed, Combo Deals */
+.wishlist-btn {
+    position: absolute; top: 12px; right: 12px;
+    background: #ffffff;
+    border: 1px solid var(--border-light);
+    border-radius: 50%;
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: all 0.2s ease;
+    z-index: 3;
+}
+.wishlist-btn:hover { transform: scale(1.08); border-color: var(--pink); }
+.wishlist-btn svg { width: 17px; height: 17px; fill: none; stroke: #a0a4ab; stroke-width: 2; transition: all 0.2s ease; }
+.wishlist-btn.active svg { fill: var(--pink); stroke: var(--pink); }
+
+.deal-add-btn {
+    position: absolute; bottom: 14px; right: 14px;
+    background: var(--pink); color: #fff; border: none;
+    width: 30px; height: 30px; border-radius: 50%;
+    font-size: 18px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(255, 51, 119, 0.3);
+    transition: transform 0.15s ease, background-color 0.2s ease;
+}
+.deal-add-btn.added { background-color: #4caf50 !important; transform: scale(1.1); }
+
+.deal-img { width: 90px; height: 120px; object-fit: contain; flex-shrink: 0; }
+.deal-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.deal-title { font-size: 14px; font-weight: 600; color: var(--text-dark); line-height: 1.35; }
+.item-weight { font-size: 12.5px; color: var(--text-gray); }
+.item-rating { font-size: 12.5px; font-weight: 600; color: var(--star-gold); display: flex; align-items: center; gap: 4px; }
+.item-rating .rating-count { color: var(--text-gray); font-weight: 400; }
+
+.price-row { display: flex; align-items: baseline; gap: 7px; margin-top: 2px; }
+.current-price { font-size: 17px; font-weight: 700; color: var(--text-dark); }
+.old-price { font-size: 12.5px; color: var(--text-gray); text-decoration: line-through; }
+
+/* =========================================================
+   PROMO BANNERS — Flat 15% off + Free delivery
+========================================================= */
+.banners-container { display: flex; gap: 16px; }
+.banner { flex: 1; border-radius: var(--radius-md); padding: 22px; display: flex; justify-content: space-between; align-items: center; position: relative; overflow: hidden; }
+.promo-banner { background-color: #f7f3ff; }
+.delivery-banner { background-color: #eefaf6; }
+.banner h3 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.promo-banner h3 { color: #7a1fd6; }
+.delivery-banner h3 { color: #147a50; }
+.banner p { font-size: 13.5px; color: var(--text-body); margin-bottom: 3px; }
+.code-box { display: inline-block; margin-top: 10px; padding: 7px 14px; border: 1px dashed #7a1fd6; border-radius: 8px; color: #7a1fd6; font-weight: 600; font-size: 12.5px; background: #ffffff; white-space: nowrap; }
+.banner img { width: 90px; height: auto; object-fit: contain; flex-shrink: 0; }
+
+/* =========================================================
+   UNIVERSAL PRODUCT CARD — used by Recommended for Buddy,
+   Top Picks for You, Recently Viewed, and Combo Deals. One
+   component, one size, everywhere (fixes the "combo cards
+   look oversized" bug and general inconsistency).
+========================================================= */
+.product-card {
+    background: #fff;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    scroll-snap-align: start;
+    flex: 0 0 195px;
+    box-shadow: var(--shadow-card);
+}
+
+.tag {
+    position: absolute; top: 12px; left: 12px;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 10.5px; font-weight: 700; color: #fff;
+    z-index: 2; letter-spacing: 0.3px;
+}
+.tag.best-seller { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.tag.discount { background: #ec4899; }
+.tag.save { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+
+.product-card .product-media {
+    width: 100%;
+    height: 108px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 18px;
+    margin-bottom: 10px;
+}
+.product-card .product-media img,
+.product-card .product-media svg { width: 100%; height: 100%; object-fit: contain; }
+
+.product-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1.35;
+    margin-bottom: 4px;
+    color: var(--text-dark);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 36px;
+}
+
+.item-weight { font-size: 12px; color: var(--text-gray); margin-bottom: 6px; }
+
+.product-rating {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 12px; font-weight: 500; color: var(--star-gold);
+    margin-bottom: 10px;
+}
+.product-rating svg { width: 13px; height: 13px; fill: var(--star-gold); }
+.product-rating span { color: var(--text-gray); font-weight: 400; }
+
+.product-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; gap: 8px; }
+
+/* ONE "+" add-to-cart button used everywhere */
+.add-btn {
+    width: 30px; height: 30px; border-radius: 50%;
+    background-color: var(--pink-btn); color: #fff; border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+    transition: transform 0.15s ease, background-color 0.2s ease;
+}
+.add-btn svg { width: 15px; height: 15px; stroke: #fff; fill: none; stroke-width: 2.5; stroke-linecap: round; }
+.add-btn.added { background-color: #4caf50 !important; transform: scale(1.12); }
+
+/* =========================================================
+   SHOP BY CATEGORY
+========================================================= */
+.category-card {
+    flex: 0 0 128px;
+    border-radius: var(--radius-md);
+    padding: 16px 10px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    scroll-snap-align: start;
+}
+.cat-img { width: 62px; height: 62px; object-fit: contain; margin-bottom: 8px; }
+.category-name { font-size: 13px; font-weight: 600; color: var(--text-dark); }
+
+/* =========================================================
+   SRUVO PLUS BANNER
+========================================================= */
+.sruvo-banner {
+    background-color: #f4ebfc;
+    border-radius: 24px;
+    padding: 30px 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+    gap: 16px;
+}
+.sruvo-content { max-width: 60%; z-index: 2; }
+.sruvo-content h3 { font-size: 22px; font-weight: 800; color: #5b21b6; display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.sruvo-content p { font-size: 14px; color: #4c1d95; line-height: 1.5; margin-bottom: 20px; font-weight: 500; }
+.join-btn { background: linear-gradient(90deg, #7c3aed, #6d28d9); color: #fff; border: none; padding: 13px 26px; border-radius: 30px; font-size: 14.5px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(124,58,237,0.25); }
+.banner-image-container { position: relative; width: 220px; height: 180px; display: flex; align-items: center; justify-content: center; z-index: 2; flex-shrink: 0; }
+.banner-image-container video {
+    width: 100%; height: 100%; object-fit: cover; pointer-events: none;
+    -webkit-mask-image: radial-gradient(circle, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 90%);
+    mask-image: radial-gradient(circle, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 90%);
+    filter: contrast(1.02) brightness(1.02);
+}
+
+/* =========================================================
+   FEATURED BRANDS
+========================================================= */
+.brand-card {
+    background: #ffffff;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    flex: 0 0 150px;
+    height: 140px;
+    box-shadow: var(--shadow-card);
+    scroll-snap-align: start;
+}
+.brand-card img { width: 100%; max-width: 88px; height: 46px; object-fit: contain; margin-bottom: 10px; }
+.brand-card .discount { color: var(--purple-link); font-size: 12.5px; font-weight: 600; }
+
+/* =========================================================
+   PET COLLECTIONS
+========================================================= */
+.collection-card {
+    border-radius: var(--radius-lg);
+    padding: 22px;
+    display: flex;
+    position: relative;
+    overflow: hidden;
+    flex: 0 0 290px;
+    height: 190px;
+    scroll-snap-align: start;
+}
+.bg-monsoon { background-color: #f1fbf4; }
+.bg-summer { background-color: #f0f7ff; }
+.bg-puppy { background-color: #fff1f2; }
+.collection-content { width: 58%; z-index: 2; display: flex; flex-direction: column; justify-content: space-between; height: 100%; }
+.collection-content h3 { color: var(--text-dark); font-size: 18px; font-weight: 700; line-height: 1.25; }
+.collection-content p { color: var(--text-body); font-size: 12.5px; line-height: 1.4; margin-top: 6px; }
+.collection-content .shop-now { color: var(--text-dark); text-decoration: none; font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; }
+.collection-img { position: absolute; right: 6px; bottom: 0; width: 45%; height: 88%; object-fit: contain; z-index: 1; border-radius: 12px; }
+
+/* =========================================================
+   PET PARENT ESSENTIALS — one fixed size across every
+   breakpoint (fixes "stretched on mobile, squeezed on
+   tablet/desktop")
+========================================================= */
+.essentials-card {
+    flex: 0 0 230px;
+    border-radius: var(--radius-md);
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    scroll-snap-align: start;
+    position: relative;
+    overflow: hidden;
+    min-height: 150px;
+}
+.bg-red { background-color: #fcf4f6; }
+.essentials-info { z-index: 2; width: 58%; }
+.essentials-info h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; line-height: 1.3; color: var(--text-dark); }
+.essentials-info .discount { font-size: 11.5px; color: #6338b8; font-weight: 600; }
+.essentials-image { width: 150px; height: 150px; object-fit: contain; position: absolute; right: -34px; bottom: -30px; }
+
+/* =========================================================
+   COMBO DEALS — reuses .product-card + .product-media, no
+   more oversized custom card
+========================================================= */
+.combo-subtitle { font-size: 12px; color: var(--text-gray); margin-bottom: 6px; }
+
+/* =========================================================
+   FULL-BLEED PROMO IMAGE — spans the true width of the
+   viewport, not the 1200px content column
+========================================================= */
+.promo-strip { width: 100%; line-height: 0; margin-top: var(--section-gap); }
+.promo-strip img { width: 100%; height: auto; display: block; }
+
+/* =========================================================
+   TABLET (768px – 1024px)
+========================================================= */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .deal-card { flex: 0 0 300px; }
+    .custom-image-slide { height: 320px; }
+    .sruvo-banner { padding: 26px 28px; }
+}
+
+/* =========================================================
+   DESKTOP ONLY (>= 1025px)
+   Makes the Deals of the Day and Pet Parent Essentials rows
+   match the height of the "See All Combos" card (256px), so
+   their in-row "See All" card lines up with Combo Deals.
+   Tablet and mobile are untouched by this rule.
+========================================================= */
+@media (min-width: 1025px) {
+    .deal-card { min-height: 256px; }
+    .essentials-card { min-height: 256px; }
+}
+
+/* "See All" bar shown BELOW the carousel, in the same vertical
+   layout on both tablet and mobile — Deals of the Day,
+   Recommended for Buddy, Top Picks for You, Pet Parent
+   Essentials. Desktop uses the in-row card instead. */
+@media (max-width: 1024px) {
+    .see-all-below {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        margin-top: 4px;
+        padding: 14px;
+        background: linear-gradient(135deg, #f7f3ff 0%, #ffffff 100%);
+        border: 1px dashed #cbb0ff;
+        border-radius: 16px;
+        text-decoration: none;
+        color: #7b3dff;
+        font-weight: 700;
+        font-size: 14px;
+        box-shadow: 0 4px 15px rgba(123, 61, 255, 0.08);
+    }
+    .see-all-below svg {
+        width: 18px;
+        height: 18px;
+        stroke: #7b3dff;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+}
+
+/* =========================================================
+   MOBILE (<= 767px) — every section below uses the exact
+   same scroll-track / card pattern as the sections above it,
+   so nothing switches to "desktop behaviour" on a phone.
+========================================================= */
+@media (max-width: 767px) {
+    :root {
+        --heading-size: var(--heading-size-mobile);
+        --subtitle-size: var(--subtitle-size-mobile);
+    }
+
+    .page-container { padding: 16px var(--page-pad-x-mobile) 0; gap: var(--section-gap-mobile); }
+
+    .site-header { padding: 12px var(--page-pad-x-mobile); }
+    .brand-title { font-size: 20px; }
+    .logo { width: 40px; }
+    .profile-ring { width: 40px; height: 40px; }
+    .crown-badge { width: 19px; height: 19px; top: -3px; right: -5px; }
+    .icon-crown { width: 11px; height: 11px; }
+    .notification-btn { width: 34px; height: 34px; }
+    .header-right { gap: 12px; }
+
+    .search-bar-container { padding: 10px 16px; }
+    .search-input { font-size: 14px; }
+    .custom-image-slide { height: 200px; }
+    .carousel-dots { bottom: 14px; left: 16px; }
+
+    /* Bleed every horizontal track edge-to-edge so the first
+       card lines up with the section heading */
+    .scroll-track, .banners-container {
+        margin-left: calc(var(--page-pad-x-mobile) * -1);
+        margin-right: calc(var(--page-pad-x-mobile) * -1);
+        padding-left: var(--page-pad-x-mobile);
+        padding-right: var(--page-pad-x-mobile);
+        scroll-padding-left: var(--page-pad-x-mobile);
+    }
+    .banners-container { overflow-x: auto; scroll-snap-type: x mandatory; }
+
+    .title-row { gap: 10px; }
+    .timer-badge { font-size: 11px; padding: 4px 8px; }
+
+    .features-card { width: max-content; padding: 16px 10px; gap: 2px; }
+    .feature-item { min-width: 92px; padding: 0 8px; }
+    .feature-icon-circle { width: 44px; height: 44px; }
+    .feature-icon-circle img { width: 72px; height: 72px; }
+
+    .deal-card { flex: 0 0 260px; padding: 14px 12px; gap: 10px; }
+    .deal-img { width: 76px; height: 100px; }
+
+    .banner { flex: 0 0 88%; padding: 18px 16px; scroll-snap-align: start; }
+    .banner h3 { font-size: 17px; }
+    .banner img { width: 76px; }
+
+    .product-card { flex: 0 0 158px; padding: 12px; }
+    .product-card .product-media { height: 88px; margin-top: 14px; }
+    .product-title { font-size: 12.5px; min-height: 32px; }
+
+    .category-card { flex: 0 0 108px; padding: 14px 8px; }
+    .cat-img { width: 52px; height: 52px; }
+    .category-name { font-size: 12px; }
+
+    .sruvo-banner { padding: 20px 16px; border-radius: 16px; }
+    .sruvo-content { max-width: 55%; }
+    .sruvo-content h3 { font-size: 16px; margin-bottom: 8px; }
+    .sruvo-content h3 svg { width: 32px; height: 32px; }
+    .sruvo-content p { font-size: 11px; margin-bottom: 16px; line-height: 1.4; }
+    .join-btn { padding: 8px 16px; font-size: 12px; }
+    .banner-image-container { width: 130px; height: 130px; margin-left: -14px; }
+
+    .brand-card { flex: 0 0 128px; height: 128px; padding: 12px; }
+
+    .collection-card { flex: 0 0 250px; height: 170px; padding: 16px; }
+    .collection-content h3 { font-size: 16px; }
+
+    .essentials-card { flex: 0 0 210px; min-height: 140px; padding: 16px; }
+    .essentials-image { width: 130px; height: 130px; right: -28px; bottom: -26px; }
+
+    .see-all-card { flex-basis: 120px; padding: 12px 8px; font-size: 12px; }
+    .see-all-card .see-all-icon { width: 36px; height: 36px; }
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+    <div class="header-left">
+        <img src="https://i.ibb.co/svPjZPLd/sruvologo.png" alt="Sruvo Logo" class="logo">
+        <div class="brand-details">
+            <h1 class="brand-title">Sruvo</h1>
+            <div class="location-selector" id="locationToggle">
+                <svg class="icon-pin" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                <span class="location-text">Gurugram</span>
+                <svg class="icon-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-right">
+        <div class="notification-btn" id="notificationToggle">
+            <svg class="icon-bell" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            <span class="notification-badge"></span>
+        </div>
+        <div class="profile-btn" id="profileToggle">
+            <div class="profile-ring">
+                <img src="https://i.ibb.co/SX0nzFCX/file-00000000b92071f89f0ea2bc197529fa.png" alt="User Profile" class="profile-img">
+            </div>
+            <div class="crown-badge">
+                <svg class="icon-crown" viewBox="0 0 24 24"><path d="M4 16L2.5 5.5L8 11L12 3L16 11L21.5 5.5L20 16H4ZM4 18H20V20H4V18Z"></path></svg>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="page-container">
+
+    <!-- ============================================================
+         1. SEARCH BAR + HERO CAROUSEL
+    ============================================================= -->
+    <div class="hero-block">
+        <div class="search-bar-container">
+            <div class="search-input-wrapper">
+                <span class="search-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7D8597" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </span>
+                <input type="text" class="search-input" id="searchInput" placeholder="Search food, toys, meds, accessories...">
+            </div>
+            <button class="filter-btn" aria-label="Filter Search">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A5568" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="8" cy="8" r="2.5"></circle><line x1="2" y1="8" x2="5.5" y2="8"></line><line x1="10.5" y1="8" x2="22" y2="8"></line>
+                    <circle cx="16" cy="16" r="2.5"></circle><line x1="2" y1="16" x2="13.5" y2="16"></line><line x1="18.5" y1="16" x2="22" y2="16"></line>
+                </svg>
+            </button>
+        </div>
+
+        <div class="carousel-wrapper">
+            <div class="carousel-dots">
+                <span class="dot active" onclick="goToSlide(0)"></span>
+                <span class="dot" onclick="goToSlide(1)"></span>
+                <span class="dot" onclick="goToSlide(2)"></span>
+                <span class="dot" onclick="goToSlide(3)"></span>
+            </div>
+            <div class="carousel-track" id="carouselTrack">
+                <div class="slide"><img src="https://i.ibb.co/fYvRhSDs/IMG-20260718-191503.png" alt="Custom Banner Slide 1" class="custom-image-slide" loading="eager"></div>
+                <div class="slide"><img src="https://i.ibb.co/SD3yW0bz/file-000000001a0481fa978383ed961170b6.png" alt="Custom Banner Slide 2" class="custom-image-slide" loading="lazy"></div>
+                <div class="slide"><img src="https://i.ibb.co/r24T3vD5/file-000000000ef881fa83480b942fb67058.png" alt="Custom Banner Slide 3" class="custom-image-slide" loading="lazy"></div>
+                <div class="slide"><img src="https://i.ibb.co/V0MWxFHk/file-00000000b48c81fa88e5552139282330.png" alt="Custom Banner Slide 4" class="custom-image-slide" loading="lazy"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         2. SHOP BY BREED
+    ============================================================= -->
+    <div class="page-section">
+        <div class="section-head">
+            <div class="titles">
+                <h2>Shop by Breed</h2>
+                <p class="section-subtitle">Find everything for your favorite companion</p>
+            </div>
+        </div>
+        <div class="scroll-track pets-container">
+            <div class="pet-item"><div class="pet-img-wrapper"><div class="pet-img-inner"><img src="https://i.ibb.co/Y41ctjWg/file-00000000552c7208be66d81fe88c2a96.png" alt="Dogs"></div></div><p>Golden Retriever</p></div>
+            <div class="pet-item"><div class="pet-img-wrapper"><div class="pet-img-inner"><img src="https://i.ibb.co/4w5rpvCS/file-0000000079cc72089141b184fa846500.png" alt="Cats"></div></div><p>Labrador Retriever</p></div>
+            <div class="pet-item"><div class="pet-img-wrapper"><div class="pet-img-inner"><img src="https://i.ibb.co/k6zX9MnT/file-0000000029907208a0771e36ee861d95.png" alt="Birds"></div></div><p>German Shepherd</p></div>
+            <div class="pet-item"><div class="pet-img-wrapper"><div class="pet-img-inner"><img src="https://i.ibb.co/27TdwN2Z/file-00000000c28872088bc9f4420469a706.png" alt="Small Pets"></div></div><p>Beagle</p></div>
+            <div class="pet-item"><div class="pet-img-wrapper"><div class="pet-img-inner"><img src="https://i.ibb.co/27TdwN2Z/file-00000000c28872088bc9f4420469a706.png" alt="Small Pets"></div></div><p>Pug</p></div>
+            <div class="pet-item"><div class="pet-img-wrapper"><div class="pet-img-inner"><img src="https://i.ibb.co/27TdwN2Z/file-00000000c28872088bc9f4420469a706.png" alt="Small Pets"></div></div><p>Shih Tzu</p></div>
+            <div class="pet-item"><div class="pet-img-wrapper"><div class="pet-img-inner"><img src="https://i.ibb.co/27TdwN2Z/file-00000000c28872088bc9f4420469a706.png" alt="Small Pets"></div></div><p>Rottweiler</p></div>
+            <div class="pet-item"><div class="pet-img-wrapper"><div class="pet-img-inner"><img src="https://i.ibb.co/27TdwN2Z/file-00000000c28872088bc9f4420469a706.png" alt="Small Pets"></div></div><p>Cocker Spaniel</p></div>
+        </div>
+    </div>
+  <!-- ============================================================
+         3. TOP PICKS FOR YOU  (star icon removed from heading)
+    ============================================================= -->
+    <div class="page-section">
+        <div class="section-head">
+            <div class="titles">
+                <h2>Top Picks for You</h2>
+                <p class="section-subtitle">Handpicked with love for your best friend</p>
+            </div>
+        </div>
+
+        <div class="scroll-track">
+            <div class="product-card">
+                <div class="tag best-seller">Best Seller</div>
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <div class="product-media"><img src="https://i.ibb.co/5WdmHcgf/file-00000000cb9471fbbf3af86517cad695.png" alt="Royal Canin Puppy Dry Dog Food"></div>
+                <div class="product-title">Royal Canin Puppy Dry Dog Food</div>
+                <div class="item-weight">4 kg</div>
+                <div class="product-rating"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> 4.7 <span>(922)</span></div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹1273</span> <span class="old-price">₹2022</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'Royal Canin Puppy Dry Dog Food')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <div class="tag discount">20% OFF</div>
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <div class="product-media"><img src="https://i.ibb.co/xtx3dTHw/file-00000000b704720893f8f3d00a45a124.png" alt="NutriVet Hip & Joint Chews"></div>
+                <div class="product-title">NutriVet Hip & Joint Chews</div>
+                <div class="item-weight">120 Chews</div>
+                <div class="product-rating"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> 4.6 <span>(532)</span></div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹719</span> <span class="old-price">₹899</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'NutriVet Hip & Joint Chews')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <div class="tag discount">15% OFF</div>
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <div class="product-media"><img src="https://i.ibb.co/7xDTjm3m/file-0000000017647206901ab8b8824190a5.png" alt="ZippyPaws Plush Dog Toy"></div>
+                <div class="product-title">ZippyPaws Plush Dog Toy</div>
+                <div class="item-weight">1 Piece</div>
+                <div class="product-rating"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> 4.8 <span>(342)</span></div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹424</span> <span class="old-price">₹499</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'ZippyPaws Plush Dog Toy')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <div class="tag discount">10% OFF</div>
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <div class="product-media"><img src="https://i.ibb.co/4w8wxRwd/file-00000000434871fb968c823a9aa1f836.png" alt="PawSafe Pet Eye Care Solution"></div>
+                <div class="product-title">PawSafe Pet Eye Care Solution</div>
+                <div class="item-weight">100 ml</div>
+                <div class="product-rating"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> 4.5 <span>(268)</span></div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹225</span> <span class="old-price">₹250</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'PawSafe Pet Eye Care Solution')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+
+            <a href="#" class="see-all-card desktop-only">
+                <span class="see-all-icon"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+                See All Top Picks
+            </a>
+        </div>
+
+        <a href="#" class="see-all-below">
+            <span>See All Top Picks</span>
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+    </div>
+    
+    <!-- ============================================================
+         4. FEATURED BRANDS
+    ============================================================= -->
+    <div class="page-section">
+        <div class="section-head">
+            <div class="titles">
+                <h2>Featured Brands</h2>
+                <p class="section-subtitle">Trusted names your pet will love</p>
+            </div>
+        </div>
+        <div class="scroll-track">
+            <div class="brand-card"><img src="https://i.ibb.co/d0ndGRfF/file-0000000079847207b7e40c1670b5c18c.png" alt="Royal Canin"><div class="discount">Upto 25% Off</div></div>
+            <div class="brand-card"><img src="https://i.ibb.co/5gqMvYcr/file-00000000fb6871fab14655ae0e839b6e.png" alt="Pedigree"><div class="discount">Upto 20% Off</div></div>
+            <div class="brand-card"><img src="https://i.ibb.co/gLST4CL1/file-0000000056b0720b81da4e2461ca8984.png" alt="Purpet"><div class="discount">Upto 15% Off</div></div>
+            <div class="brand-card"><img src="https://i.ibb.co/LdrgfcCj/file-0000000086907207a5e675276f238639.png" alt="Drools"><div class="discount">Upto 20% Off</div></div>
+            <div class="brand-card"><img src="https://i.ibb.co/nNz3HB45/file-00000000747872079df479230d5eca09.png" alt="Himalaya"><div class="discount">Upto 25% Off</div></div>
+            <div class="brand-card"><img src="https://i.ibb.co/KTLQqqP/file-00000000925071fab0c2f48877766e11.png" alt="Virbac"><div class="discount">Upto 15% Off</div></div>
+            <a href="#" class="see-all-card">
+                <span class="see-all-icon"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+                See All Brands
+            </a>
+        </div>
+    </div>
+    
+    <!-- ============================================================
+         5. FLAT 15% OFF + FREE DELIVERY
+    ============================================================= -->
+    <div class="page-section">
+        <div class="banners-container">
+            <div class="banner promo-banner">
+                <div class="banner-content"><h3>Flat 15% OFF</h3><p>on your first order</p><div class="code-box">Use Code: SRUVO15</div></div>
+                <img src="https://i.ibb.co/hJ99X4nv/file-000000001a40720691059cdeafd6b4a1.png" alt="Gift">
+            </div>
+            <div class="banner delivery-banner">
+                <div class="banner-content"><h3>Free Delivery</h3><p>On orders above ₹499</p><p>Across Gurugram</p></div>
+                <img src="https://i.ibb.co/KptCBgBX/file-000000000dcc7206bec0b6cfb011c4dc.png" alt="Scooter">
+            </div>
+        </div>
+    </div>
+
+<!-- ============================================================
+         2. QUICK CATEGORIES
+    ============================================================= -->
+    <div class="page-section">
+        <div class="section-head">
+            <div class="titles">
+                <h2>Quick Categories</h2>
+                <p class="section-subtitle">Find exactly what your dogs needs</p>
+            </div>
+        </div>
+        <div class="scroll-track">
+            <div class="category-card bg-purple"><img src="https://i.ibb.co/LDCYN0Sx/file-000000006af0720897bef0592f999cbf.png" alt="Dry Food" class="cat-img"><div class="category-name">Dry Food</div></div>
+            <div class="category-card bg-pink"><img src="https://i.ibb.co/6hM3515/file-00000000f2d87208b9ab8e97f165415c.png" alt="Wet Food" class="cat-img"><div class="category-name">Wet Food</div></div>
+            <div class="category-card bg-peach"><img src="https://i.ibb.co/NdRxFRbG/file-000000003a447208adf7908ad882b35f.png" alt="Treats" class="cat-img"><div class="category-name">Treats</div></div>
+            <div class="category-card bg-purple"><img src="https://i.ibb.co/JFmfCtrH/file-0000000000ec7208b43017eff8a4b594.png" alt="Toys" class="cat-img"><div class="category-name">Toys</div></div>
+            <div class="category-card bg-pink"><img src="https://i.ibb.co/j9zkVsWv/file-0000000007887208a846540fe42ea2a5.png" alt="Accessories" class="cat-img"><div class="category-name">Accessories</div></div>
+            <div class="category-card bg-purple"><img src="https://i.ibb.co/pmLbpff/file-0000000004007208bc4278f1bb49c898.png" alt="Health & Care" class="cat-img"><div class="category-name">Health & Care</div></div>
+            <a href="#" class="see-all-card">
+                <span class="see-all-icon"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+                See All Categories
+            </a>
+        </div>
+    </div>
+    <!-- ============================================================
+         3. TRUSTED BRANDS / FEATURES STRIP
+    ============================================================= -->
+    <div class="page-section">
+        <div class="scroll-track features-track">
+            <div class="features-card">
+                <div class="feature-item"><div class="feature-icon-circle bg-purple"><img src="https://i.ibb.co/XZz1vCnb/file-00000000825472099e82020741fff060.png" alt="Trusted Brands"></div><h4>Trusted Brands</h4><p>100% Original</p></div>
+                <div class="feature-item"><div class="feature-icon-circle bg-pink"><img src="https://i.ibb.co/WYdrt8H/file-00000000412472098e4cf96b21b58ee8.png" alt="Best Quality"></div><h4>Best Quality</h4><p>Premium Products</p></div>
+                <div class="feature-item"><div class="feature-icon-circle bg-blue"><img src="https://i.ibb.co/4gP21gQy/file-00000000a80c7209b8c26f9da06724f6.png" alt="Fast Delivery"></div><h4>Fast Delivery</h4><p>2–4 Days</p></div>
+                <div class="feature-item"><div class="feature-icon-circle bg-green"><img src="https://i.ibb.co/xKtRg5Sv/file-000000001ed47206b0fcc2c94c693d87.png" alt="Great Offers"></div><h4>Great Offers</h4><p>Save More</p></div>
+                <div class="feature-item"><div class="feature-icon-circle bg-orange"><img src="https://i.ibb.co/n8Npzr4t/file-00000000807472069959d034edc58bb8.png" alt="24/7 Support"></div><h4>24/7 Support</h4><p>We're Here</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         4. DEALS OF THE DAY
+    ============================================================= -->
+    <div class="page-section">
+        <div class="section-head">
+            <div class="titles">
+                <div class="title-row">
+                    <h2>Deals of the Day</h2>
+                    <span class="timer-badge">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        <span id="countdown">08h : 45m : 32s</span>
+                    </span>
+                </div>
+                <p class="section-subtitle">Hot deals, refreshed every day</p>
+            </div>
+        </div>
+
+        <div class="scroll-track">
+            <div class="deal-card">
+                <div class="discount-badge">12% OFF</div>
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <img src="https://i.ibb.co/nNR5bQ34/file-00000000b42c72088b222eef02b864bc.png" alt="Pedigree" class="deal-img">
+                <div class="deal-info">
+                    <div class="deal-title">Pedigree Puppy Dry Dog Food</div>
+                    <div class="item-weight">3 kg</div>
+                    <div class="item-rating">★ 4.6 <span class="rating-count">(865)</span></div>
+                    <div class="price-row"><span class="current-price">₹749</span><span class="old-price">₹850</span></div>
+                </div>
+                <button class="deal-add-btn" onclick="addToCart(event, 'Pedigree Puppy Dry Dog Food')">+</button>
+            </div>
+
+            <div class="deal-card">
+                <div class="discount-badge">37% OFF</div>
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <img src="https://i.ibb.co/d4Wypqcv/file-0000000090d872088fbff4ada60f6008.png" alt="Royal Canin" class="deal-img">
+                <div class="deal-info">
+                    <div class="deal-title">Royal Canin Maxi Puppy Dry Dog Food</div>
+                    <div class="item-weight">4 kg</div>
+                    <div class="item-rating">★ 4.7 <span class="rating-count">(922)</span></div>
+                    <div class="price-row"><span class="current-price">₹1273</span><span class="old-price">₹2022</span></div>
+                </div>
+                <button class="deal-add-btn" onclick="addToCart(event, 'Royal Canin Maxi Puppy Dry Dog Food')">+</button>
+            </div>
+
+            <div class="deal-card">
+                <div class="discount-badge">11% OFF</div>
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <img src="https://i.ibb.co/MkL4xvBY/file-0000000011b072089b0ef202f5fe8827.png" alt="Purepet" class="deal-img">
+                <div class="deal-info">
+                    <div class="deal-title">Purepet Adult Dog Food</div>
+                    <div class="item-weight">3 kg</div>
+                    <div class="item-rating">★ 4.9 <span class="rating-count">(754)</span></div>
+                    <div class="price-row"><span class="current-price">₹1492</span><span class="old-price">₹1677</span></div>
+                </div>
+                <button class="deal-add-btn" onclick="addToCart(event, 'Purepet Adult Dog Food')">+</button>
+            </div>
+
+            <div class="deal-card">
+                <div class="discount-badge">15% OFF</div>
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <img src="https://i.ibb.co/kVmBVXNP/file-000000009fa07207a3824e6ca71546d5.png" alt="Drools" class="deal-img">
+                <div class="deal-info">
+                    <div class="deal-title">Drools Focus Puppy Dry Dog Food</div>
+                    <div class="item-weight">4 kg</div>
+                    <div class="item-rating">★ 4.8 <span class="rating-count">(1020)</span></div>
+                    <div class="price-row"><span class="current-price">₹1100</span><span class="old-price">₹1300</span></div>
+                </div>
+                <button class="deal-add-btn" onclick="addToCart(event, 'Drools Focus Puppy Dry Dog Food')">+</button>
+            </div>
+
+            <a href="#" class="see-all-card desktop-only">
+                <span class="see-all-icon"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+                See All Deals
+            </a>
+        </div>
+
+        <a href="#" class="see-all-below">
+            <span>See All Deals</span>
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+    </div>
+
+    
+    <!-- ============================================================
+         6. RECOMMENDED FOR BUDDY
+    ============================================================= -->
+    <div class="page-section">
+        <div class="section-head">
+            <div class="titles">
+                <h2>Recommended for Buddy</h2>
+                <p class="section-subtitle">Picks tailored to your pet's taste</p>
+            </div>
+        </div>
+
+        <div class="scroll-track">
+            <div class="product-card">
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <div class="product-media"><img src="https://i.ibb.co/qVtkRtH/file-000000007a987208ad5f23bdce56bb4b.png" alt="Drools Chicken & Egg Puppy Food"></div>
+                <div class="product-title">Drools Chicken & Egg Puppy Food</div>
+                <div class="item-weight">1.2 kg</div>
+                <div class="product-rating"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> 4.6 <span>(688)</span></div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹318</span> <span class="old-price">₹522</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'Drools Chicken & Egg Puppy Food')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <div class="product-media"><img src="https://i.ibb.co/7tvT4M8c/file-0000000032007208bc43730a80f1d735.png" alt="Tug Knot Rope Toy for Dogs"></div>
+                <div class="product-title">Tug Knot Rope Toy for Dogs</div>
+                <div class="item-weight">1 Piece</div>
+                <div class="product-rating"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> 4.7 <span>(342)</span></div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹249</span> <span class="old-price">₹399</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'Tug Knot Rope Toy for Dogs')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <div class="product-media"><img src="https://i.ibb.co/MDzvMs3G/file-00000000e8a072089a74f33a86eb0039.png" alt="Salmon Oil for Dogs & Cats"></div>
+                <div class="product-title">Salmon Oil for Dogs & Cats</div>
+                <div class="item-weight">200 ml</div>
+                <div class="product-rating"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> 4.6 <span>(523)</span></div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹699</span> <span class="old-price">₹899</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'Salmon Oil for Dogs & Cats')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <div class="product-media"><img src="https://i.ibb.co/1Y3k5ccb/file-00000000ca6472088ac053446b96c504.png" alt="Chicken Rolls Training Treats"></div>
+                <div class="product-title">Chicken Rolls Training Treats</div>
+                <div class="item-weight">150 g</div>
+                <div class="product-rating"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> 4.6 <span>(268)</span></div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹199</span> <span class="old-price">₹499</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'Chicken Rolls Training Treats')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+
+            <a href="#" class="see-all-card desktop-only">
+                <span class="see-all-icon"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+                See All Products
+            </a>
+        </div>
+
+        <a href="#" class="see-all-below">
+            <span>See All Products</span>
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+    </div>
+
+
+    <!-- ============================================================
+         9. SRUVO PLUS BANNER
+    ============================================================= -->
+    <div class="page-section">
+        <div class="sruvo-banner">
+            <div class="sruvo-content">
+                <h3>
+                    <svg width="36" height="36" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5 30V26H35V30H5ZM5 22V12L12 17L20 7L28 17L35 12V22H5ZM12.7 19.3L8 16.2V20H32V16.2L27.3 19.3L20 12.3L12.7 19.3Z" fill="#fbbf24"/>
+                        <path d="M8 4L9 7L12 8L9 9L8 12L7 9L4 8L7 7L8 4Z" fill="#fbbf24"/>
+                        <path d="M34 6L34.7 8.1L36.8 8.8L34.7 9.5L34 11.6L33.3 9.5L31.2 8.8L33.3 8.1L34 6Z" fill="#fbbf24"/>
+                    </svg>
+                    Sruvo Plus
+                </h3>
+                <p>Unlimited free deliveries, exclusive offers & extra discounts</p>
+                <button class="join-btn">Join Sruvo Plus</button>
+            </div>
+            <div class="banner-image-container">
+                <video id="promo-video" autoplay loop muted playsinline preload="auto">
+                    <source src="https://res.cloudinary.com/p4cmfsak/video/upload/v1784207169/YouCut_20260716_182303742_fysbod.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </div>
+    </div>
+
+    
+
+    <!-- ============================================================
+         11. PET COLLECTIONS
+    ============================================================= -->
+    <div class="page-section">
+        <div class="section-head">
+            <div class="titles">
+                <h2>Pet Collections</h2>
+                <p class="section-subtitle">Curated picks for every season</p>
+            </div>
+        </div>
+        <div class="scroll-track">
+            <div class="collection-card bg-monsoon">
+                <div class="collection-content">
+                    <div><h3>Monsoon<br>Care Essentials</h3><p>Keep your pet safe & happy this season</p></div>
+                    <a href="#" class="shop-now">Shop Now <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+                </div>
+                <img src="https://i.ibb.co/5xYYm6wj/f400ab2c-35e1-4e06-b757-1e3ad975193f.png" alt="Monsoon Dog" class="collection-img">
+            </div>
+            <div class="collection-card bg-summer">
+                <div class="collection-content">
+                    <div><h3>Summer<br>Essentials</h3><p>Beat the heat with cooling products</p></div>
+                    <a href="#" class="shop-now">Shop Now <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+                </div>
+                <img src="https://i.ibb.co/chsWTbLP/file-0000000002f071fab01543a815985a50.png" alt="Summer Dog" class="collection-img">
+            </div>
+            <div class="collection-card bg-puppy">
+                <div class="collection-content">
+                    <div><h3>Puppy<br>Starter Kit</h3><p>Everything your puppy needs</p></div>
+                    <a href="#" class="shop-now">Shop Now <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+                </div>
+                <img src="https://i.ibb.co/7tCQn63h/file-00000000f04471faae10742e0f5b58ff.png" alt="Puppy" class="collection-img">
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         12. PET PARENT ESSENTIALS
+    ============================================================= -->
+    <div class="page-section">
+        <div class="section-head">
+            <div class="titles">
+                <h2>Pet Parent Essentials</h2>
+                <p class="section-subtitle">Everything you need for your pet & you</p>
+            </div>
+        </div>
+        <div class="scroll-track">
+            <div class="essentials-card bg-pink">
+                <div class="essentials-info"><h3>Grooming Essentials</h3><span class="discount">Up to 30% Off</span></div>
+                <img src="https://i.ibb.co/wNhhrZg9/file-00000000fed471fba31ea7d2119a0b7d.png" alt="Grooming" class="essentials-image">
+            </div>
+            <div class="essentials-card bg-green">
+                <div class="essentials-info"><h3>Health & Wellness</h3><span class="discount">Up to 25% Off</span></div>
+                <img src="https://i.ibb.co/gFT4KYp6/file-00000000d2d871fbb55659eca69074ad.png" alt="Health" class="essentials-image">
+            </div>
+            <div class="essentials-card bg-purple">
+                <div class="essentials-info"><h3>Travel Essentials</h3><span class="discount">Up to 20% Off</span></div>
+                <img src="https://i.ibb.co/GQjcCR8h/file-00000000ff007207968e48370db55c02.png" alt="Travel" class="essentials-image">
+            </div>
+            <div class="essentials-card bg-red">
+                <div class="essentials-info"><h3>Home & Living</h3><span class="discount">Up to 25% Off</span></div>
+                <img src="https://i.ibb.co/mrFCpLt6/file-0000000099b07209b6cbab26b2eba5fc.png" alt="Home" class="essentials-image">
+            </div>
+
+            <a href="#" class="see-all-card desktop-only">
+                <span class="see-all-icon"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+                See All Essentials
+            </a>
+        </div>
+
+        <a href="#" class="see-all-below">
+            <span>See All Essentials</span>
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+    </div>
+
+    <!-- ============================================================
+         13. RECENTLY VIEWED  (product image now centered)
+    ============================================================= -->
+    <div class="page-section">
+        <div class="section-head">
+            <div class="titles">
+                <h2>Recently Viewed</h2>
+                <p class="section-subtitle">Pick up right where you left off</p>
+            </div>
+        </div>
+        <div class="scroll-track">
+            <div class="product-card">
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <div class="product-media"><img src="https://i.ibb.co/8QSwmBJ/file-0000000090d872088fbff4ada60f6008.png" alt="Royal Canin Puppy Dry Food"></div>
+                <div class="product-title">Royal Canin Puppy Dry Food</div>
+                <div class="item-weight">4 kg</div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹1273</span> <span class="old-price">₹2022</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'Royal Canin Puppy Dry Food')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+            <div class="product-card">
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <div class="product-media"><img src="https://i.ibb.co/zHSnnKhj/file-0000000032007208bc43730a80f1d735.png" alt="Tug Knot Rope Toy for Dogs"></div>
+                <div class="product-title">Tug Knot Rope Toy for Dogs</div>
+                <div class="item-weight">1 Piece</div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹249</span> <span class="old-price">₹399</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'Tug Knot Rope Toy for Dogs')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+            <div class="product-card">
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <div class="product-media"><img src="https://i.ibb.co/B5sW4sL3/file-000000006af0720897bef0592f999cbf.png" alt="Drools Chicken & Egg Puppy Food"></div>
+                <div class="product-title">Drools Chicken & Egg Puppy Food</div>
+                <div class="item-weight">1.2 kg</div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹318</span> <span class="old-price">₹522</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'Drools Chicken & Egg Puppy Food')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+            <div class="product-card">
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <div class="product-media"><img src="https://i.ibb.co/DDnYRJ1d/file-00000000e8a072089a74f33a86eb0039.png" alt="Salmon Oil for Dogs & Cats"></div>
+                <div class="product-title">Salmon Oil for Dogs & Cats</div>
+                <div class="item-weight">200 ml</div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹699</span> <span class="old-price">₹899</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'Salmon Oil for Dogs & Cats')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+            <div class="product-card">
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <div class="product-media"><img src="https://i.ibb.co/Q50JnwF/file-000000007e0072069ef3d3ee571fde1a.png" alt="Chicken Rewards Training Treats"></div>
+                <div class="product-title">Chicken Rewards Training Treats</div>
+                <div class="item-weight">150 g</div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹199</span> <span class="old-price">₹999</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'Chicken Rewards Training Treats')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+            <div class="product-card">
+                <button class="wishlist-btn" onclick="toggleWishlist(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+                <div class="product-media"><img src="https://i.ibb.co/pvxkMQRt/file-0000000002b87206988defbcba00bd38.png" alt="Organic Pet Shampoo & Conditioner"></div>
+                <div class="product-title">Organic Pet Shampoo & Conditioner</div>
+                <div class="item-weight">500 ml</div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹450</span> <span class="old-price">₹600</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'Organic Pet Shampoo & Conditioner')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+            <a href="#" class="see-all-card">
+                <span class="see-all-icon"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+                See All History
+            </a>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         14. COMBO DEALS  (cards now identical size to every other
+         product card on the page)
+    ============================================================= -->
+    <div class="page-section">
+        <div class="section-head">
+            <div class="titles">
+                <h2>Combo Deals</h2>
+                <p class="section-subtitle">Save more when you bundle up</p>
+            </div>
+        </div>
+
+        <div class="scroll-track" id="comboCarousel">
+            <div class="product-card">
+                <div class="tag save">Save ₹200</div>
+                <div class="product-media">
+                    <svg viewBox="0 0 200 120"><g transform="translate(30, 10)"><path d="M10,15 L45,10 L50,15 L50,90 C50,93 47,95 44,95 L16,95 C13,95 10,93 10,90 Z" fill="#F9C333"/><polygon points="10,15 20,25 40,25 50,15 45,10 15,10" fill="#E2AE25"/><circle cx="30" cy="55" r="12" fill="#4B2C11"/><circle cx="25" cy="50" r="1.5" fill="#FFF"/><circle cx="35" cy="50" r="1.5" fill="#FFF"/><path d="M22,43 Q17,35 25,38 Z" fill="#4B2C11"/><path d="M38,43 Q43,35 35,38 Z" fill="#4B2C11"/><rect x="20" y="75" width="20" height="8" rx="4" fill="#FFF"/></g><text x="95" y="65" font-size="20" font-weight="bold" fill="#B3B6D4" text-anchor="middle">+</text><g transform="translate(120, 35)"><rect x="10" y="10" width="35" height="55" rx="5" fill="#3B8FD9"/><ellipse cx="27.5" cy="10" rx="17.5" ry="5" fill="#2E72B0"/><ellipse cx="27.5" cy="65" rx="17.5" ry="5" fill="#2E72B0"/><rect x="10" y="25" width="35" height="15" fill="#FFF"/><path d="M20,32 L35,32" stroke="#FF4D8D" stroke-width="4" stroke-linecap="round"/></g></svg>
+                </div>
+                <div class="product-title">Food + Treats Combo</div>
+                <div class="combo-subtitle">Complete nutrition</div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹899</span> <span class="old-price">₹1099</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'Food + Treats Combo')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <div class="tag save">Save ₹150</div>
+                <div class="product-media">
+                    <svg viewBox="0 0 200 120"><g transform="translate(30, 15)"><rect x="15" y="25" width="35" height="60" rx="10" fill="#A9D4FF"/><path d="M22,25 L22,15 L43,15 L43,25 Z" fill="#7CB5F2"/><path d="M32.5,15 L32.5,8 L20,8 L20,12 Z" fill="#E6EAF0"/><rect x="15" y="45" width="35" height="20" fill="#FFF"/><circle cx="32.5" cy="55" r="4" fill="#7CB5F2" opacity="0.6"/></g><g transform="translate(95, 15)"><rect x="10" y="25" width="40" height="50" rx="8" fill="#FFD5C2"/><rect x="25" y="75" width="10" height="20" rx="3" fill="#E5AB8F"/><circle cx="20" cy="35" r="2" fill="#E5AB8F"/><circle cx="30" cy="35" r="2" fill="#E5AB8F"/><circle cx="40" cy="35" r="2" fill="#E5AB8F"/></g><g transform="translate(145, 45)"><rect x="5" y="15" width="30" height="30" rx="5" fill="#EBEFF5"/><rect x="5" y="23" width="30" height="10" fill="#9F83E3"/></g></svg>
+                </div>
+                <div class="product-title">Grooming Combo</div>
+                <div class="combo-subtitle">Shampoo + Brush + Wipes</div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹749</span> <span class="old-price">₹899</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'Grooming Combo')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <div class="tag save">Save ₹300</div>
+                <div class="product-media">
+                    <svg viewBox="0 0 200 120"><g transform="translate(35, 10)"><path d="M10,15 L45,10 L50,15 L50,90 C50,93 47,95 44,95 L16,95 C13,95 10,93 10,90 Z" fill="#EEEEEE"/><polygon points="10,15 20,25 40,25 50,15 45,10 15,10" fill="#CCCCCC"/><path d="M10,35 L50,30 L50,55 L10,60 Z" fill="#E2231A"/><circle cx="30" cy="45" r="5" fill="#FFF"/><rect x="18" y="72" width="24" height="6" rx="2" fill="#555"/></g><g transform="translate(105, 45)"><path d="M10,25 L50,25 L42,45 C41,48 38,50 35,50 L25,50 C22,50 19,48 18,45 Z" fill="#B0B5BC"/><ellipse cx="30" cy="25" rx="20" ry="5" fill="#8E939A"/><path d="M15,22 Q30,5 45,22 Z" fill="#755030"/></g></svg>
+                </div>
+                <div class="product-title">Food + Supplement Combo</div>
+                <div class="combo-subtitle">Stronger immunity</div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹1199</span> <span class="old-price">₹1499</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'Food + Supplement Combo')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <div class="tag save">Save ₹120</div>
+                <div class="product-media">
+                    <svg viewBox="0 0 200 120"><g transform="translate(35, 20)"><circle cx="30" cy="35" r="14" fill="#9162D8"/><circle cx="18" cy="23" r="6" fill="#9162D8"/><circle cx="42" cy="23" r="6" fill="#9162D8"/><rect x="18" y="47" width="24" height="30" rx="8" fill="#9162D8"/></g><g transform="translate(100, 25)"><circle cx="30" cy="30" r="15" fill="#FFC82C"/><rect x="20" y="42" width="20" height="25" rx="5" fill="#FFC82C"/></g><g transform="translate(145, 55)"><circle cx="15" cy="15" r="13" fill="#C5E831"/></g></svg>
+                </div>
+                <div class="product-title">Toys Combo</div>
+                <div class="combo-subtitle">Playtime essentials</div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹529</span> <span class="old-price">₹649</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'Toys Combo')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <div class="tag save">Save ₹100</div>
+                <div class="product-media">
+                    <svg viewBox="0 0 200 120"><g transform="translate(30, 20)"><rect x="10" y="20" width="50" height="40" rx="8" fill="#FF5E97"/><path d="M25,20 L25,12 C25,10 45,10 45,12 L45,20" stroke="#444" stroke-width="4" fill="none"/><rect x="20" y="28" width="30" height="24" rx="3" fill="#E6EAF0"/></g><g transform="translate(115, 45)"><ellipse cx="25" cy="15" rx="20" ry="5" fill="#40C4FF"/><ellipse cx="25" cy="22" rx="17" ry="4" fill="#00B0FF"/></g></svg>
+                </div>
+                <div class="product-title">Travel Combo</div>
+                <div class="combo-subtitle">Carrier + Portable Bowl</div>
+                <div class="product-footer">
+                    <div><span class="current-price">₹899</span> <span class="old-price">₹999</span></div>
+                    <button class="add-btn" onclick="addToCart(event, 'Travel Combo')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                </div>
+            </div>
+
+            <a href="#" class="see-all-card">
+                <span class="see-all-icon"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+                See All Combos
+            </a>
+        </div>
+    </div>
+
+</div>
+
+<!-- ============================================================
+     15. FULL-WIDTH PROMO IMAGE (edge-to-edge, preloaded above)
+============================================================= -->
+<div class="promo-strip">
+    <img src="https://i.ibb.co/JjVPq2Vt/file-00000000eacc82079973062feca31423.png" alt="Sruvo Pet Care App" loading="eager" decoding="async" fetchpriority="high">
+</div>
+
+<script>
+    // ---- Add to cart: brief green success flash on any "+" button ----
+    function addToCart(event, productName) {
+        if (event) { event.stopPropagation(); event.preventDefault(); }
+        const btn = event.currentTarget;
+        if (!btn) return;
+        btn.classList.add('added');
+        setTimeout(() => btn.classList.remove('added'), 400);
+        console.log(`Added ${productName} to cart successfully.`);
+    }
+
+    // ---- Wishlist heart toggle (shared by every card on the page) ----
+    function toggleWishlist(button) {
+        button.classList.toggle('active');
+    }
+
+    // ---- Hero carousel: autoplay + dots ----
+    const track = document.getElementById('carouselTrack');
+    const dots = document.querySelectorAll('.dot');
+    let currentIndex = 0;
+    const totalSlides = dots.length;
+    let autoSlideInterval;
+
+    function updateCarousel() {
+        track.style.transform = `translateX(-${currentIndex * 100}%)`;
+        dots.forEach((dot, index) => dot.classList.toggle('active', index === currentIndex));
+    }
+    function goToSlide(index) {
+        currentIndex = index;
+        updateCarousel();
+        resetAutoSlide();
+    }
+    function startAutoSlide() {
+        autoSlideInterval = setInterval(() => {
+            currentIndex = (currentIndex + 1) % totalSlides;
+            updateCarousel();
+        }, 5000);
+    }
+    function resetAutoSlide() {
+        clearInterval(autoSlideInterval);
+        startAutoSlide();
+    }
+
+    // ---- Countdown timer (Deals of the Day) ----
+    function startTimer() {
+        let hours = 8, minutes = 45, seconds = 32;
+        const timerElement = document.getElementById('countdown');
+        setInterval(() => {
+            if (seconds > 0) { seconds--; }
+            else {
+                seconds = 59;
+                if (minutes > 0) { minutes--; }
+                else { minutes = 59; if (hours > 0) hours--; }
+            }
+            const h = String(hours).padStart(2, '0');
+            const m = String(minutes).padStart(2, '0');
+            const s = String(seconds).padStart(2, '0');
+            timerElement.textContent = `${h}h : ${m}m : ${s}s`;
+        }, 1000);
+    }
+
+    // ---- Search placeholder adapts to viewport width ----
+    const searchInput = document.getElementById('searchInput');
+    function handlePlaceholder() {
+        searchInput.placeholder = window.innerWidth <= 768
+            ? "Search food, toys, meds..."
+            : "Search food, toys, meds, accessories...";
+    }
+
+    // ---- Combo Deals: mouse-drag scroll support for desktop ----
+    function enableDragScroll(el) {
+        let isDown = false, startX, scrollLeft;
+        el.addEventListener('mousedown', (e) => {
+            isDown = true;
+            el.style.cursor = 'grabbing';
+            startX = e.pageX - el.offsetLeft;
+            scrollLeft = el.scrollLeft;
+        });
+        el.addEventListener('mouseleave', () => { isDown = false; el.style.cursor = 'pointer'; });
+        el.addEventListener('mouseup', () => { isDown = false; el.style.cursor = 'pointer'; });
+        el.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - el.offsetLeft;
+            el.scrollLeft = scrollLeft - (x - startX) * 1.5;
+        });
+    }
+
+    // ---- Header quick-action buttons ----
+    function wireHeaderToggles() {
+        const locationToggle = document.getElementById('locationToggle');
+        const notificationToggle = document.getElementById('notificationToggle');
+        const profileToggle = document.getElementById('profileToggle');
+        if (locationToggle) locationToggle.addEventListener('click', () => console.log('Location selector opened.'));
+        if (notificationToggle) notificationToggle.addEventListener('click', () => console.log('Notifications opened.'));
+        if (profileToggle) profileToggle.addEventListener('click', () => console.log('User profile menu opened.'));
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        startAutoSlide();
+        handlePlaceholder();
+        window.addEventListener('resize', handlePlaceholder);
+        startTimer();
+        const combo = document.getElementById('comboCarousel');
+        if (combo) enableDragScroll(combo);
+        wireHeaderToggles();
+
+        const video = document.getElementById('promo-video');
+        if (video) video.play().catch((error) => console.log('Autoplay check:', error));
+    });
+</script>
+</body>
+</html>
