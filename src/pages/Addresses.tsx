@@ -14,6 +14,53 @@ const GOOGLE_MAPS_API_KEY =
   (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY ||
   "AIzaSyCpOg1A6w1yoptUZe_-oEq__5bxoQdil5U";
 
+const INDIAN_LOCATIONS_DATABASE = [
+  { main_text: "Connaught Place", secondary_text: "New Delhi, Delhi 110001, India", lat: 28.6315, lng: 77.2167 },
+  { main_text: "Sector 17", secondary_text: "Chandigarh 160017, India", lat: 30.7398, lng: 76.7827 },
+  { main_text: "Panipat City", secondary_text: "Model Town, Panipat, Haryana 132103, India", lat: 29.3909, lng: 76.9635 },
+  { main_text: "Model Town", secondary_text: "Panipat, Haryana 132103, India", lat: 29.3950, lng: 76.9700 },
+  { main_text: "G.T. Road", secondary_text: "Panipat, Haryana 132103, India", lat: 29.3920, lng: 76.9650 },
+  { main_text: "Cyber City", secondary_text: "DLF Phase 2, Gurugram, Haryana 122002, India", lat: 28.4950, lng: 77.0895 },
+  { main_text: "Sector 29", secondary_text: "Gurugram, Haryana 122001, India", lat: 28.4678, lng: 77.0650 },
+  { main_text: "Sector 14", secondary_text: "Gurugram, Haryana 122001, India", lat: 28.4725, lng: 77.0430 },
+  { main_text: "DLF Phase 3", secondary_text: "Gurugram, Haryana 122002, India", lat: 28.4920, lng: 77.0950 },
+  { main_text: "MG Road", secondary_text: "Bengaluru, Karnataka 560001, India", lat: 12.9756, lng: 77.6066 },
+  { main_text: "Indiranagar", secondary_text: "Bengaluru, Karnataka 560038, India", lat: 12.9784, lng: 77.6408 },
+  { main_text: "Koramangala", secondary_text: "Bengaluru, Karnataka 560034, India", lat: 12.9352, lng: 77.6245 },
+  { main_text: "Whitefield", secondary_text: "Bengaluru, Karnataka 560066, India", lat: 12.9698, lng: 77.7500 },
+  { main_text: "Bandra West", secondary_text: "Mumbai, Maharashtra 400050, India", lat: 19.0596, lng: 72.8295 },
+  { main_text: "Juhu Beach", secondary_text: "Juhu, Mumbai, Maharashtra 400049, India", lat: 19.1075, lng: 72.8263 },
+  { main_text: "Andheri East", secondary_text: "Mumbai, Maharashtra 400069, India", lat: 19.1136, lng: 72.8697 },
+  { main_text: "Powai", secondary_text: "Mumbai, Maharashtra 400076, India", lat: 19.1176, lng: 72.9060 },
+  { main_text: "Banjara Hills", secondary_text: "Hyderabad, Telangana 500034, India", lat: 17.4156, lng: 78.4347 },
+  { main_text: "HITEC City", secondary_text: "Hyderabad, Telangana 500081, India", lat: 17.4435, lng: 78.3772 },
+  { main_text: "Gachibowli", secondary_text: "Hyderabad, Telangana 500032, India", lat: 17.4401, lng: 78.3489 },
+  { main_text: "T. Nagar", secondary_text: "Chennai, Tamil Nadu 600017, India", lat: 13.0418, lng: 80.2341 },
+  { main_text: "Adyar", secondary_text: "Chennai, Tamil Nadu 600020, India", lat: 13.0012, lng: 80.2565 },
+  { main_text: "Park Street", secondary_text: "Kolkata, West Bengal 700016, India", lat: 22.5532, lng: 88.3524 },
+  { main_text: "Salt Lake Sector 5", secondary_text: "Kolkata, West Bengal 700091, India", lat: 22.5726, lng: 88.4331 },
+  { main_text: "Koregaon Park", secondary_text: "Pune, Maharashtra 411001, India", lat: 18.5362, lng: 73.8940 },
+  { main_text: "Viman Nagar", secondary_text: "Pune, Maharashtra 411014, India", lat: 18.5679, lng: 73.9143 },
+  { main_text: "Civil Lines", secondary_text: "Jaipur, Rajasthan 302006, India", lat: 26.9062, lng: 75.7865 },
+  { main_text: "C Scheme", secondary_text: "Jaipur, Rajasthan 302001, India", lat: 26.9116, lng: 75.8015 },
+  { main_text: "MP Nagar", secondary_text: "Bhopal, Madhya Pradesh 462011, India", lat: 23.2332, lng: 77.4343 },
+  { main_text: "Vijay Nagar", secondary_text: "Indore, Madhya Pradesh 452010, India", lat: 22.7533, lng: 75.8937 },
+  { main_text: "56 Dukan", secondary_text: "Indore, Madhya Pradesh 452001, India", lat: 22.7244, lng: 75.8839 },
+  { main_text: "Gomti Nagar", secondary_text: "Lucknow, Uttar Pradesh 226010, India", lat: 26.8500, lng: 80.9999 },
+  { main_text: "Hazratganj", secondary_text: "Lucknow, Uttar Pradesh 226001, India", lat: 26.8467, lng: 80.9462 },
+  { main_text: "Indira Gandhi International Airport (DEL)", secondary_text: "New Delhi, Delhi 110037, India", lat: 28.5562, lng: 77.1000 },
+  { main_text: "Sector 18", secondary_text: "Noida, Uttar Pradesh 201301, India", lat: 28.5708, lng: 77.3261 },
+  { main_text: "Sector 62", secondary_text: "Noida, Uttar Pradesh 201309, India", lat: 28.6270, lng: 77.3725 },
+  { main_text: "Indirapuram", secondary_text: "Ghaziabad, Uttar Pradesh 201014, India", lat: 28.6415, lng: 77.3712 },
+  { main_text: "Rajouri Garden", secondary_text: "New Delhi, Delhi 110027, India", lat: 28.6415, lng: 77.1209 },
+  { main_text: "Lajpat Nagar", secondary_text: "New Delhi, Delhi 110024, India", lat: 28.5677, lng: 77.2433 },
+  { main_text: "Saket", secondary_text: "New Delhi, Delhi 110017, India", lat: 28.5244, lng: 77.2188 },
+  { main_text: "Karnal City", secondary_text: "Karnal, Haryana 132001, India", lat: 29.6857, lng: 76.9905 },
+  { main_text: "Ambala Cantt", secondary_text: "Ambala, Haryana 133001, India", lat: 30.3340, lng: 76.8376 },
+  { main_text: "Ludhiana Junction", secondary_text: "Ludhiana, Punjab 141001, India", lat: 30.9010, lng: 75.8573 },
+  { main_text: "Golden Temple Area", secondary_text: "Amritsar, Punjab 143001, India", lat: 31.6200, lng: 74.8765 },
+];
+
 const MapUpdater = ({ mapRef }: { mapRef: React.MutableRefObject<any> }) => {
   const map = useMap();
   useEffect(() => {
@@ -142,9 +189,16 @@ const Addresses = () => {
   const mapRef = useRef<any>(null);
   const skipNextGeocodeRef = useRef(false);
   const hasShownGeocodeErrorRef = useRef(false);
+  const searchDebounceRef = useRef<any>(null);
+  const searchRequestIdRef = useRef<number>(0);
   const [carouselIndex, setCarouselIndex] = useState(0);
 
   useEffect(() => { 
+    if (typeof window !== "undefined") {
+      (window as any).gm_authFailure = () => {
+        // Suppress unhandled Google Maps billing/auth popups
+      };
+    }
     fetchAddresses(); 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -355,7 +409,7 @@ const Addresses = () => {
   const reverseGeocode = (lat: number, lng: number): Promise<any> => {
     return new Promise(async (resolve) => {
       // 1. Try Google Maps Geocoder first if available
-      if (window.google && window.google.maps) {
+      if (window.google && window.google.maps && window.google.maps.Geocoder) {
         try {
           const geocoder = new google.maps.Geocoder();
           const googleResult = await new Promise<any>((resolveGoogle) => {
@@ -394,10 +448,6 @@ const Addresses = () => {
                   detectedArea: cleaned.detectedArea
                 });
               } else {
-                if (status === "REQUEST_DENIED" && !hasShownGeocodeErrorRef.current) {
-                  console.warn("Geocoding Service request denied. Falling back to OpenStreetMap Nominatim...");
-                  hasShownGeocodeErrorRef.current = true;
-                }
                 resolveGoogle(null);
               }
             });
@@ -408,16 +458,15 @@ const Addresses = () => {
             return;
           }
         } catch (err) {
-          console.error("Google Geocoder failed:", err);
+          // Silent catch
         }
       }
 
-      // 2. Real-time Fallback to OpenStreetMap Nominatim API if Google fails or is denied
+      // 2. Real-time Fallback to OpenStreetMap Nominatim API
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`, {
           headers: {
-            "Accept-Language": "en",
-            "User-Agent": "SruvoPetLinkApp/1.0"
+            "Accept-Language": "en"
           }
         });
         if (response.ok) {
@@ -448,10 +497,36 @@ const Addresses = () => {
           }
         }
       } catch (nominatimErr) {
-        console.error("Nominatim geocoder fallback failed:", nominatimErr);
+        // Silent catch
       }
 
-      // 3. Last resort coordinates-based address
+      // 3. Fallback to BigDataCloud Reverse Geocoder
+      try {
+        const bdcRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+        if (bdcRes.ok) {
+          const bdcData = await bdcRes.json();
+          const city = bdcData.city || bdcData.locality || bdcData.principalSubdivision || "";
+          const state = bdcData.principalSubdivision || "";
+          const pincode = bdcData.postcode || "";
+          const country = bdcData.countryName || "India";
+          const raw_address = bdcData.locality || bdcData.localityInfo?.informative?.[0]?.name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+          const cleaned = formatCleanAddress(raw_address, city, state, pincode, country);
+          resolve({
+            address_line: cleaned.cleanAddressLine,
+            city,
+            state,
+            pincode,
+            country,
+            fullAddress: cleaned.fullAddress,
+            detectedArea: cleaned.detectedArea
+          });
+          return;
+        }
+      } catch (bdcErr) {
+        // Silent catch
+      }
+
+      // 4. Coordinates-based address
       resolve({
         address_line: `Pinned Location`,
         city: "Delhi",
@@ -464,101 +539,237 @@ const Addresses = () => {
     });
   };
 
-  const handleSearch = async (query: string) => {
+  const handleSearch = (query: string) => {
     setMapSearchQuery(query);
+
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
     if (!query || query.trim().length < 2) {
       setSearchResults([]);
       setShowResultsDropdown(false);
+      setSearching(false);
       return;
     }
-    setSearching(true);
 
+    setSearching(true);
     const cleanQuery = query.trim();
 
-    // 1. Try Google Places Autocomplete Service first if available
-    let googleSuccess = false;
-    if (window.google && window.google.maps && window.google.maps.places) {
-      try {
-        const autocompleteService = new google.maps.places.AutocompleteService();
-        autocompleteService.getPlacePredictions(
-          { input: cleanQuery, componentRestrictions: { country: "in" } },
-          (predictions, status) => {
-            if (status === google.maps.places.PlacesServiceStatus.OK && predictions && predictions.length > 0) {
-              googleSuccess = true;
-              setSearching(false);
-              setSearchResults(predictions.map(p => ({
+    searchDebounceRef.current = setTimeout(() => {
+      executeSearch(cleanQuery);
+    }, 200);
+  };
+
+  const executeSearch = async (cleanQuery: string) => {
+    const currentReqId = ++searchRequestIdRef.current;
+    const combinedResults: any[] = [];
+
+    // 1. Google Maps Services (Autocomplete & Geocoder)
+    if (window.google && window.google.maps) {
+      // 1A. Google Places Autocomplete Service
+      if (window.google.maps.places) {
+        try {
+          const autocompleteService = new google.maps.places.AutocompleteService();
+          const predictions = await new Promise<any[]>((resolve) => {
+            autocompleteService.getPlacePredictions(
+              { input: cleanQuery, componentRestrictions: { country: "in" } },
+              (preds, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK && preds && preds.length > 0) {
+                  resolve(preds);
+                } else {
+                  autocompleteService.getPlacePredictions(
+                    { input: cleanQuery },
+                    (preds2, status2) => {
+                      if (status2 === google.maps.places.PlacesServiceStatus.OK && preds2 && preds2.length > 0) {
+                        resolve(preds2);
+                      } else {
+                        resolve([]);
+                      }
+                    }
+                  );
+                }
+              }
+            );
+          });
+
+          if (predictions.length > 0 && currentReqId === searchRequestIdRef.current) {
+            predictions.forEach(p => {
+              combinedResults.push({
                 display_name: p.description,
                 place_id: p.place_id,
                 main_text: p.structured_formatting?.main_text || p.description,
                 secondary_text: p.structured_formatting?.secondary_text || "",
                 source: "google"
-              })));
-              setShowResultsDropdown(true);
-            } else {
-              // Fallback to Nominatim if Google returned zero results
-              fetchNominatimSearchResults(cleanQuery);
+              });
+            });
+          }
+        } catch (err) {
+          // Silent catch
+        }
+      }
+
+      // 1B. Google Geocoder Service
+      if (combinedResults.length < 5 && window.google.maps.Geocoder) {
+        try {
+          const geocoder = new google.maps.Geocoder();
+          const geoResults = await new Promise<any[]>((resolve) => {
+            geocoder.geocode({ address: cleanQuery, componentRestrictions: { country: "IN" } }, (results, status) => {
+              if (status === "OK" && results && results.length > 0) {
+                resolve(results);
+              } else {
+                geocoder.geocode({ address: cleanQuery }, (results2, status2) => {
+                  if (status2 === "OK" && results2 && results2.length > 0) {
+                    resolve(results2);
+                  } else {
+                    resolve([]);
+                  }
+                });
+              }
+            });
+          });
+
+          if (geoResults.length > 0 && currentReqId === searchRequestIdRef.current) {
+            geoResults.forEach(item => {
+              const placeId = item.place_id;
+              if (!combinedResults.some(r => r.place_id === placeId)) {
+                const loc = item.geometry?.location;
+                const formatted = item.formatted_address || cleanQuery;
+                const parts = formatted.split(',');
+                const main = parts[0] || cleanQuery;
+                const sec = parts.slice(1).join(', ').trim();
+                combinedResults.push({
+                  display_name: formatted,
+                  place_id: placeId,
+                  main_text: main,
+                  secondary_text: sec,
+                  lat: loc ? loc.lat() : undefined,
+                  lng: loc ? loc.lng() : undefined,
+                  source: "google_geocoder"
+                });
+              }
+            });
+          }
+        } catch (err) {
+          // Silent catch
+        }
+      }
+    }
+
+    // 2. OpenStreetMap Nominatim Fallback
+    if (combinedResults.length < 3) {
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQuery)}&countrycodes=in&addressdetails=1&limit=8`,
+          {
+            headers: {
+              "Accept-Language": "en"
             }
           }
         );
-        return;
-      } catch (err) {
-        console.warn("Google Autocomplete exception, trying Nominatim fallback:", err);
-      }
-    }
+        if (response.ok && currentReqId === searchRequestIdRef.current) {
+          const data = await response.json();
+          if (data && data.length > 0) {
+            data.forEach((item: any) => {
+              const main = item.name || item.address?.amenity || item.address?.road || item.address?.suburb || item.display_name.split(',')[0];
+              const secondaryParts = [
+                item.address?.suburb,
+                item.address?.city || item.address?.town || item.address?.village,
+                item.address?.state,
+                "India"
+              ].filter(Boolean);
+              const secondary = Array.from(new Set(secondaryParts)).join(", ");
 
-    // 2. OpenStreetMap Nominatim Search API Fallback (Real-time & High Precision for India)
-    if (!googleSuccess) {
-      fetchNominatimSearchResults(cleanQuery);
-    }
-  };
+              const latVal = parseFloat(item.lat);
+              const lngVal = parseFloat(item.lon);
 
-  const fetchNominatimSearchResults = async (query: string) => {
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&addressdetails=1&limit=8`,
-        {
-          headers: {
-            "Accept-Language": "en",
-            "User-Agent": "SruvoPetLinkApp/1.0"
+              if (!combinedResults.some(r => r.lat && Math.abs(r.lat - latVal) < 0.0001 && Math.abs(r.lng - lngVal) < 0.0001)) {
+                combinedResults.push({
+                  display_name: item.display_name,
+                  main_text: main,
+                  secondary_text: secondary,
+                  lat: latVal,
+                  lng: lngVal,
+                  raw_address: item.address,
+                  source: "nominatim"
+                });
+              }
+            });
           }
         }
-      );
-      setSearching(false);
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.length > 0) {
-          const results = data.map((item: any) => {
-            const main = item.name || item.address?.amenity || item.address?.road || item.address?.suburb || item.display_name.split(',')[0];
-            const secondaryParts = [
-              item.address?.suburb,
-              item.address?.city || item.address?.town || item.address?.village,
-              item.address?.state,
-              "India"
-            ].filter(Boolean);
-            const secondary = Array.from(new Set(secondaryParts)).join(", ");
-
-            return {
-              display_name: item.display_name,
-              main_text: main,
-              secondary_text: secondary,
-              lat: parseFloat(item.lat),
-              lng: parseFloat(item.lon),
-              raw_address: item.address,
-              source: "nominatim"
-            };
-          });
-          setSearchResults(results);
-          setShowResultsDropdown(true);
-          return;
-        }
+      } catch (err) {
+        // Silent catch
       }
-      setSearchResults([]);
-      setShowResultsDropdown(false);
-    } catch (err) {
-      console.error("Nominatim search failed:", err);
+    }
+
+    // 3. Photon Komoot OpenSource Geocoding API Fallback
+    if (combinedResults.length < 3) {
+      try {
+        const photonRes = await fetch(
+          `https://photon.komoot.io/api/?q=${encodeURIComponent(cleanQuery)}&limit=8&bbox=68.1,8.0,97.4,35.5`
+        );
+        if (photonRes.ok && currentReqId === searchRequestIdRef.current) {
+          const photonData = await photonRes.json();
+          if (photonData?.features && photonData.features.length > 0) {
+            photonData.features.forEach((f: any) => {
+              const props = f.properties || {};
+              const coords = f.geometry?.coordinates;
+              const main = props.name || props.street || props.city || props.district || cleanQuery;
+              const secParts = [props.street, props.district || props.suburb, props.city || props.county, props.state, props.postcode, "India"].filter(Boolean);
+              const secondary = Array.from(new Set(secParts)).join(", ");
+
+              if (coords && coords.length >= 2) {
+                const lngVal = coords[0];
+                const latVal = coords[1];
+                if (!combinedResults.some(r => r.lat && Math.abs(r.lat - latVal) < 0.0001 && Math.abs(r.lng - lngVal) < 0.0001)) {
+                  combinedResults.push({
+                    display_name: `${main}, ${secondary}`,
+                    main_text: main,
+                    secondary_text: secondary,
+                    lat: latVal,
+                    lng: lngVal,
+                    source: "photon"
+                  });
+                }
+              }
+            });
+          }
+        }
+      } catch (photonErr) {
+        // Silent catch
+      }
+    }
+
+    // 4. Local Indian Places Database Query Matching (Instant Client-Side Fallback)
+    const queryLower = cleanQuery.toLowerCase();
+    const localMatches = INDIAN_LOCATIONS_DATABASE.filter(loc => 
+      loc.main_text.toLowerCase().includes(queryLower) || 
+      loc.secondary_text.toLowerCase().includes(queryLower) ||
+      queryLower.includes(loc.main_text.toLowerCase().split(' ')[0])
+    );
+
+    localMatches.forEach(match => {
+      if (!combinedResults.some(r => r.main_text.toLowerCase() === match.main_text.toLowerCase())) {
+        combinedResults.push({
+          display_name: `${match.main_text}, ${match.secondary_text}`,
+          main_text: match.main_text,
+          secondary_text: match.secondary_text,
+          lat: match.lat,
+          lng: match.lng,
+          source: "local"
+        });
+      }
+    });
+
+    if (currentReqId === searchRequestIdRef.current) {
       setSearching(false);
-      setSearchResults([]);
-      setShowResultsDropdown(false);
+      if (combinedResults.length > 0) {
+        setSearchResults(combinedResults);
+        setShowResultsDropdown(true);
+      } else {
+        setSearchResults([]);
+        setShowResultsDropdown(false);
+      }
     }
   };
 
@@ -611,13 +822,24 @@ const Addresses = () => {
               setLocationEnabled(true);
             }
           } else {
-            toast.error("Could not find coordinates for this location");
+            if (suggestion.lat && suggestion.lng) {
+              animateMapToLocation(suggestion.lat, suggestion.lng, 16);
+              const rev = await reverseGeocode(suggestion.lat, suggestion.lng);
+              const fullLoc = rev?.fullAddress || suggestion.display_name;
+              setForm({
+                address_line: fullLoc,
+                city: rev?.city || "",
+                state: rev?.state || "",
+                pincode: rev?.pincode || ""
+              });
+              setLocationEnabled(true);
+            }
           }
           setGeocoding(false);
         });
         return;
       } catch (err) {
-        console.error("Google Place Geocode failed, falling back...", err);
+        // Silent catch
       }
     }
 
