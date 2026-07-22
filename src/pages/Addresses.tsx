@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Plus, MapPin, Trash2, Star, ShieldCheck, Sparkles, Map as MapIcon, Search, Compass, Loader2, Locate, Pencil, X, Building2, Users, Briefcase, Home, MoreHorizontal, CheckCircle2, ChevronDown, Bookmark, Tag, Cloud, Bell, PhoneCall, Dog, DoorOpen, Target, Milestone, Edit3, Check, Navigation, LocateFixed } from "lucide-react";
+import { ArrowLeft, Plus, MapPin, Trash2, Star, ShieldCheck, Sparkles, Map as MapIcon, Search, Compass, Loader2, Locate, Pencil, X, Building2, Users, Briefcase, Home, MoreHorizontal, CheckCircle2, ChevronDown, ChevronRight, Bookmark, Tag, Cloud, Bell, PhoneCall, Dog, DoorOpen, Target, Milestone, Edit3, Check, Navigation, LocateFixed } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "@/contexts/LocationContext";
 import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
@@ -137,6 +137,8 @@ const Addresses = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const [showResultsDropdown, setShowResultsDropdown] = useState(false);
+  const [showFullSearchResultsScreen, setShowFullSearchResultsScreen] = useState(false);
+  const [selectedSearchResultIndex, setSelectedSearchResultIndex] = useState(0);
   const mapRef = useRef<any>(null);
   const skipNextGeocodeRef = useRef(false);
   const hasShownGeocodeErrorRef = useRef(false);
@@ -599,8 +601,9 @@ const Addresses = () => {
               animateMapToLocation(lat, lng, 16);
               const matched = matchCityAndState(city, state);
               const cleaned = formatCleanAddress(results[0].formatted_address || suggestion.display_name, matched.city || city, matched.state || state, pincode, country);
+              const fullLoc = cleaned.fullAddress || results[0].formatted_address || suggestion.display_name;
               setForm({
-                address_line: cleaned.cleanAddressLine,
+                address_line: fullLoc,
                 city: matched.city || city,
                 state: matched.state || state,
                 pincode: pincode
@@ -644,8 +647,9 @@ const Addresses = () => {
 
       const matched = matchCityAndState(finalCity, finalState);
       const cleaned = formatCleanAddress(finalAddress, matched.city || finalCity, matched.state || finalState, finalPincode, countryStr);
+      const fullLoc = cleaned.fullAddress || rev?.fullAddress || finalAddress || suggestion.display_name;
       setForm({
-        address_line: cleaned.cleanAddressLine,
+        address_line: fullLoc,
         city: matched.city || finalCity,
         state: matched.state || finalState,
         pincode: finalPincode
@@ -692,8 +696,9 @@ const Addresses = () => {
         if (result) {
           const matched = matchCityAndState(result.city, result.state);
           const cleaned = formatCleanAddress(result.address_line, matched.city || result.city, matched.state || result.state, result.pincode, result.country);
+          const fullLoc = result.fullAddress || cleaned.fullAddress || result.address_line;
           setForm({
-            address_line: cleaned.cleanAddressLine,
+            address_line: fullLoc,
             city: matched.city || result.city,
             state: matched.state || result.state,
             pincode: result.pincode
@@ -747,14 +752,36 @@ const Addresses = () => {
   };
 
   const handleSave = async () => {
-    const fullParts = [buildingFloor, streetName, form.address_line].filter(Boolean);
+    // Validation for mandatory fields
+    if (!buildingFloor.trim() && !form.address_line.trim()) {
+      toast.error("Please fill in Building / Floor and Area / Locality details");
+      return;
+    }
+    if (!form.address_line.trim()) {
+      toast.error("Please enter Area / Locality address");
+      return;
+    }
+    if (!receiverName.trim() || !receiverPhone.trim()) {
+      toast.error("Please enter Receiver Name and Phone number");
+      return;
+    }
+
+    const fullParts = [buildingFloor.trim(), streetName.trim(), form.address_line.trim()].filter(Boolean);
     const finalAddressLine = fullParts.length > 0 ? fullParts.join(", ") : "Selected Address";
     const finalCity = form.city || "Indore";
     const finalState = form.state || "Madhya Pradesh";
     const finalPincode = form.pincode || "452001";
 
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    if (!session) {
+      toast.error("Please log in to save addresses");
+      return;
+    }
+
+    // Ensure only one default address if user marked set as default address
+    if (isDefaultAddress) {
+      await supabase.from("addresses").update({ is_default: false }).eq("user_id", session.user.id);
+    }
 
     if (editingAddressId) {
       // Edit mode
@@ -764,14 +791,15 @@ const Addresses = () => {
           address_line: finalAddressLine,
           city: finalCity,
           state: finalState,
-          pincode: finalPincode
+          pincode: finalPincode,
+          is_default: isDefaultAddress
         })
         .eq("id", editingAddressId);
 
       if (error) {
-        toast.error("Failed to update address");
+        toast.error("Failed to update address: " + error.message);
       } else {
-        toast.success("Address updated successfully");
+        toast.success("Address updated successfully!");
         setForm({ address_line: "", city: "", state: "", pincode: "" });
         setBuildingFloor("");
         setStreetName("");
@@ -791,9 +819,9 @@ const Addresses = () => {
       });
 
       if (error) {
-        toast.error("Failed to add address");
+        toast.error("Failed to save address: " + error.message);
       } else {
-        toast.success("Address added successfully");
+        toast.success("Address saved successfully!");
         setForm({ address_line: "", city: "", state: "", pincode: "" });
         setBuildingFloor("");
         setStreetName("");
@@ -818,12 +846,199 @@ const Addresses = () => {
     if (!session) return;
     await supabase.from("addresses").update({ is_default: false }).eq("user_id", session.user.id);
     await supabase.from("addresses").update({ is_default: true }).eq("id", id);
-    toast.success("Default delivery location updated");
+    toast.success("Default address updated!");
     fetchAddresses();
   };
 
   // Real Map layout if user is on "map" step
   if (addressStep === "map") {
+    if (showFullSearchResultsScreen) {
+      return (
+        <APIProvider apiKey={GOOGLE_MAPS_API_KEY} version="weekly" libraries={["places", "geocoding"]}>
+          <div className="fixed inset-0 z-50 bg-[#FAF9FC] flex flex-col overflow-hidden max-w-lg mx-auto shadow-2xl">
+            {/* Top Bar Header */}
+            <div className="bg-white px-4 py-3 border-b border-gray-100 flex items-center gap-3 shadow-xs sticky top-0 z-50">
+              <button 
+                type="button"
+                onClick={() => setShowFullSearchResultsScreen(false)}
+                className="w-10 h-10 rounded-full bg-white hover:bg-gray-100 border border-gray-200/80 shadow-xs flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-800" />
+              </button>
+
+              <div className="relative flex-1">
+                <Input 
+                  type="text"
+                  placeholder="Search location..." 
+                  value={mapSearchQuery} 
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="w-full bg-gray-50 text-gray-900 rounded-full pl-4 pr-10 h-11 border border-gray-200 font-semibold text-sm focus:bg-white focus:ring-2 focus:ring-[#FF5722]"
+                />
+                {mapSearchQuery && (
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setMapSearchQuery("");
+                      setSearchResults([]);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4 text-gray-500" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Sub-header Bar: Showing results for "query" | Near me */}
+            <div className="px-4 py-2.5 bg-white border-b border-gray-100 flex items-center justify-between text-xs sm:text-sm">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div className="w-5 h-5 rounded-full bg-[#FFF0EB] flex items-center justify-center flex-shrink-0">
+                  <MapPin className="w-3.5 h-3.5 text-[#FF5722]" />
+                </div>
+                <p className="font-medium text-gray-600 truncate">
+                  Showing results for &ldquo;<span className="font-bold text-gray-900">{mapSearchQuery || "Search"}</span>&rdquo;
+                </p>
+              </div>
+
+              <button 
+                type="button"
+                className="flex items-center gap-1 font-semibold text-gray-600 hover:text-gray-900 cursor-pointer flex-shrink-0 ml-3 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-200/60"
+              >
+                <span>Near me</span>
+                <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Search Results List */}
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5 pb-44 bg-[#FAF9FC]">
+              {searching ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-3 text-gray-400">
+                  <Loader2 className="w-8 h-8 animate-spin text-[#FF5722]" />
+                  <p className="text-xs font-medium">Searching location results...</p>
+                </div>
+              ) : searchResults.length > 0 ? (
+                searchResults.map((result, idx) => {
+                  let distanceDisplay = "";
+                  if (result.lat && result.lng && mapCenter) {
+                    const dist = calculateDistanceKm(mapCenter.lat, mapCenter.lng, result.lat, result.lng);
+                    distanceDisplay = dist < 1 ? `${(dist * 1000).toFixed(0)} m` : `${dist.toFixed(1)} km`;
+                  } else {
+                    const estKm = (0.6 + idx * 0.9).toFixed(1);
+                    distanceDisplay = `${estKm} km`;
+                  }
+
+                  const isSelected = idx === selectedSearchResultIndex;
+
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSelectedSearchResultIndex(idx)}
+                      className={`w-full text-left p-3.5 rounded-2xl transition-all flex items-center justify-between gap-3 cursor-pointer ${
+                        isSelected 
+                          ? "bg-[#FFF6F2] border-2 border-[#FF5722]/80 shadow-xs" 
+                          : "bg-white hover:bg-gray-50 border border-gray-100 shadow-2xs"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          isSelected ? "bg-[#FFEAE2]" : "bg-[#FFF0EB]"
+                        }`}>
+                          <MapPin className="w-5 h-5 text-[#FF5722]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-extrabold text-gray-900 text-sm sm:text-base truncate leading-snug">
+                            {result.main_text}
+                          </p>
+                          <p className="text-xs text-gray-500 font-medium truncate mt-0.5">
+                            {result.secondary_text || result.display_name}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`text-xs font-bold whitespace-nowrap flex-shrink-0 ml-1 ${
+                        isSelected ? "text-[#FF5722]" : "text-gray-400"
+                      }`}>
+                        {distanceDisplay}
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="py-10 text-center space-y-2">
+                  <p className="text-sm font-bold text-gray-700">No matching locations found</p>
+                  <p className="text-xs text-gray-400">Try searching for a city, landmark, or street name</p>
+                </div>
+              )}
+
+              {/* Row: See more results for "query" (only when > 9 results and query is active) */}
+              {searchResults.length > 9 && mapSearchQuery.trim() && (
+                <div 
+                  onClick={() => {
+                    if (mapSearchQuery.trim()) {
+                      handleSearch(mapSearchQuery.trim());
+                    }
+                  }}
+                  className="bg-white hover:bg-gray-50 rounded-2xl p-3.5 border border-gray-100 flex items-center justify-between cursor-pointer transition-all shadow-2xs"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0">
+                      <Search className="w-5 h-5 text-gray-400" />
+                    </div>
+                    <span className="text-xs font-bold text-gray-600 truncate">
+                      See more results for &ldquo;{mapSearchQuery.trim()}&rdquo;
+                    </span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Fixed Selected Location Drawer (matching exact bottom card from UI image) */}
+            <div className="fixed bottom-0 inset-x-0 bg-white rounded-t-[28px] border-t border-gray-100 shadow-[0_-10px_35px_rgba(0,0,0,0.12)] p-4 sm:p-5 z-50 max-w-lg mx-auto space-y-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="w-11 h-11 rounded-full bg-[#FFF0EB] flex items-center justify-center flex-shrink-0">
+                  <MapPin className="w-5 h-5 text-[#FF5722]" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-medium text-gray-400 leading-none">Selected location</p>
+                  <h4 className="font-extrabold text-gray-900 text-sm sm:text-base leading-tight truncate mt-1">
+                    {searchResults[selectedSearchResultIndex]?.main_text || mapSearchQuery || "Selected Location"}
+                  </h4>
+                  <p className="text-xs text-gray-500 font-normal truncate mt-0.5">
+                    {searchResults[selectedSearchResultIndex]?.secondary_text || searchResults[selectedSearchResultIndex]?.display_name || "Location details"}
+                  </p>
+                </div>
+                <div className="text-xs font-bold text-[#FF5722] flex-shrink-0">
+                  {(() => {
+                    const currentRes = searchResults[selectedSearchResultIndex];
+                    if (currentRes && currentRes.lat && currentRes.lng && mapCenter) {
+                      const dist = calculateDistanceKm(mapCenter.lat, mapCenter.lng, currentRes.lat, currentRes.lng);
+                      return dist < 1 ? `${(dist * 1000).toFixed(0)} m` : `${dist.toFixed(1)} km`;
+                    }
+                    return `${(0.6 + (selectedSearchResultIndex || 0) * 0.9).toFixed(1)} km`;
+                  })()}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  const selectedItem = searchResults[selectedSearchResultIndex] || searchResults[0];
+                  if (selectedItem) {
+                    await selectSuggestion(selectedItem);
+                  }
+                  setShowFullSearchResultsScreen(false);
+                  setAddressStep("form");
+                }}
+                className="w-full rounded-full bg-[#FF5722] hover:bg-[#F4511E] text-white font-extrabold text-sm sm:text-base py-3.5 shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all cursor-pointer"
+              >
+                Confirm this location
+              </button>
+            </div>
+          </div>
+        </APIProvider>
+      );
+    }
     const cleanedMapAddr = formatCleanAddress(form.address_line, form.city, form.state, form.pincode, "India");
     const detectedArea = cleanedMapAddr.detectedArea;
     const fullAddress = cleanedMapAddr.fullAddress;
@@ -878,8 +1093,9 @@ const Addresses = () => {
                     } else if (result) {
                       const matched = matchCityAndState(result.city, result.state);
                       const cleaned = formatCleanAddress(result.address_line, matched.city || result.city, matched.state || result.state, result.pincode, result.country);
+                      const fullLoc = result.fullAddress || cleaned.fullAddress || result.address_line;
                       setForm({
-                        address_line: cleaned.cleanAddressLine,
+                        address_line: fullLoc,
                         city: matched.city || result.city,
                         state: matched.state || result.state,
                         pincode: result.pincode
@@ -951,7 +1167,7 @@ const Addresses = () => {
             {/* Autocomplete Search suggestions dropdown matching exact design */}
             {showResultsDropdown && searchResults.length > 0 && (
               <div className="absolute top-full mt-2.5 -left-[54px] right-0 bg-white rounded-[24px] shadow-[0_16px_45px_rgba(0,0,0,0.14)] border border-gray-100/80 p-2.5 z-50 max-h-[380px] overflow-y-auto divide-y divide-gray-50/50">
-                {searchResults.map((result, idx) => {
+                {searchResults.slice(0, 3).map((result, idx) => {
                   let distanceDisplay = "";
                   if (result.lat && result.lng && mapCenter) {
                     const dist = calculateDistanceKm(mapCenter.lat, mapCenter.lng, result.lat, result.lng);
@@ -992,16 +1208,25 @@ const Addresses = () => {
                 })}
 
                 {/* Bottom row: "See more results for..." */}
-                <div className="pt-2 pb-1 px-3">
-                  <div className="flex items-center gap-3.5 py-2 text-gray-500">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Search className="w-5 h-5 text-gray-400" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowResultsDropdown(false);
+                    setSelectedSearchResultIndex(0);
+                    setShowFullSearchResultsScreen(true);
+                  }}
+                  className="w-full pt-2 pb-1 px-3 text-left hover:bg-gray-50/80 rounded-xl transition-all cursor-pointer group flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3.5 py-2 text-gray-500 min-w-0 flex-1">
+                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0">
+                      <Search className="w-5 h-5 text-gray-400 group-hover:text-[#FF5722] transition-colors" />
                     </div>
-                    <span className="text-[13px] font-medium text-gray-500 truncate">
+                    <span className="text-[13px] font-semibold text-gray-600 truncate group-hover:text-gray-900 transition-colors">
                       See more results for &ldquo;{mapSearchQuery}&rdquo;
                     </span>
                   </div>
-                </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
+                </button>
               </div>
             )}
           </div>
@@ -1161,42 +1386,86 @@ const Addresses = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8fc] pb-12 relative overflow-x-hidden">
+    <APIProvider apiKey={GOOGLE_MAPS_API_KEY} version="weekly" libraries={["places", "geocoding"]}>
+      <div className="min-h-screen bg-[#faf8fc] pb-12 relative overflow-x-hidden">
       {/* Decorative Blur Blobs */}
       <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-[80px] pointer-events-none" />
       <div className="absolute top-40 left-0 w-[200px] h-[200px] bg-indigo-500/5 rounded-full blur-[60px] pointer-events-none" />
 
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-purple-100/60 shadow-[0_2px_15px_-3px_rgba(155,81,224,0.03)]">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between max-w-4xl">
-          <div className="flex items-center gap-3">
+        <div className="container mx-auto px-4 py-2.5 flex items-center justify-between max-w-4xl gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="rounded-full hover:bg-purple-50 transition-colors" 
+              className="rounded-full hover:bg-purple-50 transition-colors flex-shrink-0" 
               onClick={() => {
-                if (window.history.length > 1) {
-                  navigate(-1);
+                if (addressStep === "form") {
+                  if (editingAddressId) {
+                    setAddressStep("list");
+                  } else {
+                    setAddressStep("map");
+                  }
+                } else if (addressStep === "map") {
+                  setAddressStep("list");
                 } else {
-                  navigate("/buyer/profile");
+                  if (window.history.length > 1) {
+                    navigate(-1);
+                  } else {
+                    navigate("/buyer/profile");
+                  }
                 }
               }}
             >
               <ArrowLeft className="w-5 h-5 text-gray-700" />
             </Button>
-            <div>
-              <h1 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">Addresses</h1>
-            </div>
+
+            {addressStep !== "form" && (
+              <div>
+                <h1 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">Addresses</h1>
+              </div>
+            )}
+
+            {addressStep === "form" && (
+              <div className="min-w-0">
+                <h1 className="text-sm sm:text-base font-extrabold text-gray-900 leading-tight truncate">
+                  {editingAddressId ? "Edit Address" : "Add New Address"}
+                </h1>
+                <p className="text-[10px] sm:text-xs text-gray-500 font-medium leading-tight truncate">
+                  We&apos;ll use this address for faster and safer deliveries.
+                </p>
+              </div>
+            )}
           </div>
+
           {addressStep === "list" && (
             <Button 
               onClick={openMapStep} 
               size="sm"
-              className="rounded-full bg-gradient-primary hover:opacity-95 text-white font-semibold text-xs px-4 h-9 shadow-md shadow-primary/20 active:scale-95 transition-all gap-1"
+              className="rounded-full bg-gradient-primary hover:opacity-95 text-white font-semibold text-xs px-4 h-9 shadow-md shadow-primary/20 active:scale-95 transition-all gap-1 flex-shrink-0"
             >
               <Plus className="w-4 h-4" />
               Add New
             </Button>
+          )}
+
+          {addressStep === "form" && (
+            <button 
+              onClick={() => {
+                setAddressStep("map");
+                requestLocation();
+              }}
+              disabled={geocoding}
+              className="bg-white hover:bg-gray-50 text-[#FF5722] rounded-full px-4 py-2 border border-gray-200/80 shadow-xs flex items-center gap-1.5 text-xs font-extrabold transition-all active:scale-95 cursor-pointer flex-shrink-0"
+            >
+              {geocoding ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#FF5722]" />
+              ) : (
+                <LocateFixed className="w-3.5 h-3.5 text-[#FF5722]" />
+              )}
+              <span>Use my location</span>
+            </button>
           )}
         </div>
       </header>
@@ -1204,69 +1473,6 @@ const Addresses = () => {
       <main className="container mx-auto px-4 py-6 max-w-lg space-y-6 relative">
         {addressStep === "form" && (
           <div className="space-y-4 pb-8">
-            {/* Top Navigation Row: Back Arrow + Use my location */}
-            <div className="flex items-center justify-between pt-1 pb-2">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => {
-                  if (editingAddressId) {
-                    setAddressStep("list");
-                  } else {
-                    setAddressStep("map");
-                  }
-                }} 
-                className="rounded-full w-10 h-10 hover:bg-gray-100 transition-colors -ml-2"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-800" />
-              </Button>
-
-              <button 
-                onClick={() => {
-                  setAddressStep("map");
-                  requestLocation();
-                }}
-                disabled={geocoding}
-                className="bg-white hover:bg-gray-50 text-[#FF5722] rounded-full px-4 py-2 border border-gray-200/80 shadow-xs flex items-center gap-1.5 text-xs font-extrabold transition-all active:scale-95 cursor-pointer"
-              >
-                {geocoding ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#FF5722]" />
-                ) : (
-                  <LocateFixed className="w-3.5 h-3.5 text-[#FF5722]" />
-                )}
-                Use my location
-              </button>
-            </div>
-
-            {/* Title & Decorative Skyline Illustration Header */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-                  {editingAddressId ? "Edit" : "Add New"}
-                </h1>
-                <p className="text-xs text-gray-500 font-medium leading-relaxed max-w-[240px]">
-                  We&apos;ll use this address for faster and safer deliveries.
-                </p>
-              </div>
-
-              {/* Decorative Vector Graphic */}
-              <div className="w-24 h-16 relative flex items-center justify-center flex-shrink-0">
-                <div className="absolute inset-0 bg-gradient-to-tr from-[#FFF3EE] to-[#E8EAF6] rounded-2xl opacity-80" />
-                <div className="relative z-10 flex items-end justify-center gap-1">
-                  <div className="w-3 h-8 bg-purple-200/80 rounded-t-sm" />
-                  <div className="w-4 h-12 bg-purple-300/80 rounded-t-sm flex flex-col justify-around p-0.5">
-                    <div className="w-full h-1 bg-white/60 rounded-xs" />
-                    <div className="w-full h-1 bg-white/60 rounded-xs" />
-                  </div>
-                  <div className="w-5 h-10 bg-purple-200 rounded-t-md relative">
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-5 h-5 bg-[#FF5722] rounded-full flex items-center justify-center text-white shadow-md">
-                      <MapPin className="w-3 h-3 fill-white" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* CARD 1: Address Type */}
             <div className="bg-white rounded-[24px] border border-gray-100 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.03)] space-y-3">
               <div>
@@ -1443,15 +1649,11 @@ const Addresses = () => {
 
                 {/* Split Area & Mini Map Card */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Left: Area / Locality (Editable) */}
+                  {/* Left: Area / Locality */}
                   <div className="bg-white rounded-2xl border border-gray-200/90 p-3 space-y-1.5 focus-within:border-[#FF5722] transition-all flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between">
                         <p className="text-[11px] font-bold text-gray-500">Area / Locality</p>
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-100">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600 fill-emerald-600/20" />
-                          <span>Editable</span>
-                        </div>
                       </div>
                       <div className="flex items-start gap-1.5 mt-1">
                         <MapPin className="w-4 h-4 text-[#FF5722] flex-shrink-0 mt-0.5" />
@@ -1469,6 +1671,7 @@ const Addresses = () => {
                   {/* Right: Live Real-time Mini Map Preview */}
                   <div className="relative h-32 rounded-2xl overflow-hidden border border-gray-200/90 bg-gray-100 flex items-center justify-center shadow-inner">
                     <Map
+                      key={`mini-map-${mapCenter.lat}-${mapCenter.lng}`}
                       center={mapCenter}
                       zoom={16}
                       minZoom={12}
@@ -1481,7 +1684,7 @@ const Addresses = () => {
                     {/* Center Pin Marker */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                       <div className="w-8 h-8 bg-[#FF5722] rounded-full flex items-center justify-center border-2 border-white shadow-md animate-bounce">
-                        <MapPin className="w-4 h-4 text-white fill-white" />
+                        <MapPin className="w-4 h-4 text-white" />
                       </div>
                     </div>
 
@@ -1505,19 +1708,17 @@ const Addresses = () => {
                       <select
                         value={saveAddressAs}
                         onChange={(e) => setSaveAddressAs(e.target.value)}
-                        className="w-full bg-transparent text-xs font-bold text-gray-900 focus:outline-none cursor-pointer py-0.5"
+                        className="w-full bg-transparent text-xs font-bold text-gray-900 focus:outline-none cursor-pointer py-0.5 appearance-none pr-6"
                       >
                         {selectedAddressType === "Home" && (
                           <>
                             <option value="Home Address">Home Address</option>
-                            <option value="Home">Home</option>
                             <option value="Main Residence">Main Residence</option>
                           </>
                         )}
                         {selectedAddressType === "Work" && (
                           <>
                             <option value="Office Address">Office Address</option>
-                            <option value="Work">Work</option>
                             <option value="Workplace">Workplace</option>
                           </>
                         )}
@@ -1528,14 +1729,10 @@ const Addresses = () => {
                           </>
                         )}
                         {selectedAddressType === "Other" && (
-                          <option value={customAddressType.trim() ? `${customAddressType.trim()} Address` : "Other Address"}>
-                            {customAddressType.trim() ? `${customAddressType.trim()} Address` : "Other Address"}
+                          <option value={customAddressType.trim() ? `${customAddressType.trim()} Address` : "Custom Location Address"}>
+                            {customAddressType.trim() ? `${customAddressType.trim()} Address` : "Custom Location Address"}
                           </option>
                         )}
-                        <option value="Home Address">Home Address</option>
-                        <option value="Office Address">Office Address</option>
-                        <option value="Parents' Home Address">Parents' Home Address</option>
-                        <option value="Other Address">Other Address</option>
                       </select>
                     </div>
                   </div>
@@ -1572,7 +1769,7 @@ const Addresses = () => {
                       <Star className="w-4 h-4 fill-[#FF5722]" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-gray-900">Default Address</p>
+                      <p className="text-xs font-bold text-gray-900">Set as default address</p>
                       <p className="text-[10px] text-gray-400 font-medium leading-tight mt-0.5">
                         This address will be used at checkout.
                       </p>
@@ -1598,7 +1795,7 @@ const Addresses = () => {
                       <Cloud className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-gray-900">Save to Account</p>
+                      <p className="text-xs font-bold text-gray-900">Save for future use</p>
                       <p className="text-[10px] text-gray-400 font-medium leading-tight mt-0.5">
                         Access this address from all your devices.
                       </p>
@@ -1673,23 +1870,15 @@ const Addresses = () => {
 
             {/* Bottom Sticky Action Bar */}
             <div className="pt-2">
-              <div className="flex items-center justify-center gap-1.5 text-[11px] font-bold text-gray-500 mb-2.5">
-                <ShieldCheck className="w-4 h-4 text-[#FF5722]" />
-                <span>Securely saved to your account</span>
-              </div>
-
               <button 
                 type="button"
                 onClick={handleSave}
-                className="w-full rounded-2xl bg-[#FF5722] hover:bg-[#F4511E] text-white py-3.5 px-6 shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer"
+                className="w-full rounded-2xl bg-[#FF5722] hover:bg-[#F4511E] text-white py-3.5 px-6 shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all flex flex-col items-center justify-center cursor-pointer"
               >
                 <div className="flex items-center justify-center gap-2 text-sm font-extrabold tracking-wide">
-                  <MapPin className="w-4 h-4 fill-white text-white" />
+                  <MapPin className="w-4 h-4 text-white" />
                   <span>{editingAddressId ? "Update Address" : "Save Address"}</span>
                 </div>
-                <p className="text-[11px] text-orange-100 font-medium">
-                  Delivery will be available immediately.
-                </p>
               </button>
             </div>
           </div>
@@ -1842,6 +2031,7 @@ const Addresses = () => {
         )}
       </main>
     </div>
+  </APIProvider>
   );
 };
 
