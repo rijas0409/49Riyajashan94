@@ -81,6 +81,20 @@ interface Address {
   state: string;
   pincode: string;
   is_default: boolean;
+  receiver_name?: string;
+  receiver_phone?: string;
+  building_floor?: string;
+  street_name?: string;
+  address_type?: string;
+  custom_address_type?: string;
+  save_address_as?: string;
+  latitude?: number;
+  longitude?: number;
+  coordinates?: string;
+  save_for_future?: boolean;
+  delivery_instructions?: string;
+  preset_instructions?: string[];
+  details?: any;
 }
 
 const Addresses = () => {
@@ -168,6 +182,13 @@ const Addresses = () => {
   const openMapStep = () => {
     setEditingAddressId(null);
     setForm({ address_line: "", city: "", state: "", pincode: "" });
+    setBuildingFloor("");
+    setStreetName("");
+    setDeliveryInstructions("");
+    setSelectedPresetInstructions([]);
+    setSelectedAddressType("Home");
+    setCustomAddressType("");
+    setIsDefaultAddress(addresses.length === 0);
     setLocationEnabled(false);
     setIsOutsideIndia(false);
     setAddressStep("map");
@@ -962,43 +983,218 @@ const Addresses = () => {
     }
   };
 
+  const parseAddressData = (rawAddr: any) => {
+    let details: any = rawAddr.details || {};
+    let rawAddressLine = rawAddr.address_line || "";
+    let cleanAddressLine = rawAddressLine;
+
+    if (rawAddressLine.includes("||JSON:")) {
+      const parts = rawAddressLine.split("||JSON:");
+      cleanAddressLine = parts[0];
+      try {
+        const parsed = JSON.parse(parts[1]);
+        details = { ...parsed, ...details };
+      } catch (e) {
+        console.warn("Failed to parse embedded address JSON metadata:", e);
+      }
+    }
+
+    const receiverName = details.receiver_name || rawAddr.receiver_name || "";
+    const receiverPhone = details.receiver_phone || rawAddr.receiver_phone || "";
+    const buildingFloor = details.building_floor || rawAddr.building_floor || "";
+    const streetName = details.street_name || rawAddr.street_name || "";
+    const areaLocality = details.area_locality || rawAddr.area_locality || cleanAddressLine;
+    const addressType = details.address_type || rawAddr.address_type || (cleanAddressLine.toLowerCase().includes("work") ? "Work" : cleanAddressLine.toLowerCase().includes("parent") ? "Parents' Home" : "Home");
+    const customAddressType = details.custom_address_type || rawAddr.custom_address_type || "";
+    const saveAddressAs = details.save_address_as || rawAddr.save_address_as || "Home Address";
+    const latitude = details.map_preview?.latitude || details.latitude || rawAddr.latitude || 28.6139;
+    const longitude = details.map_preview?.longitude || details.longitude || rawAddr.longitude || 77.2090;
+    const coordinates = details.map_preview?.coordinates || details.coordinates || rawAddr.coordinates || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+    const saveForFuture = details.preferences?.save_for_future ?? details.save_for_future ?? rawAddr.save_for_future ?? true;
+    const deliveryInstructions = details.delivery_instructions?.description || details.delivery_instructions || rawAddr.delivery_instructions || "";
+    const presetInstructions = details.delivery_instructions?.preset_tags || details.preset_instructions || rawAddr.preset_instructions || [];
+
+    return {
+      ...rawAddr,
+      displayAddressLine: cleanAddressLine,
+      receiverName,
+      receiverPhone,
+      buildingFloor,
+      streetName,
+      areaLocality,
+      addressType,
+      customAddressType,
+      saveAddressAs,
+      latitude,
+      longitude,
+      coordinates,
+      saveForFuture,
+      deliveryInstructions,
+      presetInstructions,
+      details
+    };
+  };
+
   const startEdit = (addr: Address) => {
-    setEditingAddressId(addr.id);
+    const parsed = parseAddressData(addr);
+    setEditingAddressId(parsed.id);
     setForm({
-      address_line: addr.address_line,
-      city: addr.city,
-      state: addr.state,
-      pincode: addr.pincode
+      address_line: parsed.areaLocality || parsed.displayAddressLine,
+      city: parsed.city || "",
+      state: parsed.state || "",
+      pincode: parsed.pincode || ""
     });
+    setBuildingFloor(parsed.buildingFloor || "");
+    setStreetName(parsed.streetName || "");
+    setReceiverName(parsed.receiverName || "User");
+    setReceiverPhone(parsed.receiverPhone || "+91 98765 43210");
+    setSelectedAddressType(parsed.addressType || "Home");
+    setCustomAddressType(parsed.customAddressType || "");
+    setSaveAddressAs(parsed.saveAddressAs || "Home Address");
+    setIsDefaultAddress(!!parsed.is_default);
+    setSaveToAccount(parsed.saveForFuture !== false);
+    if (parsed.latitude && parsed.longitude) {
+      setMapCenter({ lat: parsed.latitude, lng: parsed.longitude });
+    }
+    setDeliveryInstructions(parsed.deliveryInstructions || "");
+    setSelectedPresetInstructions(parsed.presetInstructions || []);
     setAddressStep("form");
   };
 
+  const resetFormState = () => {
+    setForm({ address_line: "", city: "", state: "", pincode: "" });
+    setBuildingFloor("");
+    setStreetName("");
+    setDeliveryInstructions("");
+    setSelectedPresetInstructions([]);
+    setSelectedAddressType("Home");
+    setCustomAddressType("");
+    setEditingAddressId(null);
+  };
+
   const handleSave = async () => {
-    // Validation for mandatory fields
-    if (!buildingFloor.trim() && !form.address_line.trim()) {
-      toast.error("Please fill in Building / Floor and Area / Locality details");
+    // Strict validation for all mandatory fields
+    if (selectedAddressType === "Other" && !customAddressType.trim()) {
+      toast.error("Please enter a Custom Address Label for 'Other'");
       return;
     }
+
+    if (!receiverName.trim()) {
+      toast.error("Please enter Receiver Name");
+      return;
+    }
+
+    if (!receiverPhone.trim() || receiverPhone.trim().length < 7) {
+      toast.error("Please enter a valid Receiver Phone Number");
+      return;
+    }
+
+    if (!buildingFloor.trim()) {
+      toast.error("Please enter Building / Floor details");
+      return;
+    }
+
     if (!form.address_line.trim()) {
       toast.error("Please enter Area / Locality address");
       return;
     }
-    if (!receiverName.trim() || !receiverPhone.trim()) {
-      toast.error("Please enter Receiver Name and Phone number");
+
+    if (!form.city.trim()) {
+      toast.error("Please enter or select City");
       return;
     }
 
-    const fullParts = [buildingFloor.trim(), streetName.trim(), form.address_line.trim()].filter(Boolean);
-    const finalAddressLine = fullParts.length > 0 ? fullParts.join(", ") : "Selected Address";
-    const finalCity = form.city || "Indore";
-    const finalState = form.state || "Madhya Pradesh";
-    const finalPincode = form.pincode || "452001";
+    if (!form.state.trim()) {
+      toast.error("Please enter or select State");
+      return;
+    }
+
+    if (!form.pincode.trim()) {
+      toast.error("Please enter Pincode");
+      return;
+    }
+
+    if (!mapCenter || typeof mapCenter.lat !== "number" || typeof mapCenter.lng !== "number") {
+      toast.error("Valid location coordinates are required from map preview");
+      return;
+    }
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       toast.error("Please log in to save addresses");
       return;
     }
+
+    const displayParts = [buildingFloor.trim(), streetName.trim(), form.address_line.trim()].filter(Boolean);
+    const displayAddressLine = displayParts.length > 0 ? displayParts.join(", ") : "Selected Address";
+    const finalCity = form.city.trim();
+    const finalState = form.state.trim();
+    const finalPincode = form.pincode.trim();
+
+    const exactLat = mapCenter.lat;
+    const exactLng = mapCenter.lng;
+    const exactCoordinates = `${exactLat.toFixed(6)}, ${exactLng.toFixed(6)}`;
+
+    // Structured JSON containing every single mandatory and optional field
+    const structuredDetails = {
+      receiver_name: receiverName.trim(),
+      receiver_phone: receiverPhone.trim(),
+      building_floor: buildingFloor.trim(),
+      street_name: streetName.trim(),
+      area_locality: form.address_line.trim(),
+      address_type: selectedAddressType,
+      custom_address_type: selectedAddressType === "Other" ? customAddressType.trim() : "",
+      save_address_as: saveAddressAs,
+      map_preview: {
+        latitude: exactLat,
+        longitude: exactLng,
+        coordinates: exactCoordinates,
+      },
+      preferences: {
+        is_default: isDefaultAddress,
+        save_for_future: saveToAccount,
+      },
+      delivery_instructions: {
+        description: deliveryInstructions.trim(),
+        preset_tags: selectedPresetInstructions,
+      }
+    };
+
+    const addressLineWithMeta = `${displayAddressLine}||JSON:${JSON.stringify(structuredDetails)}`;
+
+    // Full payload if DB columns exist
+    const fullPayload = {
+      user_id: session.user.id,
+      address_line: addressLineWithMeta,
+      city: finalCity,
+      state: finalState,
+      pincode: finalPincode,
+      is_default: isDefaultAddress,
+      receiver_name: receiverName.trim(),
+      receiver_phone: receiverPhone.trim(),
+      building_floor: buildingFloor.trim(),
+      street_name: streetName.trim(),
+      address_type: selectedAddressType,
+      custom_address_type: selectedAddressType === "Other" ? customAddressType.trim() : "",
+      save_address_as: saveAddressAs,
+      latitude: exactLat,
+      longitude: exactLng,
+      coordinates: exactCoordinates,
+      save_for_future: saveToAccount,
+      delivery_instructions: deliveryInstructions.trim(),
+      preset_instructions: selectedPresetInstructions,
+      details: structuredDetails
+    };
+
+    // Minimal payload guaranteed to work on any standard addresses table
+    const minimalPayload = {
+      user_id: session.user.id,
+      address_line: addressLineWithMeta,
+      city: finalCity,
+      state: finalState,
+      pincode: finalPincode,
+      is_default: isDefaultAddress,
+    };
 
     // Ensure only one default address if user marked set as default address
     if (isDefaultAddress) {
@@ -1007,46 +1203,41 @@ const Addresses = () => {
 
     if (editingAddressId) {
       // Edit mode
-      const { error } = await supabase
+      let { error } = await supabase
         .from("addresses")
-        .update({
-          address_line: finalAddressLine,
-          city: finalCity,
-          state: finalState,
-          pincode: finalPincode,
-          is_default: isDefaultAddress
-        })
+        .update(fullPayload as any)
         .eq("id", editingAddressId);
+
+      if (error) {
+        const retry = await supabase
+          .from("addresses")
+          .update(minimalPayload)
+          .eq("id", editingAddressId);
+        error = retry.error;
+      }
 
       if (error) {
         toast.error("Failed to update address: " + error.message);
       } else {
         toast.success("Address updated successfully!");
-        setForm({ address_line: "", city: "", state: "", pincode: "" });
-        setBuildingFloor("");
-        setStreetName("");
-        setEditingAddressId(null);
+        resetFormState();
         setAddressStep("list");
         fetchAddresses();
       }
     } else {
       // Add mode
-      const { error } = await supabase.from("addresses").insert({
-        address_line: finalAddressLine,
-        city: finalCity,
-        state: finalState,
-        pincode: finalPincode,
-        user_id: session.user.id,
-        is_default: isDefaultAddress || addresses.length === 0,
-      });
+      let { error } = await supabase.from("addresses").insert(fullPayload as any);
+
+      if (error) {
+        const retry = await supabase.from("addresses").insert(minimalPayload);
+        error = retry.error;
+      }
 
       if (error) {
         toast.error("Failed to save address: " + error.message);
       } else {
         toast.success("Address saved successfully!");
-        setForm({ address_line: "", city: "", state: "", pincode: "" });
-        setBuildingFloor("");
-        setStreetName("");
+        resetFormState();
         setAddressStep("list");
         fetchAddresses();
       }
@@ -1274,7 +1465,7 @@ const Addresses = () => {
         <MapUpdater mapRef={mapRef} />
         <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col overflow-hidden">
           {/* Real Google Map */}
-          <div className={`w-full h-full absolute inset-0 z-0 overflow-hidden transition-all duration-300 ${!locationEnabled ? "opacity-50 filter grayscale-[25%] pointer-events-none" : "opacity-100 pointer-events-auto"}`}>
+          <div className={`w-full h-full absolute inset-0 z-0 overflow-hidden [isolation:isolate] [transform:translateZ(0)] ${!locationEnabled ? "opacity-60 pointer-events-none" : "opacity-100 pointer-events-auto"}`}>
             <Map
               center={mapCenter}
               zoom={mapZoom}
@@ -1346,7 +1537,7 @@ const Addresses = () => {
         </div>
 
         {/* Top Floating Search and Action bar */}
-        <div className="absolute top-4 left-4 right-4 z-20 flex gap-2.5 items-center max-w-lg mx-auto">
+        <div className="absolute top-4 left-4 right-4 z-20 flex gap-2.5 items-center max-w-lg sm:max-w-[660px] md:max-w-[660px] lg:max-w-[1112px] mx-auto">
           <Button 
             onClick={() => setAddressStep("list")}
             size="icon" 
@@ -1625,11 +1816,13 @@ const Addresses = () => {
               onClick={() => {
                 if (addressStep === "form") {
                   if (editingAddressId) {
+                    setEditingAddressId(null);
                     setAddressStep("list");
                   } else {
                     setAddressStep("map");
                   }
                 } else if (addressStep === "map") {
+                  setEditingAddressId(null);
                   setAddressStep("list");
                 } else {
                   if (window.history.length > 1) {
@@ -1692,7 +1885,7 @@ const Addresses = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 max-w-lg space-y-6 relative">
+      <main className="container mx-auto px-4 py-6 max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-4xl space-y-6 relative [isolation:isolate] [transform:translateZ(0)]">
         {addressStep === "form" && (
           <div className="space-y-4 pb-8">
             {/* CARD 1: Address Type */}
@@ -1891,7 +2084,7 @@ const Addresses = () => {
                   </div>
 
                   {/* Right: Live Real-time Mini Map Preview */}
-                  <div className="relative h-32 rounded-2xl overflow-hidden border border-gray-200/90 bg-gray-100 flex items-center justify-center shadow-inner">
+                  <div className="relative h-32 rounded-2xl overflow-hidden border border-gray-200/90 bg-gray-100 flex items-center justify-center shadow-inner [isolation:isolate] [transform:translateZ(0)]">
                     <Map
                       key={`mini-map-${mapCenter.lat}-${mapCenter.lng}`}
                       center={mapCenter}
@@ -2139,9 +2332,12 @@ const Addresses = () => {
         ) : addressStep === "list" && (
           <div className="space-y-4">
             {addresses.map((addr) => {
-              const addressLineLower = addr.address_line.toLowerCase();
-              const isHome = addressLineLower.includes("home");
-              const isWork = addressLineLower.includes("work") || addressLineLower.includes("office");
+              const parsed = parseAddressData(addr);
+              const tagLabel = parsed.addressType === "Other"
+                ? (parsed.customAddressType || "Other")
+                : (parsed.addressType || "Address");
+              const isHome = parsed.addressType === "Home";
+              const isWork = parsed.addressType === "Work";
 
               return (
                 <Card 
@@ -2172,7 +2368,7 @@ const Addresses = () => {
                                 ? "bg-amber-50 text-amber-600 border border-amber-100" 
                                 : "bg-purple-50 text-primary border border-purple-100"
                           }`}>
-                            {isHome ? "Home" : isWork ? "Work" : "Address"}
+                            {tagLabel}
                           </span>
 
                           {addr.is_default && (
@@ -2184,12 +2380,18 @@ const Addresses = () => {
                         </div>
                         
                         <h4 className="font-bold text-gray-800 text-sm leading-snug line-clamp-2">
-                          {addr.address_line}
+                          {parsed.displayAddressLine}
                         </h4>
                         
                         <p className="text-xs text-gray-500 font-medium mt-1">
                           {addr.city}, {addr.state} - {addr.pincode}
                         </p>
+
+                        {parsed.receiverName && (
+                          <p className="text-[11px] text-gray-600 font-medium mt-1">
+                            <span className="font-bold text-gray-700">Receiver:</span> {parsed.receiverName} ({parsed.receiverPhone})
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
