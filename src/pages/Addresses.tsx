@@ -2533,15 +2533,7 @@ const Addresses = () => {
           </div>
         )}
 
-        {/* Support Note */}
-        {addressStep === "list" && (
-          <div className="text-center pt-2">
-            <p className="text-[11px] text-muted-foreground font-medium flex items-center justify-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              Your delivery addresses are securely managed.
-            </p>
-          </div>
-        )}
+
       </main>
     </div>
   </APIProvider>
