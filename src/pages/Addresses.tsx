@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Plus, MapPin, Trash2, Star, ShieldCheck, Sparkles, Map as MapIcon, Search, Compass, Loader2, Locate, Pencil, X, Building2, Users, Briefcase, Home, MoreHorizontal, CheckCircle2, ChevronDown, ChevronRight, Bookmark, Tag, Cloud, Bell, PhoneCall, Dog, DoorOpen, Target, Milestone, Edit3, Check, Navigation, LocateFixed } from "lucide-react";
+import { ArrowLeft, Plus, MapPin, Trash2, Star, ShieldCheck, Sparkles, Map as MapIcon, Search, Compass, Loader2, Locate, Pencil, X, Building2, Users, Briefcase, Home, MoreHorizontal, CheckCircle2, ChevronDown, ChevronRight, Bookmark, Tag, Cloud, Bell, PhoneCall, Dog, DoorOpen, Target, Milestone, Edit3, Check, Navigation, LocateFixed, User, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "@/contexts/LocationContext";
 import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
@@ -2334,108 +2334,197 @@ const Addresses = () => {
             {addresses.map((addr) => {
               const parsed = parseAddressData(addr);
               const tagLabel = parsed.addressType === "Other"
-                ? (parsed.customAddressType || "Other")
-                : (parsed.addressType || "Address");
+                ? (parsed.customAddressType || "OTHER")
+                : (parsed.addressType || "ADDRESS");
               const isHome = parsed.addressType === "Home";
               const isWork = parsed.addressType === "Work";
 
-              return (
-                <Card 
-                  key={addr.id} 
-                  className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col gap-4 ${
-                    addr.is_default 
-                      ? "border-primary/40 bg-primary/[0.01] shadow-[0_4px_20px_rgba(155,81,224,0.05)]" 
-                      : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
-                  }`}
-                >
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="flex gap-4 items-start min-w-0">
-                      {/* Elegant Clean MapPin Icon Wrapper */}
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border transition-all ${
-                        addr.is_default 
-                          ? "bg-primary/10 border-primary/20 text-primary" 
-                          : "bg-gray-50 border-gray-100 text-gray-500"
-                      }`}>
-                        <MapPin className="w-5 h-5" />
+              if (addr.is_default) {
+                // Default Address Card (Exact design matching image top card)
+                return (
+                  <Card 
+                    key={addr.id} 
+                    className="p-5 md:p-6 rounded-[24px] border border-[#ede7f6] bg-[#faf8ff] shadow-[0_2px_15px_rgba(147,51,234,0.04)] transition-all duration-300 flex flex-col justify-between gap-3 relative"
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      {/* Left Pin Icon Wrapper */}
+                      <div className="w-11 h-11 rounded-2xl bg-[#f3e8ff] text-[#9333ea] flex items-center justify-center flex-shrink-0">
+                        <MapPin className="w-5 h-5 text-[#9333ea]" />
                       </div>
                       
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                          <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                        <div className="flex items-center gap-2 flex-wrap min-w-0">
+                          {/* Tag Badge */}
+                          <span className={`text-[10px] md:text-[11px] font-extrabold px-3 py-0.5 rounded-full uppercase tracking-wider ${
                             isHome 
-                              ? "bg-blue-50 text-blue-600 border border-blue-100" 
+                              ? "bg-[#eff6ff] text-[#2563eb]" 
                               : isWork 
-                                ? "bg-amber-50 text-amber-600 border border-amber-100" 
-                                : "bg-purple-50 text-primary border border-purple-100"
+                                ? "bg-[#fffbebe] text-[#d97706]" 
+                                : "bg-[#fcf0f6] text-[#db2777]"
                           }`}>
                             {tagLabel}
                           </span>
 
-                          {addr.is_default && (
-                            <span className="text-[9px] bg-primary/10 text-primary border border-primary/20 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
-                              <Star className="w-2.5 h-2.5 fill-current" />
-                              Default
-                            </span>
-                          )}
+                          {/* DEFAULT Pink Badge */}
+                          <span className="bg-[#fce7f3] text-[#db2777] text-[10px] md:text-[11px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
+                            <Star className="w-3 h-3 fill-current text-[#db2777]" />
+                            DEFAULT
+                          </span>
+
+                          {/* Active Green Badge on Top-Right */}
+                          <span className="bg-[#ecfdf5] text-[#059669] border border-[#a7f3d0] text-xs font-medium px-2.5 py-0.5 rounded-full flex items-center gap-1 ml-auto">
+                            <ShieldCheck className="w-3.5 h-3.5 text-[#059669]" />
+                            Active
+                          </span>
                         </div>
-                        
-                        <h4 className="font-bold text-gray-800 text-sm leading-snug line-clamp-2">
+
+                        {/* Main Address Line */}
+                        <h3 className="font-bold text-gray-900 text-sm md:text-base leading-snug line-clamp-2 mt-2.5">
                           {parsed.displayAddressLine}
-                        </h4>
-                        
-                        <p className="text-xs text-gray-500 font-medium mt-1">
+                        </h3>
+
+                        {/* Sub Address Details */}
+                        <p className="text-xs md:text-sm text-gray-500 font-medium mt-1">
                           {addr.city}, {addr.state} - {addr.pincode}
                         </p>
 
+                        {/* Receiver Details */}
                         {parsed.receiverName && (
-                          <p className="text-[11px] text-gray-600 font-medium mt-1">
-                            <span className="font-bold text-gray-700">Receiver:</span> {parsed.receiverName} ({parsed.receiverPhone})
-                          </p>
+                          <div className="flex items-center gap-2 text-xs text-gray-600 font-medium mt-2 pt-0.5">
+                            <span className="flex items-center gap-1 font-semibold text-gray-700">
+                              <User className="w-3.5 h-3.5 text-[#9333ea]" />
+                              {parsed.receiverName}
+                            </span>
+                            {parsed.receiverPhone && (
+                              <>
+                                <span className="text-gray-300">|</span>
+                                <span className="flex items-center gap-1 font-medium text-gray-600">
+                                  <Phone className="w-3.5 h-3.5 text-[#9333ea]" />
+                                  {parsed.receiverPhone}
+                                </span>
+                              </>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
-                  </div>
 
-                  {/* Action buttons at the bottom of the card with simple separator */}
-                  <div className="border-t border-gray-100/80 pt-3.5 flex items-center justify-between gap-2">
-                    <div>
-                      {!addr.is_default ? (
-                        <button 
-                          onClick={() => setDefault(addr.id)}
-                          className="text-xs text-primary hover:text-primary/90 font-bold transition-all hover:underline"
-                        >
-                          Set as Default
-                        </button>
-                      ) : (
-                        <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-                          <ShieldCheck className="w-4 h-4" />
+                    {/* Bottom Action Footer for Default Card */}
+                    <div className="flex items-center justify-between gap-2 mt-3 pt-1">
+                      <div className="flex items-center gap-1.5 text-[#059669]">
+                        <CheckCircle2 className="w-4 h-4 text-[#059669]" />
+                        <span className="text-xs md:text-sm font-semibold text-[#059669]">
                           Default Delivery Address
                         </span>
-                      )}
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        {/* Edit Button */}
+                        <button 
+                          onClick={() => startEdit(addr)}
+                          title="Edit Address"
+                          className="p-2 text-gray-400 hover:text-[#9333ea] hover:bg-purple-100/50 rounded-xl transition-all active:scale-90"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+
+                        {/* Delete Button */}
+                        <button 
+                          onClick={() => handleDelete(addr.id)}
+                          title="Delete Address"
+                          className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-90"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              }
+
+              // Non-Default Address Card (Exact design matching image lower cards)
+              return (
+                <Card 
+                  key={addr.id} 
+                  className="p-5 md:p-6 rounded-[24px] border border-gray-100/90 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all duration-300 flex flex-col justify-between gap-3"
+                >
+                  <div className="flex items-start gap-3 min-w-0">
+                    {/* Left Pin Icon Wrapper */}
+                    <div className="w-11 h-11 rounded-2xl bg-gray-50 text-gray-500 flex items-center justify-center flex-shrink-0 border border-gray-100">
+                      <MapPin className="w-5 h-5 text-gray-600" />
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        {/* Tag Badge */}
+                        <span className={`text-[10px] md:text-[11px] font-extrabold px-3 py-0.5 rounded-full uppercase tracking-wider ${
+                          isHome 
+                            ? "bg-[#eff6ff] text-[#2563eb]" 
+                            : "bg-[#fcf0f6] text-[#db2777]"
+                        }`}>
+                          {tagLabel}
+                        </span>
+                      </div>
+
+                      {/* Main Address Line */}
+                      <h3 className="font-bold text-gray-900 text-sm md:text-base leading-snug line-clamp-2 mt-2.5">
+                        {parsed.displayAddressLine}
+                      </h3>
+
+                      {/* Sub Address Details */}
+                      <p className="text-xs md:text-sm text-gray-500 font-medium mt-1">
+                        {addr.city}, {addr.state} - {addr.pincode}
+                      </p>
+
+                      {/* Receiver Details */}
+                      {parsed.receiverName && (
+                        <div className="flex items-center gap-2 text-xs text-gray-600 font-medium mt-2 pt-0.5">
+                          <span className="flex items-center gap-1 font-semibold text-gray-700">
+                            <User className="w-3.5 h-3.5 text-gray-400" />
+                            {parsed.receiverName}
+                          </span>
+                          {parsed.receiverPhone && (
+                            <>
+                              <span className="text-gray-300">|</span>
+                              <span className="flex items-center gap-1 font-medium text-gray-600">
+                                <Phone className="w-3.5 h-3.5 text-gray-400" />
+                                {parsed.receiverPhone}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bottom Divider & Action Footer */}
+                  <div className="border-t border-gray-100 pt-3.5 mt-2 flex items-center justify-between gap-2">
+                    <button 
+                      onClick={() => setDefault(addr.id)}
+                      className="text-xs md:text-sm font-bold text-[#8b5cf6] hover:text-[#7c3aed] flex items-center gap-1.5 transition-all active:scale-95"
+                    >
+                      <Star className="w-4 h-4 text-[#8b5cf6]" />
+                      Make Default
+                    </button>
+
+                    <div className="flex items-center gap-1">
                       {/* Edit Button */}
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <button 
                         onClick={() => startEdit(addr)}
                         title="Edit Address"
-                        className="text-gray-400 hover:text-primary hover:bg-purple-50 hover:border-purple-100 border border-transparent rounded-full w-8 h-8 transition-all active:scale-90"
+                        className="p-2 text-gray-400 hover:text-[#9333ea] hover:bg-purple-50 rounded-xl transition-all active:scale-90"
                       >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
+                        <Pencil className="w-4 h-4" />
+                      </button>
 
                       {/* Delete Button */}
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <button 
                         onClick={() => handleDelete(addr.id)}
                         title="Delete Address"
-                        className="text-gray-400 hover:text-destructive hover:bg-red-50 hover:border-red-100 border border-transparent rounded-full w-8 h-8 transition-all active:scale-90"
+                        className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-90"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 </Card>
