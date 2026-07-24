@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -18,9 +18,16 @@ interface Message {
 
 export default function SupportChat() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { profile } = useAuth();
   
-  const [view, setView] = useState<"help" | "chat">("help");
+  const [view, setView] = useState<"help" | "chat">(
+    location.pathname === "/buyer/support/chat" ? "chat" : "help"
+  );
+
+  useEffect(() => {
+    setView(location.pathname === "/buyer/support/chat" ? "chat" : "help");
+  }, [location.pathname]);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
@@ -62,7 +69,7 @@ export default function SupportChat() {
           messages: updatedMessages,
           userId: profile?.id || null,
           profile: profile || null,
-          currentPath: "/buyer/support"
+          currentPath: location.pathname
         })
       });
 
@@ -94,7 +101,7 @@ export default function SupportChat() {
   };
 
   const handleItemClick = (title: string, customQuery?: string) => {
-    setView("chat");
+    navigate("/buyer/support/chat");
     const query = customQuery || `Help with ${title}`;
     handleSend(query);
   };
@@ -210,7 +217,7 @@ export default function SupportChat() {
             
             {/* Circular Sruvo AI Headset Icon */}
             <div 
-              onClick={() => setView("chat")}
+              onClick={() => navigate("/buyer/support/chat")}
               className="w-11 h-11 rounded-full bg-[#5D3BF2] flex items-center justify-center shrink-0 cursor-pointer shadow-[0_3px_10px_rgba(93,59,242,0.18)] hover:scale-105 active:scale-95 transition-all text-white"
             >
               <Headphones className="w-5 h-5" strokeWidth={2.2} />
@@ -321,7 +328,7 @@ export default function SupportChat() {
             <div 
               onClick={() => {
                 toast.success("Opening conversation archive...");
-                setView("chat");
+                navigate("/buyer/support/chat");
                 setMessages(prev => [
                   ...prev,
                   { role: "user", content: "Show me my past support conversation history." },
@@ -364,7 +371,7 @@ export default function SupportChat() {
               size="icon"
               id="back-to-help-btn"
               className="rounded-full hover:bg-slate-100 transition-colors w-9 h-9"
-              onClick={() => setView("help")}
+              onClick={() => navigate("/buyer/support")}
             >
               <ArrowLeft className="w-5 h-5 text-gray-700" />
             </Button>

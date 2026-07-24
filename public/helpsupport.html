@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Help & Support</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <style>
+    /* Reset & Mobile Optimization */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      background-color: #f4f5f8;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #0f172a;
+      overflow-x: hidden;
+    }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 0;
+    }
+
+    /* Common App Container */
+    .app-container {
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+      background-color: #f4f5f8;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* Existing Screen Container */
+    .screen-container {
+      padding: 16px 16px 36px 16px;
+      background-color: #f8f9fd;
+      min-height: 100vh;
+    }
+    
+    /* Header Section */
+    .header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 22px;
+      padding: 4px 2px;
+    }
+    .header-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      flex: 1;
+    }
+    .back-icon-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: #0f172a;
+      cursor: pointer;
+      padding-top: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .header-title-box { flex: 1; }
+    .header-title-box h1 {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0d0e15;
+      letter-spacing: -0.3px;
+      line-height: 1.25;
+    }
+    .header-title-box p {
+      font-size: 13px;
+      color: #64748b;
+      margin-top: 6px;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+    .headset-circle-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background-color: #5e42e2;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      margin-left: 12px;
+      box-shadow: 0 4px 14px rgba(94, 66, 226, 0.25);
+      cursor: pointer;
+    }
+
+    /* Dynamic Card Styles */
+    .card-type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .text-purple { color: #7c3aed; }
+    .text-orange { color: #ff5200; }
+    .text-blue { color: #0284c7; }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: capitalize;
+    }
+    .status-completed { background-color: #f0fdf4; color: #15803d; }
+    .status-pending { background-color: #fefce8; color: #a16207; }
+    .status-cancelled { background-color: #fef2f2; color: #b91c1c; }
+    .status-confirmed { background-color: #ecfeff; color: #0891b2; }
+    .status-delivered { background-color: #f0fdf4; color: #15803d; }
+    .status-in_progress { background-color: #f0f9ff; color: #0369a1; }
+    
+    /* Refund Banner Card */
+    .refund-card {
+      background: linear-gradient(135deg, #fff7f3 0%, #fff0f1 100%);
+      border: 1px solid #ffe8e3;
+      border-radius: 20px;
+      padding: 18px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 26px;
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+    }
+    .refund-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex: 1;
+      min-width: 0;
+      z-index: 2;
+    }
+    .wallet-icon-wrapper {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background-color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+      flex-shrink: 0;
+    }
+    .wallet-icon-wrapper img { width: 94px; height: 94px; object-fit: contain; }
+    .refund-text-group { min-width: 0; }
+    .refund-text-group h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .refund-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #ff5200;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .refund-illustration {
+      flex-shrink: 0;
+      width: 105px;
+      height: 75px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      z-index: 1;
+      margin-left: 4px;
+    }
+    .refund-illustration img {
+      width: 149%;
+      height: 149%;
+      object-fit: contain;
+      object-position: bottom right;
+    }
+    
+    /* Section Label */
+    .section-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: #475569;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      padding-left: 2px;
+    }
+    
+    /* Card Group Box */
+    .card-group {
+      background-color: #ffffff;
+      border-radius: 20px;
+      border: 1px solid #f1f3f9;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
+      margin-bottom: 26px;
+      width: 100%;
+      overflow: hidden;
+    }
+    
+    /* List Item Row */
+    .list-item {
+      display: flex;
+      align-items: center;
+      padding: 15px 16px;
+      text-decoration: none;
+      color: inherit;
+      width: 100%;
+      transition: background-color 0.15s ease;
+      cursor: pointer;
+    }
+    .list-item:active { background-color: #f8fafc; }
+    .list-item:not(:last-child) { border-bottom: 1px solid #f2f4f8; }
+    .item-icon-box {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background-color: #f1edfe;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 14px;
+      flex-shrink: 0;
+    }
+    .item-icon-box img { width: 94px; height: 94px; object-fit: contain; }
+    .item-details { flex: 1; min-width: 0; padding-right: 8px; }
+    .item-title { font-size: 14.5px; font-weight: 700; color: #0f172a; line-height: 1.3; }
+    .item-subtitle {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 3px;
+      font-weight: 500;
+      line-height: 1.35;
+      white-space: normal;
+      word-break: break-word;
+    }
+    .arrow-icon { color: #94a3b8; font-size: 12px; flex-shrink: 0; }
+    
+    /* Icon Adjustments */
+    .icon-service { position: relative; top: 6px; }
+    .icon-health { position: relative; top: 2px; }
+    .icon-smart { position: relative; top: 2px; }
+    .icon-queries { position: relative; top: 2px; }
+    .icon-illu { position: relative; top: 9px; right: -20px; }
+
+    @media (max-width: 380px) {
+      .screen-container { padding: 12px 10px 24px 10px; }
+      .header-title-box h1 { font-size: 20px; }
+      .refund-card { padding: 14px 12px; }
+      .refund-illustration { width: 94px; }
+      .item-icon-box { width: 40px; height: 40px; margin-right: 10px; }
+      .item-icon-box img { width: 94px; height: 94px; }
+      .item-title { font-size: 13.5px; }
+      .item-subtitle { font-size: 11.5px; }
+    }
+
+    /* ========================================================= */
+    /* REFUND STATUS SCREEN                                      */
+    /* ========================================================= */
+    #refund-screen { display: none; background-color: #f4f5f8; min-height: 100vh; padding-bottom: 40px; }
+    .refund-header-wrapper { background-color: #ffffff; padding: 16px 18px; display: flex; align-items: center; position: sticky; top: 0; z-index: 10; }
+    .refund-header-wrapper h1 { font-size: 18px; font-weight: 700; color: #1a1a1a; margin-left: 14px; }
+    .refund-content { padding: 16px; }
+    .info-banner { background-color: #ffffff; border-radius: 16px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.03); margin-bottom: 24px; }
+    .info-banner-text { font-size: 14px; color: #666; line-height: 1.45; font-weight: 500; }
+    .info-banner-text b { color: #1a1a1a; font-weight: 700; }
+    .info-banner-icon { width: 42px; height: 42px; border-radius: 50%; background-color: #f2f3f5; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #4b5563; font-size: 18px; }
+    .refund-section-title { font-size: 16px; font-weight: 800; color: #1a1a1a; margin-bottom: 12px; }
+    .detail-card { background-color: #ffffff; border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 24px; }
+    .detail-card-top { padding: 20px 18px; }
+    .dc-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .dc-title { font-size: 17px; font-weight: 700; color: #1a1a1a; }
+    .dc-status { font-size: 13.5px; font-weight: 700; color: #0ea5e9; display: flex; align-items: center; gap: 5px; }
+    .dc-status.completed { color: #0fa958; }
+    .dc-row { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 14px; color: #4b5563; font-weight: 500; }
+    .dc-price { font-weight: 800; color: #1a1a1a; font-size: 15px; }
+    .dashed-divider { border-top: 1px dashed #e2e8f0; width: 100%; }
+    .see-details-action { padding: 16px; text-align: center; cursor: pointer; }
+    .see-details-text { font-size: 14.5px; font-weight: 700; color: #ff5200; }
+    .expanded-area { display: none; }
+    .order-id-row { padding: 16px 18px; font-size: 14px; font-weight: 700; color: #1a1a1a; }
+    .order-id-row span { font-weight: 500; color: #666; }
+    .timeline-container { padding: 20px 18px 20px 24px; }
+    .timeline-item { position: relative; padding-bottom: 24px; padding-left: 20px; }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-item::before { content: ''; position: absolute; left: -5px; top: 4px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid #0fa958; background-color: #ffffff; z-index: 2; }
+    .timeline-item:not(:last-child)::after { content: ''; position: absolute; left: 0; top: 14px; bottom: -4px; width: 2px; background-color: #0fa958; z-index: 1; }
+    .tl-title { font-size: 14px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+    .tl-date { font-size: 12.5px; color: #94a3b8; font-weight: 500; margin-bottom: 4px; }
+    .tl-status { font-size: 13px; color: #64748b; font-weight: 500; line-height: 1.4; }
+    .tl-status b { color: #1a1a1a; }
+    .tl-link { font-size: 12.5px; font-weight: 700; color: #1a1a1a; display: inline-block; margin-top: 6px; }
+    .feedback-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px; }
+    .feedback-text { font-size: 14px; color: #64748b; font-weight: 500; }
+    .feedback-actions { display: flex; gap: 16px; }
+    .feedback-btn { display: flex; align-items: center; gap: 6px; color: #ff5200; font-weight: 800; font-size: 14px; border: none; background: none; cursor: pointer; border-bottom: 1.5px dashed #ff5200; padding-bottom: 2px; }
+    .feedback-btn i { font-size: 15px; }
+    .btn-primary { background-color: #ff5200; color: #ffffff; width: 100%; padding: 16px; border-radius: 12px; border: none; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(255, 82, 0, 0.2); }
+
+    /* ========================================================= */
+    /* OVERLAY / CENTERED POPUP CARD STYLES                      */
+    /* ========================================================= */
+    .overlay-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
+    .overlay-backdrop { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 1; animation: fadeIn 0.25s ease; }
+    .bottom-sheet { position: relative; z-index: 2; background: #ffffff; width: 100%; max-width: 400px; border-radius: 20px; padding: 32px 20px 24px 20px; animation: popIn 0.3s ease forwards; text-align: center; }
+    .sheet-header { display: flex; justify-content: center; align-items: center; margin-bottom: 16px; }
+    .sheet-header h3 { font-size: 18px; font-weight: 800; color: #1a1a1a; margin-top: 14px; }
+    .close-sheet-btn { position: absolute; top: 16px; right: 16px; background: #f1f3f9; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #1a1a1a; cursor: pointer; font-size: 14px; }
+    .sheet-body { display: flex; flex-direction: column; align-items: center; }
+    .sheet-icon { position: absolute; top: -24px; left: 50%; transform: translateX(-50%); width: 48px; height: 48px; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; margin-bottom: 0; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); z-index: 10; }
+    .sheet-body h4 { font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px; }
+    .sheet-body p { font-size: 14px; color: #64748b; line-height: 1.5; font-weight: 500; margin-bottom: 12px; }
+    @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* ========================================================= */
+    /* PAST ORDERS & CONSULTATIONS SCREEN                        */
+    /* ========================================================= */
+    #past-orders-screen { display: none; background-color: #f4f5f8; min-height: 100vh; padding-bottom: 40px; }
+    .orders-header-wrapper { background-color: #ffffff; padding: 16px 18px; display: flex; align-items: center; position: sticky; top: 0; z-index: 10; }
+    .orders-header-wrapper h1 { font-size: 18px; font-weight: 700; color: #1a1a1a; margin-left: 14px; }
+    .orders-content { padding: 20px 16px; }
+    .orders-section-title { font-size: 14px; font-weight: 800; color: #1a1a1a; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 16px; padding-left: 2px; }
+    .order-card { background-color: #ffffff; border-radius: 24px; padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.025); border: 1px solid #f1f5f9; transition: transform 0.15s ease, box-shadow 0.15s ease; cursor: pointer; }
+    .order-card:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(0,0,0,0.04); }
+    .order-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+    .oc-title { font-size: 16px; font-weight: 800; color: #1a1a1a; }
+    .oc-subtitle { font-size: 13px; color: #64748b; margin-top: 4px; font-weight: 500; }
+    .oc-price { font-size: 13px; color: #64748b; margin-top: 2px; font-weight: 500; }
+    .oc-status { font-size: 13px; font-weight: 600; color: #0fa958; display: flex; align-items: center; gap: 4px; }
+    .oc-divider { border-top: 1px dashed #e2e8f0; margin-bottom: 14px; }
+    .oc-items { font-size: 14px; color: #475569; font-weight: 600; line-height: 1.4; margin-bottom: 6px; }
+    .oc-date { font-size: 12px; color: #94a3b8; font-weight: 500; }
+    .view-more-btn { color: #ff5200; font-size: 14.5px; font-weight: 800; text-align: left; background: none; border: none; padding: 8px 4px; margin-top: 8px; cursor: pointer; }
+
+    /* ========================================================= */
+    /* NATIVE & RESPONSIVE PAST ORDERS & CONSULTATIONS CARD STYLE*/
+    /* ========================================================= */
+    .order-card {
+      background-color: #ffffff !important;
+      border-radius: 24px !important;
+      padding: 16px !important;
+      margin-bottom: 16px !important;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.025) !important;
+      border: 1px solid #f1f5f9 !important;
+      transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+      cursor: pointer !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    
+    .order-card:hover {
+      transform: translateY(-2px) !important;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.04) !important;
+    }
+    
+    .order-card-header {
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: flex-start !important;
+      gap: 12px !important;
+      width: 100% !important;
+    }
+    
+    .oc-header-left {
+      display: flex !important;
+      align-items: flex-start !important;
+      gap: 12px !important;
+      flex: 1 !important;
+      min-width: 0 !important;
+    }
+    
+    .oc-icon-box {
+      width: 38px !important;
+      height: 38px !important;
+      border-radius: 10px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      flex-shrink: 0 !important;
+    }
+    
+    .oc-icon-box i {
+      font-size: 16px !important;
+    }
+    
+    .oc-header-info {
+      display: flex !important;
+      flex-direction: column !important;
+      min-width: 0 !important;
+      flex: 1 !important;
+    }
+    
+    .oc-title {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif !important;
+      font-weight: 800 !important;
+      font-size: 16px !important;
+      color: #111111 !important;
+      margin: 0 !important;
+      line-height: 1.2 !important;
+    }
+    
+    .oc-subtitle {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif !important;
+      font-weight: 400 !important;
+      font-size: 13px !important;
+      color: #687484 !important;
+      margin-top: 4px !important;
+      line-height: 1.4 !important;
+      word-wrap: break-word !important;
+    }
+    
+    .oc-bullet {
+      font-size: 15px !important;
+      font-weight: bold !important;
+      vertical-align: middle !important;
+      line-height: 1 !important;
+      display: inline-block !important;
+      margin: 0 3px !important;
+    }
+    
+    .oc-price {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 13px !important;
+      color: #111111 !important;
+      margin-top: 6px !important;
+      line-height: 1.2 !important;
+    }
+    
+    .oc-status {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif !important;
+      font-weight: 600 !important;
+      font-size: 13px !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 4px !important;
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
+    }
+    
+    .oc-status i {
+      font-size: 13px !important;
+    }
+    
+    .oc-divider {
+      width: 100% !important;
+      border-top: 1px dashed #e2e8f0 !important;
+      height: 0px !important;
+      margin-top: 16px !important;
+      margin-bottom: 12px !important;
+    }
+    
+    .oc-items {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif !important;
+      font-weight: 500 !important;
+      font-size: 14px !important;
+      color: #4A5568 !important;
+      margin: 0 0 6px 0 !important;
+      line-height: 1.4 !important;
+    }
+    
+    .oc-date {
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif !important;
+      font-weight: 500 !important;
+      font-size: 12px !important;
+      color: #94a3b8 !important;
+    }
+    
+    .oc-date i {
+      font-size: 11px !important;
+    }
+
+
+    /* ========================================================= */
+    /* NEW: DYNAMIC FAQ SCREEN (BASED ON REFERENCE IMAGES)       */
+    /* ========================================================= */
+    #faq-screen {
+      display: none;
+      background-color: #f4f5f8;
+      min-height: 100vh;
+      padding-bottom: 40px;
+    }
+    .faq-header-wrapper {
+      background-color: #ffffff;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+    .faq-header-wrapper h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-left: 14px;
+    }
+    .faq-content {
+      padding: 24px 16px;
+    }
+    .faq-section-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #1a1a1a;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      padding-left: 2px;
+    }
+    .faq-card-container {
+      background-color: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+      overflow: hidden;
+    }
+    .faq-item {
+      border-bottom: 1px solid #f1f3f9;
+    }
+    .faq-item:last-child {
+      border-bottom: none;
+    }
+    .faq-question-btn {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 16px;
+      background: none;
+      border: none;
+      text-align: left;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .faq-question-text {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: #1a1a1a;
+      line-height: 1.4;
+      padding-right: 16px;
+    }
+    .faq-chevron {
+      color: #94a3b8;
+      font-size: 14px;
+      transition: transform 0.2s ease;
+    }
+    .faq-answer-container {
+      display: none;
+      padding: 0 16px 20px 16px;
+    }
+    .faq-answer-text {
+      font-size: 14px;
+      color: #64748b;
+      line-height: 1.5;
+      font-weight: 500;
+    }
+    .faq-cta-box {
+      margin-top: 16px;
+    }
+    .faq-action-btn {
+      background-color: #ff5200;
+      color: #ffffff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      border: none;
+      font-size: 13.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-block;
+      text-transform: uppercase;
+    }
+    .faq-action-subtext {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 6px;
+      font-weight: 500;
+    }
+    .faq-item.active .faq-chevron {
+      transform: rotate(180deg);
+    }
+    .faq-item.active .faq-answer-container {
+      display: block;
+      animation: fadeIn 0.2s ease;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- ============================================== -->
+    <!-- SCREEN 1: Original Help & Support Screen       -->
+    <!-- ============================================== -->
+    <div id="main-screen" class="screen-container">
+      
+      <!-- Top Header -->
+      <header class="header">
+        <div class="header-left">
+          <button class="back-icon-btn" aria-label="Back">
+            <i class="fa-solid fa-arrow-left"></i>
+          </button>
+          <div class="header-title-box">
+            <h1>Help & Support</h1>
+            <p>Get support for pet care, orders, payments, and everything on Sruvo.</p>
+          </div>
+        </div>
+        <div class="headset-circle-btn">
+          <i class="fa-solid fa-headset"></i>
+        </div>
+      </header>
+
+      <!-- Active Refunds Banner Card -->
+      <div class="refund-card">
+        <div class="refund-left">
+          <div class="wallet-icon-wrapper">
+            <img src="https://i.ibb.co/nM8QXCbs/file-000000007d6c81faaf48cc0e35313ae7.png" alt="Wallet">
+          </div>
+          <div class="refund-text-group">
+            <h3>You have 0 active refunds</h3>
+            <div id="trigger-refund-status" class="refund-link">
+              View My Refunds 
+              <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i>
+            </div>
+          </div>
+        </div>
+        <div class="refund-illustration">
+           <img src="https://i.ibb.co/Gfd7v6Ln/file-00000000104482088e8d04b9456c0658.png" alt="Refund Illustration" class="icon-illu">
+        </div>
+      </div>
+
+      <!-- RECENT SECTION -->
+      <div class="section-label">RECENT</div>
+      <div class="card-group">
+        <a href="#" class="list-item" id="trigger-past-orders">
+          <div class="item-icon-box">
+            <img src="https://i.ibb.co/LdscqLnt/file-00000000129c8207b983eac04dc18425.png" alt="Orders">
+          </div>
+          <div class="item-details">
+            <div class="item-title">Issues with Recent Orders</div>
+            <div class="item-subtitle">Get help with your pet shop orders</div>
+          </div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </a>
+      </div>
+
+      <!-- HELP WITH OTHER QUERIES SECTION -->
+      <div class="section-label">HELP WITH OTHER QUERIES</div>
+      <div class="card-group">
+        
+        <!-- Targetable classes for JS mapping based on title text -->
+        <a href="#" class="list-item dynamic-faq-trigger">
+          <div class="item-icon-box">
+            <img src="https://i.ibb.co/FLSBcX17/file-000000008f0c81fa80af517b0ff057d3.png" alt="Vet" class="icon-smart">
+          </div>
+          <div class="item-details">
+            <div class="item-title">Smart Match & Vet Consultation</div>
+            <div class="item-subtitle">Get help with vet consultations, bookings and Smart Match</div>
+          </div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </a>
+
+        <a href="#" class="list-item dynamic-faq-trigger">
+          <div class="item-icon-box">
+            <img src="https://i.ibb.co/Sww4LwGk/file-000000009eb48207be0806ae78eaf20f.png" alt="Passport">
+          </div>
+          <div class="item-details">
+            <div class="item-title">Pet Passport</div>
+            <div class="item-subtitle">View, update and manage your pet's passport & health records</div>
+          </div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </a>
+
+        <a href="#" class="list-item dynamic-faq-trigger">
+          <div class="item-icon-box">
+            <img src="https://i.ibb.co/LdscqLnt/file-00000000129c8207b983eac04dc18425.png" alt="Shop">
+          </div>
+          <div class="item-details">
+            <div class="item-title">Shop Orders</div>
+            <div class="item-subtitle">Track orders, returns, refunds and product related issues</div>
+          </div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </a>
+
+        <a href="#" class="list-item dynamic-faq-trigger">
+          <div class="item-icon-box">
+            <img src="https://i.ibb.co/jv5FMmyk/file-00000000a3e88207861ef6b0a26b911c.png" alt="Delivery">
+          </div>
+          <div class="item-details">
+            <div class="item-title">Delivery & Tracking</div>
+            <div class="item-subtitle">Track deliveries, address changes and delivery related support</div>
+          </div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </a>
+
+        <a href="#" class="list-item dynamic-faq-trigger">
+          <div class="item-icon-box">
+            <img src="https://i.ibb.co/Bkkh3P9/file-00000000cdb0820ba6c5cf4ab7421de8.png" alt="Payments">
+          </div>
+          <div class="item-details">
+            <div class="item-title">Payments & Refunds</div>
+            <div class="item-subtitle">Payment issues, refunds, wallet and transaction related help</div>
+          </div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </a>
+
+        <a href="#" class="list-item dynamic-faq-trigger">
+          <div class="item-icon-box">
+            <img src="https://i.ibb.co/jkdN1B70/file-00000000f69c82079dd4b7ca24433786.png" alt="Profile">
+          </div>
+          <div class="item-details">
+            <div class="item-title">Account & Profile</div>
+            <div class="item-subtitle">Login issues, profile updates, notifications and app related help</div>
+          </div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </a>
+
+        <a href="#" class="list-item dynamic-faq-trigger">
+          <div class="item-icon-box">
+            <img src="https://i.ibb.co/8nnJ1k41/file-000000008d2881fb92f100a85d0b5cb5.png" alt="Offers">
+          </div>
+          <div class="item-details">
+            <div class="item-title">Offers & Promotions</div>
+            <div class="item-subtitle">Help with coupons, offers and promotional deals</div>
+          </div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </a>
+
+        <a href="#" class="list-item dynamic-faq-trigger">
+          <div class="item-icon-box">
+            <img src="https://i.ibb.co/rKs0w46J/file-00000000e108820b887bb27d37897a41.png" alt="Health" class="icon-health">
+          </div>
+          <div class="item-details">
+            <div class="item-title">Pet Care & Health</div>
+            <div class="item-subtitle">General pet care guidance and health related queries</div>
+          </div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </a>
+
+        <a href="#" class="list-item dynamic-faq-trigger">
+          <div class="item-icon-box">
+            <img src="https://i.ibb.co/xqT7vtxM/file-00000000332081faaae134fcf35d0a19.png" alt="Location" class="icon-service">
+          </div>
+          <div class="item-details">
+            <div class="item-title">Service Availability</div>
+            <div class="item-subtitle">Check serviceability in your area and related queries</div>
+          </div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </a>
+
+        <a href="#" class="list-item dynamic-faq-trigger">
+          <div class="item-icon-box">
+            <img src="https://i.ibb.co/gbmv4vkK/file-00000000548481fab38697935d3d7d99.png" alt="Report">
+          </div>
+          <div class="item-details">
+            <div class="item-title">Report an Issue</div>
+            <div class="item-subtitle">Report bugs, technical issues or unexpected problems</div>
+          </div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </a>
+
+        <a href="#" class="list-item dynamic-faq-trigger">
+          <div class="item-icon-box">
+            <img src="https://i.ibb.co/vvw4F53C/file-00000000687881faa64ea6b9b8d17a21.png" alt="Policies">
+          </div>
+          <div class="item-details">
+            <div class="item-title">Policies & Terms</div>
+            <div class="item-subtitle">Our policies, terms of use and guidelines</div>
+          </div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </a>
+
+        <a href="#" class="list-item dynamic-faq-trigger">
+          <div class="item-icon-box">
+            <img src="https://i.ibb.co/b550z7xJ/file-000000005ea0820798659da73199896c.png" alt="Queries" class="icon-queries">
+          </div>
+          <div class="item-details">
+            <div class="item-title">Other Queries</div>
+            <div class="item-subtitle">Can't find what you're looking for? Ask us</div>
+          </div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </a>
+      </div>
+
+      <!-- CONVERSATION ARCHIVES SECTION -->
+      <div class="section-label">CONVERSATION ARCHIVES</div>
+      <div class="card-group">
+        <a href="#" class="list-item dynamic-faq-trigger">
+          <div class="item-icon-box">
+            <img src="https://i.ibb.co/gbmv4vkK/file-00000000548481fab38697935d3d7d99.png" alt="Archive">
+          </div>
+          <div class="item-details">
+            <div class="item-title">All conversation threads</div>
+            <div class="item-subtitle">View all your conversation threads and support cases</div>
+          </div>
+          <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- SCREEN 2: Refund Status Screen                 -->
+    <!-- ============================================== -->
+    <div id="refund-screen">
+      <div class="refund-header-wrapper">
+        <button id="btn-back-refund" class="back-icon-btn" aria-label="Back">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <h1>Refund Status</h1>
+      </div>
+      <div class="refund-content">
+        <div class="info-banner">
+          <div class="info-banner-text">Due to some ongoing enhancements to Swiggy Money, your refunds will be directed to the original <b>payment source.</b></div>
+          <div class="info-banner-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
+        </div>
+        <h2 class="refund-section-title">Completed Refunds</h2>
+        <div class="detail-card">
+          <div class="detail-card-top">
+            <div class="dc-header-row">
+              <div class="dc-title">Instamart</div>
+              <div class="dc-status completed">Completed <i class="fa-solid fa-circle-check"></i></div>
+            </div>
+            <div class="dc-row" style="margin-top: 4px;">
+              <span>To: <span style="color:#1a1a1a;">UPI</span></span>
+            </div>
+            <div class="dc-row">
+              <span>Completed On: <span style="color:#94a3b8; font-weight:400;">21 Oct, 2025</span></span>
+              <span class="dc-price"><i class="fa-solid fa-indian-rupee-sign" style="font-size:13px;"></i> 303</span>
+            </div>
+          </div>
+          <div id="see-details-container">
+            <div class="dashed-divider"></div>
+            <div id="btn-see-details" class="see-details-action">
+              <span class="see-details-text">See Details</span>
+            </div>
+          </div>
+          <div id="expanded-details-container" class="expanded-area">
+            <div class="dashed-divider"></div>
+            <div class="order-id-row">Order ID: <span>#219943086047945</span></div>
+            <div class="dashed-divider"></div>
+            <div class="timeline-container">
+              <div class="timeline-item"><div class="tl-title">Swiggy has initiated your refund</div><div class="tl-date">21 Oct, 2025</div><div class="tl-status">Completed</div></div>
+              <div class="timeline-item"><div class="tl-title">Your bank has processed your refund</div><div class="tl-date">21 Oct, 2025</div><div class="tl-status">Completed</div></div>
+              <div class="timeline-item"><div class="tl-title">Refund credited to your account</div><div class="tl-date">21 Oct, 2025</div><div class="tl-status">Completed - The refund amount should reflect in your account by now. If there is an issue, please contact your bank's customer care. Your RRN is: <b>502353742945</b></div><div class="tl-link">What is RRN?</div></div>
+            </div>
+            <div class="dashed-divider"></div>
+            <div id="feedback-row-initial" class="feedback-row">
+              <div class="feedback-text">Did you receive your Refund?</div>
+              <div class="feedback-actions">
+                <button class="feedback-btn" id="btn-feedback-yes">YES <i class="fa-solid fa-thumbs-up"></i></button>
+                <button class="feedback-btn" id="btn-feedback-no">NO <i class="fa-solid fa-thumbs-down"></i></button>
+              </div>
+            </div>
+            <div id="feedback-row-resolved" class="feedback-row" style="display: none; cursor: pointer; justify-content: flex-start; gap: 6px;">
+              <div class="feedback-text"><span style="color: #ff5200; font-weight: 700; text-decoration: underline;">Tap here</span> to know more on how to resolve the issue.</div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-primary">Show Older Refunds</button>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- SCREEN 3: Past Orders & Consultations          -->
+    <!-- ============================================== -->
+    <div id="past-orders-screen">
+      <div class="orders-header-wrapper">
+        <button id="btn-back-orders" class="back-icon-btn" aria-label="Back">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <h1>Help & Support</h1>
+      </div>
+      <div class="orders-content">
+        <h2 class="orders-section-title">PAST ORDERS & CONSULTATIONS</h2>
+        <div id="past-orders-list-container">
+          <!-- Real-time database records will be loaded and rendered here dynamically -->
+          <div class="loading-state" style="text-align: center; padding: 40px 20px; color: #64748b;">
+            <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 24px; color: #ff5200; margin-bottom: 12px;"></i>
+            <p style="font-size: 14px; font-weight: 500; margin-top: 8px;">Loading your orders & consultations...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ============================================== -->
+    <!-- SCREEN 4: NEW DYNAMIC FAQ SCREEN               -->
+    <!-- ============================================== -->
+    <div id="faq-screen">
+      <div class="faq-header-wrapper">
+        <button id="btn-back-faq" class="back-icon-btn" aria-label="Back">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <h1>Help & Support</h1>
+      </div>
+      <div class="faq-content">
+        <h2 id="faq-dynamic-title" class="faq-section-title">SECTION TITLE</h2>
+        
+        <div class="faq-card-container" id="faq-list-container">
+          <!-- Accordion items will be injected here via JavaScript -->
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- OVERLAY BOTTOM SHEET FOR "TAP HERE" -->
+    <div id="overlay-bottom-sheet" class="overlay-container">
+      <div class="overlay-backdrop" id="overlay-backdrop"></div>
+      <div class="bottom-sheet">
+        <div class="sheet-header">
+          <h3>Refund Issue Resolution</h3>
+          <button class="close-sheet-btn" id="btn-close-sheet"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="sheet-body">
+          <div class="sheet-icon">
+            <i class="fa-solid fa-arrows-rotate" style="position: absolute; font-size: 24px; color: #94a3b8;"></i>
+            <i class="fa-solid fa-indian-rupee-sign" style="position: absolute; font-size: 12px; color: #475569; font-weight: 800;"></i>
+          </div>
+          <h4>Check with your bank</h4>
+          <p>Since the refund is successfully processed from our end, we request you to wait for 5-7 business days. If it still doesn't reflect, please share the RRN <b>502353742945</b> with your bank's customer support for further assistance.</p>
+          <button class="btn-primary" id="btn-sheet-okay" style="margin-top: 16px;">Okay, Got it</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function navigateParent(path) {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "NAVIGATE_PARENT", path: path }, "*");
+      } else {
+        window.location.href = path;
+      }
+    }
+
+    function navigateBack() {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "NAVIGATE_BACK" }, "*");
+      } else if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = "/buyer/profile";
+      }
+    }
+
+    window.addEventListener("message", function(e) {
+      if (e.data && e.data.type === "ON_SHOW_HELP_SUPPORT") {
+        if (typeof loadPastOrders === "function") {
+          loadPastOrders();
+        }
+      }
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+      // Core Elements
+      const mainScreen = document.getElementById("main-screen");
+      const refundScreen = document.getElementById("refund-screen");
+      const pastOrdersScreen = document.getElementById("past-orders-screen");
+      const faqScreen = document.getElementById("faq-screen");
+      
+      const triggerRefundStatus = document.getElementById("trigger-refund-status");
+      const triggerPastOrders = document.getElementById("trigger-past-orders");
+      
+      const btnBackRefund = document.getElementById("btn-back-refund");
+      const btnBackOrders = document.getElementById("btn-back-orders");
+      const btnBackFaq = document.getElementById("btn-back-faq");
+
+      // Expand / Collapse / Feedback Elements
+      const btnSeeDetails = document.getElementById("btn-see-details");
+      const seeDetailsContainer = document.getElementById("see-details-container");
+      const expandedDetailsContainer = document.getElementById("expanded-details-container");
+      const btnFeedbackNo = document.getElementById("btn-feedback-no");
+      const feedbackRowInitial = document.getElementById("feedback-row-initial");
+      const feedbackRowResolved = document.getElementById("feedback-row-resolved");
+      
+      // Overlay
+      const overlayBottomSheet = document.getElementById("overlay-bottom-sheet");
+      const overlayBackdrop = document.getElementById("overlay-backdrop");
+      const btnCloseSheet = document.getElementById("btn-close-sheet");
+      const btnSheetOkay = document.getElementById("btn-sheet-okay");
+
+      // Safe Supabase Client Getter
+      let _supabaseClient = null;
+      function getSupabase() {
+        if (_supabaseClient) return _supabaseClient;
+        try {
+          if (window.supabase && typeof window.supabase.createClient === "function") {
+            const supabaseUrl = "https://lnxzkusbhidaqhhsxjtk.supabase.co";
+            const supabaseKey = "sb_publishable_3RZcGzoDXliNivNsbgGHjw_1rmQgGFf";
+            _supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+            return _supabaseClient;
+          }
+        } catch (e) {
+          console.error("Error creating Supabase client:", e);
+        }
+        return null;
+      }
+
+      function formatDate(dateStr) {
+        if (!dateStr) return "";
+        return new Date(dateStr).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric"
+        });
+      }
+
+      function formatDateAndTime(dateStr, timeStr) {
+        if (!dateStr) return "";
+        const dateObj = new Date(dateStr);
+        // Format as: "23 Jul 2026"
+        const formattedDate = dateObj.toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric"
+        });
+        
+        let formattedTime = "";
+        if (timeStr) {
+          // If time is provided, parse "09:45" or similar
+          const parts = timeStr.split(":");
+          if (parts.length >= 2) {
+            let hours = parseInt(parts[0], 10);
+            const minutes = parts[1];
+            const ampm = hours >= 12 ? "pm" : "am";
+            hours = hours % 12;
+            hours = hours ? hours : 12; // the hour '0' should be '12'
+            formattedTime = `, ${hours}:${minutes} ${ampm}`;
+          } else {
+            formattedTime = `, ${timeStr}`;
+          }
+        } else {
+          // Get time from dateObj if no separate timeStr is provided
+          let hours = dateObj.getHours();
+          let minutes = dateObj.getMinutes();
+          const ampm = hours >= 12 ? "pm" : "am";
+          hours = hours % 12;
+          hours = hours ? hours : 12;
+          const minsStr = minutes < 10 ? "0" + minutes : minutes;
+          formattedTime = `, ${hours}:${minsStr} ${ampm}`;
+        }
+
+        return `${formattedDate}${formattedTime}`;
+      }
+
+      function getStatusConfig(status) {
+        const s = (status || "pending").toLowerCase();
+        if (s === "completed" || s === "delivered" || s === "generated" || s === "confirmed" || s === "accepted" || s === "approved") {
+          return {
+            color: "#16a34a",
+            label: s.charAt(0).toUpperCase() + s.slice(1),
+            icon: "fa-solid fa-circle-check"
+          };
+        }
+        if (s === "cancelled" || s === "rejected" || s === "failed") {
+          return {
+            color: "#dc2626",
+            label: s.charAt(0).toUpperCase() + s.slice(1),
+            icon: "fa-solid fa-circle-xmark"
+          };
+        }
+        if (s === "in_progress" || s === "active") {
+          return {
+            color: "#0284c7",
+            label: "In Progress",
+            icon: "fa-solid fa-clock"
+          };
+        }
+        // Default Pending
+        return {
+          color: "#d97706",
+          label: "Pending",
+          icon: "fa-regular fa-clock"
+        };
+      }
+
+      function renderOrderCards(allItems, container) {
+        if (!container) return;
+
+        if (!allItems || allItems.length === 0) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: #64748b;">
+              <p style="font-size: 15px; font-weight: 500; margin-bottom: 16px;">No past orders or consultations found.</p>
+              <button onclick="navigateParent('/buyer/home')" class="btn-primary" style="padding: 10px 20px; font-size: 14px; width: auto; display: inline-block; background-color: #5e42e2; box-shadow: none;">Explore Sruvo</button>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = "";
+
+        allItems.forEach(item => {
+          const card = document.createElement("div");
+          card.className = "order-card";
+
+          const itemData = item.data || item;
+          const statusConf = getStatusConfig(itemData.status);
+
+          let iconClass = "fa-solid fa-stethoscope";
+          let iconBg = "#F4EEFF";
+          let iconColor = "#8B5CF6";
+          let titleText = "";
+          let subtitleText = "";
+          let priceText = "";
+          let descText = "";
+          let footerDateText = "";
+          let clickHandler = () => {};
+
+          if (item.type === "pet_order") {
+            const pet = itemData.pets || {};
+            iconClass = "fa-solid fa-paw";
+            iconBg = "#FFF5F1";
+            iconColor = "#FF5200";
+            titleText = "Pet Purchase";
+            subtitleText = `${pet.name || 'Lovely Pet'} (${pet.breed || pet.category || 'Pet'}) • ${pet.city || 'Sruvo'}`;
+            priceText = itemData.amount || 0;
+            descText = `Adoption & Ownership Transfer of ${pet.name || 'Pet'}`;
+            footerDateText = formatDateAndTime(item.created_at || itemData.created_at);
+            clickHandler = () => {
+              navigateParent(`/buyer/home/pet/${itemData.pet_id}`);
+            };
+          } else if (item.type === "vet_appointment") {
+            const appt = itemData;
+            const typeLabel =
+              appt.appointment_type === 'video' || appt.appointment_type === 'online'
+                ? "Video Consultation"
+                : appt.appointment_type === 'clinic' || appt.appointment_type === 'offline'
+                ? "Clinic Visit"
+                : appt.appointment_type === 'home' || appt.appointment_type === 'home_visit'
+                ? "Home Visit"
+                : "Consultation";
+
+            iconClass = "fa-solid fa-stethoscope";
+            iconBg = "#F4EEFF";
+            iconColor = "#8B5CF6";
+            titleText = "Vet Consultation";
+            subtitleText = `${appt.pet_name || 'Pet'} (${appt.pet_breed || 'Dog'}) • ${typeLabel}`;
+            priceText = appt.amount || 0;
+            descText = appt.symptoms || `General Checkup & Consultation for ${appt.pet_name || 'Pet'}`;
+            footerDateText = formatDateAndTime(appt.appointment_date || item.created_at, appt.appointment_time);
+            clickHandler = () => {
+              const status = (appt.status || "").toLowerCase();
+              if (status === "pending" || status === "rejected" || status === "cancelled" || status === "failed") {
+                navigateParent(`/buyer/vet/appointment/pending/${appt.id}`);
+              } else {
+                navigateParent(`/buyer/vet/visit-details/${appt.id}`);
+              }
+            };
+          } else if (item.type === "product_order") {
+            const prod = itemData;
+            iconClass = "fa-solid fa-bag-shopping";
+            iconBg = "#F0F9FF";
+            iconColor = "#0284c7";
+            titleText = "Product Order";
+            subtitleText = `${prod.product_name || 'Pet Product'} • Qty: ${prod.quantity || 1}`;
+            priceText = prod.total_amount || 0;
+            descText = `Pet supplies order: ${prod.product_name || 'Item'}`;
+            footerDateText = formatDateAndTime(prod.created_at || item.created_at);
+            clickHandler = () => {
+              navigateParent("/buyer/orders");
+            };
+          }
+
+          card.innerHTML = `
+            <!-- Top Row -->
+            <div class="order-card-header">
+              <div class="oc-header-left">
+                <!-- Left Icon Box -->
+                <div class="oc-icon-box" style="background-color: ${iconBg};">
+                  <i class="${iconClass}" style="color: ${iconColor};"></i>
+                </div>
+                <!-- Middle Title & Info -->
+                <div class="oc-header-info">
+                  <h2 class="oc-title">${titleText}</h2>
+                  <div class="oc-subtitle">${subtitleText.replace(/\s*•\s*/g, '<span class="oc-bullet">•</span>')}</div>
+                  <div class="oc-price">₹${priceText}</div>
+                </div>
+              </div>
+              <!-- Right Status -->
+              <div class="oc-status" style="color: ${statusConf.color};">
+                <span>${statusConf.label}</span>
+                <i class="${statusConf.icon}"></i>
+              </div>
+            </div>
+
+            <!-- Bottom Content Group -->
+            <div class="order-card-bottom-group">
+              <!-- Divider -->
+              <div class="oc-divider"></div>
+
+              <!-- Consultation Title -->
+              <h3 class="oc-items">${descText}</h3>
+
+              <!-- Date Row -->
+              <div class="oc-date">
+                <i class="fa-regular fa-clock"></i>
+                <span>${footerDateText}</span>
+              </div>
+            </div>
+          `;
+
+          card.addEventListener("click", clickHandler);
+          container.appendChild(card);
+        });
+      }
+
+      let realtimeChannel = null;
+      let sbRetryCount = 0;
+
+      async function loadPastOrders() {
+        const container = document.getElementById("past-orders-list-container");
+        if (!container) return;
+
+        // 1. Display cached orders instantly if present
+        const cachedRaw = localStorage.getItem("sruvo_cached_orders");
+        let hasDisplayedCache = false;
+        if (cachedRaw) {
+          try {
+            const cachedItems = JSON.parse(cachedRaw);
+            if (Array.isArray(cachedItems) && cachedItems.length > 0) {
+              renderOrderCards(cachedItems, container);
+              hasDisplayedCache = true;
+            }
+          } catch(e) {}
+        }
+
+        if (!hasDisplayedCache) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: #64748b;">
+              <i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: #ff5200; margin-bottom: 12px;"></i>
+              <p style="font-size: 14px; font-weight: 500;">Loading your orders & consultations...</p>
+            </div>
+          `;
+        }
+
+        const sb = getSupabase();
+        if (!sb) {
+          if (sbRetryCount < 10) {
+            sbRetryCount++;
+            setTimeout(loadPastOrders, 250);
+            return;
+          }
+          if (!hasDisplayedCache) {
+            renderOrderCards([], container);
+          }
+          return;
+        }
+
+        try {
+          let session = null;
+          try {
+            const sessionRes = await sb.auth.getSession();
+            session = sessionRes && sessionRes.data ? sessionRes.data.session : null;
+          } catch (sErr) {
+            console.warn("getSession error:", sErr);
+          }
+
+          if (!session || !session.user) {
+            localStorage.removeItem("sruvo_cached_orders");
+            container.innerHTML = `
+              <div style="text-align: center; padding: 40px 20px; color: #64748b;">
+                <p style="font-size: 15px; font-weight: 600; margin-bottom: 16px;">Please log in to view your orders & consultations.</p>
+                <button onclick="navigateParent('/auth/buyer')" class="btn-primary" style="padding: 10px 20px; font-size: 14px; width: auto; display: inline-block;">Log In Now</button>
+              </div>
+            `;
+            return;
+          }
+
+          const userId = session.user.id;
+
+          // Fetch all user items in parallel safely
+          const [ordersRes, apptsRes, prodsRes] = await Promise.allSettled([
+            sb
+              .from("orders")
+              .select("id, amount, status, created_at, pet_id, pets(name, breed, images, city, state, category)")
+              .eq("buyer_id", userId),
+            sb
+              .from("vet_appointments")
+              .select("*")
+              .eq("user_id", userId),
+            sb
+              .from("product_orders")
+              .select("*")
+              .eq("buyer_id", userId)
+          ]);
+
+          const allItems = [];
+
+          if (ordersRes.status === "fulfilled" && ordersRes.value && ordersRes.value.data) {
+            ordersRes.value.data.forEach(order => {
+              allItems.push({
+                type: "pet_order",
+                date: new Date(order.created_at || Date.now()),
+                created_at: order.created_at,
+                data: order
+              });
+            });
+          }
+
+          if (apptsRes.status === "fulfilled" && apptsRes.value && apptsRes.value.data) {
+            apptsRes.value.data.forEach(appt => {
+              allItems.push({
+                type: "vet_appointment",
+                date: new Date(appt.created_at || appt.appointment_date || Date.now()),
+                created_at: appt.created_at || appt.appointment_date,
+                data: appt
+              });
+            });
+          }
+
+          if (prodsRes.status === "fulfilled" && prodsRes.value && prodsRes.value.data) {
+            prodsRes.value.data.forEach(prod => {
+              allItems.push({
+                type: "product_order",
+                date: new Date(prod.created_at || Date.now()),
+                created_at: prod.created_at,
+                data: prod
+              });
+            });
+          }
+
+          allItems.sort((a, b) => b.date - a.date);
+
+          if (allItems.length > 0) {
+            localStorage.setItem("sruvo_cached_orders", JSON.stringify(allItems));
+            renderOrderCards(allItems, container);
+          } else {
+            localStorage.removeItem("sruvo_cached_orders");
+            renderOrderCards([], container);
+          }
+
+          // Realtime Listener
+          if (!realtimeChannel && sb.channel) {
+            try {
+              realtimeChannel = sb
+                .channel("helpsupport-past-orders-channel")
+                .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadPastOrders())
+                .on("postgres_changes", { event: "*", schema: "public", table: "vet_appointments" }, () => loadPastOrders())
+                .on("postgres_changes", { event: "*", schema: "public", table: "product_orders" }, () => loadPastOrders())
+                .subscribe();
+            } catch (rErr) {
+              console.warn("Realtime error:", rErr);
+            }
+          }
+        } catch (err) {
+          console.error("Error loading past orders:", err);
+          if (!hasDisplayedCache) {
+            renderOrderCards([], container);
+          }
+        }
+      }
+
+      // Original Navigation Events
+      triggerRefundStatus.addEventListener("click", function() {
+        mainScreen.style.display = "none"; refundScreen.style.display = "block"; window.scrollTo(0, 0); 
+      });
+      btnBackRefund.addEventListener("click", function() {
+        refundScreen.style.display = "none"; mainScreen.style.display = "block";
+      });
+      triggerPastOrders.addEventListener("click", function(e) {
+        e.preventDefault(); 
+        mainScreen.style.display = "none"; 
+        pastOrdersScreen.style.display = "block"; 
+        window.scrollTo(0, 0);
+        loadPastOrders();
+      });
+      btnBackOrders.addEventListener("click", function() {
+        pastOrdersScreen.style.display = "none"; mainScreen.style.display = "block";
+      });
+
+      // Original Interactive Events
+      btnSeeDetails.addEventListener("click", function() {
+        seeDetailsContainer.style.display = "none"; expandedDetailsContainer.style.display = "block";
+      });
+      btnFeedbackNo.addEventListener("click", function() {
+        feedbackRowInitial.style.display = "none"; feedbackRowResolved.style.display = "flex";
+      });
+      feedbackRowResolved.addEventListener("click", function() {
+        overlayBottomSheet.style.display = "flex";
+      });
+      function closeOverlay() { overlayBottomSheet.style.display = "none"; }
+      btnCloseSheet.addEventListener("click", closeOverlay);
+      btnSheetOkay.addEventListener("click", closeOverlay);
+      overlayBackdrop.addEventListener("click", closeOverlay);
+
+      /* ========================================================= */
+      /* NEW UPGRADE: DYNAMIC FAQ SCREEN LOGIC                     */
+      /* ========================================================= */
+      const faqDataDictionary = {
+        "Smart Match & Vet Consultation": [
+          { q: "How does Smart Match work?", a: "Smart Match uses your pet’s species, symptoms, health background, and current condition to find the most suitable veterinarian automatically." },
+          { q: "Why was this vet selected for my pet?", a: "The vet was selected based on medical relevance, availability, and the information you provided during the consultation flow." },
+          { q: "How do I cancel my consultation?", a: "You can request cancellation from this section. Some cancellations may need review depending on the booking status.", cta: "chat" },
+          { q: "Why is my consultation not confirmed yet?", a: "Please check whether the slot is still being processed, waiting for payment, or pending confirmation.", cta: "chat" },
+          { q: "Can I book another consultation for the same pet?", a: "Yes, you can book a follow-up or new consultation based on your pet’s current needs." }
+        ],
+        "Pet Passport": [
+          { q: "What is a Pet Passport?", a: "Pet Passport is your pet’s digital identity and health record stored securely in the app." },
+          { q: "What information is saved in Pet Passport?", a: "It can include identity details, vaccination history, consultation records, reminders, and important health information." },
+          { q: "How do I update my pet’s passport details?", a: "You can update eligible details from the passport or pet profile section." },
+          { q: "Why is my health record not syncing?", a: "Syncing may take time if the consultation is still being processed or if the record is incomplete.", cta: "chat" },
+          { q: "Can I transfer pet ownership in the passport?", a: "Yes, ownership transfer can be requested when needed and may require verification.", cta: "email" }
+        ],
+        "Shop Orders": [
+          { q: "Where is my order?", a: "You can track your order status from this section." },
+          { q: "My order is missing an item. What should I do?", a: "Report the missing item with your order details so the issue can be reviewed.", cta: "chat" },
+          { q: "I received the wrong product. How can I fix it?", a: "You can report the issue and request support for replacement or review.", cta: "chat" },
+          { q: "Can I cancel my product order?", a: "Order cancellation depends on the current order status." },
+          { q: "How do I request a refund or replacement?", a: "You can raise the request from the order help flow if the issue qualifies.", cta: "email" }
+        ],
+        "Delivery & Tracking": [
+          { q: "Where is my delivery right now?", a: "You can check the latest delivery status from this section." },
+          { q: "My delivery is delayed. What should I do?", a: "If the delivery has crossed the expected time, you can report it for review.", cta: "chat" },
+          { q: "Can I change my delivery address?", a: "Address changes are only possible when the order is still eligible for update.", cta: "email" },
+          { q: "My delivery status is not updating. Why?", a: "Sometimes tracking updates may take time depending on courier status.", cta: "chat" },
+          { q: "Can I get help with pet delivery coordination?", a: "Yes, support can help with delivery-related coordination and updates.", cta: "chat" }
+        ],
+        "Payments & Refunds": [
+          { q: "My payment failed. What should I do?", a: "Please check your payment method and try again, or contact support if the amount was deducted.", cta: "chat" },
+          { q: "Money was deducted but my booking/order was not confirmed.", a: "This issue can be reviewed using your transaction details.", cta: "chat" },
+          { q: "How do I check my refund status?", a: "Refund status can be checked from this section if a refund has already been initiated.", cta: "chat" },
+          { q: "Why is my wallet balance not updated?", a: "Wallet updates may take time depending on the transaction status.", cta: "chat" },
+          { q: "How do I resolve a payment mismatch?", a: "Share the transaction details so the issue can be checked.", cta: "email" }
+        ],
+        "Account & Profile": [
+          { q: "How do I update my profile details?", a: "You can edit eligible profile fields from the profile section." },
+          { q: "I am unable to log in. What should I do?", a: "Check your mobile number, OTP, or password settings and retry.", cta: "chat" },
+          { q: "How do I change my saved address?", a: "You can manage saved addresses from the account section." },
+          { q: "Why am I not receiving notifications?", a: "Please check app permissions and notification settings.", cta: "chat" },
+          { q: "How do I manage my account settings?", a: "Account settings are available under your profile.", cta: "email" }
+        ],
+        "Offers & Promotions": [
+          { q: "How do I apply a coupon code?", a: "You can enter the code during checkout if the offer is valid." },
+          { q: "Why is my promo code not working?", a: "The code may have expired, been used already, or may not apply to the item." },
+          { q: "Where can I see active offers?", a: "Active offers are shown in the app where applicable." },
+          { q: "Can I use more than one offer at a time?", a: "Offer usage depends on the specific campaign rules." },
+          { q: "Why did I not receive my discount?", a: "Please check whether the offer conditions were met.", cta: "chat" }
+        ],
+        "Pet Care & Health": [
+          { q: "Where can I find general pet care tips?", a: "You can explore helpful guidance for daily pet care, feeding, hygiene, and wellness." },
+          { q: "How do I know when to book a vet consultation?", a: "If your pet shows unusual symptoms, it is better to book a consultation.", cta: "chat" },
+          { q: "Does SRUVO provide medical advice?", a: "SRUVO supports booking and guidance, but final medical advice should come from a veterinarian." },
+          { q: "What should I do if my pet looks unwell?", a: "Book a consultation as soon as possible for proper review." },
+          { q: "Can I get advice based on my pet’s age or species?", a: "Yes, relevant guidance can be shown based on your pet’s profile." }
+        ],
+        "Service Availability": [
+          { q: "Is SRUVO available in my area?", a: "Service availability depends on your location and the service you are checking." },
+          { q: "How do I check if vet services are available near me?", a: "Enter your area or address to see if services are supported.", cta: "chat" },
+          { q: "Can I get pet delivery in my city?", a: "Delivery availability depends on the delivery network in your location." },
+          { q: "Why is a service not available for my pin code?", a: "Some services may not yet be active in every area." },
+          { q: "How do I change my service location?", a: "You can update your saved location if needed.", cta: "email" }
+        ],
+        "Report an Issue": [
+          { q: "The app is not loading properly. What should I do?", a: "Try refreshing the app or checking your connection first.", cta: "chat" },
+          { q: "A page is showing an error. How do I report it?", a: "You can report the issue from this section with the relevant details.", cta: "email" },
+          { q: "A button is not working. What should I do?", a: "Please report the screen and action so the bug can be checked.", cta: "chat" },
+          { q: "The app is showing the wrong information.", a: "Report the issue so the data can be reviewed." },
+          { q: "How do I share a technical problem?", a: "Provide the screen name and what went wrong." }
+        ],
+        "Policies & Terms": [
+          { q: "What are SRUVO’s terms of use?", a: "These explain how the app and services can be used." },
+          { q: "How does SRUVO handle privacy?", a: "Privacy details explain how user and pet data is stored and used." },
+          { q: "What is the cancellation policy?", a: "Cancellation rules depend on the service type and booking stage." },
+          { q: "What is the refund policy?", a: "Refund eligibility depends on the transaction type and status.", cta: "chat" },
+          { q: "Where can I read the full policy?", a: "The complete policy is available inside this section.", cta: "email" }
+        ],
+        "Other Queries": [
+          { q: "I cannot find the help topic I need.", a: "Please describe your issue and support will guide you to the right section.", cta: "chat" },
+          { q: "My issue is not related to orders, payments, or consultation.", a: "Share the details so the right support flow can be used." },
+          { q: "I need help with something unusual.", a: "Please explain the issue in brief so it can be reviewed.", cta: "email" },
+          { q: "I need to speak to support.", a: "You can continue here and your issue will be routed accordingly.", cta: "chat" },
+          { q: "Can I get help for a custom issue?", a: "Yes, support can review general buyer-side issues that do not fit a standard category." }
+        ],
+        "All conversation threads": [
+          { q: "Where can I see my previous support chats?", a: "All previous support conversations are available here." },
+          { q: "How do I check an open support case?", a: "Open cases are listed in your conversation archive." },
+          { q: "Can I continue an old support thread?", a: "Yes, if the case is still active.", cta: "chat" },
+          { q: "How do I view resolved issues?", a: "Resolved support threads are shown in the archive." },
+          { q: "Can I reopen a closed issue?", a: "If needed, you can create a new support request from the related topic.", cta: "email" }
+        ]
+      };
+
+      const faqDynamicTitle = document.getElementById("faq-dynamic-title");
+      const faqListContainer = document.getElementById("faq-list-container");
+      
+      // Close FAQ Screen
+      btnBackFaq.addEventListener("click", function() {
+        faqScreen.style.display = "none";
+        mainScreen.style.display = "block";
+      });
+
+      // Attach listener to all dynamic triggers
+      const dynamicTriggers = document.querySelectorAll(".dynamic-faq-trigger");
+      dynamicTriggers.forEach(function(trigger) {
+        trigger.addEventListener("click", function(e) {
+          e.preventDefault();
+          const categoryTitle = this.querySelector(".item-title").innerText.trim();
+          
+          if(faqDataDictionary[categoryTitle]) {
+            // Update Title
+            faqDynamicTitle.innerText = categoryTitle.toUpperCase();
+            
+            // Clear old data
+            faqListContainer.innerHTML = '';
+            
+            // Generate Accordion Items
+            faqDataDictionary[categoryTitle].forEach(item => {
+              const itemDiv = document.createElement("div");
+              itemDiv.className = "faq-item";
+              
+              let ctaHtml = "";
+              if (item.cta === "chat") {
+                ctaHtml = `
+                  <div class="faq-cta-box">
+                    <button class="faq-action-btn">CHAT WITH US</button>
+                    <div class="faq-action-subtext">Wait time under 2 min(s)</div>
+                  </div>
+                `;
+              } else if (item.cta === "email") {
+                ctaHtml = `
+                  <div class="faq-cta-box">
+                    <button class="faq-action-btn">SEND AN EMAIL</button>
+                    <div class="faq-action-subtext">We will revert within 24-48 hrs</div>
+                  </div>
+                `;
+              }
+
+              itemDiv.innerHTML = `
+                <button class="faq-question-btn">
+                  <div class="faq-question-text">${item.q}</div>
+                  <i class="fa-solid fa-chevron-down faq-chevron"></i>
+                </button>
+                <div class="faq-answer-container">
+                  <div class="faq-answer-text">${item.a}</div>
+                  ${ctaHtml}
+                </div>
+              `;
+              
+              // Accordion Click Logic
+              const qBtn = itemDiv.querySelector(".faq-question-btn");
+              qBtn.addEventListener("click", function() {
+                // Toggle current
+                itemDiv.classList.toggle("active");
+                // Optional: Close others
+                // const allItems = faqListContainer.querySelectorAll(".faq-item");
+                // allItems.forEach(i => { if(i !== itemDiv) i.classList.remove("active"); });
+              });
+
+              // Action button click logic to redirect to support chat or email
+              const actionBtn = itemDiv.querySelector(".faq-action-btn");
+              if (actionBtn) {
+                actionBtn.addEventListener("click", function() {
+                  if (actionBtn.textContent.includes("CHAT")) {
+                    navigateParent("/buyer/support/chat");
+                  } else {
+                    window.location.href = "mailto:support@sruvo.com";
+                  }
+                });
+              }
+
+              faqListContainer.appendChild(itemDiv);
+            });
+
+            // Transition Screen
+            mainScreen.style.display = "none";
+            faqScreen.style.display = "block";
+            window.scrollTo(0, 0);
+          }
+        });
+      });
+
+      // Add Main Header Navigation (Back and Chat)
+      const mainBackBtn = document.querySelector(".header .back-icon-btn");
+      if (mainBackBtn) {
+        mainBackBtn.addEventListener("click", function() {
+          navigateBack();
+        });
+      }
+
+      const headsetBtn = document.querySelector(".headset-circle-btn");
+      if (headsetBtn) {
+        headsetBtn.addEventListener("click", function() {
+          navigateParent("/buyer/support/chat");
+        });
+      }
+
+      // Pre-load past orders instantly in background
+      loadPastOrders();
+
+    });
+  </script>
+</body>
+</html>

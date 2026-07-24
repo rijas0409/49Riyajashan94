@@ -156,7 +156,7 @@ const ProfileMenu = () => {
           </div>
           <Button
             variant="ghost"
-            onClick={() => navigate("/buyer/support")}
+            onClick={() => navigate("/helpsupport")}
             className="flex items-center gap-1.5 text-primary font-bold hover:bg-primary/10 px-3 py-1.5 rounded-full transition-all border border-primary/20 bg-primary/5 shadow-sm hover:scale-[1.02] active:scale-[0.98]"
           >
             <HelpCircle className="w-4 h-4 text-primary animate-pulse" />

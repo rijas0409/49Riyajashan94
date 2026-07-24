@@ -42,6 +42,7 @@ import ProductsPendingApproval from "./pages/ProductsPendingApproval";
 import ProfileMenu from "./pages/ProfileMenu";
 import ProfileSettings from "./pages/ProfileSettings";
 import SupportChat from "./pages/SupportChat";
+import HelpSupportPage from "./pages/HelpSupportPage";
 import EmptyPetPassport from "./pages/EmptyPetPassport";
 import PublicPetPassport from "./pages/PublicPetPassport";
 import SellerDashboard from "./pages/SellerDashboard";
@@ -355,6 +356,71 @@ const GlobalSmartMatchIframe = () => {
   );
 };
 
+const GlobalHelpSupportIframe = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const isHelpSupport =
+    location.pathname === "/helpsupport" ||
+    location.pathname === "/helpsupport.html" ||
+    location.pathname === "/buyer/support" ||
+    location.pathname === "/buyer/help" ||
+    location.pathname === "/buyer/help-support";
+
+  useEffect(() => {
+    if (isHelpSupport) {
+      const iframe = document.querySelector('iframe[title="Sruvo - Help & Support"]') as HTMLIFrameElement;
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: "ON_SHOW_HELP_SUPPORT" }, "*");
+      }
+    }
+  }, [isHelpSupport]);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.data) return;
+      if (event.data.type === "NAVIGATE_BACK") {
+        const lastMainPath = sessionStorage.getItem("last_main_entry_path") || "/buyer/profile";
+        if (window.history.length > 1) {
+          navigate(-1);
+        } else {
+          navigate(lastMainPath);
+        }
+      } else if (event.data.type === "NAVIGATE_PARENT") {
+        if (event.data.path) {
+          navigate(event.data.path);
+        }
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [navigate]);
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "#f4f5f8",
+        zIndex: isHelpSupport ? 9999 : -1,
+        opacity: isHelpSupport ? 1 : 0,
+        pointerEvents: isHelpSupport ? "auto" : "none",
+        visibility: isHelpSupport ? "visible" : "hidden",
+        transition: "opacity 0.12s ease-in-out",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "flex-start",
+      }}
+    >
+      <iframe
+        src="/helpsupport.html"
+        className="w-full max-w-[520px] min-h-screen border-none h-screen bg-[#f4f5f8]"
+        title="Sruvo - Help & Support"
+      />
+    </div>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -366,6 +432,7 @@ const App = () => (
             <BrowserRouter>
               <RouteTracker />
               <GlobalSmartMatchIframe />
+              <GlobalHelpSupportIframe />
               <ErrorBoundary>
                 <Routes>
                 <Route path="/" element={<Index />} />
@@ -411,7 +478,12 @@ const App = () => (
                 <Route path="/buyer/profile-menu" element={<ProfileMenu />} />
                 <Route path="/buyer/profile-settings" element={<ProfileSettings />} />
                 <Route path="/buyer/profile/settings" element={<ProfileSettings />} />
-                <Route path="/buyer/support" element={<SupportChat />} />
+                <Route path="/buyer/support" element={<HelpSupportPage />} />
+                <Route path="/buyer/support/chat" element={<SupportChat />} />
+                <Route path="/helpsupport" element={<HelpSupportPage />} />
+                <Route path="/helpsupport.html" element={<HelpSupportPage />} />
+                <Route path="/buyer/help" element={<HelpSupportPage />} />
+                <Route path="/buyer/help-support" element={<HelpSupportPage />} />
                 <Route path="/buyer/pet-passport" element={<EmptyPetPassport />} />
                 <Route path="/passport/:id" element={<PublicPetPassport />} />
                 <Route path="/seller-dashboard" element={<SellerDashboard />} />
