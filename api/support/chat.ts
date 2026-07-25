@@ -80,30 +80,25 @@ async function generateGeminiContentWithFallback(ai: GoogleGenAI, params: {
   contents: any;
   config?: any;
 }) {
-  const requestedModel = params.model || "gemini-3.5-flash";
-  const modelsToTry = [requestedModel, "gemini-flash-latest", "gemini-2.5-flash"];
+  const requestedModel = params.model || "gemini-3.6-flash";
+  const modelsToTry = Array.from(new Set([requestedModel, "gemini-3.6-flash", "gemini-flash-latest"]));
   let lastError: any = null;
 
   for (const modelName of modelsToTry) {
-    let attempts = 2;
-    let delay = 500;
-    while (attempts > 0) {
-      try {
-        console.log(`[GeminiFallback] Calling generateContent with model: ${modelName}, attempts left: ${attempts}`);
-        const result = await ai.models.generateContent({
-          model: modelName,
-          contents: params.contents,
-          config: params.config,
-        });
-        return result;
-      } catch (err: any) {
-        lastError = err;
-        console.warn(`[GeminiFallback] Error using model ${modelName} on attempt ${3 - attempts}:`, err?.message || err);
-        attempts--;
-        if (attempts > 0) {
-          await new Promise((resolve) => setTimeout(resolve, delay));
-          delay *= 1.5;
-        }
+    try {
+      console.log(`[GeminiFallback] Calling generateContent with model: ${modelName}`);
+      const result = await ai.models.generateContent({
+        model: modelName,
+        contents: params.contents,
+        config: params.config,
+      });
+      return result;
+    } catch (err: any) {
+      lastError = err;
+      const errMsg = err?.message || String(err);
+      console.warn(`[GeminiFallback] Model ${modelName} call failed:`, errMsg.substring(0, 150));
+      if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("quota")) {
+        continue;
       }
     }
   }
@@ -659,7 +654,7 @@ ${dbContext}
         }));
 
         const geminiRes: any = await generateGeminiContentWithFallback(ai, {
-          model: "gemini-3.5-flash",
+          model: "gemini-3.6-flash",
           contents,
           config: {
             systemInstruction: finalSystemInstruction
