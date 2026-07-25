@@ -30,7 +30,17 @@ function getFallbackSruvoResponse(userMessage: string, messages: any[], dbContex
     return "I couldn't completely resolve your issue.\nWould you like me to connect you with a Sruvo Support Specialist?\n\nYes, connect me with a Specialist\nNo, I'll try another question";
   }
 
-  // 2. Pet Passport Deep Analysis
+  // 2. Order related issue
+  if (msg.includes("order") || msg.includes("delivery") || msg.includes("track") || msg.includes("shop") || msg.includes("shipping") || msg.includes("item")) {
+    return "I can help you with your order. Please choose one of the options below to proceed:\nTrack Order\nCancel Order\nReturn Order\nPet Orders Help\nMy issue is something else";
+  }
+
+  // 3. Smart Match & Vet Consultation
+  if (msg.includes("smart match") || msg.includes("vet") || msg.includes("consult") || msg.includes("doctor") || msg.includes("appointment") || msg.includes("clinic")) {
+    return "To book or manage a vet consultation, select an option below:\nBook Vet Consultation\nView Dashboard\nManage Bookings\nMy issue is something else";
+  }
+
+  // 4. Pet Passport
   if (msg.includes("passport") || msg.includes("pet passport") || msg.includes("passport issue") || msg.includes("passport problem")) {
     if (dbContext.includes("[User's Pet Passports (pet_passports)]")) {
       const petMatches = dbContext.match(/Pet Name:\s*([^\n]+)/gi) || [];
@@ -48,48 +58,56 @@ function getFallbackSruvoResponse(userMessage: string, messages: any[], dbContex
         return `I found ${pName}'s Pet Passport in your registered account. How can I assist you with ${pName}'s passport today?\nCheck Vaccination Info\nCheck Delivery Status\nUpdate Passport Details\nMy issue is something else`;
       }
     }
-    return "You don't have an active Pet Passport registered yet on Sruvo. Sruvo Pet Passports store digital health records and comply with international travel standards.\nApply for a Pet Passport\nTalk to a Specialist\nOther";
+    return "Sruvo Pet Passports store digital health records and comply with travel standards. Please choose an option:\nApply for a Pet Passport\nCheck Passport Details\nTalk to a Specialist\nMy issue is something else";
   }
 
-  // 3. Smart Match & Vet Consultation
-  if (msg.includes("smart match") || msg.includes("vet") || msg.includes("consult") || msg.includes("doctor") || msg.includes("appointment") || msg.includes("clinic")) {
-    if (msg.includes("book") || msg.includes("how to") || msg.includes("what is")) {
-      return "Smart Match is Sruvo's intelligent matching system that automatically pairs your pet with the most qualified veterinary doctor based on species, breed, medical history, and symptoms.\nBook Vet Consultation\nView Dashboard\nOther";
-    }
-    if (dbContext.includes("[User's Vet Appointments]") || dbContext.includes("[User's Smart Match Bookings]")) {
-      return "I found your consultation records in our live system. You can view booking statuses, reschedule, or download digital prescriptions directly from your Dashboard.\nView Dashboard\nBook Vet Consultation\nTalk to a Specialist";
-    }
-    return "To book a vet consultation, go to the main Dashboard, select 'Smart Match', choose your pet, and our system will match you with a verified vet instantly.\nBook Vet Consultation\nView Dashboard\nOther";
-  }
-
-  // 4. Medical / Health Mandate (Safety)
+  // 5. Medical / Health Mandate (Safety)
   if (msg.includes("medicine") || msg.includes("dose") || msg.includes("dosage") || msg.includes("vomit") || msg.includes("bleed") || msg.includes("sick") || msg.includes("diarrhea") || msg.includes("fever") || msg.includes("paracetamol") || msg.includes("cure")) {
     return "As Sruvo's support assistant, I cannot prescribe medicine or give medical diagnoses. For your pet's safety, please connect with a verified vet right away. You can schedule an instant digital consultation or search for a clinic via our Smart Match dashboard.\nBook Vet Consultation\nView Dashboard\nTalk to a Specialist";
   }
 
-  // 5. Refunds & Payments
-  if (msg.includes("refund") || msg.includes("payment") || msg.includes("money") || msg.includes("debited") || msg.includes("charged") || msg.includes("cancel")) {
-    if (msg.includes("refund")) {
-      return "Refunds for cancelled vet consultations (cancelled at least 2 hours prior to slot) are processed back to your original payment method within 2-3 business days.\nRefund Status\nPayment Failed\nCancel Booking\nTalk to a Specialist";
+  // 6. Refunds & Payments
+  if (msg.includes("refund") || msg.includes("payment") || msg.includes("money") || msg.includes("debited") || msg.includes("charged") || msg.includes("billing") || msg.includes("wallet") || msg.includes("cancel")) {
+    return "I can help you with Payments & Refunds. Please choose one option:\nRefund Status\nPayment Failed\nIncorrect Charge\nWallet Issue\nMy issue is something else";
+  }
+
+  // 7. Greeting / Hi / Hello / Default
+  return "Hello! I am Sruvo Care Assistant. How can I help you today? Please choose a topic below or type your query:\nI have an order related issue\nI need help with a consultation\nI have a payment or refund issue\nMy issue is something else";
+}
+
+async function generateGeminiContentWithFallback(ai: GoogleGenAI, params: {
+  model?: string;
+  contents: any;
+  config?: any;
+}) {
+  const requestedModel = params.model || "gemini-3.5-flash";
+  const modelsToTry = [requestedModel, "gemini-flash-latest", "gemini-2.5-flash"];
+  let lastError: any = null;
+
+  for (const modelName of modelsToTry) {
+    let attempts = 2;
+    let delay = 500;
+    while (attempts > 0) {
+      try {
+        console.log(`[GeminiFallback] Calling generateContent with model: ${modelName}, attempts left: ${attempts}`);
+        const result = await ai.models.generateContent({
+          model: modelName,
+          contents: params.contents,
+          config: params.config,
+        });
+        return result;
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[GeminiFallback] Error using model ${modelName} on attempt ${3 - attempts}:`, err?.message || err);
+        attempts--;
+        if (attempts > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          delay *= 1.5;
+        }
+      }
     }
-    if (msg.includes("failed") || msg.includes("debited")) {
-      return "If money was debited for a failed transaction, it will be automatically refunded by your bank within 5-7 business days.\nReport Payment Issue\nTalk to a Specialist";
-    }
-    return "We accept all major credit/debit cards, UPI, net banking, and popular mobile wallets on Sruvo.\nRefund Status\nPayment Failed\nIncorrect Charge\nOther";
   }
-
-  // 6. Shop & Orders
-  if (msg.includes("order") || msg.includes("delivery") || msg.includes("track") || msg.includes("shop") || msg.includes("shipping")) {
-    return "Once your order is shipped, you will receive a tracking link via SMS. Standard delivery is free for all orders above ₹499.\nTrack Order\nCancel Order\nReturn Item\nOther";
-  }
-
-  // 7. Greeting / Hi / Hello
-  if (msg === "hi" || msg === "hello" || msg === "hey" || msg.startsWith("hi ") || msg.startsWith("hello ")) {
-    return "Hello! I am Sruvo Care Assistant. How can I help you today? Please choose a topic below or type your query:\nSmart Match & Vet Consult\nPet Passport\nOrder & Delivery\nRefunds & Payments";
-  }
-
-  // Default Fallback
-  return "I am here to help you with Sruvo services including Smart Match consultations, Pet Passports, shop orders, and refunds. Please let me know your specific concern or choose an option below:\nSmart Match & Vet Consult\nPet Passport Status\nOrder & Refund Inquiry\nSpeak with Support Specialist";
+  throw lastError || new Error("Failed to generate content with any model");
 }
 
 export default async function handler(req: any, res: any) {
@@ -615,6 +633,13 @@ ${dbContext}
 
     const finalSystemInstruction = `${baseSystemInstruction}\n\n=== ADDITIONAL ELEVENLABS PERSONALITY CONFIG ===\n${systemPrompt}`;
 
+    const geminiApiKey =
+      process.env.GEMINI_API_KEY ||
+      process.env.API_KEY ||
+      process.env.VITE_GEMINI_API_KEY ||
+      process.env.GEMINI_KEY ||
+      process.env.GOOGLE_API_KEY;
+
     let responseText = "";
 
     if (geminiApiKey) {
@@ -633,11 +658,7 @@ ${dbContext}
           parts: [{ text: m.content || m.text || "" }]
         }));
 
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Gemini API call timed out")), 8000)
-        );
-
-        const geminiPromise = ai.models.generateContent({
+        const geminiRes: any = await generateGeminiContentWithFallback(ai, {
           model: "gemini-3.5-flash",
           contents,
           config: {
@@ -645,7 +666,6 @@ ${dbContext}
           }
         });
 
-        const geminiRes: any = await Promise.race([geminiPromise, timeoutPromise]);
         responseText = geminiRes?.text || "";
       } catch (geminiErr: any) {
         console.warn("[SupportChat] Gemini API call skipped or failed, using Sruvo Rule Engine fallback:", geminiErr?.message || geminiErr);
