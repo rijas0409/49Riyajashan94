@@ -122,67 +122,76 @@ const getStoredThreads = (): ChatThread[] => {
   return list;
 };
 
-const getRandomGreeting = (userName?: string): string => {
+const getFixedGreeting = (userName?: string): string => {
   const namePart = userName ? ` ${userName}` : "";
-  const greetings = [
-    `Hello${namePart}. I am the Sruvo Care Assistant. I am here to help you resolve any issues regarding your vet consultations, Smart Match bookings, payments, refunds, or pet passports. How can I assist you today?`,
-    `Welcome${namePart}. This is Sruvo Support. Please let me know how I can help you with your vet consultations, Smart Match bookings, billing, refunds, or pet passports. I am ready to assist you.`,
-    `Hello${namePart}. You are connected with the Sruvo Care Assistant. I can help resolve any queries about your bookings, vet consultations, payments, refunds, or pet passports. Please let me know what issue you are experiencing.`,
-    `Hi${namePart}. I am the Sruvo Support Representative. I am here to help you manage or resolve issues related to your consultations, Smart Match bookings, payments, refunds, or pet passports. How may I help you today?`
-  ];
-  const randIdx = Math.floor(Math.random() * greetings.length);
-  return greetings[randIdx];
+  return `Hello${namePart}. I am Sruvo Care Assistant. I am here to help you resolve any issues regarding your vet consultations, Smart Match bookings, payments, refunds, or pet passports. How can I assist you today?`;
 };
 
 const parseMessageOptions = (content: string, isFirstMsgOfGeneralSupport: boolean): { text: string; options: string[] } => {
   if (isFirstMsgOfGeneralSupport) {
     const generalGreetingText = "Hey! I'm Jira, Sruvo's AI Support Assistant.\nHow can I help you today?";
-    if (content !== generalGreetingText) {
-      return { text: content, options: [] };
+    if (content === generalGreetingText) {
+      return {
+        text: generalGreetingText,
+        options: [
+          "I have an order related issue",
+          "I need help with a consultation",
+          "I have a payment or refund issue",
+          "My issue is something else"
+        ]
+      };
     }
-    return {
-      text: generalGreetingText,
-      options: [
-        "I have an order related issue",
-        "I need help with a consultation",
-        "I have a payment or refund issue",
-        "My issue is something else"
-      ]
-    };
   }
 
   const lines = content.split("\n").map(l => l.trim()).filter(Boolean);
   const options: string[] = [];
   let i = lines.length - 1;
-  
-  const contentLower = content.toLowerCase();
-  const hasOptionIndicator = contentLower.includes("choose") || 
-                             contentLower.includes("option") || 
-                             contentLower.includes("select") || 
-                             contentLower.includes("following") ||
-                             contentLower.includes("click") ||
-                             contentLower.includes("type") ||
-                             contentLower.includes("below") ||
-                             contentLower.includes("specialist");
-
-  if (!hasOptionIndicator) {
-    return { text: content, options: [] };
-  }
 
   while (i >= 0) {
     const line = lines[i];
-    const isOption = line.length > 0 && 
-                     line.length < 50 && 
-                     !line.endsWith(".") && 
-                     !line.endsWith("?") && 
-                     !line.endsWith("!") && 
-                     !line.startsWith("-") && 
-                     !line.startsWith("*") &&
-                     !line.match(/^\d+\./);
+    const isOptionCandidate =
+      line.length > 0 &&
+      line.length < 60 &&
+      !line.endsWith(".") &&
+      !line.endsWith("?") &&
+      !line.endsWith("!") &&
+      !line.startsWith("-") &&
+      !line.startsWith("*") &&
+      !line.match(/^\d+\./);
 
-    const isCommonOption = ["refund status", "payment failed", "incorrect charge", "wallet issue", "other", "others", "yes", "no"].includes(line.toLowerCase().trim());
+    const isCommonOption = [
+      "i have an order related issue",
+      "i need help with a consultation",
+      "i have a payment or refund issue",
+      "my issue is something else",
+      "track order",
+      "cancel order",
+      "return item",
+      "refund status",
+      "payment failed",
+      "incorrect charge",
+      "book vet consultation",
+      "view dashboard",
+      "apply for a pet passport",
+      "check passport details",
+      "pet passport status",
+      "offers & promotions",
+      "report an issue",
+      "report payment issue",
+      "talk to a specialist",
+      "speak with support specialist",
+      "check active offers",
+      "view my orders",
+      "view my refunds",
+      "go to smart match",
+      "go to dashboard",
+      "go to pet passport",
+      "other queries",
+      "other",
+      "others"
+    ].includes(line.toLowerCase().trim());
 
-    if (isOption || isCommonOption) {
+    if (isOptionCandidate || isCommonOption) {
       options.unshift(line);
       i--;
     } else {
@@ -284,7 +293,7 @@ export default function SupportChat() {
         setIsEndedThread(false);
 
         const name = profile?.full_name || profile?.name || "";
-        const greetingText = getRandomGreeting(name);
+        const greetingText = getFixedGreeting(name);
 
         if (isPaymentRefundFlow) {
           topicName = "Payment & Refund Issue";
@@ -624,30 +633,98 @@ Our system verifies that your payment of ₹${amount} was successful. A refund o
     };
   }, [view, isEndedThread, messages, loading, activeThread?.lastActivityTimestamp]);
 
-  const getOfflineSupportResponse = (userMsg: string) => {
+  const getOfflineSupportResponse = (userMsg: string): string => {
     const msg = (userMsg || "").toLowerCase().trim();
 
-    if (msg.includes("human") || msg.includes("specialist") || msg.includes("person") || msg.includes("agent") || msg.includes("representative")) {
-      return "I'd be happy to connect you with a Sruvo Specialist, but before I do, could you please describe your issue or concern in detail?\nSmart Match & Booking\nPet Passport\nRefund & Payments\nShop Order";
+    if (
+      msg.includes("human") ||
+      msg.includes("specialist") ||
+      msg.includes("person") ||
+      msg.includes("agent") ||
+      msg.includes("representative") ||
+      msg.includes("talk to a specialist") ||
+      msg.includes("speak with support specialist")
+    ) {
+      return "I am connecting you with a Sruvo Support Specialist right away. Please wait a moment...\nSmart Match & Vet Consultation\nPet Passport\nPayments & Refunds\nShop Orders";
     }
 
-    if (msg.includes("order") || msg.includes("delivery") || msg.includes("track") || msg.includes("shop") || msg.includes("shipping") || msg.includes("item")) {
-      return "I can help you with your order. Please choose one of the options below to proceed:\nTrack Order\nCancel Order\nReturn Order\nPet Orders Help\nMy issue is something else";
+    if (
+      msg === "i have an order related issue" ||
+      msg.includes("order related issue") ||
+      msg.includes("shop orders") ||
+      msg.includes("issues with recent orders")
+    ) {
+      return "I can help you with your shop order related issues. Once your order is shipped, you will receive a tracking link via SMS. Standard delivery is free for all orders above ₹499. Select an option below:\nTrack Order\nCancel Order\nReturn Item\nMy issue is something else";
     }
 
-    if (msg.includes("smart match") || msg.includes("vet") || msg.includes("consult") || msg.includes("doctor") || msg.includes("appointment") || msg.includes("clinic")) {
-      return "To book or manage a vet consultation, select an option below:\nBook Vet Consultation\nView Dashboard\nManage Bookings\nMy issue is something else";
+    if (
+      msg === "i need help with a consultation" ||
+      msg.includes("help with a consultation") ||
+      msg.includes("smart match & vet consultation") ||
+      msg.includes("vet consultation")
+    ) {
+      return "I can assist you with your vet consultation booking. To book a vet consultation, go to the main Dashboard, select 'Smart Match', choose your pet, and our system will match you with a verified vet instantly. Select an option below:\nBook Vet Consultation\nView Dashboard\nTalk to a Specialist";
     }
 
-    if (msg.includes("passport") || msg.includes("pet passport")) {
-      return "Sruvo Pet Passports store digital health records and comply with travel standards. Please choose an option:\nApply for a Pet Passport\nCheck Passport Details\nTalk to a Specialist\nMy issue is something else";
+    if (
+      msg === "i have a payment or refund issue" ||
+      msg.includes("payment or refund issue") ||
+      msg.includes("payments & refunds") ||
+      msg.includes("payment and refund")
+    ) {
+      return "I am ready to help you with payment and refund issues. Refunds for cancelled vet consultations (cancelled at least 2 hours prior to slot) are processed back to your original payment method within 2-3 business days. Select an option below:\nRefund Status\nPayment Failed\nIncorrect Charge\nTalk to a Specialist";
     }
 
-    if (msg.includes("refund") || msg.includes("payment") || msg.includes("debited") || msg.includes("charged") || msg.includes("billing") || msg.includes("wallet") || msg.includes("cancel")) {
-      return "I can help you with Payments & Refunds. Please choose one option:\nRefund Status\nPayment Failed\nIncorrect Charge\nWallet Issue\nMy issue is something else";
+    if (
+      msg === "my issue is something else" ||
+      msg === "other queries" ||
+      msg === "other" ||
+      msg === "others"
+    ) {
+      return "Please choose from one of the following topics or describe your concern below:\nPet Passport Status\nOffers & Promotions\nReport an Issue\nTalk to a Specialist";
     }
 
-    return "Hello! I am Sruvo Care Assistant. How can I help you today? Please choose a topic below or type your query:\nI have an order related issue\nI need help with a consultation\nI have a payment or refund issue\nMy issue is something else";
+    if (msg === "track order" || msg.includes("track my order") || msg.includes("delivery & tracking")) {
+      return "You can track your order status in real-time under Profile > Product Orders. Tracking links are also sent via SMS once dispatched. Select an option below:\nView My Orders\nTalk to a Specialist";
+    }
+
+    if (msg === "cancel order" || msg.includes("cancel my order")) {
+      return "Order cancellations are allowed before the item is dispatched. You can request cancellation directly from Profile > Product Orders. Select an option below:\nView My Orders\nTalk to a Specialist";
+    }
+
+    if (msg === "return item" || msg.includes("return product")) {
+      return "Eligible unopened products can be returned within 7 days of delivery under Profile > Product Orders. Select an option below:\nView My Orders\nTalk to a Specialist";
+    }
+
+    if (msg === "refund status" || msg.includes("check my refund")) {
+      return "Refunds are processed back to your original payment source within 2-3 business days. Reference RRN number is sent via SMS. Select an option below:\nView My Refunds\nTalk to a Specialist";
+    }
+
+    if (msg === "payment failed" || msg.includes("money deducted")) {
+      return "If money was debited for a failed transaction, it will be automatically refunded by your bank within 5-7 business days. Select an option below:\nReport Payment Issue\nTalk to a Specialist";
+    }
+
+    if (msg === "incorrect charge" || msg.includes("wrong charge")) {
+      return "If you were charged an incorrect amount, please share your transaction details and our support team will verify it immediately. Select an option below:\nReport Payment Issue\nTalk to a Specialist";
+    }
+
+    if (msg.includes("passport")) {
+      return "Sruvo Pet Passports store digital health records and comply with international travel standards. You can view or apply for a Pet Passport in your profile. Select an option below:\nApply for a Pet Passport\nCheck Passport Details\nTalk to a Specialist";
+    }
+
+    if (msg.includes("offers") || msg.includes("promotions") || msg.includes("coupon")) {
+      return "Active coupon codes and promotional discounts can be applied directly on the cart or checkout page before payment. Select an option below:\nCheck Active Offers\nTalk to a Specialist";
+    }
+
+    if (msg === "book vet consultation") {
+      return "To book a consultation, open the Smart Match section from your home screen, choose your pet, and select a symptoms category. Select an option below:\nGo to Smart Match\nTalk to a Specialist";
+    }
+
+    if (msg === "view dashboard") {
+      return "You can view all active bookings, upcoming appointments, and past consultations on your Buyer Dashboard.\nGo to Dashboard\nTalk to a Specialist";
+    }
+
+    return "I am Jira, Sruvo Care Assistant. I am here to help you resolve any issues regarding your vet consultations, Smart Match bookings, payments, refunds, or pet passports. Please select an option below or type your message:\nI have an order related issue\nI need help with a consultation\nI have a payment or refund issue\nMy issue is something else";
   };
 
   const handleSend = async (text: string) => {
