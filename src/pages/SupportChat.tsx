@@ -624,6 +624,32 @@ Our system verifies that your payment of ₹${amount} was successful. A refund o
     };
   }, [view, isEndedThread, messages, loading, activeThread?.lastActivityTimestamp]);
 
+  const getOfflineSupportResponse = (userMsg: string) => {
+    const msg = (userMsg || "").toLowerCase().trim();
+
+    if (msg.includes("human") || msg.includes("specialist") || msg.includes("person") || msg.includes("agent")) {
+      return "I'd be happy to connect you with a Sruvo Specialist, but before I do, could you please describe your issue or concern in detail?\nSmart Match & Booking\nPet Passport\nRefund & Payments\nShop Order";
+    }
+
+    if (msg.includes("passport") || msg.includes("pet passport")) {
+      return "Sruvo Pet Passports store digital health records and comply with international travel standards. You can view or apply for a Pet Passport in your profile.\nApply for a Pet Passport\nCheck Passport Details\nTalk to a Specialist";
+    }
+
+    if (msg.includes("smart match") || msg.includes("vet") || msg.includes("consult") || msg.includes("doctor") || msg.includes("appointment")) {
+      return "To book a vet consultation, go to the main Dashboard, select 'Smart Match', choose your pet, and our system will match you with a verified vet instantly.\nBook Vet Consultation\nView Dashboard\nOther";
+    }
+
+    if (msg.includes("refund") || msg.includes("payment") || msg.includes("debited") || msg.includes("cancel")) {
+      return "Refunds for cancelled vet consultations (cancelled at least 2 hours prior to slot) are processed back to your original payment method within 2-3 business days.\nRefund Status\nPayment Failed\nCancel Booking\nTalk to a Specialist";
+    }
+
+    if (msg.includes("order") || msg.includes("delivery") || msg.includes("track")) {
+      return "Once your order is shipped, you will receive a tracking link via SMS. Standard delivery is free for all orders above ₹499.\nTrack Order\nCancel Order\nReturn Item\nOther";
+    }
+
+    return "I am Sruvo Care Assistant. How can I help you today? Please choose a topic below or describe your concern:\nSmart Match & Vet Consult\nPet Passport Status\nOrder & Refund Inquiry\nSpeak with Support Specialist";
+  };
+
   const handleSend = async (text: string) => {
     if (isEndedThread) {
       toast.error("This consultation has already ended. You cannot send new messages.");
@@ -661,30 +687,31 @@ Our system verifies that your payment of ₹${amount} was successful. A refund o
         })
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to reach Sruvo support API");
+      let responseText = "";
+      if (response.ok) {
+        try {
+          const data = await response.json();
+          if (data && data.response) {
+            responseText = data.response;
+          }
+        } catch (jsonErr) {
+          console.warn("[SupportChat] JSON parse skipped:", jsonErr);
+        }
       }
 
-      const data = await response.json();
-      if (data.response) {
-        const finalMsgs: Message[] = [...updatedMessages, { role: "assistant", content: data.response }];
-        setMessages(finalMsgs);
-        saveCurrentChatToThreads(finalMsgs, activeThread?.topic || "General Support Query", "active");
-      } else if (data.error) {
-        throw new Error(data.error);
-      } else {
-        throw new Error("No response content from Sruvo server");
+      if (!responseText) {
+        responseText = getOfflineSupportResponse(text);
       }
+
+      const finalMsgs: Message[] = [...updatedMessages, { role: "assistant", content: responseText }];
+      setMessages(finalMsgs);
+      saveCurrentChatToThreads(finalMsgs, activeThread?.topic || "General Support Query", "active");
     } catch (error: any) {
-      console.error("[SupportChat Error]", error);
-      toast.error("Connecting to Sruvo support failed. Let's try again!");
-      setMessages(prev => [
-        ...prev, 
-        { 
-          role: "assistant", 
-          content: "I ran into a small connection hiccup with our server. Please retry sending your message, and I'll jump right back in!" 
-        }
-      ]);
+      console.warn("[SupportChat Error]", error);
+      const fallbackText = getOfflineSupportResponse(text);
+      const finalMsgs: Message[] = [...updatedMessages, { role: "assistant", content: fallbackText }];
+      setMessages(finalMsgs);
+      saveCurrentChatToThreads(finalMsgs, activeThread?.topic || "General Support Query", "active");
     } finally {
       setLoading(false);
     }
