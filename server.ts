@@ -3,7 +3,6 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import crypto from "crypto";
-import { getFallbackSruvoResponse } from "./api/support/chat";
 
 async function startServer() {
   const app = express();
@@ -265,7 +264,10 @@ Keep descriptions concise (max 2 sentences).`;
         return res.status(400).json({ error: "messages array is required" });
       }
 
-      const geminiApiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.VITE_GEMINI_API_KEY;
+      const geminiApiKey = process.env.GEMINI_API_KEY;
+      if (!geminiApiKey) {
+        throw new Error("GEMINI_API_KEY environment variable is required");
+      }
 
       const agentId = process.env.AGENT_ID || process.env.ELEVENLABS_AGENT_ID || "agent_5001kxxyegp6er3sty5zxb26xkhv";
       const elevenLabsApiKey = process.env.API_KEY || process.env.ELEVENLABS_API_KEY || "";
@@ -760,43 +762,27 @@ ${dbContext}
         };
       });
 
-      let responseText = "";
-
-      if (geminiApiKey) {
-        try {
-          const ai = new GoogleGenAI({
-            apiKey: geminiApiKey,
-            httpOptions: {
-              headers: {
-                "User-Agent": "aistudio-build",
-              }
-            }
-          });
-          const response = await generateGeminiContentWithFallback(ai, {
-            model: "gemini-3.5-flash",
-            contents,
-            config: {
-              systemInstruction: finalSystemInstruction,
-            }
-          });
-
-          responseText = response.text || "";
-        } catch (geminiErr: any) {
-          console.warn("[SupportChat Server] Gemini API call failed, using rule engine fallback:", geminiErr);
+      const ai = new GoogleGenAI({
+        apiKey: geminiApiKey,
+        httpOptions: {
+          headers: {
+            "User-Agent": "aistudio-build",
+          }
         }
-      }
+      });
+      const response = await generateGeminiContentWithFallback(ai, {
+        model: "gemini-3.5-flash",
+        contents,
+        config: {
+          systemInstruction: finalSystemInstruction,
+        }
+      });
 
-      if (!responseText || !responseText.trim()) {
-        const lastUserMsg = messages[messages.length - 1]?.content || messages[messages.length - 1]?.text || "";
-        responseText = getFallbackSruvoResponse(lastUserMsg, messages, dbContext, userId, profile);
-      }
-
+      const responseText = response.text || "";
       res.json({ response: responseText });
     } catch (err: any) {
       console.error("Error in support chat endpoint:", err);
-      const lastUserMsg = req?.body?.messages?.[req?.body?.messages?.length - 1]?.content || "";
-      const fallback = getFallbackSruvoResponse(lastUserMsg, req?.body?.messages || [], "", req?.body?.userId || "", req?.body?.profile || null);
-      res.json({ response: fallback });
+      res.status(500).json({ error: err.message || "Internal Server Error" });
     }
   });
 

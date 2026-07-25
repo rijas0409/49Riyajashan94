@@ -18,7 +18,7 @@ function getSupabaseAdmin() {
   return createClient(cleanUrl, supabaseKey);
 }
 
-export function getFallbackSruvoResponse(userMessage: string, messages: any[], dbContext: string, userId: string, profile: any): string {
+function getFallbackSruvoResponse(userMessage: string, messages: any[], dbContext: string, userId: string, profile: any): string {
   const msg = (userMessage || "").toLowerCase().trim();
 
   // 1. Human Escalation Gatekeeping
@@ -30,40 +30,9 @@ export function getFallbackSruvoResponse(userMessage: string, messages: any[], d
     return "I couldn't completely resolve your issue.\nWould you like me to connect you with a Sruvo Support Specialist?\n\nYes, connect me with a Specialist\nNo, I'll try another question";
   }
 
-  // 2. Broad / General Order Query (Matches Gemini system prompt category choices)
-  if (
-    (msg.includes("order") && (msg.includes("issue") || msg.includes("problem") || msg.includes("help") || msg.includes("related") || msg.includes("query") || msg === "order" || msg === "my order" || msg === "orders")) ||
-    msg === "i have an order related issue"
-  ) {
-    return "I can help you with your order. Please choose an option below to proceed:\nPet Orders\nShop Orders\nDelivery & Tracking\nPayments & Refunds";
-  }
-
-  // 3. Pet Orders
-  if (msg.includes("pet order") || msg.includes("pet orders") || msg.includes("pet finder") || msg.includes("breeder")) {
-    return "Sruvo matches you with registered certified breeders. Go to the Pet Finder section, select a pet, and complete the matching questionnaire to initiate a booking.\nPet Finder\nTrack Order\nTalk to a Specialist";
-  }
-
-  // 4. Shop Orders
-  if (msg.includes("shop order") || msg.includes("shop orders") || msg.includes("cancel order") || msg.includes("return item") || msg.includes("store order")) {
-    return "Shop orders can be cancelled within 2 hours of placement. To cancel or return an item, go to your Order History and select the order.\nCancel Order\nReturn Item\nTrack Order\nTalk to a Specialist";
-  }
-
-  // 5. Delivery & Tracking
-  if (msg.includes("delivery") || msg.includes("track") || msg.includes("tracking") || msg.includes("ship")) {
-    return "Once your order is shipped, you will receive a tracking link via SMS. You can also view live tracking under 'My Orders'. Standard delivery is free for all orders above ₹499.\nTrack Order\nDelivery Charges\nTalk to a Specialist";
-  }
-
-  // 6. Refunds & Payments
-  if (msg.includes("refund") || msg.includes("payment") || msg.includes("money") || msg.includes("debited") || msg.includes("charged") || msg.includes("cancel booking")) {
-    if (msg.includes("failed") || msg.includes("debited")) {
-      return "If money was debited for a failed transaction, it will be automatically refunded by your bank within 5-7 business days.\nReport Payment Issue\nTalk to a Specialist";
-    }
-    return "Refunds for cancelled vet consultations (cancelled at least 2 hours prior to slot) are processed back to your original payment method within 2-3 business days.\nRefund Status\nPayment Failed\nCancel Booking\nTalk to a Specialist";
-  }
-
-  // 7. Pet Passport
+  // 2. Pet Passport Deep Analysis
   if (msg.includes("passport") || msg.includes("pet passport") || msg.includes("passport issue") || msg.includes("passport problem")) {
-    if (dbContext && dbContext.includes("[User's Pet Passports (pet_passports)]")) {
+    if (dbContext.includes("[User's Pet Passports (pet_passports)]")) {
       const petMatches = dbContext.match(/Pet Name:\s*([^\n]+)/gi) || [];
       const petNames = Array.from(new Set(petMatches.map(m => m.replace(/Pet Name:\s*/i, "").trim()))).filter(n => n && n !== "N/A");
       
@@ -79,72 +48,48 @@ export function getFallbackSruvoResponse(userMessage: string, messages: any[], d
         return `I found ${pName}'s Pet Passport in your registered account. How can I assist you with ${pName}'s passport today?\nCheck Vaccination Info\nCheck Delivery Status\nUpdate Passport Details\nMy issue is something else`;
       }
     }
-    return "Sruvo Pet Passports store digital health records and comply with international travel standards. You can apply or manage passports directly from your profile.\nApply for a Pet Passport\nCheck Passport Details\nTalk to a Specialist";
+    return "You don't have an active Pet Passport registered yet on Sruvo. Sruvo Pet Passports store digital health records and comply with international travel standards.\nApply for a Pet Passport\nTalk to a Specialist\nOther";
   }
 
-  // 8. Smart Match & Vet Consultation
+  // 3. Smart Match & Vet Consultation
   if (msg.includes("smart match") || msg.includes("vet") || msg.includes("consult") || msg.includes("doctor") || msg.includes("appointment") || msg.includes("clinic")) {
     if (msg.includes("book") || msg.includes("how to") || msg.includes("what is")) {
       return "Smart Match is Sruvo's intelligent matching system that automatically pairs your pet with the most qualified veterinary doctor based on species, breed, medical history, and symptoms.\nBook Vet Consultation\nView Dashboard\nOther";
     }
-    if (dbContext && (dbContext.includes("[User's Vet Appointments]") || dbContext.includes("[User's Smart Match Bookings]"))) {
+    if (dbContext.includes("[User's Vet Appointments]") || dbContext.includes("[User's Smart Match Bookings]")) {
       return "I found your consultation records in our live system. You can view booking statuses, reschedule, or download digital prescriptions directly from your Dashboard.\nView Dashboard\nBook Vet Consultation\nTalk to a Specialist";
     }
     return "To book a vet consultation, go to the main Dashboard, select 'Smart Match', choose your pet, and our system will match you with a verified vet instantly.\nBook Vet Consultation\nView Dashboard\nOther";
   }
 
-  // 9. Medical / Health Mandate (Safety)
+  // 4. Medical / Health Mandate (Safety)
   if (msg.includes("medicine") || msg.includes("dose") || msg.includes("dosage") || msg.includes("vomit") || msg.includes("bleed") || msg.includes("sick") || msg.includes("diarrhea") || msg.includes("fever") || msg.includes("paracetamol") || msg.includes("cure")) {
     return "As Sruvo's support assistant, I cannot prescribe medicine or give medical diagnoses. For your pet's safety, please connect with a verified vet right away. You can schedule an instant digital consultation or search for a clinic via our Smart Match dashboard.\nBook Vet Consultation\nView Dashboard\nTalk to a Specialist";
   }
 
-  // 10. Account & Profile
-  if (msg.includes("account") || msg.includes("profile") || msg.includes("delete account")) {
-    return "To manage your profile or update your pet's details, navigate to Profile and select My Pets or Account Settings.\nUpdate Pet Profile\nDelete Account\nTalk to a Specialist";
+  // 5. Refunds & Payments
+  if (msg.includes("refund") || msg.includes("payment") || msg.includes("money") || msg.includes("debited") || msg.includes("charged") || msg.includes("cancel")) {
+    if (msg.includes("refund")) {
+      return "Refunds for cancelled vet consultations (cancelled at least 2 hours prior to slot) are processed back to your original payment method within 2-3 business days.\nRefund Status\nPayment Failed\nCancel Booking\nTalk to a Specialist";
+    }
+    if (msg.includes("failed") || msg.includes("debited")) {
+      return "If money was debited for a failed transaction, it will be automatically refunded by your bank within 5-7 business days.\nReport Payment Issue\nTalk to a Specialist";
+    }
+    return "We accept all major credit/debit cards, UPI, net banking, and popular mobile wallets on Sruvo.\nRefund Status\nPayment Failed\nIncorrect Charge\nOther";
   }
 
-  // 11. Greeting / Hi / Hello
+  // 6. Shop & Orders
+  if (msg.includes("order") || msg.includes("delivery") || msg.includes("track") || msg.includes("shop") || msg.includes("shipping")) {
+    return "Once your order is shipped, you will receive a tracking link via SMS. Standard delivery is free for all orders above ₹499.\nTrack Order\nCancel Order\nReturn Item\nOther";
+  }
+
+  // 7. Greeting / Hi / Hello
   if (msg === "hi" || msg === "hello" || msg === "hey" || msg.startsWith("hi ") || msg.startsWith("hello ")) {
-    return "Hello! I am Sruvo Care Assistant. How can I help you today? Please choose a topic below or describe your concern:\nSmart Match & Vet Consult\nPet Passport Status\nOrder & Refund Inquiry\nSpeak with Support Specialist";
+    return "Hello! I am Sruvo Care Assistant. How can I help you today? Please choose a topic below or type your query:\nSmart Match & Vet Consult\nPet Passport\nOrder & Delivery\nRefunds & Payments";
   }
 
   // Default Fallback
-  return "I am Sruvo Care Assistant. How can I help you today? Please choose a topic below or describe your concern:\nSmart Match & Vet Consult\nPet Passport Status\nOrder & Delivery Inquiry\nPayments & Refunds";
-}
-
-async function generateGeminiContentWithFallback(ai: GoogleGenAI, params: {
-  model?: string;
-  contents: any;
-  config?: any;
-}) {
-  const requestedModel = params.model || "gemini-3.5-flash";
-  const modelsToTry = [requestedModel, "gemini-flash-latest", "gemini-2.5-flash"];
-  let lastError: any = null;
-
-  for (const modelName of modelsToTry) {
-    let attempts = 2;
-    let delay = 500;
-    while (attempts > 0) {
-      try {
-        console.log(`[GeminiFallback Vercel] Calling generateContent with model: ${modelName}, attempts left: ${attempts}`);
-        const result = await ai.models.generateContent({
-          model: modelName,
-          contents: params.contents,
-          config: params.config,
-        });
-        return result;
-      } catch (err: any) {
-        lastError = err;
-        console.warn(`[GeminiFallback Vercel] Error using model ${modelName}:`, err?.message || err);
-        attempts--;
-        if (attempts > 0) {
-          await new Promise((resolve) => setTimeout(resolve, delay));
-          delay *= 2;
-        }
-      }
-    }
-  }
-  throw lastError || new Error("Failed to generate content with any model");
+  return "I am here to help you with Sruvo services including Smart Match consultations, Pet Passports, shop orders, and refunds. Please let me know your specific concern or choose an option below:\nSmart Match & Vet Consult\nPet Passport Status\nOrder & Refund Inquiry\nSpeak with Support Specialist";
 }
 
 export default async function handler(req: any, res: any) {
@@ -189,9 +134,11 @@ export default async function handler(req: any, res: any) {
       process.env.AGENT_ID ||
       process.env.ELEVENLABS_AGENT_ID ||
       "agent_5001kxxyegp6er3sty5zxb26xkhv";
-    const elevenLabsApiKey = process.env.API_KEY || process.env.ELEVENLABS_API_KEY || "";
+    const elevenLabsApiKey =
+      process.env.API_KEY || process.env.ELEVENLABS_API_KEY || "";
 
-    let systemPrompt = "You are Sruvo's professional India-First Pet Care assistant. Help pet parents with Smart Match consultations, booking statuses, cancellations, order deliveries, refunds, and Pet Passport details in a warm, polite and direct tone. Keep replies friendly and concise.";
+    let systemPrompt =
+      "You are Sruvo's professional India-First Pet Care assistant. Help pet parents with Smart Match consultations, booking statuses, cancellations, order deliveries, refunds, and Pet Passport details in a warm, polite and direct tone. Keep replies friendly and concise.";
 
     if (agentId) {
       try {
@@ -379,7 +326,7 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    const baseSystemInstruction = `You are "Sruvo Care Assistant".
+          const baseSystemInstruction = `You are "Sruvo Care Assistant".
 You are not a general AI chatbot.
 You represent Sruvo's official customer support team.
 Your responsibility is to help buyers resolve issues related to Sruvo services using only official company information, verified policies, and available support resources.
@@ -499,6 +446,7 @@ Category: Other Queries
 - FAQ: How do I contact Sruvo headquarters?
   Answer: For corporate queries, you can email us at contact@sruvo.com or write to our registered office in Bangalore, India.
 
+
 OFFICIAL SRUVO POLICIES:
 - All booked consultations are valid for 24 hours from the scheduled time. Post-consultation digital prescriptions are generated automatically and stored in your Booking Details.
 - All Pet Passports require up-to-date rabies vaccination details. Physical passports are shipped within 7-10 business days after digital verification.
@@ -506,30 +454,164 @@ OFFICIAL SRUVO POLICIES:
 - Standard shop items are eligible for cancellation before dispatch. Custom or prescription diets cannot be cancelled once processed.
 - Sruvo delivers pet supplies within 24-48 hours. Live pet transports are routed through climate-controlled vehicles and have dedicated real-time handlers.
 - Refunds are only processed for cancelled vet consultations if cancelled at least 2 hours prior to the scheduled slot. No-shows are non-refundable.
+- Account deletions are irreversible. Active subscriptions or scheduled consultations must be settled before an account can be deleted.
+- Promo codes cannot be combined. They are not applicable on live animal purchases or prescription medicines.
+- Sruvo support staff cannot provide medical advice, dosages, or diagnoses. Users must be referred to a verified vet on the platform.
+- Emergency veterinary dispatch is subject to local partner clinic hours and service zone boundaries.
+- Reported issues are triaged by severity. Security bugs or payment failures are handled on priority.
+- Users must agree to the terms of service during signup. Unauthorized use of the platform results in termination.
 
 COMMUNICATION RULES:
 - Always sound like an experienced customer support executive.
 - Maintain a calm, confident, and professional tone.
+- Your communication style should resemble modern customer support experiences such as leading e-commerce, banking, or technology platforms.
+- Never sound like ChatGPT.
+- Never sound like a WhatsApp friend.
+- Never sound like a personal assistant.
+- Never sound like a teacher.
+- Never sound like a therapist.
+- Never sound robotic.
 - Be respectful, concise, and solution-focused.
+- Always be clear, concise, and professional.
 - Maximum response length: 100 words unless a longer explanation is required by an official policy.
 - Never write long paragraphs.
+- Never greet repeatedly.
+- Never apologise repeatedly.
 - Never use emojis under any circumstances.
+- Never add unnecessary explanations.
+- Never ask unnecessary questions.
+- Ask only the minimum information required to resolve the issue.
+- If the issue is simple, provide the solution immediately.
+- Always use simple professional English.
+- Avoid marketing language.
+- Avoid conversational filler.
+
+STRICT BACKEND & TRUTH RULES:
+- Never perform any of the following actions under any circumstances.
+- Do not diagnose pets.
+- Do not recommend medicines.
+- Do not prescribe treatment.
+- Do not promise refunds.
+- Do not promise compensation.
+- Do not promise delivery dates.
+- Do not promise approval of claims.
+- Do not invent policies.
+- Do not fabricate order status.
+- Do not guess missing information.
+- Do not create information that does not exist.
+- Do not answer questions unrelated to Sruvo.
+- If information is unavailable, say so clearly.
+- Never hallucinate.
+1. NEVER assume, invent, or hallucinate statuses (like Booking Status, Payment Status, Delivery/Refund Status).
+2. Look at the "REAL-TIME DATABASE CONTEXT" provided below. Use ONLY this data to verify records.
+3. If the data is present: describe it accurately to the user.
+4. If no database record is found in the context block: politely explain that the information is currently not found, and offer to escalate/handoff the issue to a live customer executive.
 
 STRICT MEDICAL & SAFETY MANDATES:
 - NEVER act as a veterinarian, doctor, or medical professional.
 - NEVER prescribe medicine, give dosages, recommend clinical products, or diagnose health issues.
-- If the user asks medical questions:
+- If the user asks medical questions (e.g., "What dose of Paracetamol should I give?", "My dog is bleeding, what do I do?"):
   - Politely decline to prescribe or diagnose.
   - Say: "As Sruvo's support assistant, I cannot prescribe medicine or give medical diagnoses. For your pet's safety, please connect with a verified vet right away. You can schedule an instant digital consultation or search for a clinic via our Smart Match dashboard."
+
+ESCALATION & HANDOFF PROTOCOLS:
+- Before ending a conversation, check whether the customer's issue has been resolved.
+- If the issue is resolved, thank the customer politely and close the conversation.
+- If the customer indicates that the issue is not resolved, offer Human Support.
+- Do not repeatedly ask whether the issue is resolved. Ask only once.
+- If the customer still requires assistance, generate a Human Support Request.
+- Ask the satisfaction question once inside chat, then follow the result.
+
+STRICT HUMAN ESCALATION GATEKEEPING:
+- If the customer asks to speak with a human or request a specialist early in the conversation (e.g. right after the greeting or before describing any issue), DO NOT immediately escalate or offer human support.
+- First, politely and firmly ask the user what specific issue or concern they are facing (e.g., "I'd be happy to connect you with a Sruvo Specialist, but before I do, could you please describe your issue or concern in detail?").
+- Even if they repeat "human" or try to bypass, ask them again to explain the problem.
+- Only when the customer has described their issue and you can verify that the concern is genuine/valid for escalation, should you proceed with the handoff.
+
+Escalate to Human Support only when one or more of the following conditions are true:
+- The customer has described their issue, and the concern is verified as genuine.
+- The issue requires manual verification.
+- Account verification is required.
+- Payment investigation is required.
+- Refund investigation is required.
+- Delivery investigation is required.
+- The customer explicitly asks to speak with a human (and has clearly described their genuine issue/concern first).
+- The customer remains unsatisfied after AI assistance.
+
+When escalation is required, you MUST reply:
+"I couldn't completely resolve your issue.
+Would you like me to connect you with a Sruvo Support Specialist?"
+
+If the customer agrees, end AI troubleshooting, do not continue trying to solve the issue. You MUST generate the following structured summary exactly as written below in chat-friendly structured text for the Sruvo Admin Panel:
+
+Human Support Request
+Category:
+Issue Summary:
+Customer Description:
+Relevant Order / Consultation / Passport ID:
+Actions Already Attempted:
+Reason for Escalation:
+Priority:
+Recommended Department:
+
+Do not display internal reasoning. Only display the formatted request exactly as shown above. Do not add any emojis.
+
+PET PASSPORT DEEP ANALYSIS GUIDE:
+- When a user raises any query, concern, or issue regarding a "Pet Passport" (e.g., "passport me dikkat hai", "passport issue", "passport problem", "my pet passport"):
+  1. Check the [User's Pet Passports (pet_passports)] context section below to see what passports they have registered.
+  2. If the user has multiple registered pet passports and has not yet specified which pet they are asking about, you MUST ask them to choose.
+  3. Format your response to end with their pet passports listed as separate new lines, so the frontend renders them as quick reply buttons.
+     Example format (if the user has pets named Buddy and Max):
+     I see you have multiple pet passports. Please choose which pet's passport you are having an issue with:
+     Buddy's Passport
+     Max's Passport
+     My issue is something else
+  4. If they have only one registered pet passport, you can reference it directly by name (e.g. "I see you have a pet passport for Buddy. Is that the one you need help with?") and offer quick options:
+     Buddy's Passport
+     My issue is something else
+  5. If they have no registered pet passports, offer them options to create one:
+     Apply for a Pet Passport
+     Talk to a Specialist
+  6. Once a specific pet is selected or identified, retrieve and use the real-time passport, medical log, and vaccination records from the context to answer precisely.
+     For example, tell them if their Rabies vaccination is up-to-date or if they need to upload records before physical shipment (which takes 7-10 business days). Provide relevant follow-up options:
+     Check Vaccination Info
+     Check Delivery Status
+     Update Passport Details
+     My issue is something else
+
+SCREEN & NAVIGATION AWARENESS:
+- Sruvo Buyer features include:
+  - Smart Match & Vet Booking (found on Dashboard: /buyer/dashboard) - automatically pairs species, breed, medical history with the most qualified vet instantly.
+  - Pet Passport (managed via Add Pet or Pet Details) - verified compliance for international/local travel.
+  - Consultation Support / Video Consult (Virtual Consults) - instant video calls with verified veterinarians.
+  - Pet Essentials Shop (where premium pet food, accessories, and prescription diets are ordered).
+- If the user asks about bookings, cats, dogs, or pages in the buyer panel, refer to the live [User's Smart Match Bookings] or [User's Vet Appointments] sections below to provide precise, personalized responses. Guiding options:
+  View Dashboard
+  Book Vet Consultation
+  Manage Bookings
+  My issue is something else
 
 STRUCTURED QUICK OPTIONS:
 - Whenever possible, avoid long conversations.
 - Instead, guide users using structured options.
-- Return options on separate new lines after text for quick reply rendering.
+Example format to follow when offering options:
+I can help you with Payments & Refunds. Please choose one option.
+Refund Status
+Payment Failed
+Incorrect Charge
+Wallet Issue
+Other
+
+- The AI should only return the available options listed on separate new lines after the question text.
+- Do not simulate button clicks.
+- Do not generate HTML.
+- Do not generate markdown buttons.
+- Return only the option/button labels in plain text so the frontend can render them as quick reply buttons.
 
 CURRENT SESSION REAL-TIME USER INFO:
 ${dbContext}
 `;
+
 
     const finalSystemInstruction = `${baseSystemInstruction}\n\n=== ADDITIONAL ELEVENLABS PERSONALITY CONFIG ===\n${systemPrompt}`;
 
@@ -552,10 +634,10 @@ ${dbContext}
         }));
 
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Gemini API call timed out")), 18000)
+          setTimeout(() => reject(new Error("Gemini API call timed out")), 8000)
         );
 
-        const geminiPromise = generateGeminiContentWithFallback(ai, {
+        const geminiPromise = ai.models.generateContent({
           model: "gemini-3.5-flash",
           contents,
           config: {
@@ -566,7 +648,7 @@ ${dbContext}
         const geminiRes: any = await Promise.race([geminiPromise, timeoutPromise]);
         responseText = geminiRes?.text || "";
       } catch (geminiErr: any) {
-        console.warn("[SupportChat Vercel] Gemini API call skipped or failed, using Sruvo Rule Engine fallback:", geminiErr?.message || geminiErr);
+        console.warn("[SupportChat] Gemini API call skipped or failed, using Sruvo Rule Engine fallback:", geminiErr?.message || geminiErr);
       }
     }
 
@@ -578,6 +660,7 @@ ${dbContext}
     return res.status(200).json({ response: responseText });
   } catch (err: any) {
     console.error("Error in Vercel support chat endpoint:", err);
+    // Never fail with 500! Fallback gracefully to rule engine
     const lastUserMsg = req?.body?.messages?.[req?.body?.messages?.length - 1]?.content || "";
     const fallback = getFallbackSruvoResponse(lastUserMsg, req?.body?.messages || [], "", req?.body?.userId || "", req?.body?.profile || null);
     return res.status(200).json({ response: fallback });

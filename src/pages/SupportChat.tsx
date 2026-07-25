@@ -627,27 +627,8 @@ Our system verifies that your payment of ₹${amount} was successful. A refund o
   const getOfflineSupportResponse = (userMsg: string) => {
     const msg = (userMsg || "").toLowerCase().trim();
 
-    if (msg.includes("human") || msg.includes("specialist") || msg.includes("person") || msg.includes("agent") || msg.includes("representative")) {
+    if (msg.includes("human") || msg.includes("specialist") || msg.includes("person") || msg.includes("agent")) {
       return "I'd be happy to connect you with a Sruvo Specialist, but before I do, could you please describe your issue or concern in detail?\nSmart Match & Booking\nPet Passport\nRefund & Payments\nShop Order";
-    }
-
-    if (
-      (msg.includes("order") && (msg.includes("issue") || msg.includes("problem") || msg.includes("help") || msg.includes("related") || msg.includes("query") || msg === "order" || msg === "my order" || msg === "orders")) ||
-      msg === "i have an order related issue"
-    ) {
-      return "I can help you with your order. Please choose an option below to proceed:\nPet Orders\nShop Orders\nDelivery & Tracking\nPayments & Refunds";
-    }
-
-    if (msg.includes("pet order") || msg.includes("pet orders") || msg.includes("breeder")) {
-      return "Sruvo matches you with registered certified breeders. Go to the Pet Finder section, select a pet, and complete the matching questionnaire to initiate a booking.\nPet Finder\nTrack Order\nTalk to a Specialist";
-    }
-
-    if (msg.includes("shop order") || msg.includes("shop orders") || msg.includes("cancel order") || msg.includes("return item")) {
-      return "Shop orders can be cancelled within 2 hours of placement. To cancel or return an item, go to your Order History and select the order.\nCancel Order\nReturn Item\nTrack Order\nTalk to a Specialist";
-    }
-
-    if (msg.includes("delivery") || msg.includes("track") || msg.includes("tracking") || msg.includes("ship")) {
-      return "Once your order is shipped, you will receive a tracking link via SMS. Standard delivery is free for all orders above ₹499.\nTrack Order\nDelivery Charges\nTalk to a Specialist";
     }
 
     if (msg.includes("passport") || msg.includes("pet passport")) {
@@ -658,15 +639,15 @@ Our system verifies that your payment of ₹${amount} was successful. A refund o
       return "To book a vet consultation, go to the main Dashboard, select 'Smart Match', choose your pet, and our system will match you with a verified vet instantly.\nBook Vet Consultation\nView Dashboard\nOther";
     }
 
-    if (msg.includes("refund") || msg.includes("payment") || msg.includes("debited") || msg.includes("cancel booking")) {
+    if (msg.includes("refund") || msg.includes("payment") || msg.includes("debited") || msg.includes("cancel")) {
       return "Refunds for cancelled vet consultations (cancelled at least 2 hours prior to slot) are processed back to your original payment method within 2-3 business days.\nRefund Status\nPayment Failed\nCancel Booking\nTalk to a Specialist";
     }
 
-    if (msg === "hi" || msg === "hello" || msg === "hey" || msg.startsWith("hi ") || msg.startsWith("hello ")) {
-      return "Hello! I am Sruvo Care Assistant. How can I help you today? Please choose a topic below or describe your concern:\nSmart Match & Vet Consult\nPet Passport Status\nOrder & Refund Inquiry\nSpeak with Support Specialist";
+    if (msg.includes("order") || msg.includes("delivery") || msg.includes("track")) {
+      return "Once your order is shipped, you will receive a tracking link via SMS. Standard delivery is free for all orders above ₹499.\nTrack Order\nCancel Order\nReturn Item\nOther";
     }
 
-    return "I am Sruvo Care Assistant. How can I help you today? Please choose a topic below or describe your concern:\nSmart Match & Vet Consult\nPet Passport Status\nOrder & Delivery Inquiry\nPayments & Refunds";
+    return "I am Sruvo Care Assistant. How can I help you today? Please choose a topic below or describe your concern:\nSmart Match & Vet Consult\nPet Passport Status\nOrder & Refund Inquiry\nSpeak with Support Specialist";
   };
 
   const handleSend = async (text: string) => {
