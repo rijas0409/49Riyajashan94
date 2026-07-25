@@ -367,19 +367,106 @@ const GlobalHelpSupportIframe = () => {
     location.pathname === "/buyer/help" ||
     location.pathname === "/buyer/help-support";
 
+  const fetchAndPostOrders = async () => {
+    const iframe = document.querySelector('iframe[title="Sruvo - Help & Support"]') as HTMLIFrameElement;
+    if (!iframe || !iframe.contentWindow) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || !session.user) {
+        iframe.contentWindow.postMessage({
+          type: "USER_ORDERS_RESULT",
+          items: [],
+          userLoggedIn: false,
+        }, "*");
+        return;
+      }
+
+      const userId = session.user.id;
+
+      const [ordersRes, apptsRes, prodsRes] = await Promise.allSettled([
+        supabase
+          .from("orders")
+          .select("id, amount, status, created_at, pet_id, pets(name, breed, images, city, state, category)")
+          .eq("buyer_id", userId),
+        supabase
+          .from("vet_appointments")
+          .select("*")
+          .eq("user_id", userId),
+        supabase
+          .from("product_orders")
+          .select("*")
+          .eq("buyer_id", userId)
+      ]);
+
+      const allItems: any[] = [];
+
+      if (ordersRes.status === "fulfilled" && ordersRes.value?.data) {
+        ordersRes.value.data.forEach((order: any) => {
+          allItems.push({
+            type: "pet_order",
+            date: new Date(order.created_at || Date.now()).getTime(),
+            created_at: order.created_at,
+            data: order
+          });
+        });
+      }
+
+      if (apptsRes.status === "fulfilled" && apptsRes.value?.data) {
+        apptsRes.value.data.forEach((appt: any) => {
+          allItems.push({
+            type: "vet_appointment",
+            date: new Date(appt.created_at || appt.appointment_date || Date.now()).getTime(),
+            created_at: appt.created_at || appt.appointment_date,
+            data: appt
+          });
+        });
+      }
+
+      if (prodsRes.status === "fulfilled" && prodsRes.value?.data) {
+        prodsRes.value.data.forEach((prod: any) => {
+          allItems.push({
+            type: "product_order",
+            date: new Date(prod.created_at || Date.now()).getTime(),
+            created_at: prod.created_at,
+            data: prod
+          });
+        });
+      }
+
+      allItems.sort((a, b) => b.date - a.date);
+
+      iframe.contentWindow.postMessage({
+        type: "USER_ORDERS_RESULT",
+        items: allItems,
+        userLoggedIn: true,
+      }, "*");
+    } catch (err) {
+      console.error("Error in parent fetching orders:", err);
+      iframe.contentWindow.postMessage({
+        type: "USER_ORDERS_RESULT",
+        items: [],
+        userLoggedIn: true,
+      }, "*");
+    }
+  };
+
   useEffect(() => {
     if (isHelpSupport) {
       const iframe = document.querySelector('iframe[title="Sruvo - Help & Support"]') as HTMLIFrameElement;
       if (iframe && iframe.contentWindow) {
         iframe.contentWindow.postMessage({ type: "ON_SHOW_HELP_SUPPORT" }, "*");
       }
+      fetchAndPostOrders();
     }
   }, [isHelpSupport]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (!event.data) return;
-      if (event.data.type === "NAVIGATE_BACK") {
+      if (event.data.type === "FETCH_USER_ORDERS") {
+        fetchAndPostOrders();
+      } else if (event.data.type === "NAVIGATE_BACK") {
         const lastMainPath = sessionStorage.getItem("last_main_entry_path") || "/buyer/profile";
         if (window.history.length > 1) {
           navigate(-1);
@@ -410,11 +497,12 @@ const GlobalHelpSupportIframe = () => {
         display: "flex",
         justifyContent: "center",
         alignItems: "flex-start",
+        overflowY: "auto",
       }}
     >
       <iframe
         src="/helpsupport.html"
-        className="w-full max-w-[520px] min-h-screen border-none h-screen bg-[#f4f5f8]"
+        className="w-full max-w-6xl min-h-screen border-none h-screen bg-[#f4f5f8]"
         title="Sruvo - Help & Support"
       />
     </div>

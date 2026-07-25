@@ -42,7 +42,7 @@
     /* Common App Container */
     .app-container {
       width: 100%;
-      max-width: 520px;
+      max-width: 100%;
       margin: 0 auto;
       background-color: #f4f5f8;
       min-height: 100vh;
@@ -54,6 +54,75 @@
       padding: 16px 16px 36px 16px;
       background-color: #f8f9fd;
       min-height: 100vh;
+    }
+
+    @media (min-width: 768px) {
+      .app-container {
+        max-width: 100%;
+        padding-left: 0;
+        padding-right: 0;
+      }
+      .screen-container {
+        padding: 24px 32px 48px 32px;
+        background-color: transparent;
+        border-radius: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+        box-shadow: none;
+        border: none;
+        max-width: 960px;
+        margin-left: auto;
+        margin-right: auto;
+        width: 100%;
+      }
+      .header-title-box h1 {
+        font-size: 26px;
+      }
+      .header-title-box p {
+        font-size: 14px;
+      }
+      .card-group.responsive-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        overflow: visible;
+      }
+      .card-group.responsive-grid .list-item {
+        background-color: #ffffff;
+        border-radius: 18px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02);
+        width: 100%;
+      }
+      .card-group.responsive-grid .list-item:not(:last-child) {
+        border-bottom: 1px solid #e2e8f0;
+      }
+      #past-orders-list-container {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        width: 100%;
+      }
+      .faq-card-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .app-container {
+        max-width: 100%;
+      }
+      .screen-container {
+        padding: 32px 40px 56px 40px;
+        max-width: 1100px;
+      }
     }
     
     /* Header Section */
@@ -690,7 +759,7 @@
 
       <!-- HELP WITH OTHER QUERIES SECTION -->
       <div class="section-label">HELP WITH OTHER QUERIES</div>
-      <div class="card-group">
+      <div class="card-group responsive-grid">
         
         <!-- Targetable classes for JS mapping based on title text -->
         <a href="#" class="list-item dynamic-faq-trigger">
@@ -829,7 +898,7 @@
       <!-- CONVERSATION ARCHIVES SECTION -->
       <div class="section-label">CONVERSATION ARCHIVES</div>
       <div class="card-group">
-        <a href="#" class="list-item dynamic-faq-trigger">
+        <a href="#" class="list-item" id="trigger-all-threads">
           <div class="item-icon-box">
             <img src="https://i.ibb.co/gbmv4vkK/file-00000000548481fab38697935d3d7d99.png" alt="Archive">
           </div>
@@ -948,6 +1017,70 @@
     </div>
 
 
+    <!-- ============================================== -->
+    <!-- SCREEN 5: CONSULTATION HELP DETAIL SCREEN      -->
+    <!-- ============================================== -->
+    <div id="consultation-help-screen" style="display: none; background-color: #f4f5f8; min-height: 100vh; padding-bottom: 40px;">
+      <div class="faq-header-wrapper">
+        <button id="btn-back-consultation-help" class="back-icon-btn" aria-label="Back">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <h1>Help & Support</h1>
+      </div>
+      <div class="faq-content">
+        <h2 id="consultation-help-section-title" class="faq-section-title">CONSULTATION</h2>
+        
+        <div class="faq-card-container" id="consultation-help-list-container">
+          <!-- Item a: Confirmation issue accordion -->
+          <div class="faq-item" id="ch-item-confirmation">
+            <button class="faq-question-btn" id="ch-btn-confirmation">
+              <div class="faq-question-text">I did not receive my consultation confirmation</div>
+              <i class="fa-solid fa-chevron-down faq-chevron"></i>
+            </button>
+            <div class="faq-answer-container">
+              <div class="faq-answer-text">
+                We're sorry for the inconvenience. If your booking was successful but you haven't received the confirmation, our support team will verify your booking and assist you.
+              </div>
+              <div class="faq-cta-box">
+                <button class="faq-action-btn" id="ch-email-btn">EMAIL US</button>
+                <div class="faq-action-subtext">We will revert within 24-48 hrs</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Item b: Payment and refund related issues -->
+          <div class="faq-item" id="ch-item-refund">
+            <button class="faq-question-btn" id="ch-btn-refund">
+              <div class="faq-question-text">I have payment and refund related issues</div>
+              <i class="fa-solid fa-chevron-right" style="color: #94a3b8; font-size: 14px;"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ============================================== -->
+    <!-- SCREEN 6: ALL CONVERSATION THREADS SCREEN      -->
+    <!-- ============================================== -->
+    <div id="conversation-threads-screen" style="display: none; background-color: #f4f5f8; min-height: 100vh; padding-bottom: 40px;">
+      <div class="faq-header-wrapper">
+        <button id="btn-back-threads" class="back-icon-btn" aria-label="Back">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <h1>Help & Support</h1>
+      </div>
+      <div class="faq-content">
+        <h2 class="faq-section-title">ALL CONVERSATION THREADS</h2>
+        
+        <div id="threads-list-container" style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
+          <!-- Dynamic Cards for previous AI chats will be rendered here -->
+        </div>
+      </div>
+    </div>
+
+
     <!-- OVERLAY BOTTOM SHEET FOR "TAP HERE" -->
     <div id="overlay-bottom-sheet" class="overlay-container">
       <div class="overlay-backdrop" id="overlay-backdrop"></div>
@@ -990,7 +1123,34 @@
     }
 
     window.addEventListener("message", function(e) {
-      if (e.data && e.data.type === "ON_SHOW_HELP_SUPPORT") {
+      if (!e.data) return;
+
+      if (e.data.type === "USER_ORDERS_RESULT") {
+        const container = document.getElementById("past-orders-list-container");
+        if (!container) return;
+
+        if (e.data.userLoggedIn === false) {
+          localStorage.removeItem("sruvo_cached_orders");
+          container.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: #64748b;">
+              <p style="font-size: 15px; font-weight: 600; margin-bottom: 16px;">Please log in to view your orders & consultations.</p>
+              <button onclick="navigateParent('/auth/buyer')" class="btn-primary" style="padding: 10px 20px; font-size: 14px; width: auto; display: inline-block;">Log In Now</button>
+            </div>
+          `;
+          return;
+        }
+
+        const items = e.data.items || [];
+        if (items.length > 0) {
+          localStorage.setItem("sruvo_cached_orders", JSON.stringify(items));
+          renderOrderCards(items, container);
+        } else {
+          localStorage.removeItem("sruvo_cached_orders");
+          renderOrderCards([], container);
+        }
+      }
+
+      if (e.data.type === "ON_SHOW_HELP_SUPPORT") {
         if (typeof loadPastOrders === "function") {
           loadPastOrders();
         }
@@ -1054,36 +1214,57 @@
       function formatDateAndTime(dateStr, timeStr) {
         if (!dateStr) return "";
         const dateObj = new Date(dateStr);
-        // Format as: "23 Jul 2026"
+        if (isNaN(dateObj.getTime())) return "";
+
         const formattedDate = dateObj.toLocaleDateString("en-IN", {
           day: "numeric",
           month: "short",
           year: "numeric"
         });
-        
+
         let formattedTime = "";
-        if (timeStr) {
-          // If time is provided, parse "09:45" or similar
-          const parts = timeStr.split(":");
-          if (parts.length >= 2) {
-            let hours = parseInt(parts[0], 10);
-            const minutes = parts[1];
-            const ampm = hours >= 12 ? "pm" : "am";
-            hours = hours % 12;
-            hours = hours ? hours : 12; // the hour '0' should be '12'
-            formattedTime = `, ${hours}:${minutes} ${ampm}`;
+
+        if (timeStr && typeof timeStr === "string") {
+          const trimmed = timeStr.trim();
+          // Clean duplicate am/pm at the end (e.g. "12:00 AM pm")
+          const cleanString = trimmed.replace(/\s+(am|pm)\s*$/i, (match, p1, offset, string) => {
+            if (/(AM|PM)\s*$/i.test(string.slice(0, offset))) {
+              return "";
+            }
+            return match;
+          });
+
+          const ampmMatch = cleanString.match(/^(1[0-2]|0?[1-9]):([0-5][0-9])(?::[0-5][0-9])?\s*(AM|PM|am|pm)$/i);
+          if (ampmMatch) {
+            const h = ampmMatch[1];
+            const m = ampmMatch[2];
+            const ap = ampmMatch[3].toUpperCase();
+            formattedTime = `, ${h}:${m} ${ap}`;
           } else {
-            formattedTime = `, ${timeStr}`;
+            const parts = cleanString.split(":");
+            if (parts.length >= 2) {
+              let hours = parseInt(parts[0], 10);
+              const minutes = parts[1].slice(0, 2);
+              if (!isNaN(hours)) {
+                const ap = hours >= 12 ? "PM" : "AM";
+                hours = hours % 12;
+                hours = hours ? hours : 12;
+                formattedTime = `, ${hours}:${minutes} ${ap}`;
+              } else {
+                formattedTime = `, ${cleanString}`;
+              }
+            } else {
+              formattedTime = `, ${cleanString}`;
+            }
           }
-        } else {
-          // Get time from dateObj if no separate timeStr is provided
+        } else if (!isNaN(dateObj.getTime())) {
           let hours = dateObj.getHours();
           let minutes = dateObj.getMinutes();
-          const ampm = hours >= 12 ? "pm" : "am";
+          const ap = hours >= 12 ? "PM" : "AM";
           hours = hours % 12;
           hours = hours ? hours : 12;
           const minsStr = minutes < 10 ? "0" + minutes : minutes;
-          formattedTime = `, ${hours}:${minsStr} ${ampm}`;
+          formattedTime = `, ${hours}:${minsStr} ${ap}`;
         }
 
         return `${formattedDate}${formattedTime}`;
@@ -1120,7 +1301,138 @@
         };
       }
 
-      function renderOrderCards(allItems, container) {
+      function getRawAppointmentReason(appt) {
+        if (!appt) return "";
+        
+        if (appt.id) {
+          const localReason = localStorage.getItem("visit_reason_" + appt.id) || localStorage.getItem("consultation_reason_" + appt.id);
+          if (localReason && localReason.trim()) return localReason.trim();
+        }
+
+        if (appt.consultation_notes && typeof appt.consultation_notes === "string" && appt.consultation_notes.trim()) {
+          const val = appt.consultation_notes.trim();
+          if (!val.includes("payment_id") && !val.includes("bookingId") && !val.includes("consultation_fee") && !val.startsWith("{")) {
+            return val;
+          }
+        }
+
+        if (appt.symptoms && typeof appt.symptoms === "string" && appt.symptoms.trim()) {
+          return appt.symptoms.trim();
+        }
+
+        if (appt.symptoms_data) {
+          let sd = appt.symptoms_data;
+          if (typeof sd === "string") {
+            try { sd = JSON.parse(sd); } catch(e) {}
+          }
+          if (sd && typeof sd === "object") {
+            if (sd.additionalNotes && typeof sd.additionalNotes === "string" && sd.additionalNotes.trim()) {
+              return sd.additionalNotes.trim();
+            }
+            if (Array.isArray(sd.selectedSymptoms) && sd.selectedSymptoms.length > 0) {
+              return sd.selectedSymptoms.join(", ");
+            }
+          }
+        }
+
+        if (appt.reason && typeof appt.reason === "string" && appt.reason.trim()) {
+          return appt.reason.trim();
+        }
+        if (appt.chief_complaint && typeof appt.chief_complaint === "string" && appt.chief_complaint.trim()) {
+          return appt.chief_complaint.trim();
+        }
+        if (appt.consultation_reason && typeof appt.consultation_reason === "string" && appt.consultation_reason.trim()) {
+          return appt.consultation_reason.trim();
+        }
+        if (appt.notes && typeof appt.notes === "string" && appt.notes.trim()) {
+          return appt.notes.trim();
+        }
+
+        return "";
+      }
+
+      function translateReasonToEnglish(text, petName) {
+        const defaultFallback = `General Checkup & Consultation for ${petName || 'Pet'}`;
+        if (!text || typeof text !== "string") return defaultFallback;
+        
+        const trimmed = text.trim();
+        if (!trimmed) return defaultFallback;
+
+        const lower = trimmed.toLowerCase();
+        if (/^(none|nothing|null|undefined|na|n\/a|kuch nahi|kuch ni|no|no issues)$/i.test(lower)) {
+          return defaultFallback;
+        }
+
+        // Check Devanagari Hindi Script
+        const devanagariMap = [
+          { regex: /बुखार|तापमान/gi, replacement: "Fever" },
+          { regex: /उल्टी|वॉमिट/gi, replacement: "Vomiting" },
+          { regex: /दस्त|लूज मोशन/gi, replacement: "Diarrhea" },
+          { regex: /खांसी/gi, replacement: "Coughing" },
+          { regex: /सर्दी|जुकाम/gi, replacement: "Cold & Congestion" },
+          { regex: /दर्द|पीड़ा/gi, replacement: "Pain" },
+          { regex: /सूजन/gi, replacement: "Swelling" },
+          { regex: /खुजली/gi, replacement: "Skin Itching" },
+          { regex: /सुस्ती|कमजोरी/gi, replacement: "Lethargy & Weakness" },
+          { regex: /चोट|घाव/gi, replacement: "Wound & Injury" },
+          { regex: /खाना नहीं खा रहा|खाना नहीं खा रही|भूख नहीं/gi, replacement: "Loss of Appetite" },
+          { regex: /टीका|वैक्सीन|वैक्सीनेशन/gi, replacement: "Vaccination" },
+          { regex: /चेकअप|जांच/gi, replacement: "General Checkup" },
+          { regex: /आंख/gi, replacement: "Eye concern" },
+          { regex: /कान/gi, replacement: "Ear concern" },
+          { regex: /पेट/gi, replacement: "Stomach issue" }
+        ];
+
+        if (/[\u0900-\u097F]/.test(trimmed)) {
+          let found = [];
+          devanagariMap.forEach(item => {
+            if (item.regex.test(trimmed)) {
+              if (item.replacement) found.push(item.replacement);
+            }
+          });
+          if (found.length > 0) {
+            return Array.from(new Set(found)).join(" & ");
+          }
+        }
+
+        // Hinglish Dictionary mappings
+        const hinglishPatterns = [
+          { key: /\b(bukhar|buhkar|bukaar|fevar|feaver)\b/gi, label: "Fever" },
+          { key: /\b(ulti|vomi|vometing|vomit|vomiting)\b/gi, label: "Vomiting" },
+          { key: /\b(dast|dastt|loose motion|loose-motion|diarrhea)\b/gi, label: "Diarrhea" },
+          { key: /\b(khana nahi|khara nahi|kha nahi|bhookh nahi|bhook ni|not eating|khana ni)\b/gi, label: "Loss of Appetite" },
+          { key: /\b(khansi|khasi|cough|coughing)\b/gi, label: "Coughing" },
+          { key: /\b(sardi|zukham|jukham|cold)\b/gi, label: "Cold & Congestion" },
+          { key: /\b(susti|sust|kamzori|thaka|lethargic|lethargy)\b/gi, label: "Lethargy" },
+          { key: /\b(dard|dukh|pain)\b/gi, label: "Pain" },
+          { key: /\b(sujan|soojan|swelling)\b/gi, label: "Swelling" },
+          { key: /\b(khujli|itching|scratching)\b/gi, label: "Skin Itching" },
+          { key: /\b(chot|ghaw|gaw|wound|injury)\b/gi, label: "Wound & Injury" },
+          { key: /\b(tikka|vaccine|vaccination)\b/gi, label: "Vaccination" },
+          { key: /\b(routine checkup|general checkup|checkup)\b/gi, label: "General Checkup" },
+          { key: /\b(aankh|aankho|eyes)\b/gi, label: "Eye concern" },
+          { key: /\b(kaan|kano|ears)\b/gi, label: "Ear concern" },
+          { key: /\b(pait|pet me|stomach)\b/gi, label: "Stomach issue" },
+          { key: /\b(pair|paon|paw|paws|leg|legs)\b/gi, label: "Paw & Leg issue" },
+          { key: /\b(baal|hair fall|hairfall)\b/gi, label: "Hair fall / Shedding" }
+        ];
+
+        let detectedLabels = [];
+        hinglishPatterns.forEach(pat => {
+          if (pat.key.test(lower)) {
+            detectedLabels.push(pat.label);
+          }
+        });
+
+        if (detectedLabels.length > 0) {
+          return Array.from(new Set(detectedLabels)).join(" & ");
+        }
+
+        let cleanText = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+        return cleanText;
+      }
+
+      function renderOrderCards(allItems, container, isExpanded = false) {
         if (!container) return;
 
         if (!allItems || allItems.length === 0) {
@@ -1135,7 +1447,9 @@
 
         container.innerHTML = "";
 
-        allItems.forEach(item => {
+        const itemsToDisplay = (allItems.length > 9 && !isExpanded) ? allItems.slice(0, 9) : allItems;
+
+        itemsToDisplay.forEach(item => {
           const card = document.createElement("div");
           card.className = "order-card";
 
@@ -1158,7 +1472,15 @@
             iconBg = "#FFF5F1";
             iconColor = "#FF5200";
             titleText = "Pet Purchase";
-            subtitleText = `${pet.name || 'Lovely Pet'} (${pet.breed || pet.category || 'Pet'}) • ${pet.city || 'Sruvo'}`;
+            let petBreedInfo = pet.breed || pet.category || 'Pet';
+            let petName = pet.name || 'Lovely Pet';
+            let petBreed = (pet.breed || pet.category || 'Pet').trim();
+            if (pet.gender && !petBreed.toLowerCase().includes(pet.gender.toLowerCase())) {
+              petBreed = `${petBreed} • ${pet.gender}`;
+            }
+            petBreed = petBreed.replace(/^\(|\)$/g, "").trim();
+            const petLine1 = `${petName} (${petBreed})`;
+            subtitleText = `<div style="color: #1e293b; font-weight: 600; font-size: 14px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${petLine1}</div><div style="color: #64748b; font-weight: 500; font-size: 13px; margin-top: 2px;">${pet.city || 'Sruvo'}</div>`;
             priceText = itemData.amount || 0;
             descText = `Adoption & Ownership Transfer of ${pet.name || 'Pet'}`;
             footerDateText = formatDateAndTime(item.created_at || itemData.created_at);
@@ -1180,17 +1502,26 @@
             iconBg = "#F4EEFF";
             iconColor = "#8B5CF6";
             titleText = "Vet Consultation";
-            subtitleText = `${appt.pet_name || 'Pet'} (${appt.pet_breed || 'Dog'}) • ${typeLabel}`;
+            let pName = (appt.pet_name || 'Pet').trim();
+            let pBreed = (appt.pet_breed || 'Dog').trim();
+            let pGender = (appt.pet_gender || '').trim();
+
+            if (pGender && !pBreed.toLowerCase().includes(pGender.toLowerCase())) {
+              pBreed = `${pBreed} • ${pGender}`;
+            }
+            // Clean any trailing or leading parens inside pBreed to avoid doubled ))
+            pBreed = pBreed.replace(/^\(|\)$/g, "").trim().replace(/\)\s*\)$/g, ")");
+
+            const line1 = `${pName} (${pBreed})`;
+            const line2 = typeLabel;
+            subtitleText = `<div style="color: #1e293b; font-weight: 600; font-size: 14px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${line1}</div><div style="color: #64748b; font-weight: 500; font-size: 13px; margin-top: 2px;">${line2}</div>`;
             priceText = appt.amount || 0;
-            descText = appt.symptoms || `General Checkup & Consultation for ${appt.pet_name || 'Pet'}`;
+            const rawUserReason = getRawAppointmentReason(appt);
+            const petNameForFallback = appt.pet_name || 'Pet';
+            descText = translateReasonToEnglish(rawUserReason, petNameForFallback);
             footerDateText = formatDateAndTime(appt.appointment_date || item.created_at, appt.appointment_time);
             clickHandler = () => {
-              const status = (appt.status || "").toLowerCase();
-              if (status === "pending" || status === "rejected" || status === "cancelled" || status === "failed") {
-                navigateParent(`/buyer/vet/appointment/pending/${appt.id}`);
-              } else {
-                navigateParent(`/buyer/vet/visit-details/${appt.id}`);
-              }
+              openConsultationHelpScreen(appt);
             };
           } else if (item.type === "product_order") {
             const prod = itemData;
@@ -1198,7 +1529,7 @@
             iconBg = "#F0F9FF";
             iconColor = "#0284c7";
             titleText = "Product Order";
-            subtitleText = `${prod.product_name || 'Pet Product'} • Qty: ${prod.quantity || 1}`;
+            subtitleText = `<div style="color: #1e293b; font-weight: 600; line-height: 1.35;">${prod.product_name || 'Pet Product'}</div><div style="color: #64748b; font-weight: 500; margin-top: 2px;">Qty: ${prod.quantity || 1}</div>`;
             priceText = prod.total_amount || 0;
             descText = `Pet supplies order: ${prod.product_name || 'Item'}`;
             footerDateText = formatDateAndTime(prod.created_at || item.created_at);
@@ -1218,7 +1549,7 @@
                 <!-- Middle Title & Info -->
                 <div class="oc-header-info">
                   <h2 class="oc-title">${titleText}</h2>
-                  <div class="oc-subtitle">${subtitleText.replace(/\s*•\s*/g, '<span class="oc-bullet">•</span>')}</div>
+                  <div class="oc-subtitle">${subtitleText}</div>
                   <div class="oc-price">₹${priceText}</div>
                 </div>
               </div>
@@ -1248,6 +1579,32 @@
           card.addEventListener("click", clickHandler);
           container.appendChild(card);
         });
+
+        if (allItems.length > 9 && !isExpanded) {
+          const showMoreWrapper = document.createElement("div");
+          showMoreWrapper.className = "show-more-orders-wrapper";
+          showMoreWrapper.style.cssText = "grid-column: 1 / -1; width: 100%; text-align: left; margin-top: 10px; margin-bottom: 8px;";
+
+          const showMoreBtn = document.createElement("button");
+          showMoreBtn.type = "button";
+          showMoreBtn.className = "show-more-orders-btn";
+          showMoreBtn.innerHTML = `<span>Show More</span> <i class="fa-solid fa-chevron-down" style="font-size: 12px;"></i>`;
+          showMoreBtn.style.cssText = "background-color: #F3EFFF; color: #5E42E2; border: 1px solid #E9DCFF; padding: 9px 18px; font-size: 14px; font-weight: 600; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(94, 66, 226, 0.08);";
+          showMoreBtn.onmouseover = () => {
+            showMoreBtn.style.backgroundColor = "#E9DCFF";
+            showMoreBtn.style.borderColor = "#D7C1FF";
+          };
+          showMoreBtn.onmouseout = () => {
+            showMoreBtn.style.backgroundColor = "#F3EFFF";
+            showMoreBtn.style.borderColor = "#E9DCFF";
+          };
+          showMoreBtn.onclick = () => {
+            renderOrderCards(allItems, container, true);
+          };
+
+          showMoreWrapper.appendChild(showMoreBtn);
+          container.appendChild(showMoreWrapper);
+        }
       }
 
       let realtimeChannel = null;
@@ -1256,6 +1613,13 @@
       async function loadPastOrders() {
         const container = document.getElementById("past-orders-list-container");
         if (!container) return;
+
+        // Ask parent window to fetch orders using main app's Supabase client
+        if (window.parent && window.parent !== window) {
+          try {
+            window.parent.postMessage({ type: "FETCH_USER_ORDERS" }, "*");
+          } catch(e) {}
+        }
 
         // 1. Display cached orders instantly if present
         const cachedRaw = localStorage.getItem("sruvo_cached_orders");
@@ -1277,16 +1641,23 @@
               <p style="font-size: 14px; font-weight: 500;">Loading your orders & consultations...</p>
             </div>
           `;
+
+          // Fallback guard: Clear spinner if network/parent response is delayed over 2 seconds
+          setTimeout(() => {
+            if (container.innerHTML.includes("fa-spinner")) {
+              renderOrderCards([], container);
+            }
+          }, 2000);
         }
 
         const sb = getSupabase();
         if (!sb) {
-          if (sbRetryCount < 10) {
+          if (sbRetryCount < 5) {
             sbRetryCount++;
-            setTimeout(loadPastOrders, 250);
+            setTimeout(loadPastOrders, 300);
             return;
           }
-          if (!hasDisplayedCache) {
+          if (!hasDisplayedCache && container.innerHTML.includes("fa-spinner")) {
             renderOrderCards([], container);
           }
           return;
@@ -1295,10 +1666,13 @@
         try {
           let session = null;
           try {
-            const sessionRes = await sb.auth.getSession();
+            const sessionRes = await Promise.race([
+              sb.auth.getSession(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000))
+            ]);
             session = sessionRes && sessionRes.data ? sessionRes.data.session : null;
           } catch (sErr) {
-            console.warn("getSession error:", sErr);
+            console.warn("getSession error/timeout:", sErr);
           }
 
           if (!session || !session.user) {
@@ -1314,8 +1688,8 @@
 
           const userId = session.user.id;
 
-          // Fetch all user items in parallel safely
-          const [ordersRes, apptsRes, prodsRes] = await Promise.allSettled([
+          // Fetch all user items in parallel safely with 3s timeout
+          const fetchPromise = Promise.allSettled([
             sb
               .from("orders")
               .select("id, amount, status, created_at, pet_id, pets(name, breed, images, city, state, category)")
@@ -1329,6 +1703,11 @@
               .select("*")
               .eq("buyer_id", userId)
           ]);
+
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Fetch timeout")), 3000));
+          const results = await Promise.race([fetchPromise, timeoutPromise]);
+
+          const [ordersRes, apptsRes, prodsRes] = results;
 
           const allItems = [];
 
@@ -1390,7 +1769,7 @@
           }
         } catch (err) {
           console.error("Error loading past orders:", err);
-          if (!hasDisplayedCache) {
+          if (!hasDisplayedCache && container.innerHTML.includes("fa-spinner")) {
             renderOrderCards([], container);
           }
         }
@@ -1413,6 +1792,228 @@
       btnBackOrders.addEventListener("click", function() {
         pastOrdersScreen.style.display = "none"; mainScreen.style.display = "block";
       });
+
+      /* Consultation Help Screen Logic */
+      const consultationHelpScreen = document.getElementById("consultation-help-screen");
+      const btnBackConsultationHelp = document.getElementById("btn-back-consultation-help");
+      const chBtnConfirmation = document.getElementById("ch-btn-confirmation");
+      const chItemConfirmation = document.getElementById("ch-item-confirmation");
+      const chEmailBtn = document.getElementById("ch-email-btn");
+      const chBtnRefund = document.getElementById("ch-btn-refund");
+
+      if (btnBackConsultationHelp) {
+        btnBackConsultationHelp.addEventListener("click", function() {
+          consultationHelpScreen.style.display = "none";
+          pastOrdersScreen.style.display = "block";
+          window.scrollTo(0, 0);
+        });
+      }
+
+      if (chBtnConfirmation) {
+        chBtnConfirmation.addEventListener("click", function() {
+          chItemConfirmation.classList.toggle("active");
+        });
+      }
+
+      if (chEmailBtn) {
+        chEmailBtn.addEventListener("click", function() {
+          window.location.href = "mailto:support@sruvo.com";
+        });
+      }
+
+      if (chBtnRefund) {
+        chBtnRefund.addEventListener("click", function() {
+          if (currentSelectedAppt) {
+            localStorage.setItem("sruvo_payment_refund_flow_appt", JSON.stringify(currentSelectedAppt));
+            localStorage.setItem("sruvo_payment_refund_flow_active", "true");
+            navigateParent("/buyer/support/chat?newChat=true&flow=payment_refund");
+          } else {
+            navigateParent("/buyer/support/chat?newChat=true");
+          }
+        });
+      }
+
+      let currentSelectedAppt = null;
+
+      window.openConsultationHelpScreen = function(appt) {
+        currentSelectedAppt = appt;
+        if (chItemConfirmation) {
+          chItemConfirmation.classList.remove("active");
+        }
+        mainScreen.style.display = "none";
+        pastOrdersScreen.style.display = "none";
+        faqScreen.style.display = "none";
+        consultationHelpScreen.style.display = "block";
+        window.scrollTo(0, 0);
+      };
+
+      /* All Conversation Threads Screen Logic */
+      const conversationThreadsScreen = document.getElementById("conversation-threads-screen");
+      const btnBackThreads = document.getElementById("btn-back-threads");
+      const triggerAllThreads = document.getElementById("trigger-all-threads");
+
+      function getStoredChatThreads() {
+        const INACTIVITY_TIMEOUT_MS = (4 * 60 + 49) * 1000;
+        let threads = [];
+        try {
+          const raw = localStorage.getItem("sruvo_support_chat_threads");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) threads = parsed;
+          }
+        } catch(e) {}
+
+        if (!threads || threads.length === 0) {
+          threads = [
+            {
+              id: "thread_301",
+              topic: "Payments & Refunds",
+              date: "24 Jul 2026, 09:30 AM",
+              status: "ended",
+              lastMessage: "Your refund of ₹350 for appointment #SRV-84721 has been processed and credited to your original payment source.",
+              messages: [
+                { role: "user", content: "I have payment and refund related issues for my consultation booking." },
+                { role: "assistant", content: "Hello! I am checking your recent consultation payment for appointment #SRV-84721. Your payment of ₹350 was received successfully." },
+                { role: "user", content: "I want to request a refund as I need to reschedule." },
+                { role: "assistant", content: "Your refund request has been logged. The amount of ₹350 will be credited back to your original payment method within 24-48 hours. This support thread is now marked as completed." }
+              ]
+            },
+            {
+              id: "thread_302",
+              topic: "Smart Match & Vet Consultation",
+              date: "22 Jul 2026, 04:15 PM",
+              status: "ended",
+              lastMessage: "Glad I could assist you with your vet booking details! Have a great day with Jimmy.",
+              messages: [
+                { role: "user", content: "I need help with my vet consultation booking and Smart Match." },
+                { role: "assistant", content: "Sure! Smart Match paired your pet Jimmy (Dog) with Dr. Ananya Sharma based on reported symptoms of skin itching and loss of appetite." },
+                { role: "user", content: "Can I view the doctor's prescription directly in the app?" },
+                { role: "assistant", content: "Yes! Once Dr. Ananya Sharma completes the live video call, your digital prescription will appear automatically under Pet Passport & Past Consultations." }
+              ]
+            },
+            {
+              id: "thread_303",
+              topic: "Shop Orders & Delivery",
+              date: "18 Jul 2026, 02:45 PM",
+              status: "ended",
+              lastMessage: "Your order #ORD-9821 has been dispatched with BlueDart tracking ID #BD889201.",
+              messages: [
+                { role: "user", content: "Where is my shop order for Pedigree Puppy Food?" },
+                { role: "assistant", content: "Let me fetch your order status. Order #ORD-9821 (Pedigree Puppy Food 3kg) is currently out for delivery with our courier partner." },
+                { role: "user", content: "What is the expected delivery time?" },
+                { role: "assistant", content: "It is scheduled to be delivered by 6:00 PM today. Tracking link has been sent to your registered SMS number." }
+              ]
+            }
+          ];
+
+          try {
+            localStorage.setItem("sruvo_support_chat_threads", JSON.stringify(threads));
+          } catch(e) {}
+        }
+
+        // Dynamically check inactivity for active threads
+        const now = Date.now();
+        let updated = false;
+        threads.forEach(t => {
+          if (t.status === "active") {
+            const lastTs = t.lastActivityTimestamp || 0;
+            if (now - lastTs >= INACTIVITY_TIMEOUT_MS) {
+              t.status = "ended";
+              updated = true;
+              if (t.messages && t.messages.length > 0) {
+                const lastMsg = t.messages[t.messages.length - 1];
+                if (lastMsg && !lastMsg.content.includes("Since you have not responded to our message")) {
+                  t.messages.push({
+                    role: "assistant",
+                    content: "Since you have not responded to our message, we are closing this ticket. If you need any further support, please feel free to raise a new ticket and we will help you. Have a wonderful day!"
+                  });
+                  t.lastMessage = t.messages[t.messages.length - 1].content;
+                }
+              }
+            }
+          }
+        });
+
+        if (updated) {
+          try {
+            localStorage.setItem("sruvo_support_chat_threads", JSON.stringify(threads));
+          } catch(e) {}
+        }
+
+        return threads;
+      }
+
+      function renderConversationThreads() {
+        const container = document.getElementById("threads-list-container");
+        if (!container) return;
+
+        const threads = getStoredChatThreads();
+        if (!threads || threads.length === 0) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: #64748b;">
+              <i class="fa-regular fa-comments" style="font-size: 32px; color: #cbd5e1; margin-bottom: 12px;"></i>
+              <p style="font-size: 14px; font-weight: 600; color: #334155;">No conversation threads found</p>
+              <p style="font-size: 12px; margin-top: 4px;">Your past AI support chats will appear here.</p>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = threads.map(t => {
+          const isActive = t.status === "active";
+          const statusBadge = isActive
+            ? `<span style="background: #dcfce7; color: #15803d; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0;">Active</span>`
+            : `<span style="background: #f1f5f9; color: #64748b; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0;">Ended</span>`;
+
+          return `
+            <div class="thread-card" data-thread-id="${t.id}" style="background: #ffffff; border-radius: 18px; border: 1px solid #e2e8f0; padding: 16px 18px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02); cursor: pointer; transition: all 0.2s ease;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <div style="font-weight: 700; font-size: 15px; color: #0f172a; line-height: 1.3;">${t.topic || "AI Support Chat"}</div>
+                ${statusBadge}
+              </div>
+              <div style="color: #64748b; font-size: 13px; font-weight: 400; margin-top: 6px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">
+                ${t.lastMessage || "Conversation ended."}
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 10px; border-top: 1px solid #f1f5f9;">
+                <div style="font-size: 12px; font-weight: 500; color: #94a3b8;">
+                  <i class="fa-regular fa-clock" style="margin-right: 4px;"></i>${t.date || ""}
+                </div>
+                <div style="color: #5d3bf2; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                  View Chat <i class="fa-solid fa-chevron-right" style="font-size: 11px;"></i>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        container.querySelectorAll(".thread-card").forEach(card => {
+          card.addEventListener("click", function() {
+            const threadId = this.getAttribute("data-thread-id");
+            navigateParent("/buyer/support/chat?threadId=" + threadId);
+          });
+        });
+      }
+
+      if (triggerAllThreads) {
+        triggerAllThreads.addEventListener("click", function(e) {
+          e.preventDefault();
+          mainScreen.style.display = "none";
+          pastOrdersScreen.style.display = "none";
+          faqScreen.style.display = "none";
+          consultationHelpScreen.style.display = "none";
+          conversationThreadsScreen.style.display = "block";
+          window.scrollTo(0, 0);
+          renderConversationThreads();
+        });
+      }
+
+      if (btnBackThreads) {
+        btnBackThreads.addEventListener("click", function() {
+          conversationThreadsScreen.style.display = "none";
+          mainScreen.style.display = "block";
+          window.scrollTo(0, 0);
+        });
+      }
 
       // Original Interactive Events
       btnSeeDetails.addEventListener("click", function() {
@@ -1597,7 +2198,7 @@
               if (actionBtn) {
                 actionBtn.addEventListener("click", function() {
                   if (actionBtn.textContent.includes("CHAT")) {
-                    navigateParent("/buyer/support/chat");
+                    navigateParent("/buyer/support/chat?newChat=true");
                   } else {
                     window.location.href = "mailto:support@sruvo.com";
                   }
@@ -1626,7 +2227,7 @@
       const headsetBtn = document.querySelector(".headset-circle-btn");
       if (headsetBtn) {
         headsetBtn.addEventListener("click", function() {
-          navigateParent("/buyer/support/chat");
+          navigateParent("/buyer/support/chat?newChat=true");
         });
       }
 

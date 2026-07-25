@@ -898,6 +898,12 @@ const BuyerVisitDetails: React.FC = () => {
     setIsEditingReason(false);
     toast.success("Visit reason updated successfully!");
 
+    if (currentVisitId) {
+      try {
+        localStorage.setItem(`visit_reason_${currentVisitId}`, reasonInput);
+      } catch (e) {}
+    }
+
     if (currentVisitId && currentVisitId !== "SRV-84721") {
       try {
         const { error } = await supabase

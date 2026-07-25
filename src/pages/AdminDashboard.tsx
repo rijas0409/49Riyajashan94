@@ -23,6 +23,7 @@ import AdminBuyers from "@/components/admin/AdminBuyers";
 import AdminNotifications from "@/components/admin/AdminNotifications";
 import AdminVetAppointments from "@/components/admin/AdminVetAppointments";
 import AdminPetPassport from "@/components/admin/AdminPetPassport";
+import AdminSupportChats from "@/components/admin/AdminSupportChats";
 
 
 export interface AdminData {
@@ -494,6 +495,7 @@ const AdminDashboard = () => {
       case "overview": return <AdminOverview data={data} actions={actions} setActiveSection={handleSectionChange} />;
       case "buyers": return <AdminBuyers />;
       case "users": return <AdminUserManagement data={data} actions={actions} />;
+      case "support_chats": return <AdminSupportChats />;
       case "vets": return <AdminVets data={data} actions={actions} />;
       case "vet_appointments": return <AdminVetAppointments data={data} actions={actions} />;
       case "products": return <AdminProducts data={data} actions={actions} />;
